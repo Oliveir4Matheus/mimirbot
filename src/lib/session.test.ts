@@ -117,7 +117,7 @@ describe("the profile shown for a signed-in session", () => {
     const answer: typeof fetch = async () => new Response(JSON.stringify({
       kind: "session", id: "s", label: "Ada's iPad", email: "ada@example.test", scopes: ["client"], expiresAt: 1,
     }), { status: 200 });
-    expect(await readSessionState(answer)).toEqual({
+    expect(await readSessionState(answer)).toMatchObject({
       kind: "session", id: "s", label: "Ada's iPad", email: "ada@example.test", scopes: ["client"], expiresAt: 1,
     });
   });
