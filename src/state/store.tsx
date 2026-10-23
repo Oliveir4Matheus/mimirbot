@@ -491,7 +491,7 @@ export interface EngineInstall {
   signInCommand?: string;
   needsNode?: boolean;
   managed?: { label: string; downloadBytes: number };
-  server?: { package: string };
+  server?: { package?: string; standalone?: { version: string; downloadBytes: number } };
   settings?: "connections";
 }
 
