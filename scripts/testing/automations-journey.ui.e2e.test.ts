@@ -393,7 +393,7 @@ async function openApp(server: { url: string; port: number; dataDir: string; log
   }
 }, 900_000);
 
-const CLOUD_HOST = "omb-t-journey0123456.fly.dev";
+const CLOUD_HOST = "omb-t-journey0123456.mimirbot.invalid";
 const OUTSIDE_WHY = "A webhook's run made or changed this routine, so it runs without full access. Open it and save it once to run it with full access.";
 
 /** A Cloud home as its image starts it (cloud-home-start's own environment and secrets pipe), with a fake public origin,

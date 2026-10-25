@@ -166,8 +166,8 @@ describe("outward links", () => {
     expect(DOCS_URL).toBe("https://github.com/milind-soni/OpenMausBot/tree/main/docs");
   });
 
-  it("sends Send Feedback to the Discord community", () => {
-    expect(FEEDBACK_URL).toBe("https://discord.gg/9Wb8MEpXRs");
+  it("sends Send Feedback to the fork's issues", () => {
+    expect(FEEDBACK_URL).toBe("https://github.com/Oliveir4Matheus/mimirbot/issues");
   });
 });
 

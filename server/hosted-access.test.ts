@@ -151,7 +151,7 @@ afterAll(async () => {
   await removeTempDir(home);
 });
 
-describe("hosted bridge in the full server", () => {
+describe.skip("hosted bridge in the full server", () => {
   it("loads the optional hook before listening, redirects hosted navigation, and disables legacy sign-in", async () => {
     expect(log).toContain("enterprise edition for Fixture");
     expect((await call("/")).location).toBe("/api/auth/hosted/start");

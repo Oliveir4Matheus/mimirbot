@@ -255,6 +255,7 @@ let cachedReport: { at: number; key: string; report: PlanUsageReport } | null = 
 
 export function clearPlanUsageCache(): void {
   cachedReport = null;
+  lastGood.clear();
 }
 
 export async function loadPlanUsage(input: {
@@ -277,8 +278,23 @@ export async function loadPlanUsage(input: {
     now: () => now,
     timeoutMs: input.timeoutMs,
   });
+  report.providers = report.providers.map((row) => keepLastGood(row, now));
   cachedReport = { at: now, key, report };
   return report;
+}
+
+const LAST_GOOD_MS = 30 * 60_000;
+const lastGood = new Map<string, { at: number; row: PlanProviderRow }>();
+
+function keepLastGood(row: PlanProviderRow, now: number): PlanProviderRow {
+  if (row.ok) {
+    lastGood.set(row.id, { at: now, row });
+    return row;
+  }
+  const kept = lastGood.get(row.id);
+  const driver = row.driver as PlanDriver;
+  const transient = row.error === couldNotReach(driver) || row.error === unexpectedUsage(driver);
+  return kept && transient && now - kept.at <= LAST_GOOD_MS ? kept.row : row;
 }
 
 function closedWindow(): PlanWindow {

@@ -50,7 +50,7 @@ describe("the fixture's X research relay", () => {
   it("passes a loopback relay stub and its token through, the token only with the stub", () => {
     expect(childEnv({ OMB_CLOUD_X_URL: " http://127.0.0.1:4200/api/cloud/services/x ", OMB_CLOUD_X_TOKEN: "omb_x_fixture" }))
       .toMatchObject({ OMB_CLOUD_X_URL: "http://127.0.0.1:4200/api/cloud/services/x", OMB_CLOUD_X_TOKEN: "omb_x_fixture" });
-    for (const url of ["https://cloud.openmausbot.com/api/cloud/services/x", "http://localhost:4200/api/cloud/services/x", "http://192.0.2.1:4200", "http://127.0.0.1:4200/../x?y", ""]) {
+    for (const url of ["https://cloud.mimirbot.invalid/api/cloud/services/x", "http://localhost:4200/api/cloud/services/x", "http://192.0.2.1:4200", "http://127.0.0.1:4200/../x?y", ""]) {
       const env = childEnv({ OMB_CLOUD_X_URL: url, OMB_CLOUD_X_TOKEN: "omb_x_real" });
       expect(env, url).not.toHaveProperty("OMB_CLOUD_X_URL");
       expect(env, url).not.toHaveProperty("OMB_CLOUD_X_TOKEN");

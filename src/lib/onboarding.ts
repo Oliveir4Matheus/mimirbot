@@ -162,7 +162,7 @@ export function flowDotsShown(beat: BeatId): boolean {
 }
 
 
-export const DEFAULT_ADMIN_ORIGIN = "https://admin.openmausbot.com";
+export const DEFAULT_ADMIN_ORIGIN = "https://admin.mimirbot.invalid";
 
 export function organisationSignIn<Bridge>(
   ogb: { organization?: Bridge; remoteClient?: { active?: boolean } } | undefined,

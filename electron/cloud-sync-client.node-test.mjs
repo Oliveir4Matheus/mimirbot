@@ -6,7 +6,7 @@ import test from "node:test";
 import { SyncAuthError, createSyncClient } from "./cloud-sync-client.mjs";
 import { CloudAsleepError, createCloudPowerGate } from "./cloud-power.mjs";
 
-const ORIGIN = "https://omb-u-1a2b3c4d5e6f.fly.dev";
+const ORIGIN = "https://omb-u-1a2b3c4d5e6f.mimirbot.invalid";
 const reply = (status, body, headers = {}) => new Response(typeof body === "string" ? body : JSON.stringify(body), { status, headers: { "content-type": "application/json", ...headers } });
 function dir(t) { const path = mkdtempSync(join(tmpdir(), "omb-sync-client-")); t.after(() => rmSync(path, { recursive: true, force: true })); return path; }
 

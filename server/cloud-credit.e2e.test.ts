@@ -16,7 +16,7 @@ import { freePortBlock } from "./testing/ports.ts";
 import { TRIAL_CREDIT_OWN_AI, TRIAL_CREDIT_REFUSED } from "./trial-credit.ts";
 
 const SERVER_DIR = dirname(fileURLToPath(import.meta.url));
-const HOST = "omb-t-0123456789ab.fly.dev";
+const HOST = "omb-t-0123456789ab.mimirbot.invalid";
 const secret = randomBytes(32).toString("base64url");
 const TOKEN = `omb_ai_${randomBytes(32).toString("base64url")}`;
 /** The Admin's relay path; the Cloud is given `<origin>${RELAY_PATH}/v1`. */

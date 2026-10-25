@@ -5,5 +5,6 @@
   "fork": "Oliveir4Matheus/mimirbot",
   "upstream": "milind-soni/OpenMausBot",
   "icon": "01_seixo_compacto.svg",
+  "mascot": "01_seixo_compacto.svg",
   "icon_tile": ["#3B3260", "#171428"]
 }

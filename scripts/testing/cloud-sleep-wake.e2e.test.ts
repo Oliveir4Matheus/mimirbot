@@ -17,7 +17,7 @@ import { cloudAsleep, markCloudAwake, resetCloudPowerForTests } from "../../src/
 import { openLiveEvents, type LiveEventSourceLike, type LiveFrame } from "../../src/lib/live-events.ts";
 
 const SERVER_DIR = fileURLToPath(new URL("../../server/", import.meta.url));
-const HOST = "omb-t-7c6b5a4d3e2f.fly.dev";
+const HOST = "omb-t-7c6b5a4d3e2f.mimirbot.invalid";
 const MACHINE = "5c9e3d2f-0b8a-4f7e-9d6c-2b3c4d5e6f70";
 const EDGE = { host: HOST, "x-forwarded-for": "203.0.113.9", "x-forwarded-proto": "https", origin: `https://${HOST}` };
 const secret = randomBytes(32).toString("base64url");

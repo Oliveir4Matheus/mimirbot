@@ -9,7 +9,7 @@ import { setLocale } from "@/lib/i18n";
 import type { CompanionAccountState } from "../types/ogb";
 import { PhoneSetupFlow, type CompanionState } from "./PhoneSetupFlow";
 
-const HOSTED = "https://c-opaque.openmausbot.com";
+const HOSTED = "https://c-opaque.mimirbot.invalid";
 const FULL =
   "Secure HTTPS links are temporarily full. Try again in 10 minutes, or pair on this Wi-Fi or with Tailscale.";
 

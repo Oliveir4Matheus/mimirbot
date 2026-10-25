@@ -6,7 +6,7 @@ import test from "node:test";
 
 import { createHomeAgain } from "./one-home-again.mjs";
 
-const CLOUD = "https://omb-t-1.fly.dev";
+const CLOUD = "https://omb-t-1.mimirbot.invalid";
 const reply = (status, body = {}) => ({ ok: status < 400, status, body });
 const BUSY = "Wait for bot turns, approvals, sign-ins, and computer actions to finish before backing up or restoring.";
 

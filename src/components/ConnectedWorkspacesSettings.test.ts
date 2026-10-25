@@ -176,7 +176,7 @@ it("offers no Forget for the environment this app is on", async () => {
 it("My Cloud's entry has one lending control, Let my bots use this computer; other servers keep Computer access", async () => {
   config.value = { features: { sharedComputers: true } };
   const open = vi.fn().mockResolvedValue(undefined);
-  const cloud = { id: "cloud", name: "My Cloud", origin: "https://omb-u-1.fly.dev", home: true };
+  const cloud = { id: "cloud", name: "My Cloud", origin: "https://omb-u-1.mimirbot.invalid", home: true };
   stub({ computerSharing: { state: vi.fn() }, cloudLending: { open } });
   vi.mocked((globalThis.window as unknown as { ogb: { environments: { state: ReturnType<typeof vi.fn> } } }).ogb.environments.state)
     .mockResolvedValue({ localOrigin: "http://127.0.0.1:1", remote: false, activeId: "local", environments: [VPS, cloud] });

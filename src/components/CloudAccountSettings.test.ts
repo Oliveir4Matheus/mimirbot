@@ -546,7 +546,7 @@ it("a Team plan has no Cloud of its own: the team's Cloud under its name, Open {
   const onTeam = (machine: Machine): CloudAccountState => ({ ...free, entitlement: { plan: "pro", tier: "team", status: "active", expiresAt: 1_900_000_000_000, version: 2 },
     teams: [{ id: "team-acme", name: "Acme", role: "owner", machine }] });
   bridge.openTeam = vi.fn().mockResolvedValue(undefined);
-  await ready(onTeam({ status: "ready", origin: "https://omb-t-2.fly.dev" }));
+  await ready(onTeam({ status: "ready", origin: "https://omb-t-2.mimirbot.invalid" }));
   let html = render().html;
   all(html, ['data-cloud-team="true"', "Acme is ready. It keeps your team&#x27;s bots running 24/7", "Open Acme"]);
   none(html, ["Setting up", "Reserving your machine", "Open the Cloud", PHONE, "is not ready yet"]);
@@ -557,6 +557,6 @@ it("a Team plan has no Cloud of its own: the team's Cloud under its name, Open {
   all(html, ["Setting up your team&#x27;s Cloud", 'data-cloud-setup="storage"', "Reserving your machine"]); none(html, ["Open Acme", PHONE]);
   push({ ...onTeam(null), teams: undefined });
   all(render().html, ["Your team&#x27;s Cloud", "Setting up your team&#x27;s Cloud"]);
-  push({ ...onTeam({ status: "ready", origin: "https://omb-t-2.fly.dev" }), entitlement: { plan: "pro", tier: "pro", status: "active", expiresAt: 1_900_000_000_000, version: 3 } });
+  push({ ...onTeam({ status: "ready", origin: "https://omb-t-2.mimirbot.invalid" }), entitlement: { plan: "pro", tier: "pro", status: "active", expiresAt: 1_900_000_000_000, version: 3 } });
   all(render().html, ["Setting up the Cloud", 'data-cloud-phone="steps"']);
 });

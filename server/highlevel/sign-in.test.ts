@@ -50,7 +50,7 @@ const until = async <T>(read: () => T, want: (value: T) => boolean, ms = 3_000):
 };
 
 describe("relay URL", () => {
-  it("defaults to accounts.openmausbot.com, accepts https or loopback http, and reads off as unavailable", () => {
+  it("defaults to accounts.mimirbot.invalid, accepts https or loopback http, and reads off as unavailable", () => {
     expect(highlevelRelayUrl({})).toBe(HIGHLEVEL_RELAY_URL_DEFAULT);
     expect(highlevelRelayUrl({ OMB_HIGHLEVEL_RELAY_URL: "" })).toBe(HIGHLEVEL_RELAY_URL_DEFAULT);
     expect(highlevelRelayUrl({ OMB_HIGHLEVEL_RELAY_URL: "https://relay.example.test/" })).toBe("https://relay.example.test");

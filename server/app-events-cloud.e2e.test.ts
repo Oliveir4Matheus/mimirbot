@@ -13,7 +13,7 @@ import { freePortBlock } from "./testing/ports.ts";
 import { startBrokerFake, type BrokerFake } from "./testing/broker-fake.ts";
 
 const SERVER_DIR = dirname(fileURLToPath(import.meta.url));
-const HOST = "omb-t-0a1b2c3d4e5f.fly.dev";
+const HOST = "omb-t-0a1b2c3d4e5f.mimirbot.invalid";
 const MACHINE = "4b8d2c1e-9a7f-4e6d-8c5b-1a2b3c4d5e6f";
 const secret = randomBytes(32).toString("base64url");
 let home = "", base = "", log = "", token = "";

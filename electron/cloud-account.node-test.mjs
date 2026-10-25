@@ -162,7 +162,7 @@ test("a Team plan's Cloud is its team's: its setup is followed every 15 seconds,
   f.teams = team({ state: "setting_up", origin: null, pairingAvailable: false, setup: { step: "storage" } });
   let state = await f.client.refresh();
   assert.deepEqual(state.teams[0].machine, { status: "provisioning", setup: { step: "storage" } }); assert.equal(f.delay, 15_000);
-  f.teams = team({ state: "ready", status: "ready", origin: "https://omb-t-2.fly.dev", pairingAvailable: true });
+  f.teams = team({ state: "ready", status: "ready", origin: "https://omb-t-2.mimirbot.invalid", pairingAvailable: true });
   state = await f.client.refresh();
   assert.equal(state.machine, undefined); assert.equal(f.delay, 60_000, "the team's Cloud is ready: nothing is being set up");
   f.teams = undefined; await f.client.refresh(); assert.equal(f.delay, 15_000, "no team listed yet: its setup");
@@ -530,7 +530,7 @@ test("only the Admin's own answer ends a sign-in: a 401/403 page from in between
   const f = await fixture(t); await f.connect();
   const paid = { plan: "pro", tier: "max", status: "active", expiresAt: f.now + 3 * 3600_000, version: 1 };
   f.entitlement = paid; await f.client.refresh();
-  // A firewall or bot-check page (Cloudflare serves cloud.openmausbot.com).
+  // A firewall or bot-check page (Cloudflare serves cloud.mimirbot.invalid).
   f.sessionPage = 403;
   let state = await f.client.refresh();
   assert.equal(state.status, "connected"); assert.deepEqual(state.entitlement, paid); assert.equal(state.checking, undefined);
@@ -747,7 +747,7 @@ test("My Cloud's line in the server menus says what is true now: the trial's end
 
 test("the session's teams come with a verified session, each with its Cloud; a team pairing is asked of the Admin's team route for the team's own address, and 404 means the person is no longer in it", async t => {
   const f = await fixture(t); await f.connect();
-  const origin = "https://omb-u-acme.fly.dev", code = "AAAA-BBBB-CCCC";
+  const origin = "https://omb-u-acme.mimirbot.invalid", code = "AAAA-BBBB-CCCC";
   assert.equal(f.client.state().teams, undefined, "in no team: nothing added");
   f.teams = [{ id: "team-acme", name: "Acme", role: "member", machine: { state: "ready", origin, pairingAvailable: true, status: "ready" } }, { id: "team-x", name: "Later", role: "admin", machine: null }];
   await f.client.refresh();

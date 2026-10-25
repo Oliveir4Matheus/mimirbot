@@ -22,7 +22,7 @@ import { removeTempDir, waitForExit } from "../../server/testing/cleanup.ts";
 import { freePortBlock } from "../../server/testing/ports.ts";
 
 const SERVER_DIR = fileURLToPath(new URL("../../server/", import.meta.url));
-export const CLOUD_HOST = "omb-t-5e6d7c8b9a0f.fly.dev";
+export const CLOUD_HOST = "omb-t-5e6d7c8b9a0f.mimirbot.invalid";
 const EDGE = { host: CLOUD_HOST, "x-forwarded-for": "203.0.113.9", "x-forwarded-proto": "https", origin: `https://${CLOUD_HOST}` };
 const parse = (text: string) => { try { return JSON.parse(text); } catch { return null; } };
 

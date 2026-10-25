@@ -19,7 +19,7 @@ import { hostTimeout } from "./testing/host-timeout.ts";
 import { freePortBlock } from "./testing/ports.ts";
 
 const SERVER_DIR = dirname(fileURLToPath(import.meta.url));
-const HOST = "omb-t-0123456789ab.fly.dev";
+const HOST = "omb-t-0123456789ab.mimirbot.invalid";
 // Obvious fakes only.
 const TOKEN = `ops_fake-cloud-service-account-${randomBytes(12).toString("hex")}`;
 const VAULT_PASSWORD = `fake-vault-Passw0rd-${randomBytes(6).toString("hex")}`;

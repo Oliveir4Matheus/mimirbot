@@ -49,7 +49,7 @@ beforeEach(() => setLocale("en"));
 
 const PRELOAD = readFileSync(join(process.cwd(), "electron", "preload.cjs"), "utf8").replace(/\r\n/g, "\n");
 type Ogb = NonNullable<Window["ogb"]>;
-const MY_CLOUD = "https://omb-u-1.fly.dev";
+const MY_CLOUD = "https://omb-u-1.mimirbot.invalid";
 const port = (number: number) => `http://127.0.0.1:${number}`;
 type Desktop = (origin: string) => Ogb;
 // One desktop: main's real record, and the real preload for a page of its window: this computer's, on whichever port

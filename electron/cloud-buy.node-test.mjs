@@ -7,7 +7,7 @@ import { CLOUD_COLORS, CLOUD_COLOR_HEX, cleanCloudColor, cleanCloudName, cloudLi
   installCloudBuy, lookFile } from "./cloud-buy.mjs";
 import environments from "./environments.cjs";
 
-const origin = "https://omb-u-1a2b3c4d5e6f.fly.dev";
+const origin = "https://omb-u-1a2b3c4d5e6f.mimirbot.invalid";
 
 test("a Cloud's name is up to 28 characters of plain text, and its colour one of six names", () => {
   assert.equal(cleanCloudName("  Studio   cloud "), "Studio cloud");

@@ -10,7 +10,7 @@ import { botPatch, CloudSendError, createCloudSend, parseSendState, sendNotice, 
 import { installCloudSend, openOwnerSession } from "./cloud-send-main.mjs";
 
 const LOCAL = "http://127.0.0.1:4100";
-const CLOUD = "https://omb-u-1.fly.dev";
+const CLOUD = "https://omb-u-1.mimirbot.invalid";
 const summary = (items) => ({ v: 1, appVersion: "0.1.117", items });
 const bot = (id, parts, extra = {}) => ({ key: itemKey.bot(id), kind: "bot", label: id, id, parts, ...extra });
 

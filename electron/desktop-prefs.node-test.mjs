@@ -15,7 +15,7 @@ const localOrigin = require("./local-origin.cjs");
 
 const POPUP = "cloud-pro-update-2026-10";
 const HOUR = 3600_000, NOON = new Date(2026, 9, 16, 12).getTime();
-const LOCAL = "http://127.0.0.1:18799", CLOUD = "https://omb-u-1.fly.dev", VPS = "https://bots.example.test";
+const LOCAL = "http://127.0.0.1:18799", CLOUD = "https://omb-u-1.mimirbot.invalid", VPS = "https://bots.example.test";
 
 test("the popup is the one notice a page can record; seen and analytics survive a restart; a broken record never stops the app", () => {
   assert.deepEqual([...DESKTOP_NOTICES], [POPUP]);

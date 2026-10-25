@@ -10,8 +10,8 @@ import environments from "./environments.cjs";
 import localOrigin from "./local-origin.cjs";
 import { createHomeWindow, HOME_SCREEN_PATH, homeOf, installHomeWindowIpc, LOOK_MS, placeOf, QUIET_MS, routeOf, SPLASH_TEXT, splashText, TEAM_RENEW_EARLY_MS, TEAM_RENEW_MS, TEAM_RENEW_RETRY_MS, UPDATING_MS } from "./home-window.mjs";
 
-const CLOUD = "https://omb-t-1.fly.dev";
-const TEAM = "https://omb-u-acme.fly.dev";
+const CLOUD = "https://omb-t-1.mimirbot.invalid";
+const TEAM = "https://omb-u-acme.mimirbot.invalid";
 const ACME = { id: "team-acme", name: "Acme", role: "member", machine: { status: "ready", origin: TEAM } };
 const LOCAL = "http://127.0.0.1:8799";
 const ACCOUNT = { id: "acct-1", email: "person@example.test" };
@@ -38,7 +38,7 @@ test("home is My Cloud only once the move switched and the same account is signe
 test("a frozen copy with its journal lost counts as moved, to the Cloud it names or the account's own", () => {
   assert.deepEqual(homeOf({ frozenCloud: CLOUD, state: connected() }), { kind: "cloud", origin: CLOUD });
   assert.deepEqual(homeOf({ frozenCloud: true, state: connected() }), { kind: "cloud", origin: CLOUD });
-  assert.deepEqual(homeOf({ frozenCloud: "https://omb-t-2.fly.dev", state: connected() }), { kind: "signin", other: true });
+  assert.deepEqual(homeOf({ frozenCloud: "https://omb-t-2.mimirbot.invalid", state: connected() }), { kind: "signin", other: true });
   assert.deepEqual(homeOf({ frozenCloud: true, state: { status: "unavailable", account: ACCOUNT } }), { kind: "signin" }, "no Cloud to name: the sign-in screen, never the frozen copy");
   assert.deepEqual(homeOf({ frozenCloud: CLOUD, state: null }), { kind: "signin" });
   assert.deepEqual(homeOf({ journal: { ...done(), phase: "freeze" }, frozenCloud: CLOUD, state: connected() }), { kind: "computer" }, "a move under way is not a move done");

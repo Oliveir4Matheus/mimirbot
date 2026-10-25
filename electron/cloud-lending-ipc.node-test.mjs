@@ -164,10 +164,10 @@ test("the person's own Off is never undone: the move's default leaves lending of
 });
 
 test("lending's Cloud comes from the verified sign-in, and survives a brief disconnect of the same account only", () => {
-  let state = { status: "connected", account: { id: "acct_1" }, machine: { origin: "https://omb-u-1.fly.dev" } };
-  const cloud = { id: "cloud", origin: "https://omb-u-1.fly.dev" };
+  let state = { status: "connected", account: { id: "acct_1" }, machine: { origin: "https://omb-u-1.mimirbot.invalid" } };
+  const cloud = { id: "cloud", origin: "https://omb-u-1.mimirbot.invalid" };
   const target = createLendingTarget({ account: () => ({ state: () => state }), environments: () => [{ id: "other", origin: "https://other.example" }, cloud] });
-  assert.deepEqual(target.cloud(), { status: "connected", accountId: "acct_1", origin: "https://omb-u-1.fly.dev" });
+  assert.deepEqual(target.cloud(), { status: "connected", accountId: "acct_1", origin: "https://omb-u-1.mimirbot.invalid" });
   assert.equal(target.environment(), cloud);
   state = { status: "unavailable", account: { id: "acct_1" }, machine: null };
   assert.equal(target.environment(), cloud, "the same account, briefly unreachable");

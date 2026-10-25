@@ -11,7 +11,7 @@ import { removeTempDir, waitForExit } from "./testing/cleanup.ts";
 import { freePortBlock } from "./testing/ports.ts";
 
 const SERVER_DIR = dirname(fileURLToPath(import.meta.url));
-const HOST = "omb-t-0123456789ab.fly.dev";
+const HOST = "omb-t-0123456789ab.mimirbot.invalid";
 const secret = randomBytes(32).toString("base64url");
 const VENICE = `venice-owner-${randomBytes(8).toString("hex")}`;
 const OWNER_ANTHROPIC = `anthropic-owner-${randomBytes(8).toString("hex")}`;

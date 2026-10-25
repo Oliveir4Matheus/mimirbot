@@ -12,7 +12,7 @@ import { createComputerSharing } from "./computer-sharing.mjs";
 import { autostartEntry, createOpenAtLogin, HIDDEN_ARG } from "./open-at-login.mjs";
 import { createAllWindowsClosedQuit } from "./window-all-closed.mjs";
 
-const ORIGIN = "https://omb-u-fixture.fly.dev";
+const ORIGIN = "https://omb-u-fixture.mimirbot.invalid";
 const env = { id: "my-cloud", name: "My Cloud", origin: ORIGIN };
 
 const until = async (check, what, ms = 5000) => {
@@ -93,7 +93,7 @@ test("the internet connection alone is lent: it registers with My Cloud and open
   assert.equal(home.connects.length, 1);
   assert.deepEqual({ folders: home.connects[0].folders, computer: home.connects[0].computer, internet: home.connects[0].internet }, { folders: [], computer: false, internet: true });
   const [socket] = sockets.made;
-  assert.equal(socket.url, `wss://omb-u-fixture.fly.dev/api/shared-computers/${home.connects[0].id}/link`);
+  assert.equal(socket.url, `wss://omb-u-fixture.mimirbot.invalid/api/shared-computers/${home.connects[0].id}/link`);
   assert.equal(socket.headers.cookie, "omb_session_fixture=token");
   assert.match(socket.headers["x-omb-computer-secret"], /^[a-f0-9]{64}$/);
   assert.equal(socket.headers["x-omb-background"], "1", "the link never counts as the person using My Cloud");

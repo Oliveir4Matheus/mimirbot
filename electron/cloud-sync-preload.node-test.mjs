@@ -10,7 +10,7 @@ function load({ remote, active = true }) {
   let bridge;
   const context = vm.createContext({
     process: { platform: "fixture", argv: [`--omb-local-origin=${origin}`, "--omb-company-desktop=1"] },
-    location: { origin: remote ? "https://omb-u-aaaaaaaaaaaa.fly.dev" : origin }, TextEncoder,
+    location: { origin: remote ? "https://omb-u-aaaaaaaaaaaa.mimirbot.invalid" : origin }, TextEncoder,
     navigator: { userActivation: { isActive: active } },
     localStorage: { getItem: () => null },
     require: () => ({ webUtils: {}, contextBridge: { exposeInMainWorld: (_key, value) => { bridge = value; } }, ipcRenderer: {

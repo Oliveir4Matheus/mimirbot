@@ -51,7 +51,7 @@ test("a team's Cloud opens from the page by its id alone: the team comes from th
   assert.deepEqual(f.invoked, [["cloud-account:openTeam", "team-acme"]]);
   const source = readFileSync(new URL("./main.mjs", import.meta.url), "utf8"), start = source.indexOf("const workspaceOnly ="), end = source.indexOf('ipcMain.handle("organization:settings-opened"', start);
   const handlers = new Map(), shown = [], frame = { url: `${origin}/` }, contents = { mainFrame: frame };
-  const acme = { id: "team-acme", name: "Acme", role: "member", machine: { status: "ready", origin: "https://omb-t-2.fly.dev" } };
+  const acme = { id: "team-acme", name: "Acme", role: "member", machine: { status: "ready", origin: "https://omb-t-2.mimirbot.invalid" } };
   let state = { status: "connected", teams: [acme] };
   localOrigin.setLocalOrigin(origin);
   const context = vm.createContext({ ipcMain: { handle: (channel, handler) => handlers.set(channel, handler) },
