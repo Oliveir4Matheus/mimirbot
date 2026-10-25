@@ -8,7 +8,7 @@ import {
 } from "@hpke/core";
 
 export const PHONE_SECRET_PROTOCOL_VERSION = 1 as const;
-export const PHONE_SECRET_INFO = "OpenMausBot phone credential v1";
+export const PHONE_SECRET_INFO = "MimirBot phone credential v1";
 export const PHONE_SECRET_MAX_BYTES = 4_096;
 
 const BASE64URL = /^[A-Za-z0-9_-]+$/;
@@ -139,7 +139,7 @@ export function assertPhoneSecretRequestMatches(
 ): void {
   // Phone entry hands a key to the desktop's settings; the 1Password token goes to Logins, which a phone cannot reach.
   if (expected.target === "onePasswordToken") {
-    throw new PhoneSecretError("Paste the 1Password token in OpenMausBot on your computer, or in My Cloud: a phone cannot save it yet.", 409);
+    throw new PhoneSecretError("Paste the 1Password token in MimirBot on your computer, or in My Cloud: a phone cannot save it yet.", 409);
   }
   if (
     context.deviceId !== authenticatedDeviceId ||
@@ -365,13 +365,13 @@ export class PhoneSecretBridge {
   private async provideWithinLimit(context: PhoneSecretContext): Promise<void> {
     if (!this.identity) {
       throw new PhoneSecretError(
-        "Secure phone entry is not ready on this computer. Reopen OpenMausBot and try again.",
+        "Secure phone entry is not ready on this computer. Reopen MimirBot and try again.",
         503,
       );
     }
     const identity = await this.identity.catch(() => {
       throw new PhoneSecretError(
-        "Secure phone entry is not ready on this computer. Reopen OpenMausBot and try again.",
+        "Secure phone entry is not ready on this computer. Reopen MimirBot and try again.",
         503,
       );
     });

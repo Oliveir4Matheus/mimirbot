@@ -257,7 +257,7 @@ describe("beat machine", () => {
   });
 });
 
-describe("the welcome's MausBot Cloud beat", () => {
+describe("the welcome's MimirBot Cloud beat", () => {
   it("comes after the phone and before the first bot, only when the Cloud can be bought here", () => {
     expect(beatsFor({ dictation: true, reel: true, cloud: true })).toEqual(["hello", "reel", "engines", "permissions", "phone", "cloud", "bot"]);
     expect(beatsFor({ dictation: false, reel: false, cloud: true })).toEqual(["hello", "engines", "phone", "cloud", "bot"]);

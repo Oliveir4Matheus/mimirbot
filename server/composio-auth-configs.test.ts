@@ -286,7 +286,7 @@ describe("a person's own Composio project", () => {
   });
 });
 
-describe("OpenMausBot's managed connected apps", () => {
+describe("MimirBot's managed connected apps", () => {
   const managed = {} as AppConfig;
   const plainLine = "xero needs your own OAuth app. Add your Composio project key in Settings → API keys, with an enabled "
     + "xero auth config there, then connect again.";
@@ -301,6 +301,6 @@ describe("OpenMausBot's managed connected apps", () => {
     expect(calls.slice(before)).toEqual([]);
 
     const reply = await callTool(managed, "XERO_LIST_INVOICES");
-    expect(reply.result.content[1]!.text).toContain("OpenMausBot's built-in connected apps cannot use. Tell the person: add their own Composio project key in Settings → API keys");
+    expect(reply.result.content[1]!.text).toContain("MimirBot's built-in connected apps cannot use. Tell the person: add their own Composio project key in Settings → API keys");
   });
 });

@@ -229,14 +229,14 @@ async function checkAuthConfigPick(apiKey: string, toolkit: string, id: string):
     signal: AbortSignal.timeout(15_000),
   });
   if (res.status === 400 || res.status === 404) {
-    throw inputError(`Composio has no auth config ${id} in the project OpenMausBot uses. Copy the id from Auth Configs in that Composio project.`);
+    throw inputError(`Composio has no auth config ${id} in the project MimirBot uses. Copy the id from Auth Configs in that Composio project.`);
   }
   if (!res.ok) throw new Error(await responseError(res, `Composio auth config: HTTP ${res.status}`));
   const item = authConfigItemSchema.parse(await res.json());
   const owner = item.toolkit?.slug ? canonicalToolkitSlug(item.toolkit.slug) : toolkit;
   if (owner !== toolkit) throw inputError(`Auth config ${id} is for ${owner}, not ${toolkit}.`);
   if (item.is_composio_managed === true) {
-    throw inputError(`Auth config ${id} is Composio's own sign-in for ${toolkit}, which OpenMausBot already uses, so no auth_config_id is needed.`);
+    throw inputError(`Auth config ${id} is Composio's own sign-in for ${toolkit}, which MimirBot already uses, so no auth_config_id is needed.`);
   }
   if (!usableConfig(item)) throw inputError(`Auth config ${id} for ${toolkit} is disabled. Enable it in your Composio project, then connect again.`);
   if (item.is_enabled_for_tool_router === false) throw inputError(offForToolRouterReason(toolkit));

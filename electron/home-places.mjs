@@ -60,7 +60,7 @@ export function createHomePlaces({ store, environments: read, persist, makeId, h
       places.left(entry?.name ?? place?.name);
       if (current().team === place?.id) places.remember(null);
     },
-    /** The MausBot Cloud sign-in changed: a connected session's teams are the saved team places (one it no longer
+    /** The MimirBot Cloud sign-in changed: a connected session's teams are the saved team places (one it no longer
      * lists is gone, with its name for the line); anything else changes nothing. */
     sync(state) {
       if (state?.status !== "connected") return;

@@ -40,7 +40,7 @@ it("says nothing without the one-time move, whatever an older desktop's send did
   expect(html(strip())).toBe("");
   f.values = [];
   await shown({ ...notice, running: true, runningReason: "first", last: { at: 3, reason: "first", failed: 2, seen: false, sent: { ...counts, bots: 2 },
-    reasons: [{ what: { bots: [], skills: 0, logins: 2, onePassword: false, settings: 0, chats: false }, error: "OpenMausBot on this computer did not answer." }] } });
+    reasons: [{ what: { bots: [], skills: 0, logins: 2, onePassword: false, settings: 0, chats: false }, error: "MimirBot on this computer did not answer." }] } });
   expect(html(strip())).toBe("");
 });
 

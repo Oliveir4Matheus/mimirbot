@@ -1,6 +1,6 @@
 // The desktop app's private parent port for the launcher's desktop mode (OMB_TEST_DESKTOP_OWNER_TOKEN, with
 // OMB_DESKTOP_PARENT=1): the server runs as Electron's utility process, and only the test's owner capability crosses.
-// OMB_TEST_DESKTOP_PAGES_ACCESS: the published pages' access the app hands over for a signed-in MausBot account, as JSON.
+// OMB_TEST_DESKTOP_PAGES_ACCESS: the published pages' access the app hands over for a signed-in MimirBot account, as JSON.
 const token = process.env.OMB_TEST_DESKTOP_OWNER_TOKEN;
 const pages = process.env.OMB_TEST_DESKTOP_PAGES_ACCESS;
 delete process.env.OMB_TEST_DESKTOP_OWNER_TOKEN;

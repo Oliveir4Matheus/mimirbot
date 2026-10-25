@@ -20,7 +20,7 @@ export const SENTINEL_USAGE = `openmausbot sentinel [--data-dir DIR] [--out DIR]
                      [--queue-wait SECONDS] [--cost USD]
 openmausbot sentinel --check-install [--json]
 
-Scans an OpenMausBot data dir, read-only, for failed tool calls, stopped or
+Scans an MimirBot data dir, read-only, for failed tool calls, stopped or
 timed-out turns, long queue waits, expensive turns and retry loops, and keeps
 them as issues in issues.jsonl, outside the data dir: on macOS in
 ~/Library/Application Support/openmausbot-sentinel, on Linux in
@@ -38,7 +38,7 @@ copy tool output or message text.
 
 export function parseSentinelArgs(argv: string[], env: NodeJS.ProcessEnv = process.env): SentinelArgs | { error: string; json: boolean } {
   const json = argv.includes("--json");
-  let dataDir = env.OMB_DATA_DIR || join(homedir(), ".openmausbot");
+  let dataDir = env.OMB_DATA_DIR || join(homedir(), ".mimirbot");
   let out: string | undefined;
   const args: Omit<SentinelArgs, "dataDir" | "out"> = { json };
   for (let i = 0; i < argv.length; i += 1) {
@@ -114,7 +114,7 @@ export function runSentinelCli(argv: string[], io: { log(line: string): void; er
   try {
     isDir = statSync(args.dataDir).isDirectory();
   } catch {}
-  if (!isDir) return fail(`no OpenMausBot data dir at ${args.dataDir}; pass --data-dir with the folder that holds messages.db`, args.json);
+  if (!isDir) return fail(`no MimirBot data dir at ${args.dataDir}; pass --data-dir with the folder that holds messages.db`, args.json);
   const refusal = outRefusal(args.out, args.dataDir);
   if (refusal) return fail(refusal, args.json);
   let summary: ScanSummary;

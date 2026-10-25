@@ -5,13 +5,13 @@ import fs from "node:fs";
 import path from "node:path";
 
 export const HIDDEN_ARG = "--omb-hidden";
-const MARK = "X-OpenMausBot-Lending=true";
+const MARK = "X-MimirBot-Lending=true";
 
 /** Desktop Entry Exec quoting: the path in double quotes, with ", `, $ and \ escaped. */
 const quoted = (value) => `"${value.replace(/["`$\\]/g, (match) => `\\${match}`)}"`;
 
 export function autostartEntry(exec) {
-  return ["[Desktop Entry]", "Type=Application", "Name=OpenMausBot", `Exec=${quoted(exec)} ${HIDDEN_ARG}`, "NoDisplay=true", "X-GNOME-Autostart-enabled=true", MARK, ""].join("\n");
+  return ["[Desktop Entry]", "Type=Application", "Name=MimirBot", `Exec=${quoted(exec)} ${HIDDEN_ARG}`, "NoDisplay=true", "X-GNOME-Autostart-enabled=true", MARK, ""].join("\n");
 }
 
 /**

@@ -16,13 +16,13 @@ const NEEDS_SETUP = /\bbrowser_(?:requires_setup|route_unavailable)\b/u;
 
 const RAW_FAILURES: ReadonlyArray<[RegExp, string]> = [
   [/\bspawn\b.*\bcua-driver(?:\.exe)?\b.*\b(?:ENOENT|EPERM|EACCES|EBUSY|UNKNOWN)\b|\bcua-driver binary not found\b/iu,
-    "Computer control could not start on this computer: its helper, cua-driver, is missing or blocked. Tell the person in one sentence: Windows Security may have quarantined it, so on that PC open Windows Security → Virus & threat protection → Protection history, restore or allow cua-driver.exe (or reinstall OpenMausBot), then restart OpenMausBot. Do not retry until they say it is fixed."],
+    "Computer control could not start on this computer: its helper, cua-driver, is missing or blocked. Tell the person in one sentence: Windows Security may have quarantined it, so on that PC open Windows Security → Virus & threat protection → Protection history, restore or allow cua-driver.exe (or reinstall MimirBot), then restart MimirBot. Do not retry until they say it is fixed."],
   [/^Computer-control transport closed$/u,
-    "Computer control stopped on this computer: its helper, cua-driver, exited. Try the action once more; if it fails the same way, tell the person that Windows Security may have quarantined cua-driver.exe (restore it from Protection history, or reinstall OpenMausBot) and to restart OpenMausBot."],
+    "Computer control stopped on this computer: its helper, cua-driver, exited. Try the action once more; if it fails the same way, tell the person that Windows Security may have quarantined cua-driver.exe (restore it from Protection history, or reinstall MimirBot) and to restart MimirBot."],
   [/^Computer control is unavailable\. Enable it in the local app and grant OS permissions first\.$/u,
-    "Computer control is not running on this computer. Tell the person in one sentence to open OpenMausBot on it: on Windows, restore cua-driver.exe if Windows Security quarantined it (Protection history) or reinstall; on a Mac, allow Accessibility and Screen Recording for OpenMausBot. Then try again."],
+    "Computer control is not running on this computer. Tell the person in one sentence to open MimirBot on it: on Windows, restore cua-driver.exe if Windows Security quarantined it (Protection history) or reinstall; on a Mac, allow Accessibility and Screen Recording for MimirBot. Then try again."],
   [/^fetch failed$/u,
-    "OpenMausBot on this computer is not answering its own screen-control check. Tell the person to restart OpenMausBot on that computer, then try again."],
+    "MimirBot on this computer is not answering its own screen-control check. Tell the person to restart MimirBot on that computer, then try again."],
 ];
 
 function textOf(result: ToolResult): string {

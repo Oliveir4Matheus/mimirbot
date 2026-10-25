@@ -1,25 +1,25 @@
 # Connect apps through Composio
 
-OpenMausBot uses one Composio project API key and one reusable Composio Session. That project key is the only Composio credential users need to provide. The Session enables Composio's multi-account mode with explicit account selection, so one OpenMausBot installation can keep several Slack, Gmail, Calendar, or other accounts connected without silently replacing the first one.
+MimirBot uses one Composio project API key and one reusable Composio Session. That project key is the only Composio credential users need to provide. The Session enables Composio's multi-account mode with explicit account selection, so one MimirBot installation can keep several Slack, Gmail, Calendar, or other accounts connected without silently replacing the first one.
 
 ## Packaged desktop app
 
 1. Open the [Composio Dashboard](https://dashboard.composio.dev).
 2. Select **Platform**, select or create a project, then open **Settings → API Keys**.
 3. Copy a project key beginning with `ak_`.
-4. In OpenMausBot, open **App Settings → Connections** and save it under **Composio project key**.
+4. In MimirBot, open **App Settings → Connections** and save it under **Composio project key**.
 5. Open **Connected apps** and choose Gmail, GitHub, Slack, or another service. Enter a unique label such as `work` or `personal`, then finish the authorization in your normal browser.
 6. To connect another account for the same app, choose **Add account**, give it a unique label, and finish the second authorization in your browser.
 
-The Connected tab lists every account separately. **Disconnect** revokes only the account named on that row. OpenMausBot asks for a label for every new account and configures Composio to require explicit selection when more than one account could run a tool; a new OAuth flow never silently becomes the default for an existing connection.
+The Connected tab lists every account separately. **Disconnect** revokes only the account named on that row. MimirBot asks for a label for every new account and configures Composio to require explicit selection when more than one account could run a tool; a new OAuth flow never silently becomes the default for an existing connection.
 
 The desktop app validates the key before saving it. The key is encrypted using Electron's operating-system-backed `safeStorage`; the local JSON configuration stores only the non-secret Composio user and Session identifiers.
 
-## MausBot Cloud
+## MimirBot Cloud
 
-A MausBot Cloud plan includes connected apps: there is no key to add. At every start a Cloud home's server makes sure it has its own installation on OpenMausBot's managed connection service, the same one the packaged desktop app registers with (`server/cloud-connected-apps.ts`, sharing `electron/managed-composio.mjs` with the app):
+A MimirBot Cloud plan includes connected apps: there is no key to add. At every start a Cloud home's server makes sure it has its own installation on MimirBot's managed connection service, the same one the packaged desktop app registers with (`server/cloud-connected-apps.ts`, sharing `electron/managed-composio.mjs` with the app):
 
-- The first start registers the installation (`POST /v1/installations`) and keeps its token in `connected-apps-installation.json` in the data folder (`/data/.openmausbot`), owner-only (0600). The token is never written to `config.json`, sent to a client or logged.
+- The first start registers the installation (`POST /v1/installations`) and keeps its token in `connected-apps-installation.json` in the data folder (`/data/.mimirbot`), owner-only (0600). The token is never written to `config.json`, sent to a client or logged.
 - Every later start serves that token at once and checks it with `GET /v1/me`. Only a refusal (401) registers a new installation; an outage or a rate limit keeps the token, so the Cloud's connected accounts are never stranded.
 - While the Cloud has no token (the service is down or refuses new registrations), the server keeps booting and serving, Connected apps says the service is temporarily unavailable, and it tries again after 30 seconds, then 1, 2, 5, 10 and every 30 minutes, with some jitter.
 - The file never goes into a backup or a move to another computer, and a restore keeps the Cloud's own (`server/workspace-backup-policy.ts`): its connected accounts belong to that installation.
@@ -75,17 +75,17 @@ Set the key in the server environment:
 COMPOSIO_API_KEY=ak_your_project_key pnpm dev:server
 ```
 
-The browser-only development UI can also save a key to the owner-only `~/.openmausbot/config.json` file. Using the environment variable is preferred for headless and shared development machines.
+The browser-only development UI can also save a key to the owner-only `~/.mimirbot/config.json` file. Using the environment variable is preferred for headless and shared development machines.
 
-OpenMausBot creates a stable random user identifier for the installation, stores the returned Session identifier, and reuses that Session across launches. No Gmail, GitHub, Slack, or other provider tokens are stored by OpenMausBot; Composio owns their connection lifecycle.
+MimirBot creates a stable random user identifier for the installation, stores the returned Session identifier, and reuses that Session across launches. No Gmail, GitHub, Slack, or other provider tokens are stored by MimirBot; Composio owns their connection lifecycle.
 
-Sessions created by older OpenMausBot versions are upgraded in place by creating a multi-account Session for the same stable Composio user. Connected accounts belong to that user, so existing grants remain available while the new Session adds explicit multi-account routing. Each toolkit is capped at five usable accounts.
+Sessions created by older MimirBot versions are upgraded in place by creating a multi-account Session for the same stable Composio user. Connected accounts belong to that user, so existing grants remain available while the new Session adds explicit multi-account routing. Each toolkit is capped at five usable accounts.
 
 ## Multiple Google and Slack accounts
 
-Yes. Gmail, Google Calendar, Google Drive, and the other Google toolkits can each hold multiple labeled authorizations, and Slack can hold multiple labeled workspace/account authorizations. Accounts are scoped to the OpenMausBot installation's stable Composio user and appear by alias and connected-account ID in **Connected apps**.
+Yes. Gmail, Google Calendar, Google Drive, and the other Google toolkits can each hold multiple labeled authorizations, and Slack can hold multiple labeled workspace/account authorizations. Accounts are scoped to the MimirBot installation's stable Composio user and appear by alias and connected-account ID in **Connected apps**.
 
-If a provider or restricted Composio project policy prevents another authorization, the safe fallback is a separate OpenMausBot installation/configuration with its own Composio user. Re-authorizing the same single-account Session is not a safe workaround: it can change which grant is selected. Do not share raw provider tokens or place them in bot prompts.
+If a provider or restricted Composio project policy prevents another authorization, the safe fallback is a separate MimirBot installation/configuration with its own Composio user. Re-authorizing the same single-account Session is not a safe workaround: it can change which grant is selected. Do not share raw provider tokens or place them in bot prompts.
 
 The hosted/managed connected-apps broker exposes the same account-aware response shape and account-specific removal routes as the self-hosted project-key mode; it does not send broker or provider credentials to the renderer.
 
@@ -96,27 +96,27 @@ Each app you connect uses the Composio project's authorization for that app. Unl
 - **Filters, the vacation responder, IMAP and POP settings** need `https://www.googleapis.com/auth/gmail.settings.basic`.
 - **Forwarding addresses, send-as aliases and delegates** need `https://www.googleapis.com/auth/gmail.settings.sharing`.
 
-Without the permission, Google refuses the call with `403 ACCESS_TOKEN_SCOPE_INSUFFICIENT`. Reconnecting the account does not help: the consent screen asks for the same permissions every time. OpenMausBot adds a note to that refusal, so the bot tells you what to change instead of retrying.
+Without the permission, Google refuses the call with `403 ACCESS_TOKEN_SCOPE_INSUFFICIENT`. Reconnecting the account does not help: the consent screen asks for the same permissions every time. MimirBot adds a note to that refusal, so the bot tells you what to change instead of retrying.
 
 To grant the permission:
 
 1. In the [Composio Dashboard](https://dashboard.composio.dev), open your project's **Auth Configs** and create an auth config for the app (for example Gmail) that uses your own OAuth app credentials.
 2. Add the permissions you need to it, keep it enabled, and leave it available to Tool Router.
-3. In OpenMausBot, open **Connected apps** and reconnect the account. The consent screen now asks for the added permissions.
+3. In MimirBot, open **Connected apps** and reconnect the account. The consent screen now asks for the added permissions.
 
-OpenMausBot uses your project's own auth config for an app automatically, in place of the Composio-managed one. If there are several for the same app, it uses the most recently updated, and it skips disabled ones and ones turned off for Tool Router. Google may require your OAuth app to list the added permissions on its consent screen, and to be verified before people outside your organization can grant them.
+MimirBot uses your project's own auth config for an app automatically, in place of the Composio-managed one. If there are several for the same app, it uses the most recently updated, and it skips disabled ones and ones turned off for Tool Router. Google may require your OAuth app to list the added permissions on its consent screen, and to be verified before people outside your organization can grant them.
 
-On a MausBot Cloud plan, connected apps run through OpenMausBot's managed connection service rather than your own Composio project, so you cannot add permissions yourself; ask OpenMausBot support instead.
+On a MimirBot Cloud plan, connected apps run through MimirBot's managed connection service rather than your own Composio project, so you cannot add permissions yourself; ask MimirBot support instead.
 
 ## Apps with no Composio-managed sign-in
 
 Some apps, such as Xero and Buffer, have no sign-in that Composio provides: they connect only through an auth config holding your own OAuth app. Without one, Composio answers "Composio does not manage auth for toolkit … and no auth config without required fields is available".
 
-With your own Composio project key, create the auth config in the Composio dashboard (**Auth Configs → Create**), keep it enabled and available to Tool Router, then connect the app. OpenMausBot reads the project's enabled auth configs (at most once a minute, and again right after Composio reports a missing one) and names them in the Session, so the app connects with no further input. A Session that predates a new auth config is replaced once, under the same Composio user, so existing connections stay. If the auth configs cannot be read, the Session keeps the ones it last read; if Composio refuses the Session with them, it is created without them, and connecting that app says why.
+With your own Composio project key, create the auth config in the Composio dashboard (**Auth Configs → Create**), keep it enabled and available to Tool Router, then connect the app. MimirBot reads the project's enabled auth configs (at most once a minute, and again right after Composio reports a missing one) and names them in the Session, so the app connects with no further input. A Session that predates a new auth config is replaced once, under the same Composio user, so existing connections stay. If the auth configs cannot be read, the Session keeps the ones it last read; if Composio refuses the Session with them, it is created without them, and connecting that app says why.
 
-A bot can also name one auth config for an app: `COMPOSIO_MANAGE_CONNECTIONS` with `toolkits: [{ "name": "xero", "action": "add", "auth_config_id": "ac_…" }]` (`auth_config_override` is read as well). OpenMausBot checks the id in your project before it shows the Connect card (it must exist, belong to that app, be enabled and be available to Tool Router) and keeps the choice in `composio-auth-configs.json` in the data folder, so later Sessions use it while it stays usable.
+A bot can also name one auth config for an app: `COMPOSIO_MANAGE_CONNECTIONS` with `toolkits: [{ "name": "xero", "action": "add", "auth_config_id": "ac_…" }]` (`auth_config_override` is read as well). MimirBot checks the id in your project before it shows the Connect card (it must exist, belong to that app, be enabled and be available to Tool Router) and keeps the choice in `composio-auth-configs.json` in the data folder, so later Sessions use it while it stays usable.
 
-OpenMausBot's managed connection service (the desktop default and MausBot Cloud) runs on OpenMausBot's own Composio project, which cannot use an auth config in yours. For such an app it says so in one line: add your own Composio project key in **Settings → API keys**, with an enabled auth config for that app in that project.
+MimirBot's managed connection service (the desktop default and MimirBot Cloud) runs on MimirBot's own Composio project, which cannot use an auth config in yours. For such an app it says so in one line: add your own Composio project key in **Settings → API keys**, with an enabled auth config for that app in that project.
 
 ## Browser authorization recovery
 
@@ -143,7 +143,7 @@ app whose accounts all stopped working shows **Reconnect**, which removes the
 newest stopped account and signs in again under its label; each stopped account
 beside a working one has its own **Reconnect**. When a connected-app call fails
 because the account is signed out (Composio's `USER_NOT_LOGGED_IN`, a 401, or no
-connected account), OpenMausBot adds a note telling the bot to call
+connected account), MimirBot adds a note telling the bot to call
 `COMPOSIO_MANAGE_CONNECTIONS`, which shows the person a reconnect card. That
 tool stays available to a bot with no app grants, and a failed `tools/list` is
 retried once and then answered with the last list the connection service gave.
@@ -186,7 +186,7 @@ The workspace-level connections above say which accounts exist. A second, per-bo
 
 A bot with no grant record at all keeps the legacy behavior: every tool on every connected app it can see. Assigning the first grant switches the bot to exact-tool mode — a service not on the list grants nothing, even when the workspace is connected to it.
 
-**Nothing changes until you assign.** Upgrading OpenMausBot does not alter any bot's access: existing bots keep the all-tools default until someone edits their grants. An emptied grant list is deliberate and means "no tools on any connected app."
+**Nothing changes until you assign.** Upgrading MimirBot does not alter any bot's access: existing bots keep the all-tools default until someone edits their grants. An emptied grant list is deliberate and means "no tools on any connected app."
 
 **Imported bots land with no grants.** Shareable packages and team imports never carry grants — an imported bot starts with connected apps off, and any grants it later gets are chosen by the importing workspace. Grants also never appear in exports; only the workspace's own private team backup keeps them.
 

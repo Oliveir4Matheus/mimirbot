@@ -18,7 +18,7 @@ export interface LendingActivityEntry {
   ok: boolean;
   error?: string;
 }
-/** What this computer lends to the person's own Cloud (Settings → MausBot Cloud). */
+/** What this computer lends to the person's own Cloud (Settings → MimirBot Cloud). */
 export interface CloudLendingState {
   enabled: boolean;
   folders: SharedFolder[];

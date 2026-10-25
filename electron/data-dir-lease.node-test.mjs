@@ -131,7 +131,7 @@ test("an invalid child capability fails closed without acquisition or secret log
     assert.equal(result.code, 0);
     assert.equal(result.stderr, "");
     assert.deepEqual(JSON.parse(result.stdout), {
-      error: "The OpenMausBot desktop lease delegation is invalid; refusing to start to protect its state.",
+      error: "The MimirBot desktop lease delegation is invalid; refusing to start to protect its state.",
       consumed: true,
     });
     assert.equal(result.stdout.includes(invalidCapability), false);
@@ -313,7 +313,7 @@ test("a foreign-host owner fails closed and identifies the preserved lease recor
 
 test("a foreign-host delegated child fails closed and identifies its preserved lease record", () => {
   const { dataDir } = temporaryDirectory();
-  const childLeasePath = path.join(dataDir, ".openmausbot-server-child", LEASE_NAME);
+  const childLeasePath = path.join(dataDir, ".mimirbot-server-child", LEASE_NAME);
   const child = {
     version: 1,
     pid: process.pid,
@@ -375,7 +375,7 @@ test("legacy data is moved before lease creation", () => {
   const root = mkdtempSync(path.join(tmpdir(), "omb-electron-legacy-"));
   roots.push(root);
   const legacyDataDir = path.join(root, ".opengrokbot");
-  const dataDir = path.join(root, ".openmausbot");
+  const dataDir = path.join(root, ".mimirbot");
   mkdirSync(legacyDataDir);
   writeFileSync(path.join(legacyDataDir, "keep-me.txt"), "kept");
 
@@ -452,7 +452,7 @@ test("a delegated child from an earlier boot cannot block a new parent", (t) => 
   const { dataDir } = temporaryDirectory();
   const current = recordWrittenByThisProcess(dataDir);
   if (current.boot === null) return t.skip("no boot identity on this platform");
-  const childPath = path.join(dataDir, ".openmausbot-server-child", LEASE_NAME);
+  const childPath = path.join(dataDir, ".mimirbot-server-child", LEASE_NAME);
   mkdirSync(path.dirname(childPath));
   writeFileSync(childPath, JSON.stringify({ ...current, boot: randomUUID() }));
 
@@ -481,7 +481,7 @@ test("a delegated child this computer left under its old hostname cannot block a
   const { dataDir } = temporaryDirectory();
   const current = recordWrittenByThisProcess(dataDir);
   if (current.boot === null) return t.skip("no boot identity on this platform");
-  const childPath = path.join(dataDir, ".openmausbot-server-child", LEASE_NAME);
+  const childPath = path.join(dataDir, ".mimirbot-server-child", LEASE_NAME);
   mkdirSync(path.dirname(childPath));
   writeFileSync(childPath, JSON.stringify({ ...current, host: renamedHost(current), pid: await exitedPid(), token: randomUUID() }));
 
@@ -506,7 +506,7 @@ test("a lease under another name from another boot still fails closed, and says 
   assert.deepEqual(JSON.parse(readFileSync(leasePath, "utf8")), planted);
   rmSync(leasePath);
 
-  const childPath = path.join(dataDir, ".openmausbot-server-child", LEASE_NAME);
+  const childPath = path.join(dataDir, ".mimirbot-server-child", LEASE_NAME);
   mkdirSync(path.dirname(childPath));
   writeFileSync(childPath, JSON.stringify({ ...current, ...foreign }));
   assert.throws(() => acquireDataDirLease(dataDir), (error) => {
@@ -647,7 +647,7 @@ test("on request, the lease, delegated child and recovery record another machine
   const current = recordWrittenByThisProcess(dataDir);
   const foreign = { ...otherMachine(current), pid: await exitedPid(), token: randomUUID() };
   const leasePath = plantOwner(dataDir, foreign);
-  const childPath = path.join(dataDir, ".openmausbot-server-child", LEASE_NAME);
+  const childPath = path.join(dataDir, ".mimirbot-server-child", LEASE_NAME);
   mkdirSync(path.dirname(childPath));
   writeFileSync(childPath, JSON.stringify({ ...current, ...foreign, token: randomUUID() }));
   const reaperPath = path.join(dataDir, `${LEASE_NAME}.reap-${foreign.token}`);

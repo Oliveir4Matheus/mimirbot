@@ -42,7 +42,7 @@ afterAll(() => waitForExit(child, { signal: "SIGINT", graceMs: 30_000 }));
     return field.getBoundingClientRect().height > 0;
   })()`);
 
-  const startupBox = `document.querySelector('input[aria-label="Also run when OpenMausBot starts"]')`;
+  const startupBox = `document.querySelector('input[aria-label="Also run when MimirBot starts"]')`;
 
   await click("Routines"); await click("New routine");
   await fill('input[placeholder="Add title"]', "Monthly close");

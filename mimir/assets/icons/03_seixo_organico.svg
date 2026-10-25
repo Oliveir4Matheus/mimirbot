@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+<title>Seixo orgânico — Pérola</title>
+<desc>Variação de silhueta seixo orgânico com olhos minimalistas e acabamento verde menta perolado.</desc>
+<defs>
+<path id="body" d="M94 263 C78 204 106 142 166 122 C218 104 247 139 294 125 C354 105 405 149 418 208 C435 289 386 353 307 374 C220 397 114 345 94 263 Z"/>
+<radialGradient id="pearl" cx="27%" cy="12%" r="106%"><stop stop-color="#FFFFFF"/><stop offset=".3" stop-color="#F0FCF6"/><stop offset=".65" stop-color="#BFE7D5"/><stop offset="1" stop-color="#80B89D"/></radialGradient>
+<linearGradient id="rim" x1="0" y1="0" x2=".8" y2="1"><stop stop-color="#FFFFFF" stop-opacity=".95"/><stop offset=".6" stop-color="#FFF" stop-opacity=".15"/><stop offset="1" stop-color="#679680" stop-opacity=".3"/></linearGradient>
+<linearGradient id="eye" x1="0" y1="0" x2=".4" y2="1"><stop stop-color="#FFFFFF"/><stop offset="1" stop-color="#F5F2FC"/></linearGradient>
+<linearGradient id="pupil" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#292735"/><stop offset="1" stop-color="#4C435E"/></linearGradient>
+<radialGradient id="shadow"><stop stop-color="#685080" stop-opacity=".15"/><stop offset="1" stop-color="#685080" stop-opacity="0"/></radialGradient>
+<filter id="blur" x="-.5" y="-.5" width="2" height="2"><feGaussianBlur stdDeviation="7"/></filter>
+<clipPath id="clip"><use href="#body" xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#body"/></clipPath>
+</defs>
+<ellipse cx="256" cy="440" rx="137" ry="24" fill="url(#shadow)"/>
+<use href="#body" xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#body" fill="url(#pearl)"/>
+<g clip-path="url(#clip)">
+<path d="M122 223 C131 151 190 106 250 106" fill="none" stroke="#FFF" stroke-width="14" opacity=".36" filter="url(#blur)"/>
+<path d="M135 189 C151 150 181 125 211 115" fill="none" stroke="#FFF" stroke-width="2.4" opacity=".64" stroke-linecap="round"/>
+</g>
+<use href="#body" xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#body" fill="none" stroke="url(#rim)" stroke-width="1.2"/>
+<g>
+<rect x="194" y="208" width="48" height="66" rx="24" fill="#679680" opacity=".1" transform="translate(0 2)"/>
+<rect x="268" y="208" width="48" height="66" rx="24" fill="#679680" opacity=".1" transform="translate(0 2)"/>
+<rect x="194" y="208" width="48" height="66" rx="24" fill="url(#eye)"/>
+<rect x="268" y="208" width="48" height="66" rx="24" fill="url(#eye)"/>
+<rect x="219" y="228" width="16" height="31" rx="8" fill="url(#pupil)"/>
+<rect x="293" y="228" width="16" height="31" rx="8" fill="url(#pupil)"/>
+</g>
+</svg>

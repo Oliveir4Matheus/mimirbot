@@ -83,7 +83,7 @@ export interface BeatOptions {
   aiReady?: boolean;
   /** This computer has skills or MCP servers from another AI tool to bring in. */
   setupImport?: boolean;
-  /** MausBot Cloud can be bought from this desktop now (cloudBeatWanted); the first bot stays the last beat. */
+  /** MimirBot Cloud can be bought from this desktop now (cloudBeatWanted); the first bot stays the last beat. */
   cloud?: boolean;
 }
 
@@ -104,7 +104,7 @@ export function onboardingCloudOffered(record: OnboardingStatus | undefined): bo
   return hintSeen(record, ONBOARDING_CLOUD_HINT);
 }
 
-/** Where the welcome may offer MausBot Cloud at all: this computer's own page with the Cloud bridge, not a branded
+/** Where the welcome may offer MimirBot Cloud at all: this computer's own page with the Cloud bridge, not a branded
  * build, not a hosted or remote viewer. */
 export function cloudBeatPossible(input: { bridge: boolean; branded: boolean; hosted: boolean; remote: boolean }): boolean {
   return input.bridge && !input.branded && !input.hosted && !input.remote;

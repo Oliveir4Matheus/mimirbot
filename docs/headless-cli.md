@@ -1,4 +1,4 @@
-# Run OpenMausBot from scripts and CI
+# Run MimirBot from scripts and CI
 
 The `openmausbot` command can drive a running workspace without a screen: set
 up a team from a file, give a bot a job, wait until it and every teammate it
@@ -30,8 +30,8 @@ On this computer a headless server treats you as its owner, and no token is
 needed. Anywhere else you need a token:
 
 ```sh
-openmausbot connect https://maus.example.com --code ABCD1234 --out ~/.openmausbot-token
-openmausbot doctor --url https://maus.example.com --token-file ~/.openmausbot-token
+openmausbot connect https://maus.example.com --code ABCD1234 --out ~/.mimirbot-token
+openmausbot doctor --url https://maus.example.com --token-file ~/.mimirbot-token
 ```
 
 Get the code in the app under **Settings → Phone → Set up a phone**. On this
@@ -82,7 +82,7 @@ one of its conversations.
 | `engine set KIND`, `engine list` | Gives the workspace an engine key without a screen (below). |
 | `connect [URL]` | Gets a token for a workspace elsewhere. |
 | `new-bot`, `new-channel`, `set-model`, `edit` | Make a bot or a room, change a bot's model, rewrite an earlier message. |
-| `mcp` | The OpenMausBot MCP server on stdin and stdout ([docs/mcp-server.md](mcp-server.md)). |
+| `mcp` | The MimirBot MCP server on stdin and stdout ([docs/mcp-server.md](mcp-server.md)). |
 
 The message for `send` and `run` can be the next word, `--text TEXT`,
 `--message-file FILE`, or `-` to read it from stdin.

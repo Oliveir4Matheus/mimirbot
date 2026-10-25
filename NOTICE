@@ -65,3 +65,8 @@ The iOS companion app bundles a prebuilt WebRTC library for Live calls
 (stasel/WebRTC), built from the WebRTC project, Copyright (c) 2011, The WebRTC
 project authors, used under the BSD 3-Clause License. WebRTC includes
 third-party components under their own licenses, listed with the library.
+
+MimirBot is a fork of OpenMausBot (https://github.com/milind-soni/OpenMausBot), Copyright 2026 Milind Soni and
+OpenMausBot contributors, used under the Apache License, Version 2.0. Changes in this fork: the product name and
+icons, the update source, the removal of the enterprise/ directory (not covered by Apache-2.0), and the
+scripts in mimir/. The original copyright and license notices above are kept unchanged.

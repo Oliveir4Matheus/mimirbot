@@ -127,8 +127,8 @@ async function captureFrames(wanted, during) {
 async function main() {
   mkdirSync(OUT, { recursive: true });
   home = mkdtempSync(join(tmpdir(), "companion-fixtures-"));
-  mkdirSync(join(home, ".openmausbot"), { recursive: true });
-  writeFileSync(join(home, ".openmausbot", "config.json"), JSON.stringify({
+  mkdirSync(join(home, ".mimirbot"), { recursive: true });
+  writeFileSync(join(home, ".mimirbot", "config.json"), JSON.stringify({
     profile: PROFILE,
     instances: {
       claude: {

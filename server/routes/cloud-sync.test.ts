@@ -18,8 +18,8 @@ let auth: RequestAuth, cloudHome: boolean, home: string, server: Server, base: s
 beforeEach(async () => {
   auth = owner; cloudHome = true;
   home = mkdtempSync(join(tmpdir(), "omb-sync-routes-"));
-  mkdirSync(join(home, ".openmausbot"));
-  routes = createCloudSyncRoutes({ dataDir: join(home, ".openmausbot"), cloudHome: () => cloudHome, statfs: () => ({ totalBytes: 10 * 1024 ** 3, freeBytes: 9 * 1024 ** 3 }) });
+  mkdirSync(join(home, ".mimirbot"));
+  routes = createCloudSyncRoutes({ dataDir: join(home, ".mimirbot"), cloudHome: () => cloudHome, statfs: () => ({ totalBytes: 10 * 1024 ** 3, freeBytes: 9 * 1024 ** 3 }) });
   server = createServer(async (req, res) => {
     const url = new URL(req.url!, "http://127.0.0.1");
     if (!await dispatchRoutes([routes], { req, res, url, path: url.pathname, method: req.method!, auth, json, readBody })) json(res, 404, { error: "not ours" });
@@ -96,7 +96,7 @@ it("survives a file that cannot be read while it is being served", async () => {
 it("answers the desktop's held changes poll \"asleep\" when a Cloud home agrees to sleep, and refuses new ones until it wakes", async () => {
   let sleeping = false, abort = new AbortController();
   routes.close();
-  routes = createCloudSyncRoutes({ dataDir: join(home, ".openmausbot"), cloudHome: () => cloudHome, statfs: () => ({ totalBytes: 10 * 1024 ** 3, freeBytes: 9 * 1024 ** 3 }),
+  routes = createCloudSyncRoutes({ dataDir: join(home, ".mimirbot"), cloudHome: () => cloudHome, statfs: () => ({ totalBytes: 10 * 1024 ** 3, freeBytes: 9 * 1024 ** 3 }),
     power: () => ({ sleeping: () => sleeping, sleepSignal: () => abort.signal }) });
   const cursor = (await call("GET", "/api/sync/changes?cursor=0&waitMs=0")).body.cursor as number;
   const held = call("GET", `/api/sync/changes?cursor=${cursor}&waitMs=60000`);

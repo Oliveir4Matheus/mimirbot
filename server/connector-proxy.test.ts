@@ -295,7 +295,7 @@ describe("connector MCP bridge", () => {
     const [search, page] = (await nextJson(lines)).result.tools;
     expect(search).toEqual(tools[0]);
     expect(schemaBytes(page.inputSchema)).toBeLessThanOrEqual(12_000);
-    expect(page.description).toContain("OpenMausBot shortened this tool's parameters to fit Kimi's size limit");
+    expect(page.description).toContain("MimirBot shortened this tool's parameters to fit Kimi's size limit");
   });
 
   it("lists no more connected-app tools than its share of the model's tool limit", async () => {

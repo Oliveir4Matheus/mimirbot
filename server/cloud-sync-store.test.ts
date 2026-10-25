@@ -12,7 +12,7 @@ const stores: CloudSyncStore[] = [];
 function setup() {
   const home = mkdtempSync(join(tmpdir(), "omb-sync-store-"));
   scratch.push(home);
-  const dataDir = join(home, ".openmausbot");
+  const dataDir = join(home, ".mimirbot");
   mkdirSync(dataDir);
   const store = new CloudSyncStore({ dataDir, now: () => 1_000 });
   stores.push(store);
@@ -24,8 +24,8 @@ afterEach(() => {
 });
 
 it("puts synced folders beside the data folder unless OMB_SYNC_ROOT says otherwise", () => {
-  expect(syncRoot("/data/.openmausbot", {})).toBe(join("/data", "Synced"));
-  expect(syncRoot("/data/.openmausbot", { OMB_SYNC_ROOT: "/mnt/sync" })).toBe("/mnt/sync");
+  expect(syncRoot("/data/.mimirbot", {})).toBe(join("/data", "Synced"));
+  expect(syncRoot("/data/.mimirbot", { OMB_SYNC_ROOT: "/mnt/sync" })).toBe("/mnt/sync");
 });
 
 it("registers a PC folder once, under that computer's own folder, and creates it", () => {
@@ -90,7 +90,7 @@ it("keeps a removed file in the trash for 30 days", async () => {
   let now = 1_000;
   const home = mkdtempSync(join(tmpdir(), "omb-sync-trash-"));
   scratch.push(home);
-  const store = new CloudSyncStore({ dataDir: join(home, ".openmausbot"), now: () => now });
+  const store = new CloudSyncStore({ dataDir: join(home, ".mimirbot"), now: () => now });
   stores.push(store);
   const folder = store.register({ computerId: PC, computerName: "PC", pcPath: "/p", name: "P" });
   writeFileSync(join(folder.cloudPath, "a.txt"), "hello");

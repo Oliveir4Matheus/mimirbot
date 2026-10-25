@@ -80,7 +80,7 @@ describe("each screen of the sheet says one thing and offers one next step", () 
     const rows = (hours: number, cpus: string, swap: number, max: number, voice: string) => ["Always on, around the clock", "Cloud desktops: as many as your bots need",
       "Fair use: up to 15 at once", `${hours} cloud desktop hours a month`, `${cpus} · ${cpus === "2 shared CPUs" ? 2 : cpus === "4 shared CPUs" ? 4 : 8} GB memory`, `Plus ${swap} GB of swap`,
       `10 GB storage, grows to ${max} GB`, `Voice replies: ${voice}`, "Daily backups, kept 14 days"];
-    inOrder(text(html), ["MausBot Cloud", "Your bots, always on.", "Runs your bots 24/7 in the cloud, even when this computer is off.",
+    inOrder(text(html), ["MimirBot Cloud", "Your bots, always on.", "Runs your bots 24/7 in the cloud, even when this computer is off.",
       "Works while you're away", "Private to you", "Reach it from anywhere", "A real browser and desktop", "Bring everything over", "Choose your plan",
       "Starter", "$15", "/month", "Your bots keep working with your laptop closed, at the lowest price.", "Start free trial", "Free for 7 days, then $15/month + tax",
       ...rows(100, "2 shared CPUs", 3, 20, "about 30 minutes of speech a month"),
@@ -159,9 +159,9 @@ describe("each screen of the sheet says one thing and offers one next step", () 
   });
 
   it("checking, Cloud out of reach and a checkout that did not open each say so, with Try again", () => {
-    expect(text(panel({ kind: "checking" }).html)).toContain("Checking with MausBot Cloud…");
+    expect(text(panel({ kind: "checking" }).html)).toContain("Checking with MimirBot Cloud…");
     const unreachable = panel({ kind: "unreachable" });
-    expect(text(unreachable.html)).toContain("Can't reach MausBot Cloud right now. Check your connection and try again.");
+    expect(text(unreachable.html)).toContain("Can't reach MimirBot Cloud right now. Check your connection and try again.");
     button(unreachable.tree, "Try again")!.props.onClick(); expect(unreachable.handlers.retry).toHaveBeenCalledOnce();
     expect(text(panel({ kind: "error", reason: "failed" }).html)).toContain("Checkout couldn't open. Nothing was charged. Try again.");
     expect(text(panel({ kind: "error", reason: "rate-limited" }).html)).toContain("You've opened several checkouts in the last hour.");
@@ -169,7 +169,7 @@ describe("each screen of the sheet says one thing and offers one next step", () 
 
   it("Sign in, email: create the account with a code, the profile's email filled in, and single sign-on in the browser", () => {
     const { html, tree, handlers } = panel({ kind: "sign-in", phase: { step: "email", intent: true, problem: null } });
-    inOrder(text(html), ["Plans", "Create your MausBot account", "We'll email you a code. No password to remember.", "Email", "Send code",
+    inOrder(text(html), ["Plans", "Create your MimirBot account", "We'll email you a code. No password to remember.", "Email", "Send code",
       "Uses the email from your profile. You can change it.", "Work account with single sign-on? Continue in browser"]);
     const field = tree.find(node => node.props.id === "cloud-add-email")!;
     expect([field.props.value, field.props.type, field.props.autoComplete]).toEqual([EMAIL, "email", "email"]);
@@ -178,7 +178,7 @@ describe("each screen of the sheet says one thing and offers one next step", () 
     button(tree, "Plans")!.props.onClick(); expect(handlers.back).toHaveBeenCalledOnce();
     button(tree, "Continue in browser")!.props.onClick(); expect(handlers.browser).toHaveBeenCalledOnce();
     expect(text(panel({ kind: "sign-in", phase: { step: "email", intent: false, problem: null } }, { email: "else@example.test" }).html))
-      .toMatch(/^Plans Sign in to MausBot Cloud(?!.*from your profile)/);
+      .toMatch(/^Plans Sign in to MimirBot Cloud(?!.*from your profile)/);
     expect(text(panel({ kind: "sign-in", phase: { step: "email", intent: true, problem: null } }, { profileEmail: null }).html)).not.toContain("from your profile");
   });
 
@@ -207,7 +207,7 @@ describe("each screen of the sheet says one thing and offers one next step", () 
 
   it("Sign in, code: with new accounts closed it says a code comes only to an email that already has one", () => {
     const phase = { step: "code" as const, intent: true, email: EMAIL, resendAt: NOW + 21_000, problem: null, triesLeft: null };
-    expect(text(panel({ kind: "sign-in", phase: { ...phase, signupOpen: false } }).html)).toContain("New MausBot accounts aren't open yet: a code comes only if this email already has one.");
+    expect(text(panel({ kind: "sign-in", phase: { ...phase, signupOpen: false } }).html)).toContain("New MimirBot accounts aren't open yet: a code comes only if this email already has one.");
     expect(text(panel({ kind: "sign-in", phase }).html)).not.toContain("aren't open yet");
   });
 
@@ -219,7 +219,7 @@ describe("each screen of the sheet says one thing and offers one next step", () 
     expect(text(expired.html)).toContain("That code can't be used any more. Send a new one.");
     button(expired.tree, "Send a new code")!.props.onClick(); expect(expired.handlers.resend).toHaveBeenCalledOnce();
     for (const [problem, line] of [["signup-closed", "New Cloud accounts aren't available yet."], ["device-limit", "Sign one out on your Plan page"],
-      ["rate-limited", "Too many codes were asked for just now."], ["failed", "Couldn't reach MausBot Cloud."]] as const) expect(text(panel(code(problem)).html)).toContain(line);
+      ["rate-limited", "Too many codes were asked for just now."], ["failed", "Couldn't reach MimirBot Cloud."]] as const) expect(text(panel(code(problem)).html)).toContain(line);
     const sso = panel({ kind: "sign-in", phase: { step: "email", intent: true, problem: "sso" } });
     expect(text(sso.html)).toContain("Your organization uses single sign-on. Continue in browser");
     expect(text(sso.html)).not.toContain("Work account with single sign-on?");
@@ -296,7 +296,7 @@ describe("each screen of the sheet says one thing and offers one next step", () 
     button(tree, "Open Studio")!.props.onClick(); expect(handlers.openCloud).toHaveBeenCalledOnce();
     const sent = text(panel({ kind: "has-cloud" }, { interest: "sent" }).html);
     expect(sent).toContain("Thanks. We'll email you when you can add another Cloud."); expect(sent).not.toContain("Email me");
-    expect(text(panel({ kind: "has-cloud" }, { interest: "failed" }).html)).toContain("Couldn't reach MausBot Cloud, so nothing was saved.");
+    expect(text(panel({ kind: "has-cloud" }, { interest: "failed" }).html)).toContain("Couldn't reach MimirBot Cloud, so nothing was saved.");
     for (const word of ["error", "Error", "already have"]) expect(text(html)).not.toContain(word);
   });
 
@@ -321,7 +321,7 @@ describe("each screen of the sheet says one thing and offers one next step", () 
     expect(sheet("offer")).toContain('aria-label="Close"');
     expect(sheet("offer"), "above Settings and the welcome flow (z-50), which it opens over").toContain("fixed inset-0 z-[60]");
     expect(sheet("offer")).not.toContain("data-cloud-staging");
-    expect(text(sheet("offer", true))).toMatch(/Staging ?: This app uses the staging MausBot Cloud: test payments and test Clouds, not real ones\./);
+    expect(text(sheet("offer", true))).toMatch(/Staging ?: This app uses the staging MimirBot Cloud: test payments and test Clouds, not real ones\./);
   });
 
   it("a click beside the sheet closes it while choosing, never mid sign-in, checkout or setup", () => {
@@ -376,7 +376,7 @@ describe("the sheet", () => {
     expect(await settle()).toContain("Your bots, always on.");
     expect(track).toHaveBeenCalledWith("cloud_dialog_shown", { source: "app_menu", view: "offer" });
     expect(bridge.sheet).toHaveBeenCalledWith(true);
-    expect(await buy("max")).toContain("Create your MausBot account");
+    expect(await buy("max")).toContain("Create your MimirBot account");
     expect(bridge.checkout).not.toHaveBeenCalled(); expect(bridge.begin).not.toHaveBeenCalled();
     expect(tree().find(node => node.props.id === "cloud-add-email")!.props.value, "the profile's email").toBe(EMAIL);
     tree().find(node => node.type === "form")!.props.onSubmit({ preventDefault() {} }); await flush();
@@ -397,7 +397,7 @@ describe("the sheet", () => {
     bridge.signInStart.mockResolvedValueOnce({ outcome: "sent", email: EMAIL, expiresAt: NOW + 600_000, resendAt: NOW + 30_000, signupOpen: false });
     await settle(); await buy("pro");
     tree().find(node => node.type === "form")!.props.onSubmit({ preventDefault() {} }); await flush();
-    expect(await settle()).toContain("New MausBot accounts aren't open yet");
+    expect(await settle()).toContain("New MimirBot accounts aren't open yet");
   });
 
   it("signed in to an account whose own terms differ (a trial already used): back to Choose with its terms, never a checkout said to be $0.00", async () => {
@@ -581,7 +581,7 @@ describe("the sheet", () => {
 
   it("opened at Sign in (the card, Settings): the sign-in first, without a plan; signed in, a ready Cloud is theirs to open", async () => {
     f.state = { cloudAdd: { source: "app_settings", signIn: true }, config: {} };
-    expect(await settle()).toContain("Sign in to MausBot Cloud");
+    expect(await settle()).toContain("Sign in to MimirBot Cloud");
     bridge.signInVerify.mockResolvedValueOnce({ outcome: "signed-in", state: paid({ machine: ready }) });
     tree().find(node => node.props.id === "cloud-add-email")!.props.onChange({ target: { value: "me@example.test" } });
     await settle();
@@ -595,7 +595,7 @@ describe("the sheet", () => {
 
   it("signed in here to a Team plan: the team's Cloud is ready to open, never a My Cloud being set up; Open opens the team and closes", async () => {
     f.state = { cloudAdd: { source: "app_settings", signIn: true }, config: {} };
-    expect(await settle()).toContain("Sign in to MausBot Cloud");
+    expect(await settle()).toContain("Sign in to MimirBot Cloud");
     bridge.signInVerify.mockResolvedValueOnce({ outcome: "signed-in", state: onTeam() });
     tree().find(node => node.props.id === "cloud-add-email")!.props.onChange({ target: { value: "me@example.test" } });
     await settle();
@@ -626,7 +626,7 @@ describe("the sheet", () => {
   it("Settings' Sign in after a saved sign-in was removed signs in here, instead of handing back to Settings at once", async () => {
     f.state = { cloudAdd: { source: "app_settings", signIn: true }, config: {} };
     account = { status: "signed-out", message: "restore-removed" }; offer = null;
-    expect(await settle()).toContain("Sign in to MausBot Cloud");
+    expect(await settle()).toContain("Sign in to MimirBot Cloud");
     expect(f.dispatch).not.toHaveBeenCalledWith({ type: "closeCloudAdd" });
     tree().find(node => node.props.id === "cloud-add-email")!.props.onChange({ target: { value: EMAIL } }); await settle();
     tree().find(node => node.type === "form")!.props.onSubmit({ preventDefault() {} }); await flush();

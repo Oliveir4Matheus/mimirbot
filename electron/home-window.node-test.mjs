@@ -53,7 +53,7 @@ test("a sign-in keeps only a path of My Cloud's own", () => {
 });
 
 /**
- * The window onto My Cloud with fakes on every side: the journal, this computer's freeze marker, the MausBot Cloud
+ * The window onto My Cloud with fakes on every side: the journal, this computer's freeze marker, the MimirBot Cloud
  * sign-in (its power word, wake, pairing code), My Cloud's answers (`cloud`), the window (where it went), the startup
  * screen and a manual clock.
  */
@@ -711,7 +711,7 @@ test("a team on screen signs in again before its hour ends, without moving the p
   assert.deepEqual(w.teamPairs, ["team-acme"], "not before its time");
   await w.later(1);
   assert.deepEqual(w.teamPairs, ["team-acme", "team-acme"]);
-  assert.deepEqual(w.redeemed, [["team", { code: "TTTT-EEEE-AAAA", cookie: true, label: "OpenMausBot app" }]]);
+  assert.deepEqual(w.redeemed, [["team", { code: "TTTT-EEEE-AAAA", cookie: true, label: "MimirBot app" }]]);
   assert.equal(w.went.length, went, "the page never moved");
   assert.equal(w.pairs, 0, "never My Cloud's pairing");
   await w.later(TEAM_RENEW_MS);

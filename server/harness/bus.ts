@@ -9,7 +9,7 @@ import { newId, type ProviderInstance, type RuntimeEvent, type RuntimeEventListe
 import { ProgressGate } from "./progress-gate.ts";
 
 const INCOMPLETE_LOG_MESSAGE =
-  "Canonical event history is incomplete: OpenMausBot could not write one or more events to disk. Live updates will continue.";
+  "Canonical event history is incomplete: MimirBot could not write one or more events to disk. Live updates will continue.";
 
 const DELTA_MERGE_MS = 50;
 

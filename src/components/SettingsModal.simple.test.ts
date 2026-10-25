@@ -94,7 +94,7 @@ const blocks = (html: string) => [...html.matchAll(/data-settings-block="([^"]+)
 const markers = (html: string) => [...html.matchAll(/MARKER:([^;]+);/g)].map((match) => match[1]);
 
 describe("Settings in Simple mode", () => {
-  it("draws at most six pages on the desktop, MausBot Cloud among them, and none of the Advanced-only ones", () => {
+  it("draws at most six pages on the desktop, MimirBot Cloud among them, and none of the Advanced-only ones", () => {
     const html = render();
     expect(pages(html)).toEqual(["general", "appearance", "ai", "computers", "cloud", "account"]);
     expect(SIMPLE_PAGES.length).toBeLessThanOrEqual(6);
@@ -142,7 +142,7 @@ describe("Settings in Simple mode", () => {
     expect(html).toContain('aria-label="Enable the built-in browser"');
   });
 
-  it("gives MausBot Cloud its own page, and stacks Organization, Import and Usage on Account in the desktop app", () => {
+  it("gives MimirBot Cloud its own page, and stacks Organization, Import and Usage on Account in the desktop app", () => {
     fixture.section = "cloudAccount";
     let html = render();
     expect(currentPage(html)).toBe("cloud");

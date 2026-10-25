@@ -818,7 +818,7 @@ process.stdin.on("data", (chunk) => {
             ].join(" ")
           : "ls -la";
         notify("item/started", { item: { id: "i1", type: "commandExecution", command } });
-        notify("item/started", { item: { id: "w1", type: "webSearch", query: "OpenMausBot" } });
+        notify("item/started", { item: { id: "w1", type: "webSearch", query: "MimirBot" } });
         const reviewOnce = process.env.FAKE_CODEX_REVIEW_ONCE_FILE;
         if (process.env.FAKE_CODEX_REVIEW_EVENTS && (!reviewOnce || !existsSync(reviewOnce))) {
           if (reviewOnce) writeFileSync(reviewOnce, "1");
@@ -936,13 +936,13 @@ process.stdin.on("data", (chunk) => {
           const item = {
             type: "agentMessage",
             id: "call_async_question",
-            text: "Which source should I use?\n- Directly in OpenMausBot\n- The official server in Executor",
+            text: "Which source should I use?\n- Directly in MimirBot\n- The official server in Executor",
             phase: "final_answer",
             memoryCitation: null,
             delivery: "async",
             questions: process.env.FAKE_CODEX_ASYNC_QUESTIONS
               ? JSON.parse(process.env.FAKE_CODEX_ASYNC_QUESTIONS)
-              : [{ title: "Which source should I use?", options: ["Directly in OpenMausBot", "The official server in Executor"] }],
+              : [{ title: "Which source should I use?", options: ["Directly in MimirBot", "The official server in Executor"] }],
           };
           notify("item/started", { item, startedAtMs: Date.now() });
           notify("item/completed", { item, completedAtMs: Date.now() });

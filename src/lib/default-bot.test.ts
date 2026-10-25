@@ -6,8 +6,8 @@ import type { DefaultBotFields } from "../../shared/default-bot";
 
 const bot = (id: string, fields: DefaultBotFields = {}): DefaultBotFields & { id: string } => ({ id, ...fields });
 
-describe("MausBot in the sidebar", () => {
-  it("leaves out a MausBot whose Show switch is off, and on a Team Cloud other people's, but keeps the viewer's own", () => {
+describe("MimirBot in the sidebar", () => {
+  it("leaves out a MimirBot whose Show switch is off, and on a Team Cloud other people's, but keeps the viewer's own", () => {
     const bots = [
       bot("maus", { defaultBot: {} }),
       bot("ada-maus", { defaultBot: { person: "ada@example.com" } }),
@@ -23,7 +23,7 @@ describe("MausBot in the sidebar", () => {
     expect(someoneElsesDefaultBot(bots[2]!, "ADA@example.com".toLowerCase())).toBe(true);
   });
 
-  it("finds the viewer's own MausBot: their own on a team, the place's otherwise, none until the viewer is known", () => {
+  it("finds the viewer's own MimirBot: their own on a team, the place's otherwise, none until the viewer is known", () => {
     const team = [bot("ada-maus", { defaultBot: { person: "ada@example.com" } }), bot("writer")];
     expect(myDefaultBot(team, undefined)).toBeUndefined();
     expect(myDefaultBot(team, "ada@example.com")?.id).toBe("ada-maus");
@@ -34,8 +34,8 @@ describe("MausBot in the sidebar", () => {
   });
 });
 
-describe("MausBot's identity is its mark, never its name", () => {
-  it("keeps finding a renamed MausBot for the Settings switch and the sidebar, and keeps it out of the list while its welcome is open", () => {
+describe("MimirBot's identity is its mark, never its name", () => {
+  it("keeps finding a renamed MimirBot for the Settings switch and the sidebar, and keeps it out of the list while its welcome is open", () => {
     const bots = [bot("writer"), { ...bot("maus", { defaultBot: {} }), name: "Jarvis" }];
     expect(myDefaultBot(bots, null)?.id).toBe("maus");
     expect(partitionSidebarBots(bots, { viewerEmail: null }).unsectionedBots.map((entry) => entry.id)).toEqual(["writer", "maus"]);
@@ -43,7 +43,7 @@ describe("MausBot's identity is its mark, never its name", () => {
   });
 });
 
-describe("what MausBot offers to set up", () => {
+describe("what MimirBot offers to set up", () => {
   const fresh = { aiReady: false, ownBots: 0, onCloud: false, team: false, remote: false };
 
   it("on a fresh install, only the steps still to do", () => {

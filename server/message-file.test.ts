@@ -128,10 +128,10 @@ describe("message-linked files", () => {
     )).toBe(false);
   });
 
-  it("keeps a Windows path's backslash before punctuation, as in \\.openmausbot", () => {
-    const report = "C:\\Users\\Maus\\.openmausbot\\workspaces\\bot\\_drafts\\report.md";
-    const chart = "C:\\Users\\Maus\\.openmausbot\\workspaces\\bot\\chart.png";
-    const notes = "C:\\Users\\Maus\\.openmausbot\\release notes.md";
+  it("keeps a Windows path's backslash before punctuation, as in \\.mimirbot", () => {
+    const report = "C:\\Users\\Maus\\.mimirbot\\workspaces\\bot\\_drafts\\report.md";
+    const chart = "C:\\Users\\Maus\\.mimirbot\\workspaces\\bot\\chart.png";
+    const notes = "C:\\Users\\Maus\\.mimirbot\\release notes.md";
     const markdown = `[Report](${report})\n\n![Chart](${chart})\n\n[Notes][notes]\n\n[notes]: <${notes}>`;
 
     expect(messageReferencesFile(markdown, report)).toBe(true);

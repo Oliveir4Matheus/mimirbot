@@ -217,13 +217,13 @@ describe("the bots' browser host by default", () => {
 
 describe("a deleted bot's browser", () => {
   const PATH_ENGINE = "/usr/local/bin/agent-browser";
-  const MANAGED_ENGINE = "/data/.openmausbot/tools/agent-browser";
+  const MANAGED_ENGINE = "/data/.mimirbot/tools/agent-browser";
   const folders: string[] = [];
   afterEach(() => {
     vi.unstubAllEnvs();
     for (const folder of folders.splice(0)) rmSync(folder, { recursive: true, force: true });
   });
-  /** agent-browser on PATH, as the Cloud image installs it; with `managed`, also the one OpenMausBot installed. */
+  /** agent-browser on PATH, as the Cloud image installs it; with `managed`, also the one MimirBot installed. */
   function engines({ managed = false }: { managed?: boolean } = {}) {
     vi.mocked(browserEngineStatus).mockImplementation((options) => (options?.managedOnly && !managed
       ? { kind: "unavailable", reason: "not installed", installable: true }
@@ -251,7 +251,7 @@ describe("a deleted bot's browser", () => {
     expect(await host.eraseDeletedBrowser(deleted)).toBe(false);
   });
 
-  it("elsewhere, is erased only with the agent-browser OpenMausBot installed, and otherwise just closed", async () => {
+  it("elsewhere, is erased only with the agent-browser MimirBot installed, and otherwise just closed", async () => {
     engines();
     const { host } = setup(undefined);
     expect(await host.eraseDeletedBrowser(deleted)).toBe(true);

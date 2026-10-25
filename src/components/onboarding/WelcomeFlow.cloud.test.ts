@@ -22,7 +22,7 @@ beforeEach(() => { setLocale("en"); f.state = { config: {}, cloudAdd: null, bots
 afterEach(async () => { await act(async () => root.unmount()); host.remove(); });
 const flow = (extra: Record<string, unknown> = {}) => createElement(WelcomeFlow, { bot: null, onDone: vi.fn(), reel: false, dictation: false, initialBeat: "cloud", cloudOffer: OFFER, ...extra });
 
-it("the welcome offers MausBot Cloud between the phone and the first bot, and Not now goes on to the bot", async () => {
+it("the welcome offers MimirBot Cloud between the phone and the first bot, and Not now goes on to the bot", async () => {
   await act(async () => { root.render(flow()); });
   expect(host.textContent).toContain("Keep your bots working while you sleep");
   expect(host.textContent).toContain("4 of 5");

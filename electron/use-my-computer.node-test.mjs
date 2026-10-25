@@ -5,7 +5,7 @@ import { createLendingDialogs, useMyComputerText } from "./lending-dialogs.mjs";
 import { askForMicrophone, openPrivacySettings } from "./privacy-settings.mjs";
 import { QUIET_MS, createUseMyComputer, fullyLent, installUseMyComputer, missingPermissions, quietWindow } from "./use-my-computer.mjs";
 
-const MISSING_BOTH = "embedded host failed: Accessibility and Screen Recording required; grant access in System Settings and restart OpenMausBot";
+const MISSING_BOTH = "embedded host failed: Accessibility and Screen Recording required; grant access in System Settings and restart MimirBot";
 
 /**
  * Use my Mac with fakes on every side: what is lent (on, internet, screen; the person's own Off), computer control (whether
@@ -100,12 +100,12 @@ test("a permission macOS grants from its own prompt is never opened in System Se
   assert.equal(w.lent.screen, true);
 });
 
-test("Screen Recording that works only after OpenMausBot restarts: apps and screen go on by themselves once computer control works", async () => {
+test("Screen Recording that works only after MimirBot restarts: apps and screen go on by themselves once computer control works", async () => {
   const w = world({ grants: { prompt: ["accessibility", "screen"], relaunch: true } });
   await w.useMyComputer.offer();
   assert.deepEqual(w.lent, { on: true, internet: true, screen: false }, "everything else is lent at once");
   assert.equal(w.kept.screenWanted, true);
-  // OpenMausBot started again: computer control works now.
+  // MimirBot started again: computer control works now.
   w.ready = true;
   w.available = false;
   await w.useMyComputer.changed();
@@ -245,7 +245,7 @@ test("main's side: computer control's running state decides, a bot's link reache
   assert.deepEqual(shown, [[win, { screen: true }]], "main's own popup, on the app's window");
   assert.deepEqual(panes, ["accessibility", "screen"], "what the running driver says is missing, in order");
   assert.equal(lending.screen, false, "never while the driver says it can't work");
-  connection = { mode: "embedded", socketPath: "/tmp/cua.sock", mcpCommand: "/Applications/OpenMausBot.app/cua-driver", mcpArgs: ["mcp"], mcpEnv: {} };
+  connection = { mode: "embedded", socketPath: "/tmp/cua.sock", mcpCommand: "/Applications/MimirBot.app/cua-driver", mcpArgs: ["mcp"], mcpEnv: {} };
   await useMyComputer.again();
   assert.equal(lending.screen, true, "once computer control runs, apps and screen go on");
   assert.ok(requested.length > 0);
