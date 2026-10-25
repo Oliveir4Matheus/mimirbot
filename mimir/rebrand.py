@@ -80,6 +80,7 @@ def sub_outside_urls(pattern, repl, text):
 
 RULES = [
     (re.compile(r"(?<![Xx]-)OpenMausBot"), NAME),  # X-OpenMausBot-* are header/desktop-entry keys the server and old installs read
+    (re.compile(r"OpenMaus Bot\b"), NAME),
     (re.compile(r"OpenMaus(?![a-z])"), NAME[: -len("Bot")] if NAME.endswith("Bot") else NAME),
     (re.compile(r"\bMausBot\b"), SHORT),
     (re.compile(r"(?<![\w.])(?<!com\\)\.openmausbot(?![\w.])"), "." + SLUG),

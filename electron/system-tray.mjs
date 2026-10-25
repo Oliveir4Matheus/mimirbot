@@ -13,11 +13,11 @@ export function createSystemTray({ Tray, Menu, nativeImage, iconPath, getWindow,
     win.focus();
     return true;
   };
-  tray.setToolTip("Mimir Bot");
+  tray.setToolTip("MimirBot");
   tray.setContextMenu(Menu.buildFromTemplate([
-    { label: "Open Mimir Bot", click: show },
+    { label: "Open MimirBot", click: show },
     { type: "separator" },
-    { label: "Quit Mimir Bot", click: onQuit },
+    { label: "Quit MimirBot", click: onQuit },
   ]));
   tray.on("click", show);
   tray.on("double-click", show);
