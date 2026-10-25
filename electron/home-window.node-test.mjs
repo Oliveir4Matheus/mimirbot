@@ -766,7 +766,7 @@ test("while the window is on the place's own sign-in page, its 401s start no sec
   const w = world({ state: { ...connected(), teams: [ACME] }, team: { signedIn: false } });
   await w.home.show({ place: { team: "team-acme" } });
   assert.deepEqual(w.teamPairs, ["team-acme"]);
-  assert.match(w.url, /^https:\/\/omb-u-acme\.fly\.dev\/pair#code=/);
+  assert.match(w.url, /^https:\/\/omb-u-acme\.mimirbot\.invalid\/pair#code=/);
   w.home.responded({ url: `${TEAM}/api/auth/session`, statusCode: 401, webContentsId: 7 });
   await w.later(0);
   assert.deepEqual(w.teamPairs, ["team-acme"], "the code on its way is not replaced");

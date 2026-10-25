@@ -79,7 +79,7 @@ def sub_outside_urls(pattern, repl, text):
 
 
 RULES = [
-    (re.compile(r"OpenMausBot"), NAME),
+    (re.compile(r"(?<![Xx]-)OpenMausBot"), NAME),  # X-OpenMausBot-* are header/desktop-entry keys the server and old installs read
     (re.compile(r"OpenMaus(?![a-z])"), NAME[: -len("Bot")] if NAME.endswith("Bot") else NAME),
     (re.compile(r"\bMausBot\b"), SHORT),
     (re.compile(r"(?<![\w.])(?<!com\\)\.openmausbot(?![\w.])"), "." + SLUG),
@@ -106,6 +106,12 @@ FIXED = [
     ("server/peer-provenance.ts", 'const HEADER_WORDS = new Set(["openmausbot", "omb"]);',
      f'const HEADER_WORDS = new Set(["openmausbot", "omb", "{NAME.lower()}"]);'),
     ("server/records-block.ts", r"default\b|openmausbot\b))", rf"default\b|openmausbot\b|{NAME.lower()}\b))"),
+    # a test that matches the team host as an escaped regex, which the services step's plain-host rule cannot see
+    ("electron/home-window.node-test.mjs", r"omb-u-acme\.fly\.dev", rf"omb-u-acme\.{SLUG}\.invalid"),
+    # X-OpenMausBot-* names are protocol: the server matches the desktop owner header by that exact name
+    ("electron/desktop-server-auth.cjs", "X-MimirBot-", "X-OpenMausBot-"),
+    ("electron/server-session.node-test.mjs", "X-MimirBot-", "X-OpenMausBot-"),
+    ("electron/open-at-login.mjs", "X-MimirBot-", "X-OpenMausBot-"),
     # the container label is a reverse-DNS id kept from upstream, not the data folder
     ("server/vps-computer.test.ts", rf"com\.{SLUG}\.environment=", r"com\.openmausbot\.environment="),
     # these load enterprise/server/*, which the fork does not ship

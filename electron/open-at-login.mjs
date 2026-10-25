@@ -5,7 +5,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 export const HIDDEN_ARG = "--omb-hidden";
-const MARK = "X-MimirBot-Lending=true";
+const MARK = "X-OpenMausBot-Lending=true";
 
 /** Desktop Entry Exec quoting: the path in double quotes, with ", `, $ and \ escaped. */
 const quoted = (value) => `"${value.replace(/["`$\\]/g, (match) => `\\${match}`)}"`;
