@@ -5,6 +5,10 @@ export interface ReleaseNotes {
 
 /** Shown once after an update, so they ship inside the app and work offline. Add the entry for a version when you raise it. */
 export const RELEASE_NOTES: Record<string, ReleaseNotes> = {
+  "0.1.134": {
+    features: [],
+    fixes: [],
+  },
   "0.1.133": {
     features: [
       "O Uso virou uma tela própria, aberta pelo botão Uso, no mesmo lugar do chat e do mapa da equipe. Saiu das Configurações.",
