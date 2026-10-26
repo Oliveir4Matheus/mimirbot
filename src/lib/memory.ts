@@ -165,7 +165,8 @@ export function formatBytes(bytes: number): string {
   return bytes < 1024 ? `${bytes} B` : `${Math.round(bytes / 102.4) / 10} KB`;
 }
 
-export function relativeTime(at: number, now = Date.now()): string {
+/** `locale` pins the language of the date past a week; without it the date follows the computer's language. */
+export function relativeTime(at: number, now = Date.now(), locale?: string): string {
   const seconds = Math.max(0, Math.round((now - at) / 1000));
   if (seconds < 45) return "just now";
   const minutes = Math.round(seconds / 60);
@@ -175,7 +176,7 @@ export function relativeTime(at: number, now = Date.now()): string {
   const days = Math.round(hours / 24);
   if (days === 1) return "yesterday";
   if (days < 7) return `${days} days ago`;
-  return new Date(at).toLocaleDateString([], { month: "short", day: "numeric" });
+  return new Date(at).toLocaleDateString(locale ?? [], { month: "short", day: "numeric" });
 }
 
 export function localizedRelativeTime(at: number, locale: string, now = Date.now()): string {

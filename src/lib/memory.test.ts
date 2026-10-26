@@ -98,7 +98,7 @@ describe("relativeTime", () => {
   });
 
   it("falls back to a date past a week and never goes negative", () => {
-    expect(relativeTime(now - 10 * 86_400_000, now)).toMatch(/Aug|Sep/);
+    expect(relativeTime(now - 10 * 86_400_000, now, "en-US")).toBe("Aug 31");
     expect(relativeTime(now + 60_000, now)).toBe("just now");
   });
 });

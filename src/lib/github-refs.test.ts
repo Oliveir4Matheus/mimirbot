@@ -8,7 +8,7 @@ const render = (text: string) => renderToStaticMarkup(createElement(ChatMarkdown
 
 describe("parseGithubUrl", () => {
   it("reads pull requests, issues and commits", () => {
-    expect(parseGithubUrl("https://github.com/milind-soni/OpenMausBot/pull/2547")).toMatchObject({ kind: "pull", owner: "milind-soni", repo: "MimirBot", number: 2547 });
+    expect(parseGithubUrl("https://github.com/milind-soni/OpenMausBot/pull/2547")).toMatchObject({ kind: "pull", owner: "milind-soni", repo: "OpenMausBot", number: 2547 });
     expect(parseGithubUrl("https://github.com/milind-soni/OpenMausBot/issues/12#issuecomment-1")).toMatchObject({ kind: "issue", number: 12 });
     expect(parseGithubUrl("https://github.com/milind-soni/OpenMausBot/pull/2547/files")).toMatchObject({ kind: "pull", number: 2547 });
     expect(parseGithubUrl("https://github.com/octo-org/sample-app/commit/68189CF0a1")).toMatchObject({ kind: "commit", sha: "68189cf0a1" });
