@@ -25,3 +25,29 @@ name, a type, an extracted function, one shared helper. A rule ("never X",
 rule that guards correctness; fix the code.
 
 More specific `AGENTS.md` files override this note within their directories.
+
+## Shipping an approved change
+
+Any change the owner approves ships to GitHub through the in-app updater, so
+installed apps get it from the update button without rebuilding:
+
+1. Raise `version` in `package.json` (patch for fixes; installed apps only
+   offer a version greater than theirs).
+2. Commit on the `mimirbot` branch and push it to `origin`
+   (`Oliveir4Matheus/mimirbot`, public).
+3. `pnpm package:linux` writes `release/MimirBot-<version>-x86_64.AppImage`
+   and `release/latest-linux.yml`.
+4. `gh release create v<version> --target mimirbot
+   release/MimirBot-<version>-x86_64.AppImage release/latest-linux.yml` (add
+   the `.blockmap` when the build emits one). The AppImage and
+   `latest-linux.yml` must come from the same build; a release without
+   `latest-linux.yml` leaves every install on its current version.
+5. Every update carries its tag, `v<version>`, on the pushed commit the build
+   came from, so anyone can build that exact version with
+   `git checkout v<version> && pnpm install && pnpm package:<win|mac|linux>`.
+   Check with `git ls-remote --tags origin`; never release from unpushed code.
+
+Windows (`latest.yml` + NSIS `.exe`) and macOS (`latest-mac.yml` + `.zip`,
+signed and notarized) need their own builds on those systems. This flow
+covers Linux only. Do not use `.github/workflows/release.yml`: it needs the
+upstream project's Apple signing secrets.

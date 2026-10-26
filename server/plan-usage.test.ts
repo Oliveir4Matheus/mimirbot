@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join, normalize } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { antigravityProfileDirectory } from "./drivers/antigravity-acp.ts";
 import {
   clearPlanUsageCache,
   fetchPlanUsage,
@@ -9,6 +10,7 @@ import {
   loadPlanUsage,
   parseClaudeUsage,
   parseCodexUsage,
+  parseAntigravityQuota,
   parseGrokUsage,
   planAccountsFromInstances,
   type PlanAccount,
@@ -34,7 +36,7 @@ function jsonResponse(body: unknown, status = 200): PlanResponse {
 function account(driver: PlanAccount["driver"], extras: Partial<PlanAccount> = {}): PlanAccount {
   return {
     id: driver,
-    name: driver === "claude" ? "Claude" : driver === "codex" ? "Codex" : "Grok",
+    name: driver === "claude" ? "Claude" : driver === "codex" ? "Codex" : driver === "antigravity" ? "Antigravity" : "Grok",
     driver,
     environment: {},
     ...extras,
@@ -411,10 +413,62 @@ describe("plan usage fetcher", () => {
       grok: { driver: "grokAgent", environment: { GROK_HOME: "/tmp/grok" } },
       cursor: { driver: "cursorAgent", displayName: "Cursor" },
       api: { driver: "grok", displayName: "Grok API" },
+      antigravity: { driver: "antigravityAgent" },
     })).toEqual([
       { id: "claude", name: "Personal Claude", driver: "claude", environment: {}, configDir: "/tmp/claude" },
       { id: "codex", name: "Codex", driver: "codex", environment: {} },
       { id: "grok", name: "Grok", driver: "grok", environment: { GROK_HOME: "/tmp/grok" } },
+      { id: "antigravity", name: "Antigravity", driver: "antigravity", environment: {} },
     ]);
+  });
+});
+
+describe("Antigravity plan usage", () => {
+  const quota = {
+    models: {
+      "gemini-3.8-flash-high": { displayName: "Gemini 3.8 Flash", quotaInfo: { remainingFraction: 0.4, resetTime: new Date(NOW + 3600_000).toISOString() } },
+      "gemini-3.8-pro": { displayName: "Gemini 3.8 Pro", quotaInfo: { remainingFraction: 0.9, resetTime: new Date(NOW + 3 * 86400_000).toISOString() } },
+      "no-quota-model": {},
+    },
+  };
+
+  it("puts the tightest short-reset model in the 5-hour ring and the long-reset one in weekly", () => {
+    const parsed = parseAntigravityQuota(quota, NOW);
+    expect(parsed.fiveHour).toMatchObject({ available: true, remainingPercent: 40, usedPercent: 60 });
+    expect(parsed.weekly).toMatchObject({ available: true, remainingPercent: 90 });
+    expect(parsed.models.map((model) => model.name)).toEqual(["Gemini 3.8 Flash", "Gemini 3.8 Pro"]);
+  });
+
+  it("trades the Google refresh token for an access token before asking for quota, and never returns either", async () => {
+    const dir = antigravityProfileDirectory("antigravity");
+    const tokenPath = join(dir, "antigravity-acp", "acp_token.json");
+    const calls: Array<{ url: string; init: Parameters<PlanFetch>[1] }> = [];
+    const fetch: PlanFetch = async (url, init) => {
+      calls.push({ url, init });
+      return url.includes("oauth2") ? jsonResponse({ access_token: "access-fixture" }) : jsonResponse(quota);
+    };
+    const credentials = fileCredentialReader({
+      env: {},
+      readText: (path) => normalize(path) === normalize(tokenPath)
+        ? JSON.stringify({ client_id: "id", client_secret: "secret", refresh_token: "refresh-fixture" })
+        : null,
+    });
+    const report = await fetchPlanUsage([account("antigravity")], { fetch, credentials, now: () => NOW });
+    expect(calls.map((call) => call.url)).toEqual([
+      "https://oauth2.googleapis.com/token",
+      "https://cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels",
+    ]);
+    expect(calls[0]!.init.body).toContain("refresh_token=refresh-fixture");
+    expect(calls[1]!.init.headers.Authorization).toBe("Bearer access-fixture");
+    expect(report.providers[0]).toMatchObject({ driver: "antigravity", ok: true });
+    expect(JSON.stringify(report)).not.toMatch(/refresh-fixture|access-fixture/);
+  });
+
+  it("asks for a new sign-in when the profile has no token file", async () => {
+    const fetch = vi.fn<PlanFetch>();
+    const credentials = fileCredentialReader({ env: {}, readText: () => null });
+    const report = await fetchPlanUsage([account("antigravity")], { fetch, credentials, now: () => NOW });
+    expect(fetch).not.toHaveBeenCalled();
+    expect(report.providers[0]).toMatchObject({ ok: false, error: "Sign in again in Antigravity" });
   });
 });

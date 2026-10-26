@@ -129,7 +129,7 @@ interface PlanWindow { available: boolean; remainingPercent: number | null }
 interface PlanProvider { name: string; driver: string; ok: boolean; fiveHour: PlanWindow; weekly: PlanWindow }
 
 const PLAN_POLL_MS = 5 * 60_000;
-const PLAN_DRIVER_MARK: Record<string, string> = { claude: "claudeAgent" };
+const PLAN_DRIVER_MARK: Record<string, string> = { claude: "claudeAgent", antigravity: "antigravityAgent" };
 
 function useOnePlanPerEngine(): PlanProvider[] {
   const [providers, setProviders] = useState<PlanProvider[]>([]);
@@ -143,7 +143,7 @@ function useOnePlanPerEngine(): PlanProvider[] {
           if (!p.ok || !(p.fiveHour.available || p.weekly.available) || seen.has(p.driver)) return false;
           seen.add(p.driver);
           return true;
-        }).slice(0, 3));
+        }));
       })
       .catch(() => {});
     void load();
