@@ -345,6 +345,9 @@ test("Electron relaunch waits for deferred cleanup and the replacement acquires 
   const args = ["--no-sandbox", fixture];
   const env = { ...process.env };
   delete env.ELECTRON_RUN_AS_NODE;
+  // The relaunch watcher logs under the home folder: keep a test run out of the real one.
+  mkdirSync(join(workspace, "home"));
+  env.HOME = join(workspace, "home");
   const run = xvfb ? [xvfb, "-a", electron, ...args] : [electron, ...args];
   const launch = process.env.DBUS_SESSION_BUS_ADDRESS || !dbusRunSession ? run : [dbusRunSession, "--", ...run];
   // The launcher leads its own process group: on headless Linux it wraps dbus-run-session, xvfb-run, Xvfb and Electron,

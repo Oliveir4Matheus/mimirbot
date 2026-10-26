@@ -44,7 +44,9 @@ and one as a paired device with a label, waits for both to settle, then checks
 the month file has exactly two rows with the right triggers and no message
 text, that `GET /api/usage` groups them by person and by bot with the fake
 engine's `0.01` per turn, that `GET /api/usage.csv` returns three lines, and
-that a client-scoped device is refused. It prints the fixture's server log
+that `GET /api/usage/series` (the Usage page's chart) reports both turns for the bot by day and by
+local hour and rejects an unknown bucket, and that a client-scoped device is refused on every
+usage route. It prints the fixture's server log
 path as evidence and removes its temporary home.
 
 `server/usage-attribution.e2e.test.ts` boots the server against the fake Claude, ACP

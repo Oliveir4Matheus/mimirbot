@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 
 import { LimitWarnings } from "@/components/automations/LimitWarnings";
-import { ProviderMark } from "@/components/ProviderIcons";
 import { useDesktopCapabilities } from "@/components/DesktopCapabilities";
 import { SidebarProfileMenu } from "@/components/SidebarProfileMenu";
 import { UpdateIndicator } from "@/components/UpdateIndicator";
@@ -12,7 +11,8 @@ import { useCloudFilesReady } from "@/lib/cloud-files";
 import { cn } from "@/lib/cn";
 import { t } from "@/lib/i18n";
 import { nearLimitEngines, useEngineLimits } from "@/lib/limit-resets";
-import { api, useStore } from "@/state/store";
+import { useStore } from "@/state/store";
+import { planLabel, PlanRingGraphic, useOnePlanPerEngine, type PlanProvider } from "./plan-ring";
 
 const ITEM = "group relative flex size-10 shrink-0 items-center justify-center rounded-[13px] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus";
 
@@ -125,72 +125,11 @@ const ICONS = {
   settings: <Glyph><path d="M10 2.8 9.3 5a7 7 0 0 0-1.8 1L5.2 5.4 2.8 9l1.8 1.7a8 8 0 0 0 0 2.5L2.8 15l2.4 3.6 2.3-.7a7 7 0 0 0 1.8 1l.7 2.3h4l.7-2.3a7 7 0 0 0 1.8-1l2.3.7 2.4-3.6-1.8-1.8a8 8 0 0 0 0-2.5l1.8-1.7-2.4-3.6-2.3.6a7 7 0 0 0-1.8-1L14 2.8Z" /><circle cx="12" cy="12" r="3.1" /></Glyph>,
 };
 
-interface PlanWindow { available: boolean; remainingPercent: number | null }
-interface PlanProvider { name: string; driver: string; ok: boolean; connected: boolean; fiveHour: PlanWindow; weekly: PlanWindow }
-
-const PLAN_POLL_MS = 5 * 60_000;
-const PLAN_DRIVER_MARK: Record<string, string> = { claude: "claudeAgent", antigravity: "antigravityAgent" };
-
-function useOnePlanPerEngine(): PlanProvider[] {
-  const [providers, setProviders] = useState<PlanProvider[]>([]);
-  useEffect(() => {
-    let live = true;
-    const load = () => api<{ providers: PlanProvider[] }>("/api/plan-usage")
-      .then((report) => {
-        if (!live) return;
-        const seen = new Set<string>();
-        setProviders(report.providers.filter((p) => {
-          if (!(p.connected || (p.ok && (p.fiveHour.available || p.weekly.available))) || seen.has(p.driver)) return false;
-          seen.add(p.driver);
-          return true;
-        }));
-      })
-      .catch(() => {});
-    void load();
-    const timer = window.setInterval(load, PLAN_POLL_MS);
-    return () => { live = false; window.clearInterval(timer); };
-  }, []);
-  return providers;
-}
-
-function ringTone(remaining: number): string {
-  return remaining > 50 ? "stroke-success" : remaining > 20 ? "stroke-warning" : "stroke-danger";
-}
-
-function RemainingRing({ radius, width, window: win }: { radius: number; width: number; window: PlanWindow }) {
-  const circumference = 2 * Math.PI * radius;
-  const remaining = win.available && win.remainingPercent !== null ? Math.max(0, Math.min(100, win.remainingPercent)) : null;
-  return (
-    <>
-      <circle cx="20" cy="20" r={radius} fill="none" strokeWidth={width} className="stroke-raised" />
-      {remaining !== null && remaining > 0 && (
-        <circle
-          cx="20" cy="20" r={radius} fill="none" strokeWidth={width} strokeLinecap="round"
-          strokeDasharray={`${(remaining / 100) * circumference} ${circumference}`}
-          transform="rotate(-90 20 20)"
-          className={ringTone(remaining)}
-        />
-      )}
-    </>
-  );
-}
-
-function windowLabel(name: string, win: PlanWindow): string | null {
-  return win.available && win.remainingPercent !== null ? `${name}: ${t("planUsage.left", { remaining: win.remainingPercent })}` : null;
-}
-
 function PlanRing({ provider, onOpen }: { provider: PlanProvider; onOpen: () => void }) {
-  const windows = [windowLabel(t("planUsage.fiveHour"), provider.fiveHour), windowLabel(t("planUsage.weekly"), provider.weekly)].filter(Boolean);
-  const label = [provider.name, ...(windows.length ? windows : [t("planUsage.notShared")])]
-    .filter(Boolean)
-    .join(" · ");
+  const label = planLabel(provider);
   return (
     <button type="button" aria-label={label} onClick={onOpen} className={cn(ITEM, "rounded-full hover:brightness-110")}>
-      <svg viewBox="0 0 40 40" aria-hidden="true" className="absolute inset-0 size-10">
-        <RemainingRing radius={17} width={2.7} window={provider.weekly} />
-        <RemainingRing radius={12.5} width={2.2} window={provider.fiveHour} />
-      </svg>
-      <ProviderMark driverKind={PLAN_DRIVER_MARK[provider.driver] ?? provider.driver} size={14} className="relative text-ink" />
+      <PlanRingGraphic provider={provider} size={40} />
       <HoverLabel label={label} />
     </button>
   );
@@ -209,7 +148,7 @@ export function MimirRail() {
   // SAFETY: Electron's -webkit-app-region is not in React's CSSProperties type; the renderer accepts it as an inline style.
   const dragStyle = { WebkitAppRegion: "drag" } as CSSProperties;
   const macInset = capabilities.windowChrome === "mac-inset";
-  const openUsage = () => dispatch({ type: "toggleAppSettings", open: true, section: "usage" });
+  const openUsage = () => dispatch({ type: "showUsage" });
 
   return (
     <nav
@@ -242,7 +181,7 @@ export function MimirRail() {
         <RailButton label={t("routines.logs")} active={routines && focus.section === "logs"} onClick={() => dispatch({ type: "showRoutines", section: "logs" })}>{ICONS.logs}</RailButton>
         <RailButton label={t("sidebar.nav.teamMap")} active={state.activeView === "team-map" && !overlay} onClick={() => dispatch({ type: "showTeamMap" })}>{ICONS.teamMap}</RailButton>
         {filesReady && <RailButton label={t("sidebar.nav.files")} active={state.activeView === "files" && !overlay} onClick={() => dispatch({ type: "showFiles" })}>{ICONS.files}</RailButton>}
-        <RailButton label={t("settings.section.usage")} active={state.appSettingsOpen && state.appSettingsSection === "usage"} onClick={openUsage}>{ICONS.usage}</RailButton>
+        <RailButton label={t("settings.section.usage")} active={state.activeView === "usage" && !overlay} onClick={openUsage}>{ICONS.usage}</RailButton>
       </div>
 
       <div className="mt-auto flex w-full flex-col items-center gap-1.5 pt-3">
@@ -252,8 +191,8 @@ export function MimirRail() {
         <RailButton label={t("sidebar.menu.help")} onClick={() => void openExternalLink(HELP_CENTER_URL)}>{ICONS.help}</RailButton>
         <RailButton
           label={t("sidebar.menu.settings")}
-          active={state.appSettingsOpen && state.appSettingsSection !== "usage"}
-          onClick={() => dispatch({ type: "toggleAppSettings", open: true, section: state.appSettingsSection === "usage" ? "general" : undefined })}
+          active={state.appSettingsOpen}
+          onClick={() => dispatch({ type: "toggleAppSettings", open: true })}
         >
           {ICONS.settings}
         </RailButton>

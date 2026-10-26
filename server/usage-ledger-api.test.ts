@@ -67,8 +67,21 @@ describe("usage ledger through real turns", () => {
     expect(csv.headers.get("content-type")).toContain("text/csv");
     expect((await csv.text()).trim().split("\n")).toHaveLength(3);
 
+    const now = new Date();
+    const pad = (value: number) => String(value).padStart(2, "0");
+    const today = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+    const seriesQuery = `from=${today}&to=${today}&tz=${now.getTimezoneOffset()}`;
+    const series = (await (await api(`/api/usage/series?${seriesQuery}&bucket=day`)).json()) as any;
+    expect(series.cells).toEqual([expect.objectContaining({ key: today, botId, botName: "Ledger probe", turns: 2, errors: 0 })]);
+    expect(series.cells[0].costUsd).toBeCloseTo(0.02, 6);
+    const hourly = (await (await api(`/api/usage/series?${seriesQuery}&bucket=hour`)).json()) as any;
+    expect(hourly.cells.reduce((sum: number, cell: any) => sum + cell.turns, 0)).toBe(2);
+    expect(hourly.cells.every((cell: any) => /^\d{4}-\d{2}-\d{2}T\d{2}$/.test(cell.key))).toBe(true);
+    expect((await api(`/api/usage/series?${seriesQuery}&bucket=week`)).status).toBe(400);
+
     const client = await pair("Client phone", ["client"]);
     expect((await api("/api/usage", { headers: { authorization: `Bearer ${client}` } })).status).toBe(403);
     expect((await api("/api/usage.csv", { headers: { authorization: `Bearer ${client}` } })).status).toBe(403);
+    expect((await api(`/api/usage/series?${seriesQuery}&bucket=day`, { headers: { authorization: `Bearer ${client}` } })).status).toBe(403);
   }, 120_000);
 });

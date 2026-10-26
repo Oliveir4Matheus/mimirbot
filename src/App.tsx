@@ -21,7 +21,7 @@ import { SIDEBAR_AND_PANEL_FIT, SIDEBAR_INLINE, TWO_SIDE_PANELS_FIT, useMediaQue
 import { PluginsPanel, preloadConnectedApps } from "@/components/PluginsPanel";
 import {
   ActivityPanel, BotSettingsDialog, ComputerPanel, FilesView, InspectorPanel, KeyboardShortcutsModal, LocalVmWorkspace, NewBotDialog,
-  preloadScreens, RemoteAgentSettingsPanel, RemoteDesktopPanel, SettingsModal, TeamMapPage, TriggersPage,
+  preloadScreens, RemoteAgentSettingsPanel, RemoteDesktopPanel, SettingsModal, TeamMapPage, TriggersPage, UsagePage,
 } from "@/components/lazy-screens";
 import { WorkspaceBackupRecovery } from "@/components/WorkspaceBackupSettings";
 import { NotificationRail, NotificationsPanel } from "@/components/NotificationsPanel";
@@ -316,6 +316,8 @@ function Shell({ viewer }: { viewer: WelcomeViewer | null }) {
       />}
       {state.activeView === "team-map" ? (
         <TeamMapPage />
+      ) : state.activeView === "usage" ? (
+        <UsagePage />
       ) : state.activeView === "files" ? (
         <FilesView />
       ) : state.activeView === "routines" ? (

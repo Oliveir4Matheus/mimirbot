@@ -5,6 +5,15 @@ export interface ReleaseNotes {
 
 /** Shown once after an update, so they ship inside the app and work offline. Add the entry for a version when you raise it. */
 export const RELEASE_NOTES: Record<string, ReleaseNotes> = {
+  "0.1.133": {
+    features: [
+      "O Uso virou uma tela própria, aberta pelo botão Uso, no mesmo lugar do chat e do mapa da equipe. Saiu das Configurações.",
+      "Gráfico de uso por bot, com filtro de período e de bots, para custo, tokens, execuções e erros, e variação em relação ao período anterior.",
+      "As execuções aparecem de 10 em 10, com paginação e botão para ordenar por data, custo ou duração.",
+      "Os limites dos planos aparecem em anéis grandes, os mesmos da barra lateral.",
+    ],
+    fixes: [],
+  },
   "0.1.132": {
     features: [],
     fixes: ["No Linux, o app volta a abrir sozinho depois de uma atualização. A partir da próxima atualização, não é mais preciso abri-lo à mão."],

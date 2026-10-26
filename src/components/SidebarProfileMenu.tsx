@@ -368,7 +368,7 @@ export function SidebarProfileMenu({ iconOnly = false, rail = false, circle = fa
     usage: !remote,
     update: update?.item ?? null,
     account: cloudAccount ? t("settings.section.cloudAccount") : null,
-    onUsage: () => dispatch({ type: "toggleAppSettings", open: true, section: "usage" }),
+    onUsage: () => dispatch({ type: "showUsage" }),
     onSettings: () => dispatch({ type: "toggleAppSettings" }),
     onShortcuts: () => {
       triggerRef.current?.closest("button")?.focus();

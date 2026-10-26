@@ -21,7 +21,7 @@ export function UsageSection({ bot, bare = false }: { bot: Bot; bare?: boolean }
       {!bare && <div className="flex items-baseline justify-between">
         <div className="text-[15px] font-medium text-ink">{t("usage.title")}</div>
         <button
-          onClick={() => dispatch({ type: "toggleAppSettings", open: true, section: "usage" })}
+          onClick={() => dispatch({ type: "showUsage" })}
           className="text-[12px] text-ink-secondary hover:text-ink"
         >
           {t("usage.allBots")} →

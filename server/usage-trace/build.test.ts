@@ -146,6 +146,15 @@ describe("trace service", () => {
     expect(page.roots).toHaveLength(50);
     expect(page.next).toBe(50);
     expect(page.totals.tools).toBe(250);
+    expect(page.count).toBe(401);
+    const oldest = await service.list(range, { offset: 0, limit: 3, sort: "oldest" }, () => true);
+    const starts = oldest.roots.map((root) => root.startedAt);
+    expect(starts).toEqual([...starts].sort((a, b) => a - b));
+    expect(oldest.roots[0]!.startedAt).toBeLessThanOrEqual(page.roots.at(-1)!.startedAt);
+    expect((await service.list(range, { offset: 0, limit: 1, sort: "duration" }, () => true)).roots[0]!.id).toBe("chief~c1");
+    const byWorker = await service.list(range, { offset: 0, limit: 50, bots: new Set(["worker"]) }, () => true);
+    expect([byWorker.count, byWorker.roots.map((root) => root.id)]).toEqual([1, ["chief~c1"]]);
+    expect((await service.list(range, { offset: 0, limit: 50, bots: new Set(["nobody"]) }, () => true)).count).toBe(0);
     const begin = performance.now();
     const detail = await service.detail("worker~w1", T0, () => true);
     const ms = performance.now() - begin;

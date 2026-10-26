@@ -61,7 +61,6 @@ vi.mock("./CloudAccountSettings", () => ({ CloudAccountSettings: marker("cloudAc
 vi.mock("./OrganizationSettings", () => ({ OrganizationSettings: marker("organization") }));
 vi.mock("./PeopleSection", () => ({ PeopleSection: marker("people") }));
 vi.mock("./ActivitySection", () => ({ ActivitySection: marker("activity") }));
-vi.mock("./UsageSection", () => ({ UsageSection: marker("usage") }));
 vi.mock("./WorkspaceBackupSettings", () => ({ WorkspaceBackupSettings: marker("backups") }));
 vi.mock("./RoomTurnTimeoutSettings", () => ({ RoomTurnTimeoutSettings: () => null }));
 vi.mock("./CompanyBackupSettings", () => ({ CompanyBackupSettings: () => null }));
@@ -142,7 +141,7 @@ describe("Settings in Simple mode", () => {
     expect(html).toContain('aria-label="Enable the built-in browser"');
   });
 
-  it("gives MimirBot Cloud its own page, and stacks Organization, Import and Usage on Account in the desktop app", () => {
+  it("gives MimirBot Cloud its own page, and stacks Organization and Import on Account in the desktop app", () => {
     fixture.section = "cloudAccount";
     let html = render();
     expect(currentPage(html)).toBe("cloud");
@@ -150,26 +149,17 @@ describe("Settings in Simple mode", () => {
     fixture.section = "organization";
     html = render();
     expect(currentPage(html)).toBe("account");
-    expect(blocks(html)).toEqual(["organization", "import", "usage"]);
+    expect(blocks(html)).toEqual(["organization", "import"]);
     expect(markers(html)).toContain("import");
   });
 
-  it("adds People and Activity to Account, above Usage, for a hosted workspace's admins in a browser", () => {
+  it("adds People and Activity to Account for a hosted workspace's admins in a browser", () => {
     vi.stubGlobal("window", {});
     fixture.ownerOrAdmin = true;
     fixture.section = "people";
     const html = render();
     expect(pages(html)).toEqual(["general", "appearance", "ai", "computers", "account"]);
-    expect(blocks(html)).toEqual(["people", "activity", "usage"]);
-  });
-
-  it("keeps Account for Usage alone when nothing else on it is shown", () => {
-    vi.stubGlobal("window", {});
-    fixture.config = { ...fixture.config, cloudHome: true };
-    fixture.section = "usage";
-    const html = render();
-    expect(pages(html)).toEqual(["general", "appearance", "ai", "computers", "account"]);
-    expect(blocks(html)).toEqual(["usage"]);
+    expect(blocks(html)).toEqual(["people", "activity"]);
   });
 
   it("keeps a paired remote client's reduced set: Appearance, and Devices with Remote access and Servers", () => {

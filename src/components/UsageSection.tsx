@@ -1,59 +1,19 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, ChevronRight, Download, Loader2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { ArrowDownUp, ArrowLeft, Check, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { activeLocale, documentLanguage, t } from "@/lib/i18n";
 import { listenLiveFrames } from "@/lib/live-events";
-import { formatTokens, hasFiniteCost, headlineTokens } from "@/lib/usage";
-import { fetchTraces, formatCost, formatDuration, USAGE_PERIODS, usageExportHref, usagePeriodRange, type UsagePeriod } from "@/lib/usage-trace";
-import { api, useStore } from "@/state/store";
+import { fetchTraces, formatCost, formatDuration } from "@/lib/usage-trace";
 import type { LocaleKey } from "@/locales";
-import type { TraceList, TraceRootSummary } from "../../shared/usage-trace";
+import { useStore } from "@/state/store";
+import { TRACE_SORTS, type TraceList, type TraceRootSummary, type TraceSort } from "../../shared/usage-trace";
 import { BotAvatar } from "./Avatar";
-import { PlanUsage } from "./PlanUsage";
-import { Select } from "./Select";
-import { UsageBudgetCards, type BudgetState } from "./UsageBudget";
 import { TraceView } from "./usage/TraceView";
-import { LiveBadge, modelName, StatStrip, totalsStats } from "./usage/TraceWaterfall";
+import { LiveBadge } from "./usage/TraceWaterfall";
 
 export type UsageGroupBy = "bot" | "model" | "user" | "day" | "engine" | "routine";
-const OTHER_GROUPINGS: readonly UsageGroupBy[] = ["model", "user", "day", "engine", "routine"];
 
-export interface UsageGroup {
-  key: string;
-  label: string;
-  turns: number;
-  input: number;
-  output: number;
-  cachedInput: number;
-  costUsd: number | null;
-}
-
-interface UsageSummary {
-  groupBy: UsageGroupBy;
-  groups: UsageGroup[];
-  budget?: BudgetState | null;
-}
-
-const GROUP_LABEL_KEYS: Record<UsageGroupBy, LocaleKey> = {
-  bot: "usage.history.byBot",
-  model: "usage.history.byModel",
-  user: "usage.history.byUser",
-  day: "usage.history.byDay",
-  engine: "usage.history.byEngine",
-  routine: "usage.history.byRoutine",
-};
-
-const PERIOD_LABEL_KEYS: Record<UsagePeriod, LocaleKey> = {
-  today: "usage.page.today",
-  week: "usage.page.week",
-  month: "usage.history.thisMonth",
-  lastMonth: "usage.history.lastMonth",
-  days30: "usage.history.last30Days",
-};
-
-const LIVE_REFRESH_MS = 2_000;
-
-export function usageGroupLabel(groupBy: UsageGroupBy, group: Pick<UsageGroup, "key" | "label">): string {
+export function usageGroupLabel(groupBy: UsageGroupBy, group: { key: string; label: string }): string {
   if (groupBy === "routine") return group.key === "manual" ? t("usage.history.notRoutine") : group.label;
   if (groupBy !== "user") return group.label;
   if (group.key === "owner") return t("usage.history.owner");
@@ -62,81 +22,7 @@ export function usageGroupLabel(groupBy: UsageGroupBy, group: Pick<UsageGroup, "
   return group.label;
 }
 
-function useUsageGroups(range: { from: string; to: string }, groupBy: UsageGroupBy, version: number): UsageSummary | null {
-  const [summary, setSummary] = useState<UsageSummary | null>(null);
-  useEffect(() => {
-    let current = true;
-    void api(`/api/usage?from=${encodeURIComponent(range.from)}&to=${encodeURIComponent(range.to)}&groupBy=${groupBy}`)
-      .then((next: UsageSummary) => { if (current) setSummary(next); })
-      .catch(() => { if (current) setSummary(null); });
-    return () => { current = false; };
-  }, [range.from, range.to, groupBy, version]);
-  return summary;
-}
-
-export function GroupBars({ groupBy, groups }: { groupBy: UsageGroupBy; groups: readonly UsageGroup[] }) {
-  const { state } = useStore();
-  const priced = groups.some((group) => hasFiniteCost(group.costUsd) && group.costUsd > 0);
-  const value = (group: UsageGroup) => priced ? group.costUsd ?? 0 : headlineTokens(group);
-  const top = [...groups].sort((a, b) => value(b) - value(a)).slice(0, 6);
-  const max = Math.max(...top.map(value), 0);
-  if (!top.length || max <= 0) return <p className="text-[13px] text-ink-secondary">{t("usage.page.whereEmpty")}</p>;
-  return (
-    <ul className="flex flex-col gap-2.5">
-      {top.map((group) => {
-        const bot = groupBy === "bot" ? state.bots.find((item) => `bot:${item.id}` === group.key) : undefined;
-        return (
-          <li key={group.key} className="grid grid-cols-[minmax(0,9rem)_1fr_auto] items-center gap-3 text-[13px]" title={t("usage.page.turns", { count: String(group.turns) })}>
-            <span className="flex min-w-0 items-center gap-2 text-ink">
-              {bot && <BotAvatar bot={bot} state="idle" size={18} animated={false} />}
-              <span className="truncate">{groupBy === "model" ? modelName(group.label, state.instances) : usageGroupLabel(groupBy, group)}</span>
-            </span>
-            <span className="h-2 overflow-hidden rounded-full bg-raised">
-              <span className="block h-full rounded-full bg-accent/70" style={{ width: `${Math.max(2, (value(group) / max) * 100)}%` }} />
-            </span>
-            <span className="min-w-[4.5rem] text-right tabular-nums text-ink-secondary">
-              {priced ? formatCost(group.costUsd) : formatTokens(headlineTokens(group))}
-            </span>
-          </li>
-        );
-      })}
-    </ul>
-  );
-}
-
-function WhereItWent({ range, version, onBudget }: { range: { from: string; to: string }; version: number; onBudget: (budget: BudgetState | null) => void }) {
-  const [other, setOther] = useState<UsageGroupBy>("model");
-  const byBot = useUsageGroups(range, "bot", version);
-  const byOther = useUsageGroups(range, other, version);
-  useEffect(() => { onBudget(byBot?.budget ?? null); }, [byBot, onBudget]);
-  return (
-    <section className="rounded-2xl border border-hairline/50 bg-card p-5" aria-label={t("usage.page.where")}>
-      <h3 className="text-[15px] font-medium text-ink">{t("usage.page.where")}</h3>
-      <div className="mt-4 grid gap-6 md:grid-cols-2">
-        <div>
-          <div className="mb-3 text-[11px] font-medium uppercase tracking-[0.08em] text-ink-secondary">{t(GROUP_LABEL_KEYS.bot)}</div>
-          {byBot ? <GroupBars groupBy="bot" groups={byBot.groups} /> : <Loader2 size={14} className="animate-spin text-ink-secondary" />}
-        </div>
-        <div>
-          <div role="tablist" aria-label={t("usage.history.groupBy")} className="-mt-1 mb-2 flex flex-wrap gap-1">
-            {OTHER_GROUPINGS.map((option) => (
-              <button
-                key={option}
-                type="button"
-                role="tab"
-                aria-selected={other === option}
-                onClick={() => setOther(option)}
-                className={cn("rounded-md px-2 py-0.5 text-[11px] font-medium uppercase tracking-[0.06em]",
-                  other === option ? "bg-accent/12 text-accent" : "text-ink-secondary hover:bg-raised/60 hover:text-ink")}
-              >{t(GROUP_LABEL_KEYS[option])}</button>
-            ))}
-          </div>
-          {byOther?.groupBy === other ? <GroupBars groupBy={other} groups={byOther.groups} /> : <Loader2 size={14} className="animate-spin text-ink-secondary" />}
-        </div>
-      </div>
-    </section>
-  );
-}
+const LIVE_REFRESH_MS = 2_000;
 
 function startedLabel(at: number): string {
   return new Date(at).toLocaleString(documentLanguage(activeLocale()), { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
@@ -173,24 +59,81 @@ export function RunRow({ root, onOpen }: { root: TraceRootSummary; onOpen: () =>
   );
 }
 
-/** The Usage page: a period's totals, where the money went, and every run as a trace. */
-export function UsageSection() {
-  const [period, setPeriod] = useState<UsagePeriod>("month");
-  const range = useMemo(() => usagePeriodRange(period), [period]);
+const PAGE_SIZE = 10;
+const whole = (value: number) => new Intl.NumberFormat(documentLanguage(activeLocale())).format(value);
+const SORT_LABELS: Record<TraceSort, LocaleKey> = {
+  recent: "usage.v.sort.recent", oldest: "usage.v.sort.oldest", cost: "usage.v.sort.cost", duration: "usage.v.sort.duration",
+};
+
+function SortMenu({ value, onChange }: { value: TraceSort; onChange(sort: TraceSort): void }) {
+  const [open, setOpen] = useState(false);
+  const root = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const away = (event: PointerEvent) => { if (!root.current?.contains(event.target as Node)) setOpen(false); };
+    const escape = (event: KeyboardEvent) => { if (event.key === "Escape") setOpen(false); };
+    document.addEventListener("pointerdown", away);
+    document.addEventListener("keydown", escape);
+    return () => { document.removeEventListener("pointerdown", away); document.removeEventListener("keydown", escape); };
+  }, [open]);
+  return (
+    <div ref={root} className="relative shrink-0">
+      <button
+        type="button"
+        aria-haspopup="true"
+        aria-expanded={open}
+        aria-label={t("usage.v.sortBy")}
+        onClick={() => setOpen((current) => !current)}
+        className="flex items-center gap-1.5 rounded-lg border border-hairline/60 px-2.5 py-1.5 text-[12.5px] text-ink hover:bg-raised/60"
+      >
+        <ArrowDownUp size={13} className="text-ink-secondary" />
+        <span className="max-sm:hidden">{t(SORT_LABELS[value])}</span>
+      </button>
+      {open && (
+        <div role="menu" aria-label={t("usage.v.sortBy")} className="absolute right-0 top-[calc(100%+6px)] z-30 w-48 rounded-xl border border-hairline bg-menu p-1.5 shadow-xl">
+          {TRACE_SORTS.map((option) => (
+            <button
+              key={option}
+              type="button"
+              role="menuitemradio"
+              aria-checked={option === value}
+              onClick={() => { onChange(option); setOpen(false); }}
+              className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[13px] text-ink hover:bg-raised/60"
+            >
+              <Check size={13} className={cn("shrink-0", option === value ? "opacity-100" : "opacity-0")} />
+              {t(SORT_LABELS[option])}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** The period's runs as traces, ten to a page; `bots` keeps only the runs that involved one of them. */
+export function UsageRuns({ range, bots }: { range: { from: string; to: string }; bots?: readonly string[] }) {
   const [list, setList] = useState<TraceList | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [version, setVersion] = useState(0);
-  const [budget, setBudget] = useState<BudgetState | null>(null);
   const [open, setOpen] = useState<{ id: string; at: number } | null>(null);
+  const [page, setPage] = useState(0);
+  const [sort, setSort] = useState<TraceSort>("recent");
   const pending = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const botsKey = bots?.join(",");
 
   useEffect(() => {
     let current = true;
-    void fetchTraces(range)
-      .then((next) => { if (current) { setList(next); setError(null); } })
+    void fetchTraces(range, { offset: page * PAGE_SIZE, limit: PAGE_SIZE, sort, ...(botsKey === undefined ? {} : { bots: botsKey.split(",").filter(Boolean) }) })
+      .then((next) => {
+        if (!current) return;
+        const last = Math.max(0, Math.ceil(next.count / PAGE_SIZE) - 1);
+        if (page > last) setPage(last); else { setList(next); setError(null); }
+      })
       .catch((cause) => { if (current) setError(cause instanceof Error ? cause.message : String(cause)); });
     return () => { current = false; };
-  }, [range, version]);
+  }, [range, botsKey, sort, page, version]);
+
+  useEffect(() => { setPage(0); setOpen(null); }, [range, botsKey, sort]);
 
   useEffect(() => listenLiveFrames({
     onFrame: (frame) => {
@@ -203,57 +146,52 @@ export function UsageSection() {
   }), []);
   useEffect(() => () => { if (pending.current) clearTimeout(pending.current); }, []);
 
-  const more = () => {
-    if (!list?.next) return;
-    void fetchTraces(range, list.next).then((page) => setList((current) => current ? { ...page, roots: [...current.roots, ...page.roots] } : page));
-  };
-  const untimed = list?.roots.some((root) => !root.timed);
+  const roots = list?.roots ?? [];
+  const count = list?.count ?? 0;
+  const pages = Math.max(1, Math.ceil(count / PAGE_SIZE));
+  const untimed = roots.some((root) => !root.timed);
 
+  if (open) {
+    return (
+      <TraceView id={open.id} at={open.at} actions={(
+        <button type="button" onClick={() => setOpen(null)} className="flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-[12.5px] text-ink-secondary hover:bg-raised hover:text-ink">
+          <ArrowLeft size={13} />{t("trace.back")}
+        </button>
+      )} />
+    );
+  }
+  const step = "flex size-8 items-center justify-center rounded-lg border border-hairline/60 text-ink hover:bg-raised/60 disabled:cursor-default disabled:opacity-40 disabled:hover:bg-transparent";
   return (
-    <div className="flex flex-col gap-4" data-testid="usage-page">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
-        <p className="min-w-0 flex-1 text-[13px] leading-relaxed text-ink-secondary">{t("usage.page.subtitle")}</p>
-        <div className="flex items-center gap-2">
-          <Select size="sm" value={period} onChange={(event) => { setPeriod(event.target.value as UsagePeriod); setOpen(null); }} aria-label={t("usage.history.period")}>
-            {USAGE_PERIODS.map((option) => <option key={option} value={option}>{t(PERIOD_LABEL_KEYS[option])}</option>)}
-          </Select>
-          <a href={usageExportHref(range)} download className="flex items-center gap-1.5 rounded-lg border border-hairline/40 px-2.5 py-1 text-[12px] text-ink-secondary hover:bg-raised/50 hover:text-ink">
-            <Download size={13} />{t("usage.history.export")}
-          </a>
+    <section className="rounded-2xl border border-hairline/50 bg-card p-2" aria-label={t("usage.page.runs")}>
+      <div className="flex items-start gap-3 px-3 pb-1 pt-3">
+        <div className="min-w-0 flex-1">
+          <h3 className="text-[15px] font-medium text-ink">{t("usage.page.runs")}</h3>
+          <p className="mt-0.5 text-[13px] text-ink-secondary">{t("usage.page.runsHint")}</p>
         </div>
+        <SortMenu value={sort} onChange={setSort} />
       </div>
-      {error && <p role="alert" className="text-[12px] text-danger">{error}</p>}
-      {open ? (
-        <TraceView id={open.id} at={open.at} actions={(
-          <button type="button" onClick={() => setOpen(null)} className="flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-[12.5px] text-ink-secondary hover:bg-raised hover:text-ink">
-            <ArrowLeft size={13} />{t("trace.back")}
-          </button>
-        )} />
-      ) : (
-        <>
-          <section className="overflow-hidden rounded-2xl border border-hairline/50 bg-card" data-testid="usage-totals">
-            {list ? <StatStrip items={totalsStats(list.totals, t("trace.stat.time"))} />
-              : <div className="flex items-center gap-2 p-5 text-[13px] text-ink-secondary"><Loader2 size={14} className="animate-spin" />{t("common.checking")}</div>}
-          </section>
-          <WhereItWent range={range} version={version} onBudget={setBudget} />
-          <section className="rounded-2xl border border-hairline/50 bg-card p-2" aria-label={t("usage.page.runs")}>
-            <div className="px-3 pb-1 pt-3">
-              <h3 className="text-[15px] font-medium text-ink">{t("usage.page.runs")}</h3>
-              <p className="mt-0.5 text-[13px] text-ink-secondary">{t("usage.page.runsHint")}</p>
-            </div>
-            {list && !list.roots.length && <p className="px-3 py-3 text-[13px] text-ink-secondary">{t("usage.page.runsEmpty")}</p>}
-            <ul className="mt-1 flex flex-col">
-              {list?.roots.map((root) => <RunRow key={root.id} root={root} onOpen={() => setOpen({ id: root.id, at: root.startedAt })} />)}
-            </ul>
-            {list?.next !== undefined && (
-              <button type="button" onClick={more} className="m-2 rounded-lg px-3 py-1.5 text-[12.5px] text-accent hover:bg-raised/50">{t("usage.page.more")}</button>
-            )}
-            {untimed && <p className="px-3 pb-3 pt-1 text-[12px] text-ink-tertiary">{t("usage.page.untimedNote")}</p>}
-          </section>
-        </>
+      {error && <p role="alert" className="px-3 py-2 text-[12px] text-danger">{error}</p>}
+      {list && !roots.length && <p className="px-3 py-3 text-[13px] text-ink-secondary">{t("usage.page.runsEmpty")}</p>}
+      <ul className="mt-1 flex flex-col">
+        {roots.map((root) => <RunRow key={root.id} root={root} onOpen={() => setOpen({ id: root.id, at: root.startedAt })} />)}
+      </ul>
+      {count > 0 && (
+        <nav aria-label={t("usage.page.runs")} className="flex items-center justify-between gap-3 px-3 pb-2 pt-2">
+          <span className="text-[12.5px] tabular-nums text-ink-secondary">
+            {t("usage.v.range", { from: whole(page * PAGE_SIZE + 1), to: whole(Math.min(count, (page + 1) * PAGE_SIZE)), total: whole(count) })}
+          </span>
+          <span className="flex items-center gap-2">
+            <span className="text-[12.5px] tabular-nums text-ink-secondary max-sm:hidden">{t("usage.v.pageOf", { page: whole(page + 1), pages: whole(pages) })}</span>
+            <button type="button" className={step} disabled={page === 0} onClick={() => setPage(page - 1)} aria-label={t("usage.v.prevPage")} title={t("usage.v.prevPage")}>
+              <ChevronLeft size={15} />
+            </button>
+            <button type="button" className={step} disabled={page >= pages - 1} onClick={() => setPage(page + 1)} aria-label={t("usage.v.nextPage")} title={t("usage.v.nextPage")}>
+              <ChevronRight size={15} />
+            </button>
+          </span>
+        </nav>
       )}
-      <PlanUsage />
-      <UsageBudgetCards budget={budget} />
-    </div>
+      {untimed && <p className="px-3 pb-3 pt-1 text-[12px] text-ink-tertiary">{t("usage.page.untimedNote")}</p>}
+    </section>
   );
 }

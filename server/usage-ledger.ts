@@ -310,6 +310,54 @@ export function summarizeUsage(rows: UsageRow[], groupBy: UsageGroupBy, prices: 
   return { groups: ordered, total };
 }
 
+export type UsageSeriesBucket = "day" | "hour";
+
+export interface UsageSeriesCell {
+  /** `YYYY-MM-DD`, or `YYYY-MM-DDTHH` for hours, in the viewer's own time zone. */
+  key: string;
+  botId: string;
+  botName: string;
+  model: string;
+  turns: number;
+  input: number;
+  output: number;
+  cachedInput: number;
+  costUsd: number | null;
+  errors: number;
+}
+
+/**
+ * Turns booked per bucket, bot and model, with the bucket named in the viewer's time zone.
+ * `tzOffsetMinutes` is `Date.getTimezoneOffset()`: minutes the viewer's clock runs behind UTC.
+ * Only buckets whose day is between `from` and `to` (local `YYYY-MM-DD`, inclusive) are kept.
+ */
+export function usageSeries(
+  rows: UsageRow[],
+  options: { bucket: UsageSeriesBucket; tzOffsetMinutes: number; from: string; to: string },
+): UsageSeriesCell[] {
+  const cells = new Map<string, UsageSeriesCell>();
+  for (const row of rows) {
+    const local = new Date(Date.parse(row.at) - options.tzOffsetMinutes * 60_000).toISOString();
+    const day = local.slice(0, 10);
+    if (day < options.from || day > options.to) continue;
+    const key = options.bucket === "hour" ? local.slice(0, 13) : day;
+    const id = `${key}|${row.botId}|${row.driverKind}/${row.model}`;
+    let cell = cells.get(id);
+    if (!cell) {
+      cell = { key, botId: row.botId, botName: row.botName || row.botId, model: row.model, turns: 0, input: 0, output: 0, cachedInput: 0, costUsd: null, errors: 0 };
+      cells.set(id, cell);
+    }
+    cell.turns += 1;
+    cell.input += clean(row.input);
+    cell.output += clean(row.output);
+    cell.cachedInput += clean(row.cachedInput);
+    const cost = finiteOrNull(row.costUsd);
+    if (cost !== null) cell.costUsd = (cell.costUsd ?? 0) + cost;
+    if (row.outcome?.status === "error") cell.errors += 1;
+  }
+  return [...cells.values()].sort((a, b) => a.key.localeCompare(b.key));
+}
+
 export function csvCell(value: string | number | null): string {
   if (value === null) return "";
   const text = String(value);

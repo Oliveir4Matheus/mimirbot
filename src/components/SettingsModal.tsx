@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Archive, CircleUser, Cloud, Coins, Download, FlaskConical, KeyRound, LockKeyhole, Monitor, Palette, ScrollText, Search, Sparkles, TabletSmartphone, Terminal, User, Users, X, Building2, Zap, BookOpen } from "lucide-react";
+import { Archive, CircleUser, Cloud, Download, FlaskConical, KeyRound, LockKeyhole, Monitor, Palette, ScrollText, Search, Sparkles, TabletSmartphone, Terminal, User, Users, X, Building2, Zap, BookOpen } from "lucide-react";
 import { api, useStore, type AppSettingsSection, type ConfigStatus } from "@/state/store";
 import { builtInBrowserEnabled, showToolCallsEnabled, skillAuthoringEnabled, skillsLibraryEnabled } from "@/lib/feature-flags";
 import { localeChoices, type LocaleKey } from "@/locales";
@@ -38,7 +38,6 @@ import { LearnedSkillsSettings } from "./ShareLearnedSkillsSettings";
 import { effortLabel } from "./ModelPicker";
 import { EFFORT_LEVELS, isEffortLevel } from "../../shared/wire";
 import { shortcutLabel } from "./ShortcutHint";
-import { UsageSection } from "./UsageSection";
 import { SkillsSection } from "./SkillsSection";
 import { LicenseExpiryBanner } from "./LicenseExpiryBanner";
 import { WorkspacesSection, workspacesAvailable } from "./WorkspacesSection";
@@ -96,7 +95,6 @@ export const SECTIONS: Array<{
   { id: "logins", group: "computers", labelKey: "settings.section.logins", icon: LockKeyhole, keywords: ["logins", "login", "passwords", "password", "sign in", "2fa", "one-time code", "totp", "fill_login", "1password", "vault"] },
   { id: "cloudAccount", group: "account", labelKey: "settings.section.cloudAccount", icon: Cloud, keywords: ["cloud", "my cloud", "account", "personal", "sign in", "pro", "subscription", "billing", "sync", "send", "this computer", "bots", "logins", "1password", "lend"] },
   { id: "organization", group: "account", labelKey: "settings.section.organization", icon: Building2, keywords: ["company", "organization", "organisation", "sign in", "enroll", "managed", "models", "disconnect"] },
-  { id: "usage", group: "account", labelKey: "settings.section.usage", icon: Coins, keywords: ["tokens", "cost", "billing", "plan", "quota", "remaining", "weekly", "5-hour", "model", "used"] },
   { id: "backups", group: "account", labelKey: "settings.section.backups", icon: Archive, keywords: ["export", "import", "restore", "full backup", "password", "recovery"] },
   { id: "import", group: "account", labelKey: "settings.section.import", icon: Download, keywords: ["import", "grok", "grok bot", "x.ai", "cursor", "claude code", "codex", "gemini", "skills", "mcp", "tools", "bring"] },
   { id: "people", group: "account", labelKey: "settings.section.people", icon: Users, keywords: ["people", "users", "invite", "sign in", "members", "admins", "access"] },
@@ -118,7 +116,7 @@ export const SIMPLE_PAGES: SimpleSettingsPage[] = [
   { id: "ai", labelKey: "settings.group.ai", icon: Sparkles, sections: ["engines", "connections"] },
   { id: "computers", labelKey: "settings.group.computers", icon: Monitor, sections: ["companion", "desktopWorkspaces", "computer", "logins"] },
   { id: "cloud", labelKey: "settings.section.cloudAccount", icon: Cloud, sections: ["cloudAccount"] },
-  { id: "account", labelKey: "settings.group.account", icon: CircleUser, sections: ["organization", "import", "people", "activity", "usage"] },
+  { id: "account", labelKey: "settings.group.account", icon: CircleUser, sections: ["organization", "import", "people", "activity"] },
 ];
 
 export const SIMPLE_HIDDEN_SECTIONS: readonly AppSettingsSection[] = ["backups", "experimental", "workspaces", "skills", "decisionModel"];
@@ -791,8 +789,6 @@ export function SettingsModal() {
           : <LocalComputerSection />;
       case "logins":
         return <LoginsSettings />;
-      case "usage":
-        return <UsageSection />;
       case "skills":
         return skillsLibraryEnabled(state.config) ? <SkillsSection /> : null;
       case "people":

@@ -3,7 +3,7 @@ import { t } from "@/lib/i18n";
 import { toolStepLabel } from "@/lib/tool-step-label";
 import { formatUsd, hasFiniteCost } from "@/lib/usage";
 import type {
-  TraceDetail, TraceGroup, TraceList, TraceNode, TraceStep, TraceTokens, TraceTool, TraceTurn,
+  TraceDetail, TraceGroup, TraceList, TraceNode, TraceSort, TraceStep, TraceTokens, TraceTool, TraceTurn,
 } from "../../shared/usage-trace.ts";
 
 export type UsagePeriod = "today" | "week" | "month" | "lastMonth" | "days30";
@@ -32,8 +32,19 @@ export function usageExportHref(range: { from: string; to: string }): string {
   return `/api/usage.csv?from=${encodeURIComponent(range.from)}&to=${encodeURIComponent(range.to)}`;
 }
 
-export function fetchTraces(range: { from: string; to: string }, offset = 0): Promise<TraceList> {
-  return api(`/api/usage/traces?from=${encodeURIComponent(range.from)}&to=${encodeURIComponent(range.to)}&offset=${offset}&limit=50`);
+export interface TraceQuery {
+  offset?: number;
+  limit?: number;
+  sort?: TraceSort;
+  /** Keep the runs that involved one of these bots; absent keeps every run. */
+  bots?: readonly string[];
+}
+
+export function fetchTraces(range: { from: string; to: string }, query: TraceQuery = {}): Promise<TraceList> {
+  const params = new URLSearchParams({ from: range.from, to: range.to, offset: String(query.offset ?? 0), limit: String(query.limit ?? 50) });
+  if (query.sort) params.set("sort", query.sort);
+  if (query.bots) params.set("bots", query.bots.join(","));
+  return api(`/api/usage/traces?${params}`);
 }
 
 export function fetchTrace(id: string, at?: number): Promise<TraceDetail> {

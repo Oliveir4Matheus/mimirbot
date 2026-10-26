@@ -78,10 +78,11 @@ export const RemoteDesktopPanel = lazyScreen("RemoteDesktopPanel", async () => (
 export const TriggersPage = lazyScreen("TriggersPage", async () => (await import("./TriggersPage")).TriggersPage);
 export const SettingsModal = lazyScreen("SettingsModal", async () => (await import("./SettingsModal")).SettingsModal);
 export const TeamMapPage = lazyScreen("TeamMapPage", async () => (await import("./TeamMapPage")).TeamMapPage);
+export const UsagePage = lazyScreen("UsagePage", async () => (await import("./UsagePage")).UsagePage);
 
 const SCREENS = [
   ActivityPanel, BotSettingsDialog, ComputerPanel, FilesView, InspectorPanel, KeyboardShortcutsModal, LocalVmWorkspace, NewBotDialog,
-  RemoteAgentSettingsPanel, RemoteDesktopPanel, SettingsModal, TeamMapPage, TriggersPage,
+  RemoteAgentSettingsPanel, RemoteDesktopPanel, SettingsModal, TeamMapPage, TriggersPage, UsagePage,
 ];
 
 if (typeof location !== "undefined" && new URLSearchParams(location.search).has("desktop-settings")) {

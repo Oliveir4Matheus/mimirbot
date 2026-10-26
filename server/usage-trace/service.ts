@@ -1,5 +1,5 @@
 // Answers the trace routes: the period's roots with totals, and one root's span tree, limited to the threads a viewer may see.
-import type { TraceDetail, TraceList, TraceRootSummary } from "../../shared/usage-trace.ts";
+import type { TraceDetail, TraceList, TraceRootSummary, TraceSort } from "../../shared/usage-trace.ts";
 import type { WireMessage } from "../../shared/wire.ts";
 import { ledgerRows } from "./ledger.ts";
 import { addTotals, emptyTotals, linkTurns, summarizeRoot, subtree, traceTurn, type LiveBot, type TurnNode } from "./build.ts";
@@ -47,19 +47,31 @@ export function createTraceService(deps: TraceServiceDeps) {
       .sort((a, b) => b.startedAt - a.startedAt);
   }
 
-  async function list(range: { from: Date; to: Date }, page: { offset: number; limit: number }, visible: (threadId: string) => boolean): Promise<TraceList> {
+  /** Money and time sort high to low, with the newest first among equals; a run with no price sorts last. */
+  const ORDER: Record<TraceSort, (a: TraceRootSummary, b: TraceRootSummary) => number> = {
+    recent: (a, b) => b.startedAt - a.startedAt,
+    oldest: (a, b) => a.startedAt - b.startedAt,
+    cost: (a, b) => (b.costUsd ?? -1) - (a.costUsd ?? -1) || b.startedAt - a.startedAt,
+    duration: (a, b) => b.durationMs - a.durationMs || b.startedAt - a.startedAt,
+  };
+
+  /** `bots` keeps the runs that involved at least one of those bots; `sort` orders the whole match before the page is cut. */
+  async function list(
+    range: { from: Date; to: Date },
+    page: { offset: number; limit: number; sort?: TraceSort; bots?: ReadonlySet<string> },
+    visible: (threadId: string) => boolean,
+  ): Promise<TraceList> {
     const found = await roots(range.from.getTime(), range.to.getTime(), visible);
     const totals = emptyTotals();
     const at = now();
-    const summaries: TraceRootSummary[] = [];
-    found.forEach((root, index) => {
-      const inPage = index >= page.offset && index < page.offset + page.limit;
-      const summary = summarizeRoot(root, inPage ? titleOf(root) : "", at);
-      addTotals(totals, summary);
-      if (inPage) summaries.push(summary);
-    });
+    const matched = found
+      .map((root) => ({ root, summary: summarizeRoot(root, "", at) }))
+      .filter(({ summary }) => !page.bots || summary.bots.some((bot) => page.bots!.has(bot.id)));
+    for (const { summary } of matched) addTotals(totals, summary);
+    matched.sort((a, b) => ORDER[page.sort ?? "recent"](a.summary, b.summary));
+    const summaries = matched.slice(page.offset, page.offset + page.limit).map(({ root, summary }) => ({ ...summary, title: titleOf(root) }));
     const next = page.offset + page.limit;
-    return { from: range.from.toISOString(), to: range.to.toISOString(), totals, roots: summaries, ...(next < found.length ? { next } : {}) };
+    return { from: range.from.toISOString(), to: range.to.toISOString(), totals, roots: summaries, count: matched.length, ...(next < matched.length ? { next } : {}) };
   }
 
   /** The tree of the root holding `id`, which names a root or any turn under one; `around` is when it ran. */

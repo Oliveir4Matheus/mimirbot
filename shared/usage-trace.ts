@@ -131,6 +131,9 @@ export interface TraceRootSummary extends TraceTotals {
   usageStatus: TraceUsageStatus;
 }
 
+export type TraceSort = "recent" | "oldest" | "cost" | "duration";
+export const TRACE_SORTS: readonly TraceSort[] = ["recent", "oldest", "cost", "duration"];
+
 export interface TraceList {
   from: string;
   to: string;
@@ -138,6 +141,8 @@ export interface TraceList {
   roots: TraceRootSummary[];
   /** Offset of the next page, absent on the last. */
   next?: number;
+  /** Every root that matched, across all pages. */
+  count: number;
 }
 
 export interface TraceDetail {

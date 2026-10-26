@@ -13,6 +13,7 @@ import {
   triggerLabel,
   usageCsv,
   usageFileFor,
+  usageSeries,
   type UsageRow,
 } from "./usage-ledger.ts";
 
@@ -112,6 +113,31 @@ describe("usage ranges", () => {
     expect(parseUsageRange("2026-09-10", "2026-09-01", now)).toBeNull();
     expect(parseUsageRange("2025-01-01", "2026-09-01", now)).toBeNull();
     expect(parseUsageRange("2025-09-10", "2026-09-10", now)).not.toBeNull();
+  });
+});
+
+describe("usage series", () => {
+  const at = (iso: string, overrides: Partial<UsageRow> = {}): UsageRow => ({ ...row(overrides), at: iso }) as UsageRow;
+  const rows = [
+    at("2026-09-02T01:30:00.000Z", { costUsd: 0.5 }),
+    at("2026-09-02T02:10:00.000Z", { costUsd: null, outcome: { status: "error" } }),
+    at("2026-09-02T15:00:00.000Z", { botId: "b2", botName: "Clerk", model: "gpt-5", driverKind: "codex", costUsd: 1 }),
+  ];
+
+  it("names each day in the viewer's time zone and keeps the days asked for", () => {
+    const cells = usageSeries(rows, { bucket: "day", tzOffsetMinutes: 180, from: "2026-09-01", to: "2026-09-02" });
+    expect(cells.map((c) => [c.key, c.botId, c.turns, c.costUsd, c.errors])).toEqual([
+      ["2026-09-01", "b1", 2, 0.5, 1],
+      ["2026-09-02", "b2", 1, 1, 0],
+    ]);
+    expect(usageSeries(rows, { bucket: "day", tzOffsetMinutes: 180, from: "2026-09-02", to: "2026-09-02" }).map((c) => c.botId)).toEqual(["b2"]);
+  });
+
+  it("buckets by local hour and sums tokens without inventing a cost", () => {
+    const cells = usageSeries(rows, { bucket: "hour", tzOffsetMinutes: 180, from: "2026-09-01", to: "2026-09-02" });
+    expect(cells.map((c) => c.key)).toEqual(["2026-09-01T22", "2026-09-01T23", "2026-09-02T12"]);
+    const quiet = usageSeries([at("2026-09-02T02:10:00.000Z", { costUsd: null })], { bucket: "day", tzOffsetMinutes: 0, from: "2026-09-02", to: "2026-09-02" });
+    expect(quiet[0]).toMatchObject({ turns: 1, input: 1200, output: 300, cachedInput: 900, costUsd: null });
   });
 });
 

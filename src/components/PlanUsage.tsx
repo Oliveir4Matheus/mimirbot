@@ -42,7 +42,7 @@ interface PlanUsageReport {
   providers: PlanProvider[];
 }
 
-function formatResetDistance(resetsAt: string | null, now: number): string | null {
+export function formatResetDistance(resetsAt: string | null, now: number): string | null {
   if (!resetsAt) return null;
   const at = Date.parse(resetsAt);
   if (!Number.isFinite(at) || at <= now) return null;
@@ -87,14 +87,14 @@ function windowLabel(label: string): string {
   return label;
 }
 
-function providerLabel(provider: Pick<PlanProvider, "name">): string {
+export function providerLabel(provider: Pick<PlanProvider, "name">): string {
   const normalized = provider.name.trim().toLowerCase();
   if (normalized === "chatgpt plan") return t("planUsage.provider.chatgptPlan");
   if (normalized === "claude (api key)") return t("planUsage.provider.claudeApiKey");
   return provider.name;
 }
 
-function providerError(provider: Pick<PlanProvider, "error">): string | null {
+export function providerError(provider: Pick<PlanProvider, "error">): string | null {
   const message = provider.error?.trim();
   if (!message) return null;
   const signIn = /^Sign in again in (.+)$/i.exec(message);

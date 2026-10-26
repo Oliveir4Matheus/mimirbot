@@ -1,4 +1,4 @@
-import { FolderOpen, LayoutGrid, Puzzle, Search, UsersRound, X, Zap } from "lucide-react";
+import { FolderOpen, Gauge, LayoutGrid, Puzzle, Search, UsersRound, X, Zap } from "lucide-react";
 
 import { useCloudFilesReady } from "@/lib/cloud-files";
 import { t } from "@/lib/i18n";
@@ -29,6 +29,13 @@ export function SidebarPhoneBar({ query, onQuery }: { query: string; onQuery: (q
       icon: <UsersRound size={18} />,
       active: state.activeView === "team-map",
       onSelect: () => dispatch({ type: "showTeamMap" }),
+    },
+    {
+      key: "usage",
+      label: t("settings.section.usage"),
+      icon: <Gauge size={18} />,
+      active: state.activeView === "usage",
+      onSelect: () => dispatch({ type: "showUsage" }),
     },
     ...(filesReady ? [{
       key: "files",

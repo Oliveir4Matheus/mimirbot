@@ -8,9 +8,11 @@ import {
   readUsage,
   summarizeUsage,
   usageCsv,
+  usageSeries,
   USAGE_GROUPINGS,
   type UsageGroupBy,
 } from "../usage-ledger.ts";
+import { TRACE_SORTS, type TraceSort } from "../../shared/usage-trace.ts";
 import { DETAIL_MAX, ERROR_MAX } from "../usage-trace/detail.ts";
 import type { ToolReceipt, TraceRecorder } from "../usage-trace/recorder.ts";
 import { createTraceService, PAGE_MAX, type TraceServiceDeps } from "../usage-trace/service.ts";
@@ -28,6 +30,8 @@ export interface UsageRouteDeps {
   canSee(auth: RequestAuth): (threadId: string) => boolean;
 }
 
+const DAY_MS = 24 * 60 * 60_000;
+const MAX_BOT_FILTER = 200;
 const TRACE = /^\/api\/usage\/traces\/([^/]{1,600})$/;
 
 const whole = (raw: string | null, fallback: number, max: number): number | null => {
@@ -46,7 +50,12 @@ export function createUsageRoutes(deps: UsageRouteDeps): RouteHandler {
       if (offset === null || !limit) return json(res, 400, { error: `offset must be a whole number and limit 1 to ${PAGE_MAX}` });
       await flushUsageLedger(deps.dataDir);
       res.setHeader("cache-control", "no-store");
-      return json(res, 200, await traces.list(range, { offset, limit }, deps.canSee(auth)));
+      const sort = url.searchParams.get("sort") ?? "recent";
+      if (!(TRACE_SORTS as readonly string[]).includes(sort)) return json(res, 400, { error: `sort must be one of ${TRACE_SORTS.join(", ")}` });
+      const botsRaw = url.searchParams.get("bots");
+      const bots = botsRaw === null ? undefined : new Set(botsRaw.split(",").filter(Boolean));
+      if (bots && (bots.size > MAX_BOT_FILTER || [...bots].some((id) => id.length > 200))) return json(res, 400, { error: `bots takes at most ${MAX_BOT_FILTER} ids of 200 characters` });
+      return json(res, 200, await traces.list(range, { offset, limit, sort: sort as TraceSort, ...(bots ? { bots } : {}) }, deps.canSee(auth)));
     }
     const trace = method === "GET" ? TRACE.exec(path) : null;
     if (trace) {
@@ -58,6 +67,24 @@ export function createUsageRoutes(deps: UsageRouteDeps): RouteHandler {
       const found = await traces.detail(id, around === null ? null : Number(around), deps.canSee(auth));
       res.setHeader("cache-control", "no-store");
       return found ? json(res, 200, found) : json(res, 404, { error: "no such trace" });
+    }
+    if (method === "GET" && path === "/api/usage/series") {
+      const from = url.searchParams.get("from"), to = url.searchParams.get("to");
+      const range = parseUsageRange(from, to);
+      const bucket = url.searchParams.get("bucket") ?? "day";
+      const tzRaw = url.searchParams.get("tz") ?? "0";
+      const tz = /^-?\d{1,4}$/.test(tzRaw) ? Number(tzRaw) : NaN;
+      if (!range || !from || !to) return json(res, 400, { error: "from and to must be YYYY-MM-DD, from no later than to, at most a year apart" });
+      if (bucket !== "day" && bucket !== "hour") return json(res, 400, { error: "bucket must be day or hour" });
+      if (!Number.isInteger(tz) || Math.abs(tz) > 840) return json(res, 400, { error: "tz must be the viewer's offset in minutes, as Date.getTimezoneOffset() returns it" });
+      await flushUsageLedger(deps.dataDir);
+      const widened = { from: new Date(range.from.getTime() - DAY_MS), to: new Date(range.to.getTime() + DAY_MS) };
+      res.setHeader("cache-control", "no-store");
+      return json(res, 200, {
+        bucket,
+        cells: usageSeries(readUsage(deps.dataDir, widened), { bucket, tzOffsetMinutes: tz, from, to }),
+        billing: deps.prices() ? { currency: deps.currency() } : null,
+      });
     }
     if (!(method === "GET" && (path === "/api/usage" || path === "/api/usage.csv"))) return PASS;
     const range = parseUsageRange(url.searchParams.get("from"), url.searchParams.get("to"));
