@@ -20311,6 +20311,8 @@
       "chat.backToMainThread": "6e2edefe43990c5eb1f121883cc074425ff7b0272f9b35b385b0d2e45f742eb2",
       "chat.openProfileAria": "eafd73166fd6d063c71c5fe3e6ec807a0ea84cd7b0f34b6bf52997b979123a7b",
       "chat.showConversations": "6640531128b7941c5956242863bab46b27f7890ac7f0ca93e33348e0ccf1486e",
+      "chat.conversationsWith": "cd0926ad414838d21edbea005d5b1e9d49d54f0002aaf82e82c26bdc3db0389f",
+      "chat.conversationsClose": "7d9eb7acb13e24625c404401d8e88b2350e32162455885f18276cf802f7701ed",
       "chat.find": "30d2305aebbeb06f39c61d06b290399864f229d405c5be01592ca8c09c0f9b73",
       "chat.findShortcut": "2eb1799c769597301f4c6c4b57256ea729213629fd3eaa028a4963d547a82a09",
       "chat.stop": "cae7d57bc067a514b8e34c9589631a95c7dc051638ddd2a190773269279a99df",

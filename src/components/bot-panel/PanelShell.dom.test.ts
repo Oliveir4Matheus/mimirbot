@@ -173,7 +173,7 @@ describe("the chat header's conversation title", () => {
   const scrolledTo = () => vi.mocked(HTMLElement.prototype.scrollIntoView).mock.contexts
     .map((element) => (element as HTMLElement).getAttribute("data-panel-card"));
 
-  it("reads Bot / Conversation ▾, marks other conversations that need a look, and opens the panel at Conversations", async () => {
+  it("reads Bot / Conversation ▾, marks other conversations that need a look, and opens the conversations modal", () => {
     const header = document.createElement("div");
     document.body.append(header);
     const headerRoot = createRoot(header);
@@ -184,24 +184,21 @@ describe("the chat header's conversation title", () => {
       expect(title.getAttribute("title")).toBe("Show Scout's conversations");
       expect(title.querySelector('[role="img"]')!.getAttribute("aria-label")).toBe("Other activity (1)");
       click(title);
-      expect(fixture.dispatch).toHaveBeenCalledExactlyOnceWith({ type: "toggleSettings", open: true, section: "overview" });
-
-      render("overview");
-      await settle();
-      expect(tab()).toBe("bot");
-      expect(scrolledTo()).toEqual(["conversations"]);
-
-      vi.mocked(HTMLElement.prototype.scrollIntoView).mockClear();
-      click(host.querySelector('[data-panel-tab="computer"]'));
-      click(title);
-      render("overview");
-      await settle();
-      expect(tab()).toBe("bot");
-      expect(scrolledTo()).toEqual(["conversations"]);
+      expect(document.querySelector("[data-conversations-modal]")).not.toBeNull();
+      expect(fixture.dispatch).not.toHaveBeenCalled();
     } finally {
       flushSync(() => headerRoot.unmount());
       header.remove();
     }
+  });
+
+  it("still opens the panel at Conversations when asked to", async () => {
+    openBotSettings(fixture.dispatch, "overview", { anchor: "conversations" });
+    expect(fixture.dispatch).toHaveBeenCalledExactlyOnceWith({ type: "toggleSettings", open: true, section: "overview" });
+    render("overview");
+    await settle();
+    expect(tab()).toBe("bot");
+    expect(scrolledTo()).toEqual(["conversations"]);
   });
 
   it("draws nothing for a bot without a conversation list, and no dot when the others are quiet", () => {

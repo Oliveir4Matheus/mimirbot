@@ -5,7 +5,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AntigravityAcpClient, prepareAntigravityProfile } from "./antigravity-acp.ts";
-import { readAntigravityUsageAnswer } from "./antigravity-usage.ts";
+import { clearAntigravityUsageCache, createAntigravityUsageReader, readAntigravityUsageAnswer } from "./antigravity-usage.ts";
 import type { AntigravityRuntime } from "./antigravity-runtime.ts";
 
 const FAKE_ACP = join(dirname(fileURLToPath(import.meta.url)), "..", "testing", "fake-acp-cli.ts");
@@ -74,4 +74,27 @@ describe.skipIf(process.platform === "win32")("Antigravity usage read", () => {
     expect(await readAntigravityUsageAnswer({ runtime, profile, timeoutMs: 30_000 })).toBeNull();
     expect(requests).not.toHaveBeenCalled();
   }, 40_000);
+});
+
+describe("the cached Antigravity usage reader", () => {
+  const account = { id: "usage-cache", name: "Antigravity", driver: "antigravity" as const, environment: {}, cli: "/nonexistent/agy_acp_server" };
+
+  afterEach(() => {
+    vi.useRealTimers();
+    clearAntigravityUsageCache();
+  });
+
+  it("shares one reading between callers, and tries again after a minute when it failed", async () => {
+    vi.useFakeTimers({ toFake: ["Date"], now: Date.parse("2026-10-26T10:00:00Z") });
+    const read = createAntigravityUsageReader({});
+    const first = read(account);
+    await expect(first).rejects.toThrow();
+    expect(read(account)).toBe(first);
+    vi.setSystemTime(Date.parse("2026-10-26T10:00:30Z"));
+    expect(read(account)).toBe(first);
+    vi.setSystemTime(Date.parse("2026-10-26T10:01:05Z"));
+    const second = read(account);
+    expect(second).not.toBe(first);
+    await expect(second).rejects.toThrow();
+  });
 });

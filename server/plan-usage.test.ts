@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join, normalize } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { antigravityProfileDirectory } from "./drivers/antigravity-acp.ts";
+import { AntigravitySetupError } from "./drivers/antigravity-runtime.ts";
 import {
   clearPlanUsageCache,
   fetchPlanUsage,
@@ -491,6 +492,11 @@ describe("Antigravity plan usage", () => {
 
   it("stays connected but says it could not reach the runtime when the read fails", async () => {
     expect(await read(async () => { throw new Error("boom"); })).toMatchObject({ ok: false, connected: true, error: "Could not reach Antigravity" });
+  });
+
+  it("says to install the runtime, not that Antigravity could not be reached, when it is missing", async () => {
+    const row = await read(async () => { throw new AntigravitySetupError("Antigravity is not installed."); });
+    expect(row).toMatchObject({ ok: false, connected: true, error: "Install the Antigravity runtime in Settings to see its usage" });
   });
 
   it("asks for a new sign-in, without starting the runtime, when the profile has no token file", async () => {

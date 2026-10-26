@@ -13,18 +13,22 @@ import { createAcpDriver, type AcpConfig, type AcpSupport } from "./acp/core.ts"
 import {
   AntigravityAuthController,
   antigravityProfileAuthenticated,
+  antigravityTokenPath,
   prepareAntigravityProfile,
   probeAntigravityModels,
   validateAntigravityRuntime,
+  type AntigravityProfile,
 } from "./antigravity-acp.ts";
 import {
+  AntigravitySetupError,
   antigravityManagedInstallAvailable,
   installAntigravityRuntime,
   resolveAntigravityRuntime,
+  usesManagedAntigravityRuntime,
 } from "./antigravity-runtime.ts";
 import { resolveAntigravityReleaseAsset } from "./antigravity-release.ts";
 import { VERIFICATION_TEMP_KEY, scheduleAntigravityTempSweep } from "./antigravity-temp.ts";
-import { augmentedPath } from "../env-path.ts";
+import { augmentedPath, sealedFixture } from "../env-path.ts";
 
 export const STATIC_ANTIGRAVITY_MODELS: ModelCatalog = {
   default: "gemini-3.8-flash-high",
@@ -135,6 +139,44 @@ const support: AcpSupport = {
   },
 };
 
+export interface MissingRuntimeDeps {
+  managedInstallAvailable: () => boolean;
+  signedIn: (instanceId: string) => Promise<boolean>;
+  resolve: (cli: string | undefined, env: NodeJS.ProcessEnv) => Promise<unknown>;
+  install: () => Promise<unknown>;
+}
+
+const MISSING_RUNTIME_DEPS: MissingRuntimeDeps = {
+  managedInstallAvailable: antigravityManagedInstallAvailable,
+  signedIn: (instanceId) => antigravityProfileAuthenticated({ tokenPath: antigravityTokenPath(instanceId) } as AntigravityProfile),
+  resolve: resolveAntigravityRuntime,
+  install: () => installAntigravityRuntime({ validate: validateAntigravityRuntime }),
+};
+
+/**
+ * A new pinned runtime, after an update, replaces the one on disk. Someone who already signed in has chosen Antigravity,
+ * so it installs by itself, as Claude and Codex pick up their login. Resolves to the failure, or null.
+ */
+export async function installMissingRuntime(
+  input: { instanceId: string; cli: string | undefined; env: NodeJS.ProcessEnv },
+  deps: MissingRuntimeDeps = MISSING_RUNTIME_DEPS,
+): Promise<string | null> {
+  if (sealedFixture() || !deps.managedInstallAvailable() || !usesManagedAntigravityRuntime(input.cli)) return null;
+  if (!(await deps.signedIn(input.instanceId))) return null;
+  try {
+    await deps.resolve(input.cli, input.env);
+    return null;
+  } catch (error) {
+    if (!(error instanceof AntigravitySetupError)) return null;
+  }
+  try {
+    await deps.install();
+    return null;
+  } catch (error) {
+    return error instanceof Error ? error.message : String(error);
+  }
+}
+
 const AcpAntigravityDriver = createAcpDriver(support);
 
 export const AntigravityDriver: ProviderDriver<AcpConfig> = {
@@ -145,6 +187,13 @@ export const AntigravityDriver: ProviderDriver<AcpConfig> = {
     scheduleAntigravityTempSweep(VERIFICATION_TEMP_KEY);
     const auth = new AntigravityAuthController();
     let installFailure: string | undefined;
+    void installMissingRuntime({
+      instanceId: input.instanceId,
+      cli: input.config.cli,
+      env: { ...process.env, ...input.environment, PATH: augmentedPath() },
+    }).then((failure) => {
+      if (failure) installFailure = failure;
+    }, () => {});
     const runtimeAndProfile = async () => {
       // A GUI launch's raw PATH may omit the official runtime the model picker found.
       const environment = { ...process.env, ...input.environment, PATH: augmentedPath() };

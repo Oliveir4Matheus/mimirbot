@@ -155,13 +155,21 @@ async function externalRuntime(candidate: string, source: "override" | "path"): 
 }
 
 /** Legacy `agy` commands (saved absolute paths, Windows shims) migrate without editing user config. */
+const LEGACY_AGY_PATH = /(?:^|[\\/])agy(?:\.(?:cmd|bat|exe|ps1))?$/iu;
+
+/** False when the person set an executable of their own: this app never installs over that choice. */
+export function usesManagedAntigravityRuntime(binaryPath?: string): boolean {
+  const override = binaryPath?.trim();
+  return !override || override === "agy" || LEGACY_AGY_PATH.test(override);
+}
+
 export async function resolveAntigravityRuntime(
   binaryPath?: string,
   env: NodeJS.ProcessEnv = process.env,
   baseDir = DATA_DIR,
 ): Promise<AntigravityRuntime> {
   const override = binaryPath?.trim();
-  const legacyCli = override !== undefined && /(?:^|[\\/])agy(?:\.(?:cmd|bat|exe|ps1))?$/iu.test(override);
+  const legacyCli = override !== undefined && LEGACY_AGY_PATH.test(override);
   if (override && override !== "agy") {
     for (const candidate of pathCandidates(override, env)) {
       const found = await externalRuntime(candidate, "override");

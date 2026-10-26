@@ -52,12 +52,13 @@ export function forgetConversationLines(): void {
   asked.clear();
 }
 
-export function BotConversations({ bot }: { bot: Bot }) {
+/** `modal` lists every conversation with the search open, and calls `onDone` once one is picked or started. */
+export function BotConversations({ bot, modal }: { bot: Bot; modal?: { onDone: () => void } }) {
   const { state, dispatch } = useStore();
   const now = useRelativeNow();
   const phone = !useMediaQuery(SIDEBAR_INLINE, true);
   const [query, setQuery] = useState("");
-  const [searching, setSearching] = useState(false);
+  const [searching, setSearching] = useState(Boolean(modal));
   const [expanded, setExpanded] = useState(false);
   const generatedTitles = llmThreadTitlesEnabled(state.config);
   const actions = useMemo(() => {
@@ -76,7 +77,8 @@ export function BotConversations({ bot }: { bot: Bot }) {
     });
   const needle = query.trim();
   const collapsed = conversations.filter((task, index) => index < CONVERSATIONS_SHOWN || task.threadId === bot.threadId);
-  const recent = useRecentMessages(bot, needle || expanded ? conversations : collapsed);
+  const everything = expanded || Boolean(modal);
+  const recent = useRecentMessages(bot, needle || everything ? conversations : collapsed);
   const preview = (threadId: string) => {
     const messages = recent(threadId);
     return messages ? lastLine(currentTaskBot(bot, threadId), messages, state.instances, false) : undefined;
@@ -85,41 +87,45 @@ export function BotConversations({ bot }: { bot: Bot }) {
   const matches = needle
     ? [...byTitle, ...conversations.filter((task) => !byTitle.includes(task) && preview(task.threadId)?.toLowerCase().includes(needle.toLowerCase()))]
     : conversations;
-  const shown = needle ? matches : expanded ? conversations : collapsed;
+  const shown = needle ? matches : everything ? conversations : collapsed;
   const hidden = conversations.length - collapsed.length;
   const project = bot.projects?.find((folder) => folder.id === bot.tasks?.find((task) => task.threadId === bot.threadId)?.projectId);
 
-  const closeOnPhone = () => {
-    if (phone) dispatch({ type: "toggleSettings", open: false });
+  const finish = () => {
+    if (modal) modal.onDone();
+    else if (phone) dispatch({ type: "toggleSettings", open: false });
   };
   const select = (task: { threadId: string }) => {
     if (task.threadId !== bot.threadId) openBotThread(dispatch, bot, task.threadId, false);
-    closeOnPhone();
+    finish();
   };
   const startNew = () => {
     dispatch({ type: "newTask", botId: bot.id, ...(project ? { projectId: project.id } : {}) });
-    closeOnPhone();
+    finish();
   };
   const stopSearching = () => {
     setQuery("");
-    setSearching(false);
+    if (!modal) setSearching(false);
   };
+  const labelId = modal ? "bot-panel-conversations-modal" : "bot-panel-conversations";
 
   return (
-    <section data-panel-card="conversations" aria-labelledby="bot-panel-conversations">
+    <section {...(modal ? {} : { "data-panel-card": "conversations" })} aria-labelledby={labelId}>
       <CardLabel action={
         <span className="flex shrink-0 items-center gap-0.5">
-          <button
-            type="button"
-            data-conversations-search
-            aria-label={t("botPanel.conversations.search")}
-            title={t("botPanel.conversations.search")}
-            aria-pressed={searching}
-            onClick={() => (searching ? stopSearching() : setSearching(true))}
-            className={cn("flex size-7 items-center justify-center rounded-full hover:bg-ink/[0.06] hover:text-ink", searching && "bg-ink/[0.06] text-ink")}
-          >
-            <Search size={14} aria-hidden="true" />
-          </button>
+          {!modal && (
+            <button
+              type="button"
+              data-conversations-search
+              aria-label={t("botPanel.conversations.search")}
+              title={t("botPanel.conversations.search")}
+              aria-pressed={searching}
+              onClick={() => (searching ? stopSearching() : setSearching(true))}
+              className={cn("flex size-7 items-center justify-center rounded-full hover:bg-ink/[0.06] hover:text-ink", searching && "bg-ink/[0.06] text-ink")}
+            >
+              <Search size={14} aria-hidden="true" />
+            </button>
+          )}
           <button
             type="button"
             data-conversations-new
@@ -132,7 +138,7 @@ export function BotConversations({ bot }: { bot: Bot }) {
           </button>
         </span>
       }>
-        <span id="bot-panel-conversations">{t("botPanel.conversations.title")}</span>
+        <span id={labelId}>{t("botPanel.conversations.title")}</span>
       </CardLabel>
       {searching && (
         <input
@@ -142,7 +148,7 @@ export function BotConversations({ bot }: { bot: Bot }) {
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           onKeyDown={(event) => {
-            if (event.key !== "Escape") return;
+            if (event.key !== "Escape" || (modal && !query)) return;
             event.preventDefault();
             event.stopPropagation();
             stopSearching();
@@ -152,7 +158,7 @@ export function BotConversations({ bot }: { bot: Bot }) {
           className="mb-1.5 w-full rounded-[10px] border border-hairline/60 bg-inset px-3 py-1.5 text-[13px] text-ink outline-none placeholder:text-ink-tertiary focus:border-focus"
         />
       )}
-      <div role="list" aria-labelledby="bot-panel-conversations" className="flex flex-col gap-px">
+      <div role="list" aria-labelledby={labelId} className="flex flex-col gap-px">
         {shown.map((task) => (
           <div role="listitem" key={task.threadId} data-conversation={task.threadId}>
             <SidebarThreadRow
@@ -173,7 +179,7 @@ export function BotConversations({ bot }: { bot: Bot }) {
       {needle && shown.length === 0 && (
         <p className="px-3 py-3 text-[12.5px] text-ink-secondary">{t("task.noMatch", { query: needle })}</p>
       )}
-      {!needle && hidden > 0 && (
+      {!needle && !modal && hidden > 0 && (
         <button
           type="button"
           data-conversations-more

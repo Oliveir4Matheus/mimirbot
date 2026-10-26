@@ -5,7 +5,8 @@ import { readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import type { InstanceConfigMap } from "./contracts.ts";
 import { resolveClaudeConfigDir } from "./drivers/claude.ts";
-import { antigravityProfileDirectory } from "./drivers/antigravity-acp.ts";
+import { antigravityTokenPath } from "./drivers/antigravity-acp.ts";
+import { AntigravitySetupError } from "./drivers/antigravity-runtime.ts";
 import { clearAntigravityUsageCache, createAntigravityUsageReader, type AntigravityUsageReader } from "./drivers/antigravity-usage.ts";
 import { codexHome } from "./drivers/codex-identity.ts";
 import { harnessHome, sealedFixture } from "./env-path.ts";
@@ -411,6 +412,10 @@ function couldNotReach(driver: PlanDriver): string {
   return `Could not reach ${PRODUCT_NAME[driver]}`;
 }
 
+function runtimeNotInstalled(): string {
+  return "Install the Antigravity runtime in Settings to see its usage";
+}
+
 function usageNotShared(driver: PlanDriver): string {
   return `${PRODUCT_NAME[driver]} does not share its usage`;
 }
@@ -793,7 +798,7 @@ function readGrokCredential(
 }
 
 function readAntigravityCredential(account: PlanAccount, readText: (path: string) => string | null): PlanCredential {
-  const root = asRecord(parseJson(readText(join(antigravityProfileDirectory(account.id), "antigravity-acp", "acp_token.json"))));
+  const root = asRecord(parseJson(readText(antigravityTokenPath(account.id))));
   const refreshToken = secretString(root?.refresh_token);
   return refreshToken ? { token: refreshToken, accountId: null, expired: false } : missingCredential();
 }
@@ -1008,8 +1013,8 @@ async function fetchAntigravity(account: PlanAccount, deps: PlanUsageDeps): Prom
   let answer: string | null;
   try {
     answer = await deps.antigravityUsage(account);
-  } catch {
-    return connectedWithoutUsage(account, couldNotReach("antigravity"));
+  } catch (error) {
+    return connectedWithoutUsage(account, error instanceof AntigravitySetupError ? runtimeNotInstalled() : couldNotReach("antigravity"));
   }
   const windows = answer ? parseAntigravityUsage(answer) : null;
   return windows ? okRow(account, windows) : connectedWithoutUsage(account, usageNotShared("antigravity"));

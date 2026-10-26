@@ -5,6 +5,13 @@ export interface ReleaseNotes {
 
 /** Shown once after an update, so they ship inside the app and work offline. Add the entry for a version when you raise it. */
 export const RELEASE_NOTES: Record<string, ReleaseNotes> = {
+  "0.1.131": {
+    features: [
+      "Clicar no título da conversa abre um modal com todas as conversas do agente, com busca. A lista continua na lateral.",
+      "O runtime do Antigravity se instala sozinho depois de uma atualização, quando você já entrou com a sua conta Google.",
+    ],
+    fixes: ["O uso do Antigravity avisa para instalar o runtime, em vez de dizer que não conseguiu alcançá-lo."],
+  },
   "0.1.130": {
     features: [
       "O uso do Antigravity, de 5 horas e semanal, aparece na barra lateral.",

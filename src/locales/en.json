@@ -1817,6 +1817,8 @@
   "chat.backToMainThread": "Back to your chat",
   "chat.openProfileAria": "Open {name}'s profile",
   "chat.showConversations": "Show {name}'s conversations",
+  "chat.conversationsWith": "Conversations with {name}",
+  "chat.conversationsClose": "Close",
   "chat.find": "Find in conversation",
   "chat.findShortcut": "Find in conversation (⌘F)",
   "chat.stop": "Stop",

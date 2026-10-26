@@ -212,3 +212,54 @@ describe("a bot's conversations in its panel", () => {
     expect(fixture.dispatch.mock.calls).toEqual([[{ type: "updateTask", botId: "research", threadId: "launch", patch: { pinned: true } }]]);
   });
 });
+
+describe("a bot's conversations in the modal", () => {
+  const renderModal = (onDone = vi.fn(), bot = research()) => {
+    flushSync(() => root.render(createElement(BotConversations, { bot, modal: { onDone } })));
+    return onDone;
+  };
+
+  it("lists every conversation at once, with the search already open and no panel-only controls", () => {
+    renderModal();
+    expect(listed()).toEqual(["hiring", "launch", "who", "pricing", "deck", "podcasts", "compare"]);
+    expect(more()).toBeNull();
+    expect(host.querySelector("[data-conversations-query]")).not.toBeNull();
+    expect(host.querySelector("[data-conversations-search]")).toBeNull();
+    expect(host.querySelector('[data-panel-card="conversations"]')).toBeNull();
+  });
+
+  it("opens the picked conversation and closes, and leaves the open one alone but still closes", () => {
+    const onDone = renderModal();
+    click(row("launch").querySelector('[data-sidebar-thread-row="launch"]'));
+    expect(fixture.dispatch.mock.calls).toEqual([[{ type: "switchTask", botId: "research", threadId: "launch" }]]);
+    expect(onDone).toHaveBeenCalledTimes(1);
+    fixture.dispatch.mockReset();
+    click(row("who").querySelector('[data-sidebar-thread-row="who"]'));
+    expect(fixture.dispatch).not.toHaveBeenCalled();
+    expect(onDone).toHaveBeenCalledTimes(2);
+  });
+
+  it("starts a new conversation and closes", () => {
+    const onDone = renderModal();
+    click(host.querySelector("[data-conversations-new]"));
+    expect(fixture.dispatch.mock.calls).toEqual([[{ type: "newTask", botId: "research" }]]);
+    expect(onDone).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not touch the bot panel on a phone: the modal closes itself", () => {
+    fixture.wide = false;
+    renderModal();
+    click(row("launch").querySelector('[data-sidebar-thread-row="launch"]'));
+    expect(fixture.dispatch.mock.calls).toEqual([[{ type: "switchTask", botId: "research", threadId: "launch" }]]);
+  });
+
+  it("filters by title as you type and keeps the search open when it is cleared", () => {
+    renderModal();
+    const input = host.querySelector<HTMLInputElement>("[data-conversations-query]")!;
+    type(input, "pricing");
+    expect(listed()).toEqual(["pricing"]);
+    flushSync(() => input.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true })));
+    expect(host.querySelector("[data-conversations-query]")).not.toBeNull();
+    expect(listed()).toHaveLength(7);
+  });
+});

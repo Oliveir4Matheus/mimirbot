@@ -14,7 +14,9 @@ const USAGE_SESSION_FILE = "usage-session.json";
 const MIN_CLI_VERSION = [1, 4, 1];
 const READ_TIMEOUT_MS = 45_000;
 const VERSION_TIMEOUT_MS = 10_000;
-const CACHE_MS = 10 * 60_000;
+/** Just under the rail's five-minute poll, so every poll reads afresh instead of landing a few milliseconds early on the last reading. */
+const CACHE_MS = 4.5 * 60_000;
+const FAILURE_CACHE_MS = 60_000;
 
 export type AntigravityUsageReader = (account: PlanAccount) => Promise<string | null>;
 
@@ -104,7 +106,7 @@ export function clearAntigravityUsageCache(): void {
   readings.clear();
 }
 
-/** A reading opens the runtime, so it is kept for ten minutes, failures included, and shared by concurrent callers. */
+/** A reading opens the runtime, so it is kept for a poll and shared by concurrent callers; a failure is kept for one minute. */
 export function createAntigravityUsageReader(env: NodeJS.ProcessEnv = process.env): AntigravityUsageReader {
   return (account) => {
     const kept = readings.get(account.id);
@@ -115,7 +117,11 @@ export function createAntigravityUsageReader(env: NodeJS.ProcessEnv = process.en
       const profile = await prepareAntigravityProfile({ instanceId: account.id, runtime, baseEnv: environment });
       return readAntigravityUsageAnswer({ runtime, profile });
     })();
-    readings.set(account.id, { at: Date.now(), result });
+    const entry = { at: Date.now(), result };
+    readings.set(account.id, entry);
+    result.catch(() => {
+      entry.at = Date.now() - (CACHE_MS - FAILURE_CACHE_MS);
+    });
     return result;
   };
 }

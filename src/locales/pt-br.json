@@ -1700,6 +1700,8 @@
   "chat.backToMainThread": "Voltar ao seu chat",
   "chat.openProfileAria": "Abrir o perfil de {name}",
   "chat.showConversations": "Ver as conversas com {name}",
+  "chat.conversationsWith": "Conversas com {name}",
+  "chat.conversationsClose": "Fechar",
   "chat.find": "Buscar na conversa",
   "chat.findShortcut": "Buscar na conversa (⌘F)",
   "chat.stop": "Parar",

@@ -106,6 +106,10 @@ export function antigravityProfileDirectory(instanceId: string, baseDir = DATA_D
   return join(baseDir, "providers", "antigravity", createHash("sha256").update(instanceId).digest("hex"));
 }
 
+export function antigravityTokenPath(instanceId: string, baseDir = DATA_DIR): string {
+  return join(antigravityProfileDirectory(instanceId, baseDir), "antigravity-acp", "acp_token.json");
+}
+
 /** A removed account's Google sign-in goes with its profile, so no refresh token outlives the account. Best effort:
  * the account is already gone from the config, and Windows refuses while a retiring process still holds a file. */
 export async function removeAntigravityProfile(instanceId: string, baseDir = DATA_DIR): Promise<void> {
