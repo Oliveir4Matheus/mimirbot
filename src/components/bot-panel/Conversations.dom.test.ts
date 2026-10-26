@@ -233,9 +233,20 @@ describe("a bot's conversations in its panel", () => {
       expect(host.querySelector("[data-conversations-pages]")).toBeNull();
     });
 
+    it("keeps the list at the height of a full page, so the pager stays put on the last page", () => {
+      render(crowded());
+      const list = () => host.querySelector<HTMLElement>('[role="list"]')!;
+      expect(list().style.minHeight).toContain("22.5rem");
+      click(next());
+      click(next());
+      expect(listed()).toHaveLength(3);
+      expect(list().style.minHeight).toContain("22.5rem");
+    });
+
     it("shows no pager when everything fits on one page", () => {
       render(research());
       expect(host.querySelector("[data-conversations-pages]")).toBeNull();
+      expect(host.querySelector<HTMLElement>('[role="list"]')!.style.minHeight).toBe("");
     });
   });
 });

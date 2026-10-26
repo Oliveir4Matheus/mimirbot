@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Plus, Search } from "lucide-react";
 
 import { cn } from "@/lib/cn";
@@ -12,6 +12,8 @@ import { filterTasks } from "../TaskPicker";
 import { CardLabel } from "./rows";
 
 export const CONVERSATIONS_PER_PAGE = 10;
+/** Ten rows without a last line; a page taller than this raises the reserve, so the pager never moves between pages. */
+const PAGE_MIN_HEIGHT = "22.5rem";
 const LAST_LINE_PAGE = 8;
 const MAX_CACHED = 200;
 
@@ -60,6 +62,8 @@ export function BotConversations({ bot }: { bot: Bot }) {
   const [query, setQuery] = useState("");
   const [searching, setSearching] = useState(false);
   const [page, setPage] = useState(0);
+  const [tallest, setTallest] = useState(0);
+  const listRef = useRef<HTMLDivElement>(null);
   const generatedTitles = llmThreadTitlesEnabled(state.config);
   const actions = useMemo(() => {
     const { onRename, onRegenerateTitle, onDelete, onMove, onPin } = threadRowActions(bot.id, dispatch, generatedTitles);
@@ -93,6 +97,11 @@ export function BotConversations({ bot }: { bot: Bot }) {
   const current = start / CONVERSATIONS_PER_PAGE;
   const shown = everything.slice(start, start + CONVERSATIONS_PER_PAGE);
   const project = bot.projects?.find((folder) => folder.id === bot.tasks?.find((task) => task.threadId === bot.threadId)?.projectId);
+
+  useLayoutEffect(() => {
+    const height = listRef.current?.offsetHeight ?? 0;
+    if (height > tallest) setTallest(height);
+  });
 
   const finish = () => {
     if (phone) dispatch({ type: "toggleSettings", open: false });
@@ -162,7 +171,13 @@ export function BotConversations({ bot }: { bot: Bot }) {
           className="mb-1.5 w-full rounded-[10px] border border-hairline/60 bg-inset px-3 py-1.5 text-[13px] text-ink outline-none placeholder:text-ink-tertiary focus:border-focus"
         />
       )}
-      <div role="list" aria-labelledby={labelId} className="flex flex-col gap-px">
+      <div
+        ref={listRef}
+        role="list"
+        aria-labelledby={labelId}
+        className="flex flex-col gap-px"
+        style={pages > 1 ? { minHeight: `max(${PAGE_MIN_HEIGHT}, ${tallest}px)` } : undefined}
+      >
         {shown.map((task) => (
           <div role="listitem" key={task.threadId} data-conversation={task.threadId}>
             <SidebarThreadRow
