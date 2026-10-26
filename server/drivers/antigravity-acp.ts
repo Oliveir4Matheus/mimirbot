@@ -206,6 +206,8 @@ export class AntigravityAcpClient {
   private closed = false;
   private stopping?: Promise<boolean>;
   private readonly onAuthorizationUrl?: (url: string) => void;
+  /** Receives every JSON-RPC notification, such as `session/update`; responses never reach it. */
+  onNotification?: (message: { method?: unknown; params?: unknown }) => void;
   /** On Windows a running executable pins its file and directory: do not rename or delete before this settles. */
   readonly exited: Promise<void>;
 
@@ -258,6 +260,10 @@ export class AntigravityAcpClient {
       try {
         message = JSON.parse(line);
       } catch {
+        continue;
+      }
+      if (message && typeof message === "object" && message.id === undefined && typeof message.method === "string") {
+        this.onNotification?.(message);
         continue;
       }
       if (typeof message?.id !== "number") continue;

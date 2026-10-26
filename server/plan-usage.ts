@@ -6,6 +6,7 @@ import { join } from "node:path";
 import type { InstanceConfigMap } from "./contracts.ts";
 import { resolveClaudeConfigDir } from "./drivers/claude.ts";
 import { antigravityProfileDirectory } from "./drivers/antigravity-acp.ts";
+import { clearAntigravityUsageCache, createAntigravityUsageReader, type AntigravityUsageReader } from "./drivers/antigravity-usage.ts";
 import { codexHome } from "./drivers/codex-identity.ts";
 import { harnessHome, sealedFixture } from "./env-path.ts";
 
@@ -44,6 +45,8 @@ export interface PlanProviderRow {
   driver: string;
   plan: string | null;
   ok: boolean;
+  /** Signed in, even when the provider shows no usage: the rail keeps its icon. */
+  connected: boolean;
   error: string | null;
   fiveHour: PlanWindow;
   weekly: PlanWindow;
@@ -62,14 +65,14 @@ export interface PlanAccount {
   driver: PlanDriver;
   environment: Record<string, string | undefined>;
   configDir?: string;
+  /** The Antigravity runtime path from the instance's config. */
+  cli?: string;
 }
 
 export interface PlanCredential {
   token: string | null;
   accountId: string | null;
   expired: boolean;
-  /** Antigravity stores a Google refresh token: `token` is exchanged for an access token with this OAuth client. */
-  oauthClient?: { clientId: string; clientSecret: string };
 }
 
 export interface CredentialReader {
@@ -84,7 +87,7 @@ export interface PlanResponse {
 
 export type PlanFetch = (
   url: string,
-  init: { headers: Record<string, string>; signal: AbortSignal; method?: "POST"; body?: string },
+  init: { headers: Record<string, string>; signal: AbortSignal },
 ) => Promise<PlanResponse>;
 
 export interface PlanUsageDeps {
@@ -92,6 +95,8 @@ export interface PlanUsageDeps {
   credentials: CredentialReader;
   now?: () => number;
   timeoutMs?: number;
+  /** Antigravity's `/usage` answer; absent where the runtime cannot be asked. */
+  antigravityUsage?: AntigravityUsageReader;
 }
 
 export interface CredentialSource {
@@ -114,8 +119,6 @@ const CODEX_USAGE_URL = "https://chatgpt.com/backend-api/wham/usage";
 const GROK_CREDITS_URL = "https://cli-chat-proxy.grok.com/v1/billing?format=credits";
 const GROK_BILLING_URL = "https://cli-chat-proxy.grok.com/v1/billing";
 const GROK_SETTINGS_URL = "https://cli-chat-proxy.grok.com/v1/settings";
-const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
-const ANTIGRAVITY_QUOTA_URL = "https://cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels";
 
 const FIVE_HOUR_MIN_SECONDS = 3 * 3600;
 const FIVE_HOUR_MAX_SECONDS = 8 * 3600;
@@ -145,12 +148,14 @@ export function planAccountsFromInstances(instances: InstanceConfigMap): PlanAcc
     if (!driver) continue;
     const config = asRecord(entry.config);
     const configDir = typeof config?.configDir === "string" ? config.configDir : undefined;
+    const cli = typeof config?.cli === "string" ? config.cli : undefined;
     accounts.push({
       id,
       name: entry.displayName?.trim() || PRODUCT_NAME[driver],
       driver,
       environment: { ...entry.environment },
       ...(configDir ? { configDir } : {}),
+      ...(cli ? { cli } : {}),
     });
   }
   return accounts;
@@ -264,6 +269,7 @@ let cachedReport: { at: number; key: string; report: PlanUsageReport } | null = 
 export function clearPlanUsageCache(): void {
   cachedReport = null;
   lastGood.clear();
+  clearAntigravityUsageCache();
 }
 
 export async function loadPlanUsage(input: {
@@ -274,17 +280,20 @@ export async function loadPlanUsage(input: {
   credentials?: CredentialReader;
   env?: NodeJS.ProcessEnv;
   timeoutMs?: number;
+  antigravityUsage?: AntigravityUsageReader;
 }): Promise<PlanUsageReport> {
   const now = input.now ?? Date.now();
   const key = planUsageCacheKey(input.accounts);
   if (!input.refresh && cachedReport && cachedReport.key === key && now - cachedReport.at < PLAN_USAGE_CACHE_MS) {
     return cachedReport.report;
   }
+  if (input.refresh) clearAntigravityUsageCache();
   const report = await fetchPlanUsage(input.accounts, {
     fetch: input.fetch ?? ((url, init) => globalThis.fetch(url, init)),
     credentials: input.credentials ?? defaultCredentialReader(input.env),
     now: () => now,
     timeoutMs: input.timeoutMs,
+    antigravityUsage: input.antigravityUsage ?? createAntigravityUsageReader(input.env),
   });
   report.providers = report.providers.map((row) => keepLastGood(row, now));
   cachedReport = { at: now, key, report };
@@ -400,6 +409,10 @@ function signInAgain(driver: PlanDriver): string {
 
 function couldNotReach(driver: PlanDriver): string {
   return `Could not reach ${PRODUCT_NAME[driver]}`;
+}
+
+function usageNotShared(driver: PlanDriver): string {
+  return `${PRODUCT_NAME[driver]} does not share its usage`;
 }
 
 function unexpectedUsage(driver: PlanDriver): string {
@@ -782,10 +795,7 @@ function readGrokCredential(
 function readAntigravityCredential(account: PlanAccount, readText: (path: string) => string | null): PlanCredential {
   const root = asRecord(parseJson(readText(join(antigravityProfileDirectory(account.id), "antigravity-acp", "acp_token.json"))));
   const refreshToken = secretString(root?.refresh_token);
-  const clientId = secretString(root?.client_id);
-  const clientSecret = secretString(root?.client_secret);
-  if (!refreshToken || !clientId || !clientSecret) return missingCredential();
-  return { token: refreshToken, accountId: null, expired: false, oauthClient: { clientId, clientSecret } };
+  return refreshToken ? { token: refreshToken, accountId: null, expired: false } : missingCredential();
 }
 
 function errorRow(account: PlanAccount, error: string): PlanProviderRow {
@@ -795,6 +805,7 @@ function errorRow(account: PlanAccount, error: string): PlanProviderRow {
     driver: account.driver,
     plan: null,
     ok: false,
+    connected: false,
     error,
     fiveHour: closedWindow(),
     weekly: closedWindow(),
@@ -810,6 +821,7 @@ function okRow(account: PlanAccount, windows: PlanWindows): PlanProviderRow {
     driver: account.driver,
     plan: windows.plan,
     ok: true,
+    connected: true,
     error: null,
     fiveHour: windows.fiveHour,
     weekly: windows.weekly,
@@ -829,7 +841,7 @@ async function fetchProvider(account: PlanAccount, deps: PlanUsageDeps): Promise
   try {
     if (account.driver === "claude") return await fetchClaude(account, credential.token, deps);
     if (account.driver === "codex") return await fetchCodex(account, credential.token, credential.accountId, deps);
-    if (account.driver === "antigravity") return await fetchAntigravity(account, credential, deps);
+    if (account.driver === "antigravity") return await fetchAntigravity(account, deps);
     return await fetchGrok(account, credential.token, deps);
   } catch {
     return errorRow(account, couldNotReach(account.driver));
@@ -847,14 +859,9 @@ async function fetchJson(
   url: string,
   headers: Record<string, string>,
   timeoutMs: number,
-  post?: string,
 ): Promise<HttpResult> {
   try {
-    const response = await fetchImpl(url, {
-      headers,
-      signal: AbortSignal.timeout(timeoutMs),
-      ...(post === undefined ? {} : { method: "POST" as const, body: post }),
-    });
+    const response = await fetchImpl(url, { headers, signal: AbortSignal.timeout(timeoutMs) });
     let text = "";
     try {
       text = await response.text();
@@ -937,51 +944,73 @@ async function fetchGrok(account: PlanAccount, token: string, deps: PlanUsageDep
   return okRow(account, windows);
 }
 
-const ANTIGRAVITY_FIVE_HOUR_MAX_MS = FIVE_HOUR_MAX_SECONDS * 1000;
+const QUOTA_HEADING = /^#{1,6}\s*Quota Limits\s*$/i;
+const QUOTA_GROUP = /^[-*]\s+\*\*([^*]+)\*\*\s*$/;
+const QUOTA_BUCKET = /^\s+[-*]\s+\*\*([^*]+?):?\*\*:?\s*(\d+(?:\.\d+)?)%\s+remaining(?:\s+\(resets\s+([^)]+)\))?/i;
 
-export function parseAntigravityQuota(body: unknown, now: number): PlanWindows {
-  const models = asRecord(asRecord(body)?.models);
-  let fiveHour = closedWindow();
-  let weekly = closedWindow();
-  const rows: PlanModelUsage[] = [];
-  for (const [id, value] of Object.entries(models ?? {})) {
-    const record = asRecord(value);
-    const quota = asRecord(record?.quotaInfo);
-    const fraction = finiteNumber(quota?.remainingFraction);
-    if (fraction == null) continue;
-    const resetsAt = isoOrNull(quota?.resetTime);
-    const window = openWindow(100 - fraction * 100, resetsAt);
-    const untilReset = resetsAt ? Date.parse(resetsAt) - now : null;
-    const shortWindow = untilReset !== null && untilReset <= ANTIGRAVITY_FIVE_HOUR_MAX_MS;
-    const slot = shortWindow ? fiveHour : weekly;
-    if (!slot.available || (window.remainingPercent ?? 100) < (slot.remainingPercent ?? 100)) {
-      if (shortWindow) fiveHour = window;
-      else weekly = window;
-    }
-    addModelWindow(rows, planLabel(record?.displayName) ?? id, extraLine(shortWindow ? "5-hour" : "Weekly", window));
-  }
-  sortModelWindows(rows);
-  return { plan: null, fiveHour, weekly, extra: [], models: rows };
+interface QuotaGroup {
+  name: string;
+  buckets: Array<{ label: string; usedPercent: number; resetsAt: string | null }>;
 }
 
-async function fetchAntigravity(account: PlanAccount, credential: PlanCredential, deps: PlanUsageDeps): Promise<PlanProviderRow> {
-  const client = credential.oauthClient;
-  if (!client || !credential.token) return errorRow(account, signInAgain("antigravity"));
-  const timeout = deps.timeoutMs ?? PROVIDER_TIMEOUT_MS;
-  const refreshed = await fetchJson(deps.fetch, GOOGLE_TOKEN_URL, { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" }, timeout,
-    new URLSearchParams({ grant_type: "refresh_token", client_id: client.clientId, client_secret: client.clientSecret, refresh_token: credential.token }).toString());
-  const accessToken = secretString(asRecord(refreshed.body)?.access_token);
-  if (!refreshed.ok || !accessToken) {
-    return errorRow(account, refreshed.status === 400 || authRejected(refreshed.status) ? signInAgain("antigravity") : couldNotReach("antigravity"));
+/** Reads the "Quota Limits" section of the runtime's `/usage` answer; null when it lists no bucket (an API key sign-in has none). */
+export function parseAntigravityUsage(answer: string): PlanWindows | null {
+  const groups: QuotaGroup[] = [];
+  let inSection = false;
+  for (const line of answer.split(/\r?\n/)) {
+    if (line.startsWith("#")) {
+      inSection = QUOTA_HEADING.test(line);
+      continue;
+    }
+    if (!inSection) continue;
+    const name = QUOTA_GROUP.exec(line)?.[1]?.trim();
+    if (name) {
+      groups.push({ name, buckets: [] });
+      continue;
+    }
+    const bucket = QUOTA_BUCKET.exec(line);
+    const group = groups.at(-1);
+    if (!bucket || !group) continue;
+    group.buckets.push({ label: bucket[1]!.trim(), usedPercent: 100 - Number(bucket[2]), resetsAt: isoOrNull(bucket[3]?.trim()) });
   }
-  const quota = await fetchJson(deps.fetch, ANTIGRAVITY_QUOTA_URL, {
-    Authorization: `Bearer ${accessToken}`,
-    "Content-Type": "application/json",
-    Accept: "application/json",
-  }, timeout, "{}");
-  if (authRejected(quota.status)) return errorRow(account, signInAgain("antigravity"));
-  if (!quota.ok || quota.body === null || typeof quota.body !== "object") {
-    return errorRow(account, quota.status === 0 || quota.status >= 500 ? couldNotReach("antigravity") : unexpectedUsage("antigravity"));
+  const filled = groups.filter((group) => group.buckets.length > 0);
+  if (filled.length === 0) return null;
+  const gemini = filled.find((group) => /^gemini\b/i.test(group.name)) ?? filled[0]!;
+  let fiveHour = closedWindow();
+  let weekly = closedWindow();
+  const extra: PlanExtra[] = [];
+  for (const bucket of gemini.buckets) {
+    const window = openWindow(bucket.usedPercent, bucket.resetsAt);
+    if (/\b5\s*-?\s*h|five/i.test(bucket.label) && !fiveHour.available) fiveHour = window;
+    else if (/week/i.test(bucket.label) && !weekly.available) weekly = window;
+    else extra.push(extraLine(bucket.label, window));
   }
-  return okRow(account, parseAntigravityQuota(quota.body, deps.now?.() ?? Date.now()));
+  const models: PlanModelUsage[] = [];
+  for (const group of filled) {
+    for (const bucket of group.buckets) addModelWindow(models, group.name, extraLine(quotaBucketLabel(bucket.label), openWindow(bucket.usedPercent, bucket.resetsAt)));
+  }
+  sortModelWindows(models);
+  return { plan: null, fiveHour, weekly, extra, models };
+}
+
+function quotaBucketLabel(label: string): string {
+  if (/week/i.test(label)) return "Weekly";
+  return /\b5\s*-?\s*h|five/i.test(label) ? "5-hour" : label;
+}
+
+/** Signed in and answering, but with no usage to show: the rail keeps the icon. */
+function connectedWithoutUsage(account: PlanAccount, error: string): PlanProviderRow {
+  return { ...errorRow(account, error), connected: true };
+}
+
+async function fetchAntigravity(account: PlanAccount, deps: PlanUsageDeps): Promise<PlanProviderRow> {
+  if (!deps.antigravityUsage) return connectedWithoutUsage(account, usageNotShared("antigravity"));
+  let answer: string | null;
+  try {
+    answer = await deps.antigravityUsage(account);
+  } catch {
+    return connectedWithoutUsage(account, couldNotReach("antigravity"));
+  }
+  const windows = answer ? parseAntigravityUsage(answer) : null;
+  return windows ? okRow(account, windows) : connectedWithoutUsage(account, usageNotShared("antigravity"));
 }

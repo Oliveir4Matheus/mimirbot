@@ -10,7 +10,7 @@ import {
   loadPlanUsage,
   parseClaudeUsage,
   parseCodexUsage,
-  parseAntigravityQuota,
+  parseAntigravityUsage,
   parseGrokUsage,
   planAccountsFromInstances,
   type PlanAccount,
@@ -424,51 +424,79 @@ describe("plan usage fetcher", () => {
 });
 
 describe("Antigravity plan usage", () => {
-  const quota = {
-    models: {
-      "gemini-3.8-flash-high": { displayName: "Gemini 3.8 Flash", quotaInfo: { remainingFraction: 0.4, resetTime: new Date(NOW + 3600_000).toISOString() } },
-      "gemini-3.8-pro": { displayName: "Gemini 3.8 Pro", quotaInfo: { remainingFraction: 0.9, resetTime: new Date(NOW + 3 * 86400_000).toISOString() } },
-      "no-quota-model": {},
-    },
-  };
+  const ANSWER = [
+    "### Session Usage",
+    "- No token usage recorded yet.",
+    "### Quota Limits",
+    "- **Gemini Models**",
+    "  *(Models within this group: Gemini Flash, Gemini Pro)*",
+    "  - **Weekly Limit Remaining:** 96% remaining (resets Oct 29, 2026, 10:12 UTC)",
+    "- **Claude and GPT models**",
+    "  *(Models within this group: Claude Opus, GPT-OSS)*",
+    "  - **Weekly Limit Remaining:** 12% remaining (resets Oct 30, 2026, 08:00 UTC)",
+  ].join("\n");
+  const tokenPath = join(antigravityProfileDirectory("antigravity"), "antigravity-acp", "acp_token.json");
+  const signedIn = () => fileCredentialReader({
+    env: {},
+    readText: (path) => (normalize(path) === normalize(tokenPath) ? JSON.stringify({ refresh_token: "refresh-fixture" }) : null),
+  });
+  const read = (antigravityUsage?: (account: PlanAccount) => Promise<string | null>, credentials = signedIn()) =>
+    fetchPlanUsage([account("antigravity")], { fetch: vi.fn<PlanFetch>(), credentials, now: () => NOW, antigravityUsage })
+      .then((report) => report.providers[0]!);
 
-  it("puts the tightest short-reset model in the 5-hour ring and the long-reset one in weekly", () => {
-    const parsed = parseAntigravityQuota(quota, NOW);
-    expect(parsed.fiveHour).toMatchObject({ available: true, remainingPercent: 40, usedPercent: 60 });
-    expect(parsed.weekly).toMatchObject({ available: true, remainingPercent: 90 });
-    expect(parsed.models.map((model) => model.name)).toEqual(["Gemini 3.8 Flash", "Gemini 3.8 Pro"]);
+  it("reads the Gemini group for the ring and keeps every group as a model row", () => {
+    const parsed = parseAntigravityUsage(ANSWER)!;
+    expect(parsed.weekly).toMatchObject({ available: true, remainingPercent: 96, usedPercent: 4, resetsAt: "2026-10-29T10:12:00.000Z" });
+    expect(parsed.fiveHour.available).toBe(false);
+    expect(parsed.models.map((model) => model.name)).toEqual(["Gemini Models", "Claude and GPT models"]);
+    expect(parsed.models[1]!.windows[0]).toMatchObject({ label: "Weekly", remainingPercent: 12 });
   });
 
-  it("trades the Google refresh token for an access token before asking for quota, and never returns either", async () => {
-    const dir = antigravityProfileDirectory("antigravity");
-    const tokenPath = join(dir, "antigravity-acp", "acp_token.json");
-    const calls: Array<{ url: string; init: Parameters<PlanFetch>[1] }> = [];
-    const fetch: PlanFetch = async (url, init) => {
-      calls.push({ url, init });
-      return url.includes("oauth2") ? jsonResponse({ access_token: "access-fixture" }) : jsonResponse(quota);
-    };
-    const credentials = fileCredentialReader({
-      env: {},
-      readText: (path) => normalize(path) === normalize(tokenPath)
-        ? JSON.stringify({ client_id: "id", client_secret: "secret", refresh_token: "refresh-fixture" })
-        : null,
-    });
-    const report = await fetchPlanUsage([account("antigravity")], { fetch, credentials, now: () => NOW });
-    expect(calls.map((call) => call.url)).toEqual([
-      "https://oauth2.googleapis.com/token",
-      "https://cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels",
-    ]);
-    expect(calls[0]!.init.body).toContain("refresh_token=refresh-fixture");
-    expect(calls[1]!.init.headers.Authorization).toBe("Bearer access-fixture");
-    expect(report.providers[0]).toMatchObject({ driver: "antigravity", ok: true });
-    expect(JSON.stringify(report)).not.toMatch(/refresh-fixture|access-fixture/);
+  it("reads the 5-hour and weekly buckets of the Antigravity 1.4.3 answer", () => {
+    const parsed = parseAntigravityUsage([
+      "### Session Usage",
+      "- **Session total:** data not available yet",
+      "",
+      "### Quota Limits",
+      "- **Gemini Models**",
+      "  *(Models within this group: Gemini Flash, Gemini Pro)*",
+      "  - **Weekly Limit Remaining:** 68% remaining (resets Oct 27, 2026, 21:12 UTC)",
+      "  - **Five Hour Limit Remaining:** 85% remaining (resets Oct 26, 2026, 06:30 UTC)",
+      "- **Claude and GPT models**",
+      "  - **Weekly Limit Remaining:** 100% remaining (resets Nov 02, 2026, 02:57 UTC)",
+      "  - **Five Hour Limit Remaining:** 100% remaining (resets Oct 26, 2026, 07:57 UTC)",
+    ].join("\n"))!;
+    expect(parsed.fiveHour).toMatchObject({ remainingPercent: 85, resetsAt: "2026-10-26T06:30:00.000Z" });
+    expect(parsed.weekly).toMatchObject({ remainingPercent: 68, resetsAt: "2026-10-27T21:12:00.000Z" });
+    expect(parsed.extra).toEqual([]);
+    expect(parsed.models[0]!.windows.map((line) => line.label)).toEqual(["5-hour", "Weekly"]);
   });
 
-  it("asks for a new sign-in when the profile has no token file", async () => {
-    const fetch = vi.fn<PlanFetch>();
-    const credentials = fileCredentialReader({ env: {}, readText: () => null });
-    const report = await fetchPlanUsage([account("antigravity")], { fetch, credentials, now: () => NOW });
-    expect(fetch).not.toHaveBeenCalled();
-    expect(report.providers[0]).toMatchObject({ ok: false, error: "Sign in again in Antigravity" });
+  it("gives no reading for an answer without a quota section or buckets", () => {
+    expect(parseAntigravityUsage("### Session Usage\n- No token usage recorded yet.")).toBeNull();
+    expect(parseAntigravityUsage("### Quota Limits\n- Not applicable for current authentication method.")).toBeNull();
+  });
+
+  it("reports the quota the runtime answered, without asking Google or returning the login", async () => {
+    const row = await read(async () => ANSWER);
+    expect(row).toMatchObject({ driver: "antigravity", ok: true, connected: true });
+    expect(row.weekly.remainingPercent).toBe(96);
+    expect(JSON.stringify(row)).not.toContain("refresh-fixture");
+  });
+
+  it("keeps a signed-in Antigravity in the rail when the runtime shows no usage", async () => {
+    expect(await read(async () => null)).toMatchObject({ ok: false, connected: true, error: "Antigravity does not share its usage" });
+    expect(await read(undefined)).toMatchObject({ ok: false, connected: true, error: "Antigravity does not share its usage" });
+  });
+
+  it("stays connected but says it could not reach the runtime when the read fails", async () => {
+    expect(await read(async () => { throw new Error("boom"); })).toMatchObject({ ok: false, connected: true, error: "Could not reach Antigravity" });
+  });
+
+  it("asks for a new sign-in, without starting the runtime, when the profile has no token file", async () => {
+    const reader = vi.fn(async () => ANSWER);
+    const row = await read(reader, fileCredentialReader({ env: {}, readText: () => null }));
+    expect(reader).not.toHaveBeenCalled();
+    expect(row).toMatchObject({ ok: false, connected: false, error: "Sign in again in Antigravity" });
   });
 });

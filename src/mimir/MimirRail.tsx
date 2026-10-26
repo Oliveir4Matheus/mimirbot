@@ -126,7 +126,7 @@ const ICONS = {
 };
 
 interface PlanWindow { available: boolean; remainingPercent: number | null }
-interface PlanProvider { name: string; driver: string; ok: boolean; fiveHour: PlanWindow; weekly: PlanWindow }
+interface PlanProvider { name: string; driver: string; ok: boolean; connected: boolean; fiveHour: PlanWindow; weekly: PlanWindow }
 
 const PLAN_POLL_MS = 5 * 60_000;
 const PLAN_DRIVER_MARK: Record<string, string> = { claude: "claudeAgent", antigravity: "antigravityAgent" };
@@ -140,7 +140,7 @@ function useOnePlanPerEngine(): PlanProvider[] {
         if (!live) return;
         const seen = new Set<string>();
         setProviders(report.providers.filter((p) => {
-          if (!p.ok || !(p.fiveHour.available || p.weekly.available) || seen.has(p.driver)) return false;
+          if (!(p.connected || (p.ok && (p.fiveHour.available || p.weekly.available))) || seen.has(p.driver)) return false;
           seen.add(p.driver);
           return true;
         }));
@@ -180,7 +180,8 @@ function windowLabel(name: string, win: PlanWindow): string | null {
 }
 
 function PlanRing({ provider, onOpen }: { provider: PlanProvider; onOpen: () => void }) {
-  const label = [provider.name, windowLabel(t("planUsage.fiveHour"), provider.fiveHour), windowLabel(t("planUsage.weekly"), provider.weekly)]
+  const windows = [windowLabel(t("planUsage.fiveHour"), provider.fiveHour), windowLabel(t("planUsage.weekly"), provider.weekly)].filter(Boolean);
+  const label = [provider.name, ...(windows.length ? windows : [t("planUsage.notShared")])]
     .filter(Boolean)
     .join(" · ");
   return (

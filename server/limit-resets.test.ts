@@ -13,7 +13,7 @@ const HOUR = 3_600_000;
 const iso = (at: number) => new Date(at).toISOString();
 
 function row(id: string, driver: "claude" | "codex", windows: PlanWindows): PlanProviderRow {
-  return { id, name: driver === "claude" ? "Claude" : "Codex", driver, ok: true, error: null, ...windows };
+  return { id, name: driver === "claude" ? "Claude" : "Codex", driver, ok: true, connected: true, error: null, ...windows };
 }
 /** As the Claude usage endpoint answers (utilization, resets_at). */
 const claude = (fiveHour: [number, number | null], weekly: [number, number | null]) => row("claude", "claude", parseClaudeUsage({
