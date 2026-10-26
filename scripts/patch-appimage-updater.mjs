@@ -28,19 +28,26 @@ const ATOMIC_MOVE = [
 
 // BaseUpdater starts doInstall before it asks Electron to quit, so an immediate
 // spawn can reach the data-directory lease while the old desktop is still
-// cleaning up. Electron's relauncher waits for this process to exit instead.
+// cleaning up. Electron's own relauncher runs from inside the old AppImage's mount, which is torn
+// down as the app exits, and left the desktop closed after updates. A watcher outside the mount
+// (electron/vendor/relaunch-after-exit.cjs) waits for this process to exit, then starts the new
+// build with a clean environment and tries again when it does not stay up. Electron's relauncher
+// stays as the fallback for a watcher that cannot start.
 const IMMEDIATE_RELAUNCH = /this\.spawnLog\(destination, \[\], env\);/g;
 const QUEUED_RELAUNCH = [
-  'const previousSilentInstall = process.env.APPIMAGE_SILENT_INSTALL;',
-  'try {',
-  '  process.env.APPIMAGE_SILENT_INSTALL = env.APPIMAGE_SILENT_INSTALL;',
-  '  if (require("electron").app.relaunch({ execPath: destination, args: [] }) === false) {',
-  '    throw new Error("Could not schedule the updated AppImage to restart");',
-  '  }',
-  '} finally {',
-  '  if (previousSilentInstall === undefined) delete process.env.APPIMAGE_SILENT_INSTALL;',
-  '  else process.env.APPIMAGE_SILENT_INSTALL = previousSilentInstall;',
-  '}',
+  'const relaunchScheduled = require("./relaunch-after-exit.cjs").relaunchAfterExit(destination);',
+  "if (!relaunchScheduled) {",
+  "  const previousSilentInstall = process.env.APPIMAGE_SILENT_INSTALL;",
+  "  try {",
+  "    process.env.APPIMAGE_SILENT_INSTALL = env.APPIMAGE_SILENT_INSTALL;",
+  '    if (require("electron").app.relaunch({ execPath: destination, args: [] }) === false) {',
+  '      throw new Error("Could not schedule the updated AppImage to restart");',
+  "    }",
+  "  } finally {",
+  "    if (previousSilentInstall === undefined) delete process.env.APPIMAGE_SILENT_INSTALL;",
+  "    else process.env.APPIMAGE_SILENT_INSTALL = previousSilentInstall;",
+  "  }",
+  "}",
 ].join("\n          ");
 
 const REPLACEMENTS = [

@@ -5,6 +5,10 @@ export interface ReleaseNotes {
 
 /** Shown once after an update, so they ship inside the app and work offline. Add the entry for a version when you raise it. */
 export const RELEASE_NOTES: Record<string, ReleaseNotes> = {
+  "0.1.132": {
+    features: [],
+    fixes: ["No Linux, o app volta a abrir sozinho depois de uma atualização. A partir da próxima atualização, não é mais preciso abri-lo à mão."],
+  },
   "0.1.131": {
     features: [
       "Clicar no título da conversa abre um modal com todas as conversas do agente, com busca. A lista continua na lateral.",

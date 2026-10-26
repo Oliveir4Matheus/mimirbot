@@ -22,6 +22,19 @@ import { acquireDataDirLease } from "./data-dir-lease.mjs";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const bundle = readFileSync(join(root, "electron/vendor/electron-updater.cjs"), "utf8");
 
+// Loads the bundle with Electron and the relaunch watcher replaced: a real watcher would outlive the test and write to the home folder.
+function interceptRequires(t, electron, watcher) {
+  const load = Module._load;
+  Module._load = (request, ...rest) => {
+    if (request === "electron") return electron;
+    if (String(request).endsWith("relaunch-after-exit.cjs")) return watcher;
+    return load(request, ...rest);
+  };
+  t.after(() => {
+    Module._load = load;
+  });
+}
+
 // Non-global on purpose: a shared /g regex carries lastIndex between .test()
 // calls and would report alternating results.
 const renamePattern = /destination = (\w+)\.join\(\1\.dirname\(appImageFile\), \1\.basename\(installerPath\)\);/;
@@ -65,7 +78,8 @@ test("the patch keeps the running path and never deletes ahead of the rename", (
   assert.doesNotMatch(patched, /unlinkSync\)\(appImageFile\)/);
   assert.match(patched, /mv", \["-f", installerPath, stagedDestination\]/);
   assert.match(patched, /renameSync\)\(stagedDestination, destination\)/);
-  assert.match(patched, /app\.relaunch\(\{ execPath: destination, args: \[\] \}\)/);
+  assert.match(patched, /relaunch-after-exit\.cjs"\)\.relaunchAfterExit\(destination\)/);
+  assert.match(patched, /app\.relaunch\(\{ execPath: destination, args: \[\] \}\)/, "Electron's relauncher stays as the fallback");
   assert.doesNotMatch(patched, /this\.spawnLog\(destination/);
 });
 
@@ -88,19 +102,10 @@ test("the patch fails closed when upstream's shape moves", () => {
   }
 });
 
-test("the shipped installer replaces the AppImage and queues its original path for relaunch", (t) => {
-  let relaunched = null;
-  let relaunchEnvironment = null;
-  const electron = { app: { relaunch(options) {
-    relaunched = options;
-    relaunchEnvironment = { appImage: process.env.APPIMAGE, silent: process.env.APPIMAGE_SILENT_INSTALL };
-    return true;
-  } }, autoUpdater: new EventEmitter() };
-  const load = Module._load;
-  Module._load = (request, ...rest) => (request === "electron" ? electron : load(request, ...rest));
-  t.after(() => {
-    Module._load = load;
-  });
+test("the shipped installer replaces the AppImage and hands its original path to the relaunch watcher", (t) => {
+  const scheduled = [];
+  const electron = { app: { relaunch: () => assert.fail("Electron's relauncher is only the fallback") }, autoUpdater: new EventEmitter() };
+  interceptRequires(t, electron, { relaunchAfterExit: (target) => { scheduled.push(target); return true; } });
 
   const { AppImageUpdater } = createRequire(import.meta.url)("./vendor/electron-updater.cjs");
   const workspace = mkdtempSync(join(tmpdir(), "omb-appimage-install-"));
@@ -137,18 +142,56 @@ test("the shipped installer replaces the AppImage and queues its original path f
   assert.equal(readFileSync(launched, "utf8"), "new", "the update must land on the launched path");
   assert.equal(existsSync(staged), false, "the staged download must be consumed");
   assert.deepEqual(readdirSync(workspace).sort(), ["MimirBot-0.1.43-x86_64.AppImage", "data", "pending"]);
-  assert.deepEqual(relaunched, { execPath: launched, args: [] });
-  assert.deepEqual(relaunchEnvironment, { appImage: launched, silent: "true" });
+  assert.deepEqual(scheduled, [launched], "the watcher starts the build at the launched path");
   assert.equal(process.env.APPIMAGE_SILENT_INSTALL, previousSilent, "the old process keeps its environment");
   assert.throws(() => acquireDataDirLease(join(workspace, "data")), /already using this data directory/);
   assert.deepEqual(renames, [], "no filename change means no appimage-filename-updated event");
 });
 
+test("Electron's relauncher takes over when the watcher cannot start", (t) => {
+  let relaunched = null;
+  let relaunchEnvironment = null;
+  const electron = { app: { relaunch(options) {
+    relaunched = options;
+    relaunchEnvironment = { appImage: process.env.APPIMAGE, silent: process.env.APPIMAGE_SILENT_INSTALL };
+    return true;
+  } }, autoUpdater: new EventEmitter() };
+  interceptRequires(t, electron, { relaunchAfterExit: () => false });
+
+  const { AppImageUpdater } = createRequire(import.meta.url)("./vendor/electron-updater.cjs");
+  const workspace = mkdtempSync(join(tmpdir(), "omb-appimage-fallback-"));
+  t.after(() => rmSync(workspace, { recursive: true, force: true }));
+  const launched = join(workspace, "MimirBot-0.1.43-x86_64.AppImage");
+  const staged = join(workspace, "MimirBot-0.1.44-x86_64.AppImage.new");
+  writeFileSync(launched, "old", { mode: 0o755 });
+  writeFileSync(staged, "new", { mode: 0o755 });
+  const previous = process.env.APPIMAGE;
+  const previousSilent = process.env.APPIMAGE_SILENT_INSTALL;
+  process.env.APPIMAGE = launched;
+  t.after(() => {
+    if (previous === undefined) delete process.env.APPIMAGE;
+    else process.env.APPIMAGE = previous;
+  });
+
+  AppImageUpdater.prototype.doInstall.call(
+    {
+      installerPath: staged,
+      _logger: { info() {}, warn() {}, error() {}, debug() {} },
+      dispatchError: (error) => assert.fail(error),
+      emit() {},
+      spawnLog: () => assert.fail("the replacement must not start before desktop shutdown"),
+    },
+    { isForceRunAfter: true },
+  );
+
+  assert.deepEqual(relaunched, { execPath: launched, args: [] });
+  assert.deepEqual(relaunchEnvironment, { appImage: launched, silent: "true" });
+  assert.equal(process.env.APPIMAGE_SILENT_INSTALL, previousSilent, "the old process keeps its environment");
+});
+
 test("a rejected AppImage relaunch is reported without quitting the desktop", (t) => {
   const electron = { app: { relaunch: () => false }, autoUpdater: new EventEmitter() };
-  const load = Module._load;
-  Module._load = (request, ...rest) => request === "electron" ? electron : load(request, ...rest);
-  t.after(() => { Module._load = load; });
+  interceptRequires(t, electron, { relaunchAfterExit: () => false });
   const { AppImageUpdater, BaseUpdater } = createRequire(import.meta.url)("./vendor/electron-updater.cjs");
   const workspace = mkdtempSync(join(tmpdir(), "omb-appimage-relaunch-failed-"));
   t.after(() => rmSync(workspace, { recursive: true, force: true }));

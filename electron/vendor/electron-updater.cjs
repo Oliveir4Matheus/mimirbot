@@ -14962,15 +14962,18 @@ var require_AppImageUpdater = __commonJS({
           APPIMAGE_SILENT_INSTALL: "true"
         };
         if (options.isForceRunAfter) {
-          const previousSilentInstall = process.env.APPIMAGE_SILENT_INSTALL;
-          try {
-            process.env.APPIMAGE_SILENT_INSTALL = env.APPIMAGE_SILENT_INSTALL;
-            if (require("electron").app.relaunch({ execPath: destination, args: [] }) === false) {
-              throw new Error("Could not schedule the updated AppImage to restart");
+          const relaunchScheduled = require("./relaunch-after-exit.cjs").relaunchAfterExit(destination);
+          if (!relaunchScheduled) {
+            const previousSilentInstall = process.env.APPIMAGE_SILENT_INSTALL;
+            try {
+              process.env.APPIMAGE_SILENT_INSTALL = env.APPIMAGE_SILENT_INSTALL;
+              if (require("electron").app.relaunch({ execPath: destination, args: [] }) === false) {
+                throw new Error("Could not schedule the updated AppImage to restart");
+              }
+            } finally {
+              if (previousSilentInstall === undefined) delete process.env.APPIMAGE_SILENT_INSTALL;
+              else process.env.APPIMAGE_SILENT_INSTALL = previousSilentInstall;
             }
-          } finally {
-            if (previousSilentInstall === undefined) delete process.env.APPIMAGE_SILENT_INSTALL;
-            else process.env.APPIMAGE_SILENT_INSTALL = previousSilentInstall;
           }
         } else {
           env.APPIMAGE_EXIT_AFTER_INSTALL = "true";
