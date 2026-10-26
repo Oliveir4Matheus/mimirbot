@@ -4768,8 +4768,6 @@
   "botPanel.conversations.search": "Tìm cuộc trò chuyện",
   "botPanel.conversations.searchPlaceholder": "Tìm trong các cuộc trò chuyện với {name}",
   "botPanel.conversations.new": "Cuộc trò chuyện mới",
-  "botPanel.conversations.showMore": "Hiện thêm {count}",
-  "botPanel.conversations.showFewer": "Thu gọn",
   "usageMeter.title": "Mức sử dụng MimirBot Cloud",
   "usageMeter.subtitle": "Những gì gói {plan} của bạn bao gồm trong tháng này, và bạn đã dùng bao nhiêu.",
   "usageMeter.empty": "Chưa có gì để hiển thị. Những gì gói của bạn bao gồm sẽ xuất hiện ở đây khi Cloud sẵn sàng.",

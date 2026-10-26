@@ -2251,8 +2251,6 @@
   "botPanel.conversations.search": "बातचीत खोजें",
   "botPanel.conversations.searchPlaceholder": "{name} के साथ बातचीत खोजें",
   "botPanel.conversations.new": "नई बातचीत",
-  "botPanel.conversations.showMore": "{count} और दिखाएँ",
-  "botPanel.conversations.showFewer": "कम दिखाएँ",
   "usageMeter.title": "MimirBot Cloud का इस्तेमाल",
   "usageMeter.subtitle": "इस महीने आपके {plan} प्लान में क्या शामिल है, और आपने कितना इस्तेमाल किया है।",
   "usageMeter.empty": "अभी दिखाने के लिए कुछ नहीं है। Cloud तैयार होते ही प्लान में शामिल चीज़ें यहाँ दिखेंगी।",

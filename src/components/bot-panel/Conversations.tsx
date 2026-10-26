@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, ChevronUp, Plus, Search } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Search } from "lucide-react";
 
 import { cn } from "@/lib/cn";
 import { llmThreadTitlesEnabled } from "@/lib/feature-flags";
@@ -11,7 +11,7 @@ import { isArchived, orderedThreadList, SidebarThreadRow, stampClock, threadRece
 import { filterTasks } from "../TaskPicker";
 import { CardLabel } from "./rows";
 
-export const CONVERSATIONS_SHOWN = 4;
+export const CONVERSATIONS_PER_PAGE = 10;
 const LAST_LINE_PAGE = 8;
 const MAX_CACHED = 200;
 
@@ -52,14 +52,14 @@ export function forgetConversationLines(): void {
   asked.clear();
 }
 
-/** `modal` lists every conversation with the search open, and calls `onDone` once one is picked or started. */
-export function BotConversations({ bot, modal }: { bot: Bot; modal?: { onDone: () => void } }) {
+/** Every conversation with one bot: the Conversations tab of the bot panel. */
+export function BotConversations({ bot }: { bot: Bot }) {
   const { state, dispatch } = useStore();
   const now = useRelativeNow();
   const phone = !useMediaQuery(SIDEBAR_INLINE, true);
   const [query, setQuery] = useState("");
-  const [searching, setSearching] = useState(Boolean(modal));
-  const [expanded, setExpanded] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const [page, setPage] = useState(0);
   const generatedTitles = llmThreadTitlesEnabled(state.config);
   const actions = useMemo(() => {
     const { onRename, onRegenerateTitle, onDelete, onMove, onPin } = threadRowActions(bot.id, dispatch, generatedTitles);
@@ -76,9 +76,9 @@ export function BotConversations({ bot, modal }: { bot: Bot; modal?: { onDone: (
       };
     });
   const needle = query.trim();
-  const collapsed = conversations.filter((task, index) => index < CONVERSATIONS_SHOWN || task.threadId === bot.threadId);
-  const everything = expanded || Boolean(modal);
-  const recent = useRecentMessages(bot, needle || everything ? conversations : collapsed);
+  const pageStart = (total: number) => Math.min(page, Math.max(0, Math.ceil(total / CONVERSATIONS_PER_PAGE) - 1)) * CONVERSATIONS_PER_PAGE;
+  const unsearchedStart = pageStart(conversations.length);
+  const recent = useRecentMessages(bot, needle ? conversations : conversations.slice(unsearchedStart, unsearchedStart + CONVERSATIONS_PER_PAGE));
   const preview = (threadId: string) => {
     const messages = recent(threadId);
     return messages ? lastLine(currentTaskBot(bot, threadId), messages, state.instances, false) : undefined;
@@ -87,13 +87,15 @@ export function BotConversations({ bot, modal }: { bot: Bot; modal?: { onDone: (
   const matches = needle
     ? [...byTitle, ...conversations.filter((task) => !byTitle.includes(task) && preview(task.threadId)?.toLowerCase().includes(needle.toLowerCase()))]
     : conversations;
-  const shown = needle ? matches : everything ? conversations : collapsed;
-  const hidden = conversations.length - collapsed.length;
+  const everything = needle ? matches : conversations;
+  const pages = Math.max(1, Math.ceil(everything.length / CONVERSATIONS_PER_PAGE));
+  const start = pageStart(everything.length);
+  const current = start / CONVERSATIONS_PER_PAGE;
+  const shown = everything.slice(start, start + CONVERSATIONS_PER_PAGE);
   const project = bot.projects?.find((folder) => folder.id === bot.tasks?.find((task) => task.threadId === bot.threadId)?.projectId);
 
   const finish = () => {
-    if (modal) modal.onDone();
-    else if (phone) dispatch({ type: "toggleSettings", open: false });
+    if (phone) dispatch({ type: "toggleSettings", open: false });
   };
   const select = (task: { threadId: string }) => {
     if (task.threadId !== bot.threadId) openBotThread(dispatch, bot, task.threadId, false);
@@ -105,27 +107,26 @@ export function BotConversations({ bot, modal }: { bot: Bot; modal?: { onDone: (
   };
   const stopSearching = () => {
     setQuery("");
-    if (!modal) setSearching(false);
+    setPage(0);
+    setSearching(false);
   };
-  const labelId = modal ? "bot-panel-conversations-modal" : "bot-panel-conversations";
+  const labelId = "bot-panel-conversations";
 
   return (
-    <section {...(modal ? {} : { "data-panel-card": "conversations" })} aria-labelledby={labelId}>
+    <section data-panel-card="conversations" aria-labelledby={labelId}>
       <CardLabel action={
         <span className="flex shrink-0 items-center gap-0.5">
-          {!modal && (
-            <button
-              type="button"
-              data-conversations-search
-              aria-label={t("botPanel.conversations.search")}
-              title={t("botPanel.conversations.search")}
-              aria-pressed={searching}
-              onClick={() => (searching ? stopSearching() : setSearching(true))}
-              className={cn("flex size-7 items-center justify-center rounded-full hover:bg-ink/[0.06] hover:text-ink", searching && "bg-ink/[0.06] text-ink")}
-            >
-              <Search size={14} aria-hidden="true" />
-            </button>
-          )}
+          <button
+            type="button"
+            data-conversations-search
+            aria-label={t("botPanel.conversations.search")}
+            title={t("botPanel.conversations.search")}
+            aria-pressed={searching}
+            onClick={() => (searching ? stopSearching() : setSearching(true))}
+            className={cn("flex size-7 items-center justify-center rounded-full hover:bg-ink/[0.06] hover:text-ink", searching && "bg-ink/[0.06] text-ink")}
+          >
+            <Search size={14} aria-hidden="true" />
+          </button>
           <button
             type="button"
             data-conversations-new
@@ -146,9 +147,12 @@ export function BotConversations({ bot, modal }: { bot: Bot; modal?: { onDone: (
           type="search"
           data-conversations-query
           value={query}
-          onChange={(event) => setQuery(event.target.value)}
+          onChange={(event) => {
+            setQuery(event.target.value);
+            setPage(0);
+          }}
           onKeyDown={(event) => {
-            if (event.key !== "Escape" || (modal && !query)) return;
+            if (event.key !== "Escape") return;
             event.preventDefault();
             event.stopPropagation();
             stopSearching();
@@ -179,17 +183,34 @@ export function BotConversations({ bot, modal }: { bot: Bot; modal?: { onDone: (
       {needle && shown.length === 0 && (
         <p className="px-3 py-3 text-[12.5px] text-ink-secondary">{t("task.noMatch", { query: needle })}</p>
       )}
-      {!needle && !modal && hidden > 0 && (
-        <button
-          type="button"
-          data-conversations-more
-          aria-expanded={expanded}
-          onClick={() => setExpanded((open) => !open)}
-          className="mt-0.5 flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12.5px] text-ink-secondary hover:bg-ink/[0.04] hover:text-ink"
-        >
-          {expanded ? <ChevronUp size={14} aria-hidden="true" /> : <ChevronDown size={14} aria-hidden="true" />}
-          {expanded ? t("botPanel.conversations.showFewer") : t("botPanel.conversations.showMore", { count: hidden })}
-        </button>
+      {pages > 1 && (
+        <nav data-conversations-pages aria-label={t("botPanel.conversations.title")} className="mt-1 flex items-center justify-between gap-2 px-3 py-1.5">
+          <span className="text-[12.5px] tabular-nums text-ink-secondary">{t("usage.v.pageOf", { page: current + 1, pages })}</span>
+          <span className="flex items-center gap-1">
+            <button
+              type="button"
+              data-conversations-prev
+              disabled={current === 0}
+              onClick={() => setPage(current - 1)}
+              aria-label={t("usage.v.prevPage")}
+              title={t("usage.v.prevPage")}
+              className="flex size-7 items-center justify-center rounded-full hover:bg-ink/[0.06] hover:text-ink disabled:pointer-events-none disabled:opacity-40"
+            >
+              <ChevronLeft size={15} aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              data-conversations-next
+              disabled={current >= pages - 1}
+              onClick={() => setPage(current + 1)}
+              aria-label={t("usage.v.nextPage")}
+              title={t("usage.v.nextPage")}
+              className="flex size-7 items-center justify-center rounded-full hover:bg-ink/[0.06] hover:text-ink disabled:pointer-events-none disabled:opacity-40"
+            >
+              <ChevronRight size={15} aria-hidden="true" />
+            </button>
+          </span>
+        </nav>
       )}
     </section>
   );

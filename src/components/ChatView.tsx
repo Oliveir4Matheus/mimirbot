@@ -1070,8 +1070,13 @@ export function ChatView({ bot: profile }: { bot: Bot }) {
           "pl-11 md:flex md:h-11 md:items-center md:border-b md:border-hairline/40 md:py-0 md:pl-3 md:pr-[13px] max-md:pl-14 max-md:pr-3",
         )}
       >
-        <div data-chathead-row className={cn("flex items-center justify-between", phone ? "gap-2" : "w-full gap-2")}>
-        {!phone && <MimirChatNav bot={bot} />}<div data-chathead-identity className="flex min-w-0 flex-1 items-center gap-2" style={headerNoDragStyle}>
+        <div
+          data-chathead-row
+          className={cn(
+            phone ? "flex items-center justify-between gap-2" : "grid w-full grid-cols-[minmax(auto,1fr)_minmax(0,auto)_minmax(auto,1fr)] items-center gap-3",
+          )}
+        >
+        {!phone && <div className="flex justify-self-start"><MimirChatNav bot={bot} /></div>}<div data-chathead-identity className={cn("flex min-w-0 items-center gap-2", phone ? "flex-1" : "justify-center")} style={headerNoDragStyle}>
           {advanced ? (
             <div data-chathead-pill className={cn(CHATHEAD_PILL, "pr-1")}>
               <button
@@ -1140,7 +1145,7 @@ export function ChatView({ bot: profile }: { bot: Bot }) {
         </div>
         <div
           data-chathead-controls
-          className={cn("flex shrink-0 items-center gap-2", !phone && "ml-auto")}
+          className={cn("flex shrink-0 items-center gap-2", !phone && "justify-self-end")}
           style={controlsShiftStyle}
         >
           {(bot.busy || bot.waitingForTeammates) && (

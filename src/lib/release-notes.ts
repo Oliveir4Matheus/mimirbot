@@ -5,6 +5,13 @@ export interface ReleaseNotes {
 
 /** Shown once after an update, so they ship inside the app and work offline. Add the entry for a version when you raise it. */
 export const RELEASE_NOTES: Record<string, ReleaseNotes> = {
+  "0.1.135": {
+    features: [
+      "As conversas do agente agora ficam numa aba do painel da direita, ao lado de Bot e Computador, com 10 por página e paginação. O modal de conversas foi removido.",
+      "O menu superior do chat ficou centralizado: o agente e a conversa no meio, e o modelo e o painel à direita.",
+    ],
+    fixes: [],
+  },
   "0.1.134": {
     features: [],
     fixes: [],

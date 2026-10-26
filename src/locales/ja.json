@@ -3320,8 +3320,6 @@
   "botPanel.conversations.search": "会話を検索",
   "botPanel.conversations.searchPlaceholder": "{name} との会話を検索",
   "botPanel.conversations.new": "新しい会話",
-  "botPanel.conversations.showMore": "さらに {count} 件を表示",
-  "botPanel.conversations.showFewer": "表示を減らす",
   "botPanel.avatar.edit": "アバターを編集",
   "botPanel.avatar.tabBot": "ボット",
   "botPanel.avatar.tabGenerate": "生成",

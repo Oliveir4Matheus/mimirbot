@@ -4768,8 +4768,6 @@
   "botPanel.conversations.search": "Sohbetlerde ara",
   "botPanel.conversations.searchPlaceholder": "{name} ile sohbetlerde ara",
   "botPanel.conversations.new": "Yeni sohbet",
-  "botPanel.conversations.showMore": "{count} tane daha göster",
-  "botPanel.conversations.showFewer": "Daha az göster",
   "usageMeter.title": "MimirBot Cloud kullanımı",
   "usageMeter.subtitle": "{plan} planınızın bu ay içerdikleri ve ne kadarını kullandığınız.",
   "usageMeter.empty": "Henüz gösterilecek bir şey yok. Cloud hazır olduğunda planınızın içerdikleri burada görünür.",

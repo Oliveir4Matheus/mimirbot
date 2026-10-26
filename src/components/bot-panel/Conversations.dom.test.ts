@@ -24,7 +24,7 @@ vi.mock("@/lib/use-media-query", async (importOriginal) => ({
   useMediaQuery: () => fixture.wide,
 }));
 
-const { BotConversations, CONVERSATIONS_SHOWN, forgetConversationLines } = await import("./Conversations");
+const { BotConversations, CONVERSATIONS_PER_PAGE, forgetConversationLines } = await import("./Conversations");
 
 const now = Date.now();
 const task = (threadId: string, title: string, order: number, extra: Partial<Task> = {}): Task =>
@@ -66,7 +66,6 @@ const click = (element: Element | null) => {
   if (!element) throw new Error("nothing to click");
   flushSync(() => element.dispatchEvent(new MouseEvent("click", { bubbles: true, detail: 1 })));
 };
-const more = () => host.querySelector("[data-conversations-more]");
 const type = (input: HTMLInputElement, value: string) => {
   Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, value);
   flushSync(() => input.dispatchEvent(new Event("input", { bubbles: true })));
@@ -92,33 +91,13 @@ afterEach(() => {
 });
 
 describe("a bot's conversations in its panel", () => {
-  it("lists four, newest first, with the open one marked, and Show N more opens the rest", () => {
+  it("lists every conversation, newest first, with the open one marked and no routine runs", () => {
     render(research());
-    expect(CONVERSATIONS_SHOWN).toBe(4);
-    expect(listed()).toEqual(["hiring", "launch", "who", "pricing"]);
+    expect(listed()).toEqual(["hiring", "launch", "who", "pricing", "deck", "podcasts", "compare"]);
     expect(row("who").querySelector('[data-sidebar-thread-row="who"]')!.getAttribute("aria-current")).toBe("page");
     expect(row("launch").querySelector("[aria-current]")).toBeNull();
     expect(listed()).not.toContain("run");
-    expect(more()!.textContent).toBe("Show 3 more");
-    expect(more()!.getAttribute("aria-expanded")).toBe("false");
-
-    click(more());
-    expect(listed()).toEqual(["hiring", "launch", "who", "pricing", "deck", "podcasts", "compare"]);
-    expect(more()!.textContent).toBe("Show fewer");
-    click(more());
-    expect(listed()).toHaveLength(4);
-  });
-
-  it("keeps the open conversation listed when it is older than the first four", () => {
-    render(research({ threadId: "compare", messages: [] }));
-    expect(listed()).toEqual(["hiring", "launch", "who", "pricing", "compare"]);
-    expect(more()!.textContent).toBe("Show 2 more");
-  });
-
-  it("shows no Show more when every conversation fits", () => {
-    render(research({ tasks: tasks.slice(0, 3) }));
-    expect(listed()).toHaveLength(3);
-    expect(more()).toBeNull();
+    expect(host.querySelector("[data-conversations-more]")).toBeNull();
   });
 
   it("marks an unread reply with a dot, a pinned conversation with a pin, and a running one with how long it has worked", async () => {
@@ -129,19 +108,21 @@ describe("a bot's conversations in its panel", () => {
     expect(row("hiring").querySelector('svg[aria-label="Pin"]')).not.toBeNull();
     expect(row("launch").querySelector('svg[aria-label="Pin"]')).toBeNull();
     expect(row("pricing").querySelector("[data-thread-working]")!.textContent).toMatch(/^Working·1m 1[23]s$/);
-    expect(row("deck")).toBeNull();
     expect(host.querySelectorAll("[data-thread-working]")).toHaveLength(1);
   });
 
-  it("shows each listed conversation's last line, fetching only the listed ones that are not open", async () => {
+  it("shows each conversation's last line, fetching only the ones that are not open", async () => {
     render(research());
     await settle();
     expect(row("who").textContent).toContain("You're the owner of this install");
     expect(row("launch").textContent).toContain("Done. Want me to translate another post?");
     expect(row("hiring").textContent).toContain("Draft ready for review");
     expect(fixture.api.mock.calls.map(([path]) => path).sort()).toEqual([
+      "/api/threads/compare/messages?limit=8",
+      "/api/threads/deck/messages?limit=8",
       "/api/threads/hiring/messages?limit=8",
       "/api/threads/launch/messages?limit=8",
+      "/api/threads/podcasts/messages?limit=8",
       "/api/threads/pricing/messages?limit=8",
     ]);
     expect(fixture.api.mock.calls[0]![1]).toEqual({ background: true });
@@ -155,7 +136,6 @@ describe("a bot's conversations in its panel", () => {
     expect(input.getAttribute("placeholder")).toBe("Search Research's conversations");
     type(input, "post");
     expect(listed()).toEqual(["hiring", "launch"]);
-    expect(more()).toBeNull();
     await settle();
     type(input, "episode");
     await settle();
@@ -168,7 +148,7 @@ describe("a bot's conversations in its panel", () => {
     flushSync(() => input.dispatchEvent(escape));
     expect(escape.defaultPrevented).toBe(true);
     expect(host.querySelector("[data-conversations-query]")).toBeNull();
-    expect(listed()).toHaveLength(4);
+    expect(listed()).toHaveLength(7);
   });
 
   it("opens a conversation, and leaves the open one alone", () => {
@@ -211,55 +191,51 @@ describe("a bot's conversations in its panel", () => {
     click([...menu.querySelectorAll("button")].find((button) => button.textContent === "Pin")!);
     expect(fixture.dispatch.mock.calls).toEqual([[{ type: "updateTask", botId: "research", threadId: "launch", patch: { pinned: true } }]]);
   });
-});
 
-describe("a bot's conversations in the modal", () => {
-  const renderModal = (onDone = vi.fn(), bot = research()) => {
-    flushSync(() => root.render(createElement(BotConversations, { bot, modal: { onDone } })));
-    return onDone;
-  };
+  describe("with more than one page", () => {
+    const many = Array.from({ length: 23 }, (_, index) => task(`t${index}`, `Chat ${index}`, index + 1));
+    const crowded = () => research({ threadId: "t0", tasks: many, messages: [] });
+    const next = () => host.querySelector("[data-conversations-next]");
+    const prev = () => host.querySelector("[data-conversations-prev]");
+    const label = () => host.querySelector("[data-conversations-pages]")?.textContent;
 
-  it("lists every conversation at once, with the search already open and no panel-only controls", () => {
-    renderModal();
-    expect(listed()).toEqual(["hiring", "launch", "who", "pricing", "deck", "podcasts", "compare"]);
-    expect(more()).toBeNull();
-    expect(host.querySelector("[data-conversations-query]")).not.toBeNull();
-    expect(host.querySelector("[data-conversations-search]")).toBeNull();
-    expect(host.querySelector('[data-panel-card="conversations"]')).toBeNull();
-  });
+    it("lists ten at a time, and pages forward and back", async () => {
+      expect(CONVERSATIONS_PER_PAGE).toBe(10);
+      render(crowded());
+      await settle();
+      expect(listed()).toEqual(many.slice(0, 10).map((item) => item.threadId));
+      expect(label()).toContain("Page 1 of 3");
+      expect(prev()!.hasAttribute("disabled")).toBe(true);
+      click(next());
+      expect(listed()).toEqual(many.slice(10, 20).map((item) => item.threadId));
+      click(next());
+      expect(listed()).toEqual(many.slice(20).map((item) => item.threadId));
+      expect(label()).toContain("Page 3 of 3");
+      expect(next()!.hasAttribute("disabled")).toBe(true);
+      click(prev());
+      expect(label()).toContain("Page 2 of 3");
+    });
 
-  it("opens the picked conversation and closes, and leaves the open one alone but still closes", () => {
-    const onDone = renderModal();
-    click(row("launch").querySelector('[data-sidebar-thread-row="launch"]'));
-    expect(fixture.dispatch.mock.calls).toEqual([[{ type: "switchTask", botId: "research", threadId: "launch" }]]);
-    expect(onDone).toHaveBeenCalledTimes(1);
-    fixture.dispatch.mockReset();
-    click(row("who").querySelector('[data-sidebar-thread-row="who"]'));
-    expect(fixture.dispatch).not.toHaveBeenCalled();
-    expect(onDone).toHaveBeenCalledTimes(2);
-  });
+    it("fetches last lines only for the page in view", async () => {
+      render(crowded());
+      await settle();
+      const asked = fixture.api.mock.calls.map(([path]) => path);
+      expect(asked).toHaveLength(9);
+      expect(asked).not.toContain("/api/threads/t12/messages?limit=8");
+    });
 
-  it("starts a new conversation and closes", () => {
-    const onDone = renderModal();
-    click(host.querySelector("[data-conversations-new]"));
-    expect(fixture.dispatch.mock.calls).toEqual([[{ type: "newTask", botId: "research" }]]);
-    expect(onDone).toHaveBeenCalledTimes(1);
-  });
+    it("searches every page and goes back to the first", async () => {
+      render(crowded());
+      click(next());
+      click(host.querySelector("[data-conversations-search]"));
+      type(host.querySelector<HTMLInputElement>("[data-conversations-query]")!, "Chat 2");
+      expect(listed()).toEqual(["t2", "t20", "t21", "t22"]);
+      expect(host.querySelector("[data-conversations-pages]")).toBeNull();
+    });
 
-  it("does not touch the bot panel on a phone: the modal closes itself", () => {
-    fixture.wide = false;
-    renderModal();
-    click(row("launch").querySelector('[data-sidebar-thread-row="launch"]'));
-    expect(fixture.dispatch.mock.calls).toEqual([[{ type: "switchTask", botId: "research", threadId: "launch" }]]);
-  });
-
-  it("filters by title as you type and keeps the search open when it is cleared", () => {
-    renderModal();
-    const input = host.querySelector<HTMLInputElement>("[data-conversations-query]")!;
-    type(input, "pricing");
-    expect(listed()).toEqual(["pricing"]);
-    flushSync(() => input.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true })));
-    expect(host.querySelector("[data-conversations-query]")).not.toBeNull();
-    expect(listed()).toHaveLength(7);
+    it("shows no pager when everything fits on one page", () => {
+      render(research());
+      expect(host.querySelector("[data-conversations-pages]")).toBeNull();
+    });
   });
 });

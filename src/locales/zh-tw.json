@@ -4152,8 +4152,6 @@
   "botPanel.conversations.search": "搜尋對話",
   "botPanel.conversations.searchPlaceholder": "搜尋與 {name} 的對話",
   "botPanel.conversations.new": "新對話",
-  "botPanel.conversations.showMore": "再顯示 {count} 個",
-  "botPanel.conversations.showFewer": "顯示較少",
   "usageMeter.title": "MimirBot Cloud 用量",
   "usageMeter.subtitle": "你的 {plan} 方案本月包含的額度，以及你已使用的量。",
   "usageMeter.empty": "目前沒有內容。Cloud 準備好後，方案包含的額度會顯示在這裡。",

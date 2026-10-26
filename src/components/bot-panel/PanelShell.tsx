@@ -10,6 +10,7 @@ import type { useBotSettingsDerived } from "../bot-settings/useBotSettingsDerive
 import { AvatarEditorCard } from "./AvatarEditorCard";
 import { BotTab } from "./BotTab";
 import { ComputerTab } from "./ComputerTab";
+import { BotConversations } from "./Conversations";
 import { PANEL_TABS, PAGES, TAB_LABEL, type PanelTab, type PanelTarget, type SimplePageId } from "./page-registry";
 import { PageBody, pageSurfaceCls } from "./pages";
 import { linkTarget, usePanelLink, type PanelLink } from "./panel-link";
@@ -142,6 +143,7 @@ export function BotPanel({ bot, derived, headerClassName, linkedSection, onClose
               ))}
             </div>
             <div role="tabpanel">
+              {tab === "conversations" && <div data-panel-tabpanel="conversations"><BotConversations bot={bot} /></div>}
               {tab === "bot" && (
                 <BotTab
                   bot={bot}

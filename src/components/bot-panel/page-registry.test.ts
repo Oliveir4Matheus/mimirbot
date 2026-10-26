@@ -5,8 +5,8 @@ import { BOT_SECTIONS } from "../bot-settings/sections";
 import { isSimplePage, PAGE_IDS, PAGES, PANEL_TABS, sectionTarget, SIMPLE_PAGES, TAB_LABEL } from "./page-registry";
 
 describe("the bot panel's page registry", () => {
-  it("has two tabs, Bot and Computer", () => {
-    expect(PANEL_TABS).toEqual(["bot", "computer"]);
+  it("has three tabs: Conversations, Bot and Computer", () => {
+    expect(PANEL_TABS).toEqual(["conversations", "bot", "computer"]);
   });
 
   it("lands every settings section on a tab, and on a Simple page that lives on that tab", () => {

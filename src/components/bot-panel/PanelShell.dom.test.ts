@@ -24,8 +24,9 @@ vi.mock("../AvatarImageGenerator", () => ({ AvatarImageGenerator: () => null }))
 vi.mock("@/lib/use-organization-branding", () => ({ useOrganizationBranding: () => null }));
 const stub = (name: string) => (props: Record<string, unknown>) =>
   createElement("div", { [`data-stub-${name}`]: true, "data-editing-instructions": props.editingInstructions === true ? "true" : undefined },
-    name === "bot" ? createElement("section", { "data-panel-card": "conversations" }) : null);
+    name === "conversations" ? createElement("section", { "data-panel-card": "conversations" }) : null);
 vi.mock("./BotTab", () => ({ BotTab: stub("bot") }));
+vi.mock("./Conversations", () => ({ BotConversations: stub("conversations") }));
 vi.mock("./ComputerTab", () => ({ ComputerTab: stub("computer") }));
 vi.mock("./pages", () => ({ PageBody: ({ page }: { page: string }) => createElement("div", { "data-stub-page": page }), pageSurfaceCls: "" }));
 
@@ -170,10 +171,8 @@ describe("the chat header's conversation title", () => {
     { threadId: "thread-scout", title: "Plan the launch", createdAt: 1 },
     { threadId: "other", title: "Older notes", createdAt: 0, unread: true },
   ] };
-  const scrolledTo = () => vi.mocked(HTMLElement.prototype.scrollIntoView).mock.contexts
-    .map((element) => (element as HTMLElement).getAttribute("data-panel-card"));
 
-  it("reads Bot / Conversation ▾, marks other conversations that need a look, and opens the conversations modal", () => {
+  it("reads Bot / Conversation ▾, marks other conversations that need a look, and opens the panel on its conversations", () => {
     const header = document.createElement("div");
     document.body.append(header);
     const headerRoot = createRoot(header);
@@ -184,21 +183,20 @@ describe("the chat header's conversation title", () => {
       expect(title.getAttribute("title")).toBe("Show Scout's conversations");
       expect(title.querySelector('[role="img"]')!.getAttribute("aria-label")).toBe("Other activity (1)");
       click(title);
-      expect(document.querySelector("[data-conversations-modal]")).not.toBeNull();
-      expect(fixture.dispatch).not.toHaveBeenCalled();
+      expect(fixture.dispatch).toHaveBeenCalledExactlyOnceWith({ type: "toggleSettings", open: true, section: "overview" });
     } finally {
       flushSync(() => headerRoot.unmount());
       header.remove();
     }
   });
 
-  it("still opens the panel at Conversations when asked to", async () => {
-    openBotSettings(fixture.dispatch, "overview", { anchor: "conversations" });
+  it("opens the panel on the Conversations tab when asked to", async () => {
+    openBotSettings(fixture.dispatch, "overview", { tab: "conversations" });
     expect(fixture.dispatch).toHaveBeenCalledExactlyOnceWith({ type: "toggleSettings", open: true, section: "overview" });
     render("overview");
     await settle();
-    expect(tab()).toBe("bot");
-    expect(scrolledTo()).toEqual(["conversations"]);
+    expect(tab()).toBe("conversations");
+    expect(host.querySelector("[data-stub-conversations]")).not.toBeNull();
   });
 
   it("draws nothing for a bot without a conversation list, and no dot when the others are quiet", () => {

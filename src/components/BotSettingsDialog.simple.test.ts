@@ -118,6 +118,7 @@ const { PanelHero } = await import("./bot-panel/PanelHero");
 const { AvatarEditorCard } = await import("./bot-panel/AvatarEditorCard");
 const { BotTab } = await import("./bot-panel/BotTab");
 const { ComputerTab } = await import("./bot-panel/ComputerTab");
+const { BotConversations } = await import("./bot-panel/Conversations");
 const { PageBody, AppsPage, RoutinesPage, MemoryPage, SkillsPage, FolderPage, BrowserPage } = await import("./bot-panel/pages");
 const { BrowserLogins } = await import("./bot-panel/browser-logins");
 const { PAGES, sectionTarget } = await import("./bot-panel/page-registry");
@@ -271,7 +272,7 @@ describe("the bot panel in Simple mode", () => {
     expect(hero.props.bot).toBe(bot);
     expect(hero.props.patch).toBe(patch);
     const tabs = [...rendered.html.matchAll(/data-panel-tab="(\w+)"[^>]*>([^<]+)<\/button>/g)].map((match) => [match[1], match[2]]);
-    expect(tabs).toEqual([["bot", "Bot"], ["computer", "Computer"]]);
+    expect(tabs).toEqual([["conversations", "Conversations"], ["bot", "Bot"], ["computer", "Computer"]]);
     expect(shown(rendered)).toEqual({ tab: "bot", page: undefined });
     expect(ofType(rendered, BotTab)!.props.bot).toBe(bot);
     expect(rendered.html).toContain('id="bot-settings-title"');
@@ -279,7 +280,7 @@ describe("the bot panel in Simple mode", () => {
 
   it("switches tabs", () => {
     const bot = makeBot();
-    for (const [tab, type] of [["computer", ComputerTab], ["bot", BotTab]] as const) {
+    for (const [tab, type] of [["computer", ComputerTab], ["bot", BotTab], ["conversations", BotConversations]] as const) {
       click(find(panel(bot), "data-panel-tab", tab));
       const rendered = panel(bot);
       expect(shown(rendered).tab).toBe(tab);

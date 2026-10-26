@@ -1,10 +1,11 @@
 import type { LocaleKey } from "@/locales";
 import type { BotSettingsSection } from "@/state/store";
 
-export const PANEL_TABS = ["bot", "computer"] as const;
+export const PANEL_TABS = ["conversations", "bot", "computer"] as const;
 export type PanelTab = (typeof PANEL_TABS)[number];
 
 export const TAB_LABEL: Record<PanelTab, LocaleKey> = {
+  conversations: "botPanel.conversations.title",
   bot: "botPanel.avatar.tabBot",
   computer: "botPanel.tab.computer",
 };

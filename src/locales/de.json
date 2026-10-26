@@ -2269,8 +2269,6 @@
   "botPanel.conversations.search": "Unterhaltungen durchsuchen",
   "botPanel.conversations.searchPlaceholder": "Unterhaltungen mit {name} durchsuchen",
   "botPanel.conversations.new": "Neue Unterhaltung",
-  "botPanel.conversations.showMore": "{count} weitere anzeigen",
-  "botPanel.conversations.showFewer": "Weniger anzeigen",
   "usageMeter.title": "Nutzung von MimirBot Cloud",
   "usageMeter.subtitle": "Was dein {plan}-Tarif diesen Monat enthält und wie viel du davon genutzt hast.",
   "usageMeter.empty": "Noch nichts zu sehen. Die Kontingente deines Tarifs erscheinen hier, sobald die Cloud bereit ist.",

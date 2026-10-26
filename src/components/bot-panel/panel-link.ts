@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from "react";
 
 import type { Action, BotSettingsSection } from "@/state/store";
-import { isSimplePage, PAGES, sectionTarget, type PageId, type PanelTarget } from "./page-registry";
+import { isSimplePage, PAGES, sectionTarget, type PageId, type PanelTab, type PanelTarget } from "./page-registry";
 
 /**
  * A named open of a bot's settings. The store keeps only the section, which the Simple bot panel maps to one tab or
@@ -11,8 +11,10 @@ import { isSimplePage, PAGES, sectionTarget, type PageId, type PanelTarget } fro
 export interface PanelLink {
   section: BotSettingsSection;
   page?: PageId;
-  /** A card on the section's tab to scroll to, such as "conversations". */
+  /** A card on the section's tab to scroll to. */
   anchor?: string;
+  /** The tab to land on, when the section's own place is not the one wanted. */
+  tab?: PanelTab;
   nonce: number;
 }
 
@@ -22,14 +24,14 @@ const watchers = new Set<() => void>();
 /**
  * Opens the bot's settings at a section, exactly as `toggleSettings` does, and tells the bot panel where to land:
  * `page`, when given, is the panel page that holds what the caller is about (it must belong to the section); `anchor`
- * is a card on the section's tab.
+ * is a card on the section's tab, and `tab` replaces the section's tab.
  */
 export function openBotSettings(
   dispatch: (action: Action) => void,
   section: BotSettingsSection,
-  options: { botId?: string; page?: PageId; anchor?: string } = {},
+  options: { botId?: string; page?: PageId; anchor?: string; tab?: PanelTab } = {},
 ): void {
-  latest = { section, ...(options.page ? { page: options.page } : {}), ...(options.anchor ? { anchor: options.anchor } : {}), nonce: (latest?.nonce ?? 0) + 1 };
+  latest = { section, ...(options.page ? { page: options.page } : {}), ...(options.anchor ? { anchor: options.anchor } : {}), ...(options.tab ? { tab: options.tab } : {}), nonce: (latest?.nonce ?? 0) + 1 };
   dispatch({ type: "toggleSettings", open: true, section, ...(options.botId !== undefined ? { botId: options.botId } : {}) });
   for (const watch of Array.from(watchers)) watch();
 }
@@ -53,5 +55,6 @@ export function usePanelLink(): PanelLink | null {
 export function linkTarget(section: BotSettingsSection, link: PanelLink | null): PanelTarget {
   const ours = link?.section === section ? link : null;
   if (ours?.page && isSimplePage(ours.page)) return { tab: PAGES[ours.page].home, page: ours.page };
+  if (ours?.tab) return { tab: ours.tab, ...(ours.anchor ? { anchor: ours.anchor } : {}) };
   return ours?.anchor ? { ...sectionTarget(section), anchor: ours.anchor } : sectionTarget(section);
 }

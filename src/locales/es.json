@@ -5286,8 +5286,6 @@
   "botPanel.conversations.search": "Buscar conversaciones",
   "botPanel.conversations.searchPlaceholder": "Buscar en las conversaciones con {name}",
   "botPanel.conversations.new": "Nueva conversación",
-  "botPanel.conversations.showMore": "Mostrar {count} más",
-  "botPanel.conversations.showFewer": "Mostrar menos",
   "usageMeter.title": "Uso de MimirBot Cloud",
   "usageMeter.subtitle": "Lo que incluye tu plan {plan} este mes y cuánto has usado.",
   "usageMeter.empty": "Aún no hay nada que mostrar. Lo que incluye tu plan aparecerá aquí cuando la Cloud esté lista.",

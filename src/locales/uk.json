@@ -2728,8 +2728,6 @@
   "botPanel.conversations.search": "Пошук у розмовах",
   "botPanel.conversations.searchPlaceholder": "Пошук у розмовах з {name}",
   "botPanel.conversations.new": "Нова розмова",
-  "botPanel.conversations.showMore": "Показати ще {count}",
-  "botPanel.conversations.showFewer": "Показати менше",
   "usageMeter.title": "Використання MimirBot Cloud",
   "usageMeter.subtitle": "Що входить у ваш тариф {plan} цього місяця і скільки ви вже використали.",
   "usageMeter.empty": "Поки що нічого показати. Що входить у ваш тариф, з'явиться тут, щойно Cloud буде готовий.",
