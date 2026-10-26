@@ -3494,6 +3494,7 @@
   "computer.files.notShared": "Chưa chia sẻ",
   "computer.files.notSharedHint": "Yêu cầu bot chia sẻ liên kết tệp trong cuộc trò chuyện này để lưu một bản sao.",
   "computer.simple.whereWorks": "Nơi {name} làm việc",
+  "computer.simple.usingNow": "Hiện tại: {place}",
   "computer.simple.dest.thisMac": "Máy Mac này",
   "computer.simple.dest.thisPc": "Máy tính này",
   "computer.simple.needsSetup": "Desktop của {name} cần một bước thiết lập trước.",

@@ -3984,6 +3984,7 @@
   "computer.files.notShared": "Sin compartir",
   "computer.files.notSharedHint": "Pide al bot que comparta un enlace al archivo en este chat para guardar una copia.",
   "computer.simple.whereWorks": "Dónde trabaja {name}",
+  "computer.simple.usingNow": "Ahora mismo: {place}",
   "computer.simple.dest.thisMac": "Este Mac",
   "computer.simple.dest.thisPc": "Este PC",
   "computer.simple.needsSetup": "El escritorio de {name} necesita antes un paso de configuración.",

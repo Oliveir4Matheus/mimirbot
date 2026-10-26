@@ -2345,5 +2345,6 @@
   "voice.adding": "Wird hinzugefügt…",
   "toolDetail.unverified": "Kein Ergebnis",
   "inspector.run.unverified": "Kein Ergebnis",
-  "chat.verify.unverified": "{count} ohne Ergebnis"
+  "chat.verify.unverified": "{count} ohne Ergebnis",
+  "computer.simple.usingNow": "Gerade: {place}"
 }

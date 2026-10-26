@@ -4277,6 +4277,7 @@
   "computer.files.notShared": "Não compartilhado",
   "computer.files.notSharedHint": "Peça ao bot para compartilhar um link do arquivo nesta conversa para salvar uma cópia.",
   "computer.simple.whereWorks": "Onde {name} trabalha",
+  "computer.simple.usingNow": "Agora: {place}",
   "computer.simple.dest.thisMac": "Este Mac",
   "computer.simple.dest.thisPc": "Este PC",
   "computer.simple.needsSetup": "O desktop de {name} precisa de uma etapa de configuração primeiro.",

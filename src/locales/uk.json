@@ -2804,5 +2804,6 @@
   "voice.library": "Бібліотека голосів ElevenLabs",
   "voice.libraryHint": "Вибраний голос буде додано до ваших голосів.",
   "voice.adding": "Додавання…",
-  "toolDetail.unverified": "Немає результату"
+  "toolDetail.unverified": "Немає результату",
+  "computer.simple.usingNow": "Зараз: {place}"
 }

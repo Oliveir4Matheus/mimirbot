@@ -2327,5 +2327,6 @@
   "voice.adding": "जोड़ी जा रही है…",
   "toolDetail.unverified": "कोई परिणाम नहीं",
   "inspector.run.unverified": "कोई परिणाम नहीं",
-  "chat.verify.unverified": "{count} बिना परिणाम"
+  "chat.verify.unverified": "{count} बिना परिणाम",
+  "computer.simple.usingNow": "अभी: {place}"
 }
