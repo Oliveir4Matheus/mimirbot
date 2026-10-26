@@ -28,6 +28,7 @@ import { NotificationRail, NotificationsPanel } from "@/components/Notifications
 import { useNotificationFeed } from "@/lib/notification-preferences";
 import { UpdateBanner } from "@/components/UpdateBanner";
 import { AppNotices } from "@/components/AppNotices";
+import { WhatsNewDialog } from "@/components/WhatsNewDialog";
 import { CloudAsleepStrip } from "@/components/CloudAsleepStrip";
 import { CloudSendStrip } from "@/components/CloudSendStrip";
 import { HomeLine } from "@/components/HomeLine";
@@ -284,6 +285,7 @@ function Shell({ viewer }: { viewer: WelcomeViewer | null }) {
       <CloudSendStrip cloudHome={state.config?.cloudHome === true} onPairPhone={() => dispatch(phonePairingSettingsAction())} />
       <HomeLine />
       <AppNotices quiet={paletteOpen || drawerOpen || Boolean(localVmWorkspaceBotId)} viewer={viewer} />
+      <WhatsNewDialog />
       <div className="relative flex min-h-0 flex-1">
       {!calendarFocus && <button
         type="button"

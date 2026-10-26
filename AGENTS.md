@@ -37,11 +37,15 @@ installed apps get it from the update button without rebuilding:
    (`Oliveir4Matheus/mimirbot`, public).
 3. `pnpm package:linux` writes `release/MimirBot-<version>-x86_64.AppImage`
    and `release/latest-linux.yml`.
-4. `gh release create v<version> --target mimirbot
-   release/MimirBot-<version>-x86_64.AppImage release/latest-linux.yml` (add
-   the `.blockmap` when the build emits one). The AppImage and
-   `latest-linux.yml` must come from the same build; a release without
-   `latest-linux.yml` leaves every install on its current version.
+4. Push the tag (`git tag v<version> && git push origin v<version>`), then
+   `gh release create v<version> -R Oliveir4Matheus/mimirbot --verify-tag
+   release/MimirBot-<version>-x86_64.AppImage release/latest-linux.yml
+   release/MimirBot-<version>-amd64.deb` (add the `.blockmap` when the build
+   emits one). Always pass `-R Oliveir4Matheus/mimirbot`: without it `gh`
+   resolves the `upstream` remote (`milind-soni/OpenMausBot`, not ours) as the
+   target. The AppImage and `latest-linux.yml` must come from the same build; a
+   release without `latest-linux.yml` leaves every install on its current
+   version.
 5. Every update carries its tag, `v<version>`, on the pushed commit the build
    came from, so anyone can build that exact version with
    `git checkout v<version> && pnpm install && pnpm package:<win|mac|linux>`.

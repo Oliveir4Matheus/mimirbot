@@ -5,7 +5,7 @@ export const HELP_CENTER_URL = DOCS_URL;
 export const APPROVAL_LEVELS_URL = `${APP_REPOSITORY}/blob/main/docs/approval-levels.md`;
 export const PASSKEY_HELP_URL = "https://docs.mimirbot.invalid/docs/troubleshooting/google-sign-in-cloud-browser";
 export const FEEDBACK_URL = "https://github.com/Oliveir4Matheus/mimirbot/issues";
-export const RELEASES_URL = `${APP_REPOSITORY}/releases`;
+export const RELEASES_URL = "https://github.com/Oliveir4Matheus/mimirbot/releases";
 export const PRICING_URL = "https://www.mimirbot.invalid/pricing";
 export function withSource(url: string, source: string): string {
   const target = new URL(url);
