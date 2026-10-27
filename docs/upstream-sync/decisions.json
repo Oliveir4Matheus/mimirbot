@@ -3,7 +3,7 @@
     "repo": "https://github.com/milind-soni/OpenMausBot",
     "branch": "main",
     "mergeBase": "0d8eacc65cd3b783a0d28d019d39e6367780b911",
-    "triagedUpTo": "bb3fd61c56274faa6f28addcf22e25fff2c9c527"
+    "triagedUpTo": "e08651f1067c8b4ecadba494d792eb8678ea15dd"
   },
   "statuses": {
     "adopted": "cherry-picked into mimirbot (ourCommit)",
@@ -1812,6 +1812,1290 @@
       "reason": "Bug fix cherry-picked after the owner approved lot 6; conflicts resolved keeping our brand and design.",
       "decidedAt": "2026-10-27",
       "ourCommit": "e7826f75b0be25608f17cf1fa06948edcda1f709"
+    },
+    {
+      "sha": "ae28190c22868f262a36653729aa45610d3ee7c2",
+      "subject": "feat(web): show the unread count in the browser title and app badge",
+      "status": "applied",
+      "reason": "Upstream sync batch A/B/F, adapted to MimirBot names where they conflicted.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "365c8010c001be5707ffed155a307ccea8ea3016"
+    },
+    {
+      "sha": "a8fbf236963fb0bc4a08425326e8b0bf4275627e",
+      "subject": "fix(web): put the unread count in front of the page's own title",
+      "status": "applied",
+      "reason": "Upstream sync batch A/B/F, adapted to MimirBot names where they conflicted.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "4334c8df61bbe70293e19d87990a91d1c59780a8"
+    },
+    {
+      "sha": "68e9a780be05eb6352d48307b0d9d3a1adbbaf66",
+      "subject": "feat(i18n): localize unverified tool receipt status across locale catalogs",
+      "status": "applied",
+      "reason": "Upstream sync batch A/B/F, adapted to MimirBot names where they conflicted.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "523f2b94799326aff9cd70b187b1e03b2583cc47"
+    },
+    {
+      "sha": "074d10f8a04e06cf6e8ee0457c47e249faf27041",
+      "subject": "fix(ui): say \"No result\" for a tool whose end was never recorded",
+      "status": "applied",
+      "reason": "Upstream sync batch A/B/F, adapted to MimirBot names where they conflicted.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "57c9d4923c4f7912ef8116ee565d7514015b044b"
+    },
+    {
+      "sha": "1c3fc2a2325f148ea2668af305bc8628675a7c28",
+      "subject": "test(timeline): verify live vs unverified states in server timeline tests",
+      "status": "applied",
+      "reason": "Upstream sync batch A/B/F, adapted to MimirBot names where they conflicted.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "2fcee2f8969645a98c77dce29600ee874f7611f4"
+    },
+    {
+      "sha": "d57c70b67aa082b72e09b0d62ad0d1862b919d1e",
+      "subject": "Resolve .cmd shims that wrap an extensionless node script (#3610)",
+      "status": "applied",
+      "reason": "Upstream sync batch A/B/F, adapted to MimirBot names where they conflicted.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "7d7b9ec4d6d63a4cfc182cf2abd4d9fecb375827"
+    },
+    {
+      "sha": "310a4748a77895d0a58ba77ca501e3bdf7017cb9",
+      "subject": "fix(windows): spawn Cursor CLI via PowerShell -File shim, not .cmd (#3628)",
+      "status": "applied",
+      "reason": "Upstream sync batch A/B/F, adapted to MimirBot names where they conflicted.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "c96a350d94ff35348526bed6d9524fb258dd5a2c"
+    },
+    {
+      "sha": "7286ab30972b653d6f57b413e86ca082356b5a57",
+      "subject": "Discover serving context windows from the endpoint (#3619)",
+      "status": "applied",
+      "reason": "Upstream sync batch A/B/F, adapted to MimirBot names where they conflicted.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "0d713046dd4ac180584747fb86a42be8f8c619f8"
+    },
+    {
+      "sha": "545868c566b394b4c782934b9d5c993cfb692132",
+      "subject": "feat(lm-studio): support Bionic and LM Studio 0.4 native catalog (#3630)",
+      "status": "applied",
+      "reason": "Upstream sync batch A/B/F, adapted to MimirBot names where they conflicted.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "c27e946ea31939d801117f3e6e33c1074dc7aa26"
+    },
+    {
+      "sha": "c63f476e68db8cea7ae6830bf131f1231e2a657e",
+      "subject": "fix(lm-studio): ask only a server added as LM Studio for its native catalog",
+      "status": "applied",
+      "reason": "Upstream sync batch A/B/F, adapted to MimirBot names where they conflicted.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "2f479dc557863b3fe8127330c174c10532098a37"
+    },
+    {
+      "sha": "b818a7cd1592a90afa622784f6ef0d6d1555060e",
+      "subject": "fix(reply): the reply habits name no files, so routine prompts stay free of memory-file names",
+      "status": "deferred",
+      "reason": "Reply habits name no files; server/reply-habits.ts was removed here, so the same rule has to be written where our system prompt now builds reply habits.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "d4ae495c5df23dab39e78a349e9dd9344057c001",
+      "subject": "feat(chat): a chart result is drawn in the message itself",
+      "status": "applied",
+      "reason": "Upstream sync batch A/B/F, adapted to MimirBot names where they conflicted.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "1cec580e487b9ce518a2d5a171cc9e92e4cf6af8"
+    },
+    {
+      "sha": "f807c761a9baf50d6b09107bad8e5792c3b69207",
+      "subject": "feat(chat): keep the bot's progress lines; fold only finished tool steps",
+      "status": "applied",
+      "reason": "Upstream sync batch A/B/F, adapted to MimirBot names where they conflicted.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "b153f416a78e7a47a5adac45d30185efcedbe254"
+    },
+    {
+      "sha": "e00a082e339f897f7ba51b97a8dd71230ccc4200",
+      "subject": "fix(chat): a table uses the message's full width and shows every column",
+      "status": "deferred",
+      "reason": "Table full-width fix; needs src/lib/formatted-reply.ts, which we removed, and conflicts in ChatView, GroupView and RichTable. Take it after porting the table change by hand.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "698cef40ceb87f6a1775bc92826071b9d9a5bc56",
+      "subject": "fix(automations): plain time zones, \"First run Mon 9:00\", panels titled by name",
+      "status": "deferred",
+      "reason": "Automations wording (time zones, First run line); 34 files that drag in unrelated locale keys. Same blocker as 87c156828: port it after the locale conflicts are resolved.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "3ecde6284f6fa5994646ad9cc05e5910b178f2d5",
+      "subject": "fix(highlevel): keep refreshes on their own sign-in, never replay creates, fix late flow failures and paging (",
+      "status": "applied",
+      "reason": "Upstream sync batch A/B/F, adapted to MimirBot names where they conflicted.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "620d37421c142caa337b287f21bd4c89d8856c6b"
+    },
+    {
+      "sha": "3c239b8237049b3ab27aa1c4eba88a94546c6454",
+      "subject": "test(live-approval): the fixture endpoint answers only chat completions (#3635)",
+      "status": "ignored",
+      "reason": "Edits server/live-approval.e2e.test.ts, which we removed.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "80f29ea690ca378d387567a85027afa736b29033",
+      "subject": "Test the included-use percent the usage summary leads with",
+      "status": "ignored",
+      "reason": "Tests includedUsePercent in src/lib/usage-meter.ts, which we do not have.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "d05ea1d464968e5ecfb80aee96e08c9cc8763a8b",
+      "subject": "fix(engines): one AI ranking for the new-bot default and the welcome",
+      "status": "applied",
+      "reason": "Upstream sync batch A/B/F, adapted to MimirBot names where they conflicted.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "2a65dac9da7edc4c6614e922be11fcd02813da45"
+    },
+    {
+      "sha": "e7c777d914a423a1cdb5a2d58c1203f06e09436d",
+      "subject": "fix(engines): mark OpenCode's no-login free models as a free fallback",
+      "status": "applied",
+      "reason": "Upstream sync batch A/B/F, adapted to MimirBot names where they conflicted.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "367e91afc052b254482cf17867de7a787c83d71c"
+    },
+    {
+      "sha": "1dcfa52f89d001e5e83d4fec3a877d8e6bae9c25",
+      "subject": "fix(engines): check every engine with a one-off call, and fail a check that hangs",
+      "status": "applied",
+      "reason": "Upstream sync batch A/B/F, adapted to MimirBot names where they conflicted.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "8f4600610005edba787ad37375c025537a25170d"
+    },
+    {
+      "sha": "0e0990706598cfed1de50d055a8855ebe6a1db0c",
+      "subject": "fix(engines): test the new-bot default with one tiny message before trusting it",
+      "status": "applied",
+      "reason": "Upstream sync batch A/B/F, adapted to MimirBot names where they conflicted.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "57346b24cfc9caf7c8ed464f9a75c3ee1a177b4d"
+    },
+    {
+      "sha": "dd11cfa6f12e133337725f72a57132db4da5e608",
+      "subject": "test(engines): keep the fake Claude's turn capture clear of connection checks",
+      "status": "applied",
+      "reason": "Upstream sync batch A/B/F, adapted to MimirBot names where they conflicted.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "9f5cd45606062512a13e1890eb3cbfdd70d8a2e7"
+    },
+    {
+      "sha": "8bc75b7908163a5cedfe66f77183e634f981b6bc",
+      "subject": "test(engines): a real server moves its default and first bot to the AI that answered",
+      "status": "applied",
+      "reason": "Upstream sync batch A/B/F, adapted to MimirBot names where they conflicted.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "b68378bed9ebe4b9bd8ee833eddeb66b38cc3ed1"
+    },
+    {
+      "sha": "83956436aedc4eb0f623e25ae5af2d1be2b2337b",
+      "subject": "fix(engines): send background test messages to one AI at most every five minutes",
+      "status": "applied",
+      "reason": "Upstream sync batch A/B/F, adapted to MimirBot names where they conflicted.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "6d82f67a3ad0de8a4b13e21499d7bd70abdc1a17"
+    },
+    {
+      "sha": "93324d67327ecdc68536e9b6199d9ce2e53777ee",
+      "subject": "fix(engines): take OpenCode's free backup only once every other AI didn't answer",
+      "status": "applied",
+      "reason": "Upstream sync batch A/B/F, adapted to MimirBot names where they conflicted.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "88d3c6a67b573617a98833d316000f3fd07ea4eb"
+    },
+    {
+      "sha": "d8fe5759465e3ace87dbbd06ba1550d1ac2a1e32",
+      "subject": "test(engines): keep the fake Claude's connection checks apart from every other capture",
+      "status": "applied",
+      "reason": "Upstream sync batch A/B/F, adapted to MimirBot names where they conflicted.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "42ef1200ac85789edc00d73734f12744a0796a08"
+    },
+    {
+      "sha": "72ca3036de87791a8d2a0f338cf69c78689683bd",
+      "subject": "test(engines): match the connection check with startsWith, as lint asks",
+      "status": "applied",
+      "reason": "Upstream sync batch A/B/F, adapted to MimirBot names where they conflicted.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "d36f1dd3c28e4218a2f6dd7e46ce7389ef0bb8b8"
+    },
+    {
+      "sha": "7664e0da2d9e4008daa9b145e16af3b19adbeb83",
+      "subject": "test(engines): type the background-call fake so the server typecheck passes",
+      "status": "applied",
+      "reason": "Upstream sync batch A/B/F, adapted to MimirBot names where they conflicted.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "7fa010d205123550e523324cd847b67b80293221"
+    },
+    {
+      "sha": "9fb60dad445e79417b96ef89fbc4666759d333c8",
+      "subject": "fix(engines): an empty OpenCode catalog is no free fallback",
+      "status": "applied",
+      "reason": "Upstream sync batch A/B/F, adapted to MimirBot names where they conflicted.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "0b526635dcc620d16c4c2b1a3ef21e8f232478f3"
+    },
+    {
+      "sha": "07781268b684666c56fb4a34317019a82ea9aa25",
+      "subject": "fix(engines): one missed test demotes nothing, and only the first bot follows, on test results",
+      "status": "applied",
+      "reason": "Upstream sync batch A/B/F, adapted to MimirBot names where they conflicted.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "61d4935cc456dac079dec15bac73a350ff0ea45c"
+    },
+    {
+      "sha": "468f597eee4e51c901982c69456abb3e14bbd60a",
+      "subject": "test(engines): a real server moves nothing on one miss, then the default and first bot, and remembers it",
+      "status": "applied",
+      "reason": "Upstream sync batch A/B/F, adapted to MimirBot names where they conflicted.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "7016d81fd69743c7251742a836027a2d4bdb1e26"
+    },
+    {
+      "sha": "8346945348c63a3dec3eccc24337890dacd754e2",
+      "subject": "fix(engines): keep OpenCode's one-off sessions out of the person's own history",
+      "status": "applied",
+      "reason": "Upstream sync batch A/B/F, adapted to MimirBot names where they conflicted.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "5666fc93f41b91808434b9e4c7a6917dcb8d2497"
+    },
+    {
+      "sha": "759ff0395eae8f95c38c124889c3b5284bf9a132",
+      "subject": "docs: how a new bot's engine is tested now: retries, kept results, the first bot's following",
+      "status": "applied",
+      "reason": "Upstream sync batch A/B/F, adapted to MimirBot names where they conflicted.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "da352651e568f991e2c9aea4953c074b6814ac0d"
+    },
+    {
+      "sha": "c89d7509992289a069ca87b3a41e90fff8313ed6",
+      "subject": "fix(engines): don't bounce the default back to an AI while it is tried again",
+      "status": "applied",
+      "reason": "Upstream sync batch A/B/F, adapted to MimirBot names where they conflicted.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "545acde1a8dee9d0c7f3d0d9c91cffa8aa86c966"
+    },
+    {
+      "sha": "17013742cb09e92abd3e5715810fd1ab7847f19e",
+      "subject": "fix(engines): the first bot follows the welcome, leaves a signed-out AI, and a failed AI is tried hourly",
+      "status": "applied",
+      "reason": "Upstream sync batch A/B/F, adapted to MimirBot names where they conflicted.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "ee35794fd63838c95a78ea2084fb2e7a086712cc"
+    },
+    {
+      "sha": "c2b752f0fc282d255508e0dbec0577dfc7b51667",
+      "subject": "docs: how a miss, a sign-out and the hourly retry move the default and the first bot",
+      "status": "applied",
+      "reason": "Upstream sync batch A/B/F, adapted to MimirBot names where they conflicted.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "a514bc96823d6f05198eebfb818a324c1bcca227"
+    },
+    {
+      "sha": "d548d1a3aef879972ec01518b30c3e6c2f33727d",
+      "subject": "fix(engines): the recorded engine status keeps OpenCode's free-backup mark",
+      "status": "applied",
+      "reason": "Upstream sync batch A/B/F, adapted to MimirBot names where they conflicted.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "37437c45215970a48094813d67fc4c4eec924572"
+    },
+    {
+      "sha": "b110d317089b15f759628ded3bc40eaf245f190f",
+      "subject": "fix(engines): a test result that lands during a later start's engine read moves the first bot once the read se",
+      "status": "applied",
+      "reason": "Upstream sync batch A/B/F, adapted to MimirBot names where they conflicted.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "93f13aff5b2ecb4ba60f74840e7c82294796ff1f"
+    },
+    {
+      "sha": "dd26beb97d868881af2a61b03dad8ac7acdba79b",
+      "subject": "docs: on a later start, tests and moves wait for the engine read to end",
+      "status": "applied",
+      "reason": "Upstream sync batch A/B/F, adapted to MimirBot names where they conflicted.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "7b7595be8d45703d989bbf10f33c54c445c96c21"
+    },
+    {
+      "sha": "d336a8beae41983ef32e6f2b74ee3602847cc19b",
+      "subject": "test: lower the size pins this branch shrank, as the ratchet asks",
+      "status": "ignored",
+      "reason": "Lowers the file-size pins to upstream's own line counts; ours differ, so the ratchet test is what sets our pins.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "a32351ad4762acab815735c81300e0c0d2359f92",
+      "subject": "docs(pr): screenshots for testing an AI before a new bot uses it",
+      "status": "applied",
+      "reason": "Upstream sync batch A/B/F, adapted to MimirBot names where they conflicted.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "4cd6dd222861eea3d528e194de91ec5996ce0fa0"
+    },
+    {
+      "sha": "fa0052775a3696e39b8cd655e503d25920ab47e8",
+      "subject": "fix(chat): make mobile block actions usable on touch screens",
+      "status": "applied",
+      "reason": "Upstream sync batch A/B/F, adapted to MimirBot names where they conflicted.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "5fd47454969ba8d1216474df3dfd15d6bbba86df"
+    },
+    {
+      "sha": "b853fc128049f88f74e70c846c255dd8ea0c495f",
+      "subject": "test(chat): give the mobile code-block recipe's Chrome a mouse on Linux CI",
+      "status": "applied",
+      "reason": "Upstream sync batch A/B/F, adapted to MimirBot names where they conflicted.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "abba8bfb13718d7690d1afb9bb6b67862cf63343"
+    },
+    {
+      "sha": "7e46528efd3ae20b82e9f45822e58232ee4205f8",
+      "subject": "fix(onboarding): ask for an AI unless one answered a test message",
+      "status": "ignored",
+      "reason": "Skipped by rule ignore-upstream-onboarding.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "3d6164eb19ca78d0a171520a55c122fa0d91d247",
+      "subject": "fix(onboarding): an AI with no model yet doesn't count as working",
+      "status": "ignored",
+      "reason": "Skipped by rule ignore-upstream-onboarding.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "b61e224c32fca2e02d80b36b53904fc0f87b5d6f",
+      "subject": "fix(onboarding): say why the AI's test failed, and let the person check again",
+      "status": "ignored",
+      "reason": "Skipped by rule ignore-upstream-onboarding.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "077ba2f9d14a0c6f80e558a8ffd80535545f60f9",
+      "subject": "test(onboarding): give the Connect an AI tests their own web storage",
+      "status": "ignored",
+      "reason": "Skipped by rule ignore-upstream-onboarding.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "d324e0a2a3fdfdb8a5b6d37a540112effb58e98f",
+      "subject": "i18n(onboarding): translate the AI check's five new strings",
+      "status": "ignored",
+      "reason": "Skipped by rule ignore-upstream-onboarding.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "57d6f72ae90d0b451467a4649176d207ca462718",
+      "subject": "A two-screen first run: meet the app, meet your Chief of Staff, then chat",
+      "status": "ignored",
+      "reason": "Skipped by rule ignore-upstream-onboarding.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "b4afaf4f43d72c36b556d9b7b44395f17d258129",
+      "subject": "Analytics docs match the two-screen first run; Try Cloud counts as its Cloud moment",
+      "status": "ignored",
+      "reason": "Skipped by rule ignore-upstream-onboarding.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "4c331516f20bf327d3ffb1b259e9da9f1590cb84",
+      "subject": "Onboarding polish: a first run that keeps its shape and meets the Chief only when it fits",
+      "status": "ignored",
+      "reason": "Skipped by rule ignore-upstream-onboarding.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "71e4a4c99baf5a72833b44acce95b545012104d8",
+      "subject": "The onboarding preview opens in Simple mode, like a new install",
+      "status": "ignored",
+      "reason": "Skipped by rule ignore-upstream-onboarding.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "96a96e12798818fdd393c8cebc7f010c49c8f0aa",
+      "subject": "Simple mode: a calm room header and a Room panel (#3614)",
+      "status": "ignored",
+      "reason": "Skipped by rule ignore-upstream-design-refresh.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "5dabfe0ba9e9a14c9fdde450d70da69ea48a4d98",
+      "subject": "Type refresh: Geist, greyscale smoothing, medium names in Simple rows (#3616)",
+      "status": "ignored",
+      "reason": "Skipped by rule ignore-upstream-design-refresh.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "4202cac9224612f8f05101defa356c118cec67e4",
+      "subject": "Simple mode: five-section Settings",
+      "status": "ignored",
+      "reason": "Skipped by rule ignore-upstream-design-refresh.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "dbbdefd2e4bb7ef7527bfaee403814b52d1677bf",
+      "subject": "Let the bot desktops test read card titles whatever the Settings look",
+      "status": "ignored",
+      "reason": "Skipped by rule ignore-upstream-design-refresh.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "e14b1aa492059fce555a884c5cf0dbdc62c5a3d9",
+      "subject": "Simple mode: a calmer sidebar",
+      "status": "ignored",
+      "reason": "Skipped by rule ignore-upstream-design-refresh.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "406ee6479e767d88d9430e80d1bc2f82c3136f11",
+      "subject": "Before and after screenshots of the Simple sidebar",
+      "status": "ignored",
+      "reason": "Skipped by rule ignore-upstream-design-refresh.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "1c6331059c9e9176deab8291ed9d7f27af4e0577",
+      "subject": "Show each bot's engine, faded, at the end of its Simple row",
+      "status": "ignored",
+      "reason": "Skipped by rule ignore-upstream-design-refresh.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "1f54282a38165f0114877709811e3f0e41aaec5a",
+      "subject": "Simple mode: the main bot and pinned bots share one row of tiles",
+      "status": "ignored",
+      "reason": "Skipped by rule ignore-upstream-design-refresh.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "47a991527bfd620bc68a348f0346472e1519d148",
+      "subject": "Screenshots: one row of tiles, faded engine marks, before on main",
+      "status": "ignored",
+      "reason": "Skipped by rule ignore-upstream-design-refresh.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "09ac672b2a44e9888f8c56349d3ddd106be5b5d8",
+      "subject": "Faded marks: a monochrome preset logo fades to tertiary ink too",
+      "status": "ignored",
+      "reason": "Skipped by rule ignore-upstream-design-refresh.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "3226dd2ca607761cabfc5da51a2f5c7db1962be0",
+      "subject": "Simple mode: fade the sidebar list's edges instead of glass",
+      "status": "ignored",
+      "reason": "Skipped by rule ignore-upstream-design-refresh.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "d65f1ba9ef689ae8b49aa46bdf8eab2ed094bbd7",
+      "subject": "Simple mode: a calmer chat",
+      "status": "ignored",
+      "reason": "Skipped by rule ignore-upstream-design-refresh.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "3d7882a5d338ae9dbbce3111feeafdb66708c70e",
+      "subject": "Add before and after screenshots for the Simple chat",
+      "status": "ignored",
+      "reason": "Skipped by rule ignore-upstream-design-refresh.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "970e100d77b2e5adbc041fb10935fd0b1176a39e",
+      "subject": "Title only a bot's own question with its question in Simple mode",
+      "status": "ignored",
+      "reason": "Skipped by rule ignore-upstream-design-refresh.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "473e80d6d324c5a2999ce163b9d026efe5f9df34",
+      "subject": "Fade the transcript into the canvas under Simple mode's header",
+      "status": "ignored",
+      "reason": "Skipped by rule ignore-upstream-design-refresh.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "3a6c71349cdfce57e027c31a4f339d58bbb3705c",
+      "subject": "Show one working phrase at a time in Simple mode too",
+      "status": "ignored",
+      "reason": "Skipped by rule ignore-upstream-design-refresh.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "5e72376d172a02ce1925b7743f17f8ab3c0a4ada",
+      "subject": "Give the macOS install window a welcome-party scene",
+      "status": "ignored",
+      "reason": "Skipped by rule ignore-upstream-design-refresh.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "bd6a057891cdbbe84c8a88b9399cc56086377f6e",
+      "subject": "Point the Chief's add-bots chip test at the instant New bot",
+      "status": "ignored",
+      "reason": "Skipped by rule ignore-upstream-design-refresh.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "ef83ab87587054e65d81e0c29086f84e981098b7",
+      "subject": "Mark the page with the interface mode",
+      "status": "ignored",
+      "reason": "Skipped by rule ignore-upstream-design-refresh.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "4da0d22abde21c3aa60ad337f15c601101c39749",
+      "subject": "A calmer model picker",
+      "status": "ignored",
+      "reason": "Skipped by rule ignore-upstream-design-refresh.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "e734c4b7ff6f598ba8a18d5f27706a0ba226c260",
+      "subject": "Before and after screenshots of the model picker",
+      "status": "ignored",
+      "reason": "Skipped by rule ignore-upstream-design-refresh.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "50a240db1484f5f85e11c1ecf30e923a0970d626",
+      "subject": "Float Simple mode's pills, composer and round buttons on one surface",
+      "status": "ignored",
+      "reason": "Skipped by rule ignore-upstream-design-refresh.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "78df497ebe0d0f9c92a4ea7ce0110fb61336c053",
+      "subject": "Calm Simple mode's palette and make menu rows show hover and focus",
+      "status": "ignored",
+      "reason": "Skipped by rule ignore-upstream-design-refresh.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "927abf9afb52883056bee2a969f1e6fd618e9614",
+      "subject": "Flatten popovers in Midnight and soften them in Daylight",
+      "status": "ignored",
+      "reason": "Skipped by rule ignore-upstream-design-refresh.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "5f15dda036d7f7f47c1ad1b8601eae1d2ad09f9c",
+      "subject": "Give Simple mode neutral primary and quiet secondary buttons, and a dialog kit",
+      "status": "ignored",
+      "reason": "Skipped by rule ignore-upstream-design-refresh.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "7dd6177161253c0db2a5bf68b9cd9dfc980fc458",
+      "subject": "Mark the page with the interface mode as soon as the app reads it",
+      "status": "ignored",
+      "reason": "Skipped by rule ignore-upstream-design-refresh.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "f4c0f035ea627d4ec6f52cd354396d6e892f9178",
+      "subject": "Sidebar: move the bot row menu out, and lift a faded mark on focus",
+      "status": "ignored",
+      "reason": "Skipped by rule ignore-upstream-design-refresh.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "bead5dd5384b2d001c59fd39b4d849bd4325204e",
+      "subject": "Fix the Simple chat's combination failures on the redesign branch",
+      "status": "ignored",
+      "reason": "Skipped by rule ignore-upstream-design-refresh.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "192af17b57403a607ad61803359fe80d3b20acc2",
+      "subject": "Settings: split Simple pages and shared rows out of SettingsModal",
+      "status": "ignored",
+      "reason": "Skipped by rule ignore-upstream-design-refresh.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "6441bc2b0bed10c6d1dcc0900367e710077e5ca9",
+      "subject": "Pin the table-fit test to Advanced, whose table it measures",
+      "status": "ignored",
+      "reason": "Skipped by rule ignore-upstream-design-refresh.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "f0c597afb7a955c20647bc9c64033cfaa3f48333",
+      "subject": "Simple sidebar polish: quoted previews, quiet markers, a calmer account menu",
+      "status": "ignored",
+      "reason": "Skipped by rule ignore-upstream-design-refresh.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "5d01bdef2d3bc532739a0d3de3957f40c0314ab0",
+      "subject": "Settings: polish Simple mode to the council brief",
+      "status": "ignored",
+      "reason": "Skipped by rule ignore-upstream-design-refresh.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "d75035c3962529a5415f9dc4be086cb9b850e9b5",
+      "subject": "Settings: one Cloud offer on Usage & billing, and test Simple search",
+      "status": "ignored",
+      "reason": "Skipped by rule ignore-upstream-design-refresh.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "63c4b81db0dfe533bca8efa951694524bace1feb",
+      "subject": "Model picker: review fixes",
+      "status": "ignored",
+      "reason": "Skipped by rule ignore-upstream-design-refresh.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "885aa7a5cceaab6420dba28b11d16c300c2254f2",
+      "subject": "Fresh model picker screenshots",
+      "status": "ignored",
+      "reason": "Skipped by rule ignore-upstream-design-refresh.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "d45958c639f2f2138553efa142c407653e9616e3",
+      "subject": "Simple composer: plain names, three rows in the +, and the bot's own tone",
+      "status": "ignored",
+      "reason": "Skipped by rule ignore-upstream-design-refresh.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "d8ad6482001a91f81dc7f9e1323f4dec8ed9290f",
+      "subject": "Simple bot panel: Details, Library and Computer, with settings behind a gear",
+      "status": "ignored",
+      "reason": "Skipped by rule ignore-upstream-design-refresh.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "84a3550422bc90c952183ea0c1593ea030b80e1a",
+      "subject": "Drop the touch exemption for the picker's own fade, now the shared one",
+      "status": "ignored",
+      "reason": "Skipped by rule ignore-upstream-design-refresh.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "a54db1c1ba28d8bdb801cc3519a23636fafd6ea7",
+      "subject": "Simple sidebar polish, part two: menus, top row, footer, rail and headers",
+      "status": "ignored",
+      "reason": "Skipped by rule ignore-upstream-design-refresh.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "0e160b6dd9cdebd49dca31c6c38281c7f638e164",
+      "subject": "Look for the message editor's direction in BubbleEditor, where it moved",
+      "status": "ignored",
+      "reason": "Skipped by rule ignore-upstream-design-refresh.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "cf4ee4cc88a1b4e1eee4a1c00ba47f3f46251f6d",
+      "subject": "Simple chat polish: table cards, quiet code, a pill that toggles, 15px text",
+      "status": "ignored",
+      "reason": "Skipped by rule ignore-upstream-design-refresh.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "cbe3422e48cfd8c46f70b855e9a9c6977b0f8bae",
+      "subject": "Settings: keep the glass rules first and test the scoped opaque sheet",
+      "status": "ignored",
+      "reason": "Skipped by rule ignore-upstream-design-refresh.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "78f8df63d80ef360decb8d3b468314519db6b039",
+      "subject": "Simple rows: faded logo in the bottom-right corner, dot at the top right",
+      "status": "ignored",
+      "reason": "Skipped by rule ignore-upstream-design-refresh.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "ae2ea0ae4ff8e827f321e883a957e6d032e23381",
+      "subject": "The main tile's crown wears the first run's orange, so the Chief lands without a colour jump",
+      "status": "ignored",
+      "reason": "Skipped by rule ignore-upstream-design-refresh.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "f488bc91396f521fb52ab7575364e84a3579f77b",
+      "subject": "Start the table card at its header row, with the plate floating over it",
+      "status": "ignored",
+      "reason": "Skipped by rule ignore-upstream-design-refresh.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "2816f236edfcb4bf4885d7c1153529349d91faa0",
+      "subject": "Before and after of the whole Simple redesign, dark and light",
+      "status": "ignored",
+      "reason": "Skipped by rule ignore-upstream-design-refresh.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "f920e47ebcbcd275588182c0ead5cbd7cef66f10",
+      "subject": "Drop a duplicated English string the bot panel re-added",
+      "status": "ignored",
+      "reason": "Skipped by rule ignore-upstream-design-refresh.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "e06fa099546850e7d04f80be178961199b983cd0",
+      "subject": "New bots wear the mascot's own triangle; only their colour varies",
+      "status": "ignored",
+      "reason": "Skipped by rule ignore-upstream-design-refresh.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "17732caf639acca602ace06f91d492a9a5219a48",
+      "subject": "After shots with the mascot's triangle on every bot",
+      "status": "ignored",
+      "reason": "Skipped by rule ignore-upstream-design-refresh.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "e7fb36626496d856146943f2f60931367cb5a2fc",
+      "subject": "Simple mode: a setup card with personal answers under a new bot's greeting",
+      "status": "ignored",
+      "reason": "Skipped by rule ignore-upstream-set-me-up.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "6ac7810353dbfaeb713ba665c4689b019db116d2",
+      "subject": "Write setup suggestions on each engine's researched quick model",
+      "status": "ignored",
+      "reason": "Skipped by rule ignore-upstream-set-me-up.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "547956acee19111958e9ca8f6b4ac5e6eb7177c7",
+      "subject": "Simple mode: a setup card with personal answers under a new bot's greeting",
+      "status": "ignored",
+      "reason": "Skipped by rule ignore-upstream-set-me-up.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "aebf05ea69a3712161ed97943f002908045f5d14",
+      "subject": "Move the setup card's server wiring out of index.ts, config.ts and store.ts",
+      "status": "ignored",
+      "reason": "Skipped by rule ignore-upstream-set-me-up.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "67b5269e1f19812b803c7b09e91c546d0cf644d1",
+      "subject": "The setup card wears the question card's shape: 24px corner, raised surface, hairline ring",
+      "status": "ignored",
+      "reason": "Skipped by rule ignore-upstream-set-me-up.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "c3229f53f631f842f785fa521472da740e54a607",
+      "subject": "Verification fixtures start with the setup card's answers off",
+      "status": "ignored",
+      "reason": "Skipped by rule ignore-upstream-set-me-up.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "048c0c1607fdbe2aa33a09028a10b9343779e99a",
+      "subject": "Work handed into a room goes straight to a bot that isn't in it (#3580)",
+      "status": "ignored",
+      "reason": "Skipped by rule bots-stay-in-department. Hands room work to a bot that is not in the room.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "31dd6a1762dbfa5a672a7957dfa2da3e9c9612e6",
+      "subject": "chore(release): bump version to 0.1.128 (#3589)",
+      "status": "ignored",
+      "reason": "Upstream version bump.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "af4114825f30e4ad16f2eb726c90dc717e51f415",
+      "subject": "chore(release): bump version to 0.1.129 (#3629)",
+      "status": "ignored",
+      "reason": "Upstream version bump.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "f18eee74006a2ef1d35fe2d04d8828d2914ee856",
+      "subject": "chore(release): bump version to 0.1.130",
+      "status": "ignored",
+      "reason": "Upstream version bump.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "587268ce10bee3ea3eb7f87771ebcfcc1eddf1ec",
+      "subject": "ci: record locale source hashes at release, not in every PR",
+      "status": "ignored",
+      "reason": "Upstream CI and release workflow, which we do not run.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "aa36bc569774aa200c685a9bf091a864da4538bb",
+      "subject": "ci: hash the English a translation was written against at release",
+      "status": "ignored",
+      "reason": "Upstream CI and release workflow, which we do not run.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "d9fb462a1001e340104eb362de284e6b061ab916",
+      "subject": "ci: run only the jobs a pull request's change can affect",
+      "status": "ignored",
+      "reason": "Upstream CI and release workflow, which we do not run.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "7941cbb8c03ae32a0d6ac2afbdbfe0fe32af74ce",
+      "subject": "docs(ci): main's concurrency is unchanged, not never cancelled",
+      "status": "ignored",
+      "reason": "Upstream CI and release workflow, which we do not run.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "379fce4d7ed9ac23d3aa80a64bde280c68460464",
+      "subject": "fix(release): the Windows cloudflared check reads its digest from the pin file",
+      "status": "ignored",
+      "reason": "Upstream CI and release workflow, which we do not run.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "ec374fee505f38009fb84ec29656a3be3dd3d692",
+      "subject": "@devs: report a bug to the MausBot team from any chat (#3620)",
+      "status": "ignored",
+      "reason": "@devs reports a bug to the upstream MausBot team.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "860d006244aa9437ee774b08f84631fd5a2fb064",
+      "subject": "Retry stopped runs on the server, not only when a Chief calls retry_thread",
+      "status": "ignored",
+      "reason": "Owner left the server-side retry of stopped runs out: 54 also carries unrelated vps-alias and codex-update work, 58 reworks it, and 55 needs the person-stop helper of batch D.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "51302bc81ef81189856dc1bc38a0f0746a4e062b",
+      "subject": "refactor(chat): the interrupt route stops through the one person-stop helper",
+      "status": "ignored",
+      "reason": "Owner left the server-side retry of stopped runs out: 54 also carries unrelated vps-alias and codex-update work, 58 reworks it, and 55 needs the person-stop helper of batch D.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "77587737d7629390f2bb40741d6aab51f049d726",
+      "subject": "Rework: retry any failed routine run or teammate thread once, with no setting",
+      "status": "ignored",
+      "reason": "Owner left the server-side retry of stopped runs out: 54 also carries unrelated vps-alias and codex-update work, 58 reworks it, and 55 needs the person-stop helper of batch D.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "a67683bb763dc0ae34ed4c8b2f1cc47339bda9e1",
+      "subject": "Never retry a run a settings change cut short; end-to-end tests for the one retry",
+      "status": "ignored",
+      "reason": "Owner left the server-side retry of stopped runs out: 54 also carries unrelated vps-alias and codex-update work, 58 reworks it, and 55 needs the person-stop helper of batch D.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "7e2c72fb078854694047cbdcf37a3829ce64eb09",
+      "subject": "feat(skills): assign library skills to every bot",
+      "status": "pending",
+      "reason": "MausBot settings, notifications and every-bot library skills (batch C); shown to the owner, left undecided.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "1bb03d94607739def09773f255d4021bfeb8e99d",
+      "subject": "MausBot can change a short allowlist of settings when asked in chat",
+      "status": "pending",
+      "reason": "MausBot settings, notifications and every-bot library skills (batch C); shown to the owner, left undecided.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "c14551a2d9481311e1601d71349a7a5c9aa737e2",
+      "subject": "MausBot reads the unread notifications and marks the safe ones read",
+      "status": "pending",
+      "reason": "MausBot settings, notifications and every-bot library skills (batch C); shown to the owner, left undecided.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "7c49cb4672aa19d1da865066af0f7885851842cb",
+      "subject": "MausBot settings: refuse workspace-wide changes on a team, report failed saves, pin the tool schemas",
+      "status": "pending",
+      "reason": "MausBot settings, notifications and every-bot library skills (batch C); shown to the owner, left undecided.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "348110c09750b6d0998fcb426185597b3b537d4d",
+      "subject": "MausBot notifications: deferred runs need the person, done items may ask, refuse on any team",
+      "status": "pending",
+      "reason": "MausBot settings, notifications and every-bot library skills (batch C); shown to the owner, left undecided.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "b8a57db58f5fbeaae4ef65ae02856aded5358d79",
+      "subject": "MausBot settings: hiding MausBot from the sidebar waits for the person's yes",
+      "status": "pending",
+      "reason": "MausBot settings, notifications and every-bot library skills (batch C); shown to the owner, left undecided.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "14be868357c629f9e29aff9eb797e55329acc6b9",
+      "subject": "MausBot keeps only the notification pair, inside the tool budget",
+      "status": "pending",
+      "reason": "MausBot settings, notifications and every-bot library skills (batch C); shown to the owner, left undecided.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "361564168a094e11f6e8990ba8771a446d896f48",
+      "subject": "Every-bot library skills: stay out while the library is off, and translate the switch",
+      "status": "pending",
+      "reason": "MausBot settings, notifications and every-bot library skills (batch C); shown to the owner, left undecided.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "b9e666ec11bfca83d774d79d11edb87cb3e18250",
+      "subject": "feat(chat): watch for a first reply that never comes",
+      "status": "pending",
+      "reason": "First-reply rescue, Stop and Switch AI (batch D); shown to the owner, left undecided. Touches ChatView and App.tsx.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "45b74bb0c7b2984bec03f3028679444ebbc21d18",
+      "subject": "feat(chat): post the first-reply rescue in every chat",
+      "status": "pending",
+      "reason": "First-reply rescue, Stop and Switch AI (batch D); shown to the owner, left undecided. Touches ChatView and App.tsx.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "d1db6dd553fe095d1f3a335e46724f4a67bb9975",
+      "subject": "fix(chat): a Stop ends with one quiet line and never reaches the next turn",
+      "status": "pending",
+      "reason": "First-reply rescue, Stop and Switch AI (batch D); shown to the owner, left undecided. Touches ChatView and App.tsx.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "8887f82851b5a93aa8288623b5adc53a17add831",
+      "subject": "feat(chat): rescue row buttons, \"You stopped this.\", one Stop per press",
+      "status": "pending",
+      "reason": "First-reply rescue, Stop and Switch AI (batch D); shown to the owner, left undecided. Touches ChatView and App.tsx.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "3415aece63f07b5c422959e59a3252d4e870b426",
+      "subject": "fix(chat): a Stop the server finds already over stops naming that turn",
+      "status": "pending",
+      "reason": "First-reply rescue, Stop and Switch AI (batch D); shown to the owner, left undecided. Touches ChatView and App.tsx.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "7486dacb15ff40dd07608962f16fee3c791f7ebe",
+      "subject": "fix(chat): the rescue row belongs to its turn, and Stop fences on the running turn",
+      "status": "pending",
+      "reason": "First-reply rescue, Stop and Switch AI (batch D); shown to the owner, left undecided. Touches ChatView and App.tsx.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "9197d5dcc8cab5ea628e138052044a16962e808f",
+      "subject": "fix(acp): plain words in what a quiet or empty turn tells the person",
+      "status": "pending",
+      "reason": "First-reply rescue, Stop and Switch AI (batch D); shown to the owner, left undecided. Touches ChatView and App.tsx.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "b6a238c62f96337b9ae9da9d8b38ce722a0fe908",
+      "subject": "feat(chat): Switch AI opens this bot's picker for this turn, and switches only on a pick",
+      "status": "pending",
+      "reason": "First-reply rescue, Stop and Switch AI (batch D); shown to the owner, left undecided. Touches ChatView and App.tsx.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "1335b371810d4ca01a0ed3547b9e282eb00d3767",
+      "subject": "fix(chat): the picker stops taking Switch AI once the row's turn is over",
+      "status": "pending",
+      "reason": "First-reply rescue, Stop and Switch AI (batch D); shown to the owner, left undecided. Touches ChatView and App.tsx.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "54706fb97f17451cc8a3b00d1175b0c14359c94e",
+      "subject": "fix(chat): a stop mark and a live turn id never outlive their turn",
+      "status": "pending",
+      "reason": "First-reply rescue, Stop and Switch AI (batch D); shown to the owner, left undecided. Touches ChatView and App.tsx.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "42a6d2058457e5f0d807c6fd0be69b3e274c1bfb",
+      "subject": "fix(chat): a restart closes the rescue notices it left open",
+      "status": "pending",
+      "reason": "First-reply rescue, Stop and Switch AI (batch D); shown to the owner, left undecided. Touches ChatView and App.tsx.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "fe5f58476fe54fb3b1bdc0a21ea110e2011c65ec",
+      "subject": "fix(chat): an ended rescue notice reads as history",
+      "status": "pending",
+      "reason": "First-reply rescue, Stop and Switch AI (batch D); shown to the owner, left undecided. Touches ChatView and App.tsx.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "b2d993067fe9686a9813125b69d1aa10c80a68e7",
+      "subject": "fix(chat): a Switch AI pick lands once the chat is idle, and resends only when that is safe",
+      "status": "pending",
+      "reason": "First-reply rescue, Stop and Switch AI (batch D); shown to the owner, left undecided. Touches ChatView and App.tsx.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "cbea5d480bb3e619bc156c208284819f2c340890",
+      "subject": "fix(chat): Switch AI picks are kept per chat and survive a turn that starts first",
+      "status": "pending",
+      "reason": "First-reply rescue, Stop and Switch AI (batch D); shown to the owner, left undecided. Touches ChatView and App.tsx.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "e54a83c3723b95b50c27718f78ad3afa68ce178d",
+      "subject": "test(chat): say what a Stop pressed during a dispatch does",
+      "status": "pending",
+      "reason": "First-reply rescue, Stop and Switch AI (batch D); shown to the owner, left undecided. Touches ChatView and App.tsx.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "8c3313c47059773e6cd084d07295086a11ba23b3",
+      "subject": "chore: lower the size pins this branch shrank",
+      "status": "pending",
+      "reason": "First-reply rescue, Stop and Switch AI (batch D); shown to the owner, left undecided. Touches ChatView and App.tsx.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "97f565e8e54ef917cf131cf4ccce790369de959a",
+      "subject": "fix(chat): a picker opened before its engine lists models says it is loading, then shows them",
+      "status": "pending",
+      "reason": "First-reply rescue, Stop and Switch AI (batch D); shown to the owner, left undecided. Touches ChatView and App.tsx.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "7ccbfed106571eb52e06b3daa8283d35f1a8f6dc",
+      "subject": "docs(pr): screenshots for the quiet-chat rescue",
+      "status": "pending",
+      "reason": "First-reply rescue, Stop and Switch AI (batch D); shown to the owner, left undecided. Touches ChatView and App.tsx.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "3cb4a7c40179ccde9c0ec592afe593a6d0873aeb",
+      "subject": "i18n(chat): translate the rescue row, \"You stopped this.\" and the model loading line",
+      "status": "pending",
+      "reason": "First-reply rescue, Stop and Switch AI (batch D); shown to the owner, left undecided. Touches ChatView and App.tsx.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "a8a31da0568076dbb7631870905dcab66786bfef",
+      "subject": "refactor(ratchet): move roomNeedsSetup out of GroupView and lower chat pins",
+      "status": "pending",
+      "reason": "First-reply rescue, Stop and Switch AI (batch D); shown to the owner, left undecided. Touches ChatView and App.tsx.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "c727c8ef41d401ce60b8487b72f69a96d9e3b5eb",
+      "subject": "Size the rescue row and model-list status in whole pixels",
+      "status": "pending",
+      "reason": "First-reply rescue, Stop and Switch AI (batch D); shown to the owner, left undecided. Touches ChatView and App.tsx.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "fbda03e6155b9c07682723aa0d548c1b24f40cf0",
+      "subject": "feat(brief): ideas from a nightly dream (#3608)",
+      "status": "observation",
+      "reason": "Cloud, desktop lending, Team Cloud or new locales; matters only if we use that part.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "8277001bc68f9ff837f61d2d257cb4a1e3b74943",
+      "subject": "feat(desktop): Open at login, from the app menu and Settings (#3603)",
+      "status": "observation",
+      "reason": "Cloud, desktop lending, Team Cloud or new locales; matters only if we use that part.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "2933105152fb41a2248e64be3a722c2b6f4c89ad",
+      "subject": "Lend the terminal from the menu-bar icon, and keep it through the default lend (#3600)",
+      "status": "observation",
+      "reason": "Cloud, desktop lending, Team Cloud or new locales; matters only if we use that part.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "d3ce1736459c0dcce249ecf6af0beb01666f15e9",
+      "subject": "My Chrome on My Cloud: Cloud bots use your real Chrome on a lent Mac or PC (#3597)",
+      "status": "observation",
+      "reason": "Cloud, desktop lending, Team Cloud or new locales; matters only if we use that part.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "c8cd45935721a19e67f335e78fa318ece51c6ef0",
+      "subject": "About and the update row say which server they describe (#3617)",
+      "status": "observation",
+      "reason": "Cloud, desktop lending, Team Cloud or new locales; matters only if we use that part.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "fc44a5eaae327b5b2608bf4955b582fe35b79d9d",
+      "subject": "fix(i18n): Russian note names \"Approve for me\" as its button does (#3621)",
+      "status": "observation",
+      "reason": "Cloud, desktop lending, Team Cloud or new locales; matters only if we use that part.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "55b3f1fa79b017216690d679bc8e3cb4957d1236",
+      "subject": "Move status: tell Admin where a computer's move to My Cloud stands, and why none started (#3626)",
+      "status": "observation",
+      "reason": "Cloud, desktop lending, Team Cloud or new locales; matters only if we use that part.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "7b16145c1f48b070e344c1f6a965e257f2f2163b",
+      "subject": "fix(i18n): Russian \"Use my Mac\" popup words, and the lending note names its button (#3625)",
+      "status": "observation",
+      "reason": "Cloud, desktop lending, Team Cloud or new locales; matters only if we use that part.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "acb81f05517c3118521119c744c9da75431142a1",
+      "subject": "Desktop: a downloaded update installs by itself at a quiet moment (#3624)",
+      "status": "observation",
+      "reason": "Cloud, desktop lending, Team Cloud or new locales; matters only if we use that part.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "2a4cd46a9474aa2163e8a8031b5b86ad753d938e",
+      "subject": "fix(lending): a cloud bot's command on a lent computer runs up to 2 minutes, or longer when it asks",
+      "status": "observation",
+      "reason": "Cloud, desktop lending, Team Cloud or new locales; matters only if we use that part.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "97a8537cb5e98946a29c033c3ea448331d71004e",
+      "subject": "Lent folders keep working while the Mac is away",
+      "status": "observation",
+      "reason": "Cloud, desktop lending, Team Cloud or new locales; matters only if we use that part.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "59b83605b232475b5d2c3202243ba2c232e7ff4b",
+      "subject": "Lent folders: review fixes",
+      "status": "observation",
+      "reason": "Cloud, desktop lending, Team Cloud or new locales; matters only if we use that part.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "1fe9ab421ee32c44070df732ca8f8291a6e93351",
+      "subject": "Lent folders: a change that can't land shows; replaced files keep permissions",
+      "status": "observation",
+      "reason": "Cloud, desktop lending, Team Cloud or new locales; matters only if we use that part.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "ee2196e43832209760a672f26480c29c5c769b5a",
+      "subject": "Lent GitHub repositories start their Cloud copy as a clone",
+      "status": "observation",
+      "reason": "Cloud, desktop lending, Team Cloud or new locales; matters only if we use that part.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "47405e69e7abc34aa58f93b803ee0b395ec5538b",
+      "subject": "Only the desktop app's own server may use this computer",
+      "status": "observation",
+      "reason": "Cloud, desktop lending, Team Cloud or new locales; matters only if we use that part.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "434508da921dad3bab1a62b31be28d7dda6ff502",
+      "subject": "Lent folders on Windows: native real paths in tests, rename and permissions that hold there",
+      "status": "observation",
+      "reason": "Cloud, desktop lending, Team Cloud or new locales; matters only if we use that part.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "3556a6fbe539b58793137c2ffdcb8856b5172e74",
+      "subject": "fix(lending): \"is a file, not a folder\" on Windows too",
+      "status": "observation",
+      "reason": "Cloud, desktop lending, Team Cloud or new locales; matters only if we use that part.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "c6780e912bc21fdf9ef293198a0c28e9b0ab3a95",
+      "subject": "Fix the cleanup fixture and the record-file check on Windows",
+      "status": "observation",
+      "reason": "Cloud, desktop lending, Team Cloud or new locales; matters only if we use that part.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "32e46312a77ab9d2cdbc40eb790b8dd4da09488c",
+      "subject": "Team Cloud: each person's Chief is their inbox",
+      "status": "observation",
+      "reason": "Cloud, desktop lending, Team Cloud or new locales; matters only if we use that part.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "02189b60ee35d50bb9774ca321ca701fac96b32f",
+      "subject": "A new Cloud's first hour: the Chief greets, connects Gmail and Calendar, takes a first look, and keeps count",
+      "status": "observation",
+      "reason": "Cloud, desktop lending, Team Cloud or new locales; matters only if we use that part.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "c7899ef99685581f6999cfeb5abbf5c4a282b189",
+      "subject": "The morning brief is pushed once when another edit comes as it posts; Polish says 'około 2 godzin'",
+      "status": "observation",
+      "reason": "Cloud, desktop lending, Team Cloud or new locales; matters only if we use that part.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "e4274af782bf79ecff554abe08080f11604255bd",
+      "subject": "fix(first-hour): the greeting says \"the Cloud\", as the app does",
+      "status": "observation",
+      "reason": "Cloud, desktop lending, Team Cloud or new locales; matters only if we use that part.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "5c7e39ec052a3ed9959263d58f9d0d5abaf4a9b1",
+      "subject": "feat(i18n): add Russian localization (#3612)",
+      "status": "observation",
+      "reason": "Cloud, desktop lending, Team Cloud or new locales; matters only if we use that part.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "a7c8827b7b4a64c87dd38871f851bfc9aaa65012",
+      "subject": "feat(i18n): add Italian locale (#3622)",
+      "status": "observation",
+      "reason": "Cloud, desktop lending, Team Cloud or new locales; matters only if we use that part.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "3ca542f0ce25bfccb8a53d9b645bd5c73dc454ab",
+      "subject": "Approval level: change it while the bot works (#3627)",
+      "status": "observation",
+      "reason": "Changes how the app behaves; no decision yet.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "a9d7252047df1c04f3770a6ab4c347b62ce30181",
+      "subject": "New bot makes the bot at once and opens its chat, with no popup",
+      "status": "observation",
+      "reason": "Changes how the app behaves; no decision yet.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "6ed71aa83d2da96de2360c15697a7bc2f9379bb0",
+      "subject": "Bots answer first, ask one thing, and remember and forget in plain words",
+      "status": "observation",
+      "reason": "Changes how the app behaves; no decision yet.",
+      "decidedAt": "2026-10-27"
     }
   ]
 }
