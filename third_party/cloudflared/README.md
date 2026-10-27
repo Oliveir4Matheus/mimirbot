@@ -1,6 +1,6 @@
 # cloudflared release provenance
 
-OpenMausBot stages the official `cloudflared` 2026.10.3 executable as a separate
+MimirBot stages the official `cloudflared` 2026.10.3 executable as a separate
 process. The binaries come from Cloudflare's official GitHub release:
 
 <https://github.com/cloudflare/cloudflared/releases/tag/2026.10.3>
