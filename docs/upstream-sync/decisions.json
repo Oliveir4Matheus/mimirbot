@@ -1740,6 +1740,78 @@
       "status": "ignored",
       "reason": "Upstream theme and visual change (colours, fonts, canvas); we skip those.",
       "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "3c44a2c1c2beb7d88bb4b21decc7de71ebc01f88",
+      "subject": "refactor(web): read the shown chat on focus from a hook, not store.tsx",
+      "status": "applied",
+      "reason": "Upstream follow-up that moves code out of pi.ts / store.tsx, needed to keep the size ratchet green.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "006aa9564db94672bf8e63ddc145311dd15889f2"
+    },
+    {
+      "sha": "21ab58f90976127f24a41e5f3207b04131ab9515",
+      "subject": "Pi: build a turn's MCP servers in pi-mcp-servers.ts (#3618)",
+      "status": "applied",
+      "reason": "Upstream follow-up that moves code out of pi.ts / store.tsx, needed to keep the size ratchet green.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "f353359e0909f5a46a186ae18c6c30e410d19ca8"
+    },
+    {
+      "sha": "1126dfcc0d1cc08219cea789fb171f6e2390c8c4",
+      "subject": "fix(menu): switching servers works when a local environment is saved (#3602)",
+      "status": "applied",
+      "reason": "Bug fix cherry-picked after the owner approved lot 6; conflicts resolved keeping our brand and design.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "5439998fb4e832740bca8624a7422afb84b02d61"
+    },
+    {
+      "sha": "be05de0e3aca178e8e117a8bfe9b938607925c12",
+      "subject": "fix(composer): one line again, wrapping only in a narrow window (#3615)",
+      "status": "applied",
+      "reason": "Bug fix cherry-picked after the owner approved lot 6; conflicts resolved keeping our brand and design.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "3e12ed93f9527c318f7f5c85b47dfd9d4482d422"
+    },
+    {
+      "sha": "65bb767f041835d7058724694164ccd07ec90f6c",
+      "subject": "fix(bot-settings): choose the model of each backup, not only its engine's default (#3606)",
+      "status": "applied",
+      "reason": "Bug fix cherry-picked after the owner approved lot 6; conflicts resolved keeping our brand and design.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "16986e50557b53ed5971175dd185345e5ce171c2"
+    },
+    {
+      "sha": "6085a6211f7508dfa9f8b007d4362c6c0eae56c7",
+      "subject": "fix(browser): a Maximize control on the bot's browser panel (#3631)",
+      "status": "applied",
+      "reason": "Bug fix cherry-picked after the owner approved lot 6; conflicts resolved keeping our brand and design.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "e6d4a084813799a4d12ba57c3e4d6eac90923791"
+    },
+    {
+      "sha": "d4219cc6c403374e7e74abc703f910005911b375",
+      "subject": "fix(surface): a delegated job gets its bot's built-in browser beside its computer",
+      "status": "applied",
+      "reason": "Bug fix cherry-picked after the owner approved lot 6; conflicts resolved keeping our brand and design.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "df6ce378d1fce64632dbf0febc012b0678037417"
+    },
+    {
+      "sha": "4463ba7be6013e538b948415300540d795efbb28",
+      "subject": "fix(acp): a Stop ends the turn as a stop, and errors name the AI",
+      "status": "applied",
+      "reason": "Bug fix cherry-picked after the owner approved lot 6; conflicts resolved keeping our brand and design.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "23814377b1edb7ceb52f15bcbacda5aadf2f2377"
+    },
+    {
+      "sha": "683774dbc04c0df40d0ee4dcee0e4f20f517060f",
+      "subject": "fix(ui): do not display historical tool receipts as running after a restart",
+      "status": "applied",
+      "reason": "Bug fix cherry-picked after the owner approved lot 6; conflicts resolved keeping our brand and design.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "e7826f75b0be25608f17cf1fa06948edcda1f709"
     }
   ]
 }
