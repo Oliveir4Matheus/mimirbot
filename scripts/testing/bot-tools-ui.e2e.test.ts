@@ -76,6 +76,8 @@ describe("bot setup and tools in the real renderer", () => {
       })()`);
     };
     const dialogCount = () => evaluate("document.querySelectorAll('[role=dialog]').length");
+    // A role fills the title and instructions, so the three steps before the summary are open.
+    const toSummary = async () => { for (let step = 0; step < 3; step++) await click("Next"); };
     const original = await bots();
     const coder = BOT_ROLES.find((role) => role.id === "coder")!;
 
@@ -98,6 +100,7 @@ describe("bot setup and tools in the real renderer", () => {
     await press("Control+n");
     await chooseRole(coder.id);
     expect(await evaluate("window.botCreateRequests")).toBe(0);
+    await toSummary();
     await click("Create bot");
     await expect.poll(() => evaluate("window.botCreateRequests"), { timeout: 10_000 }).toBe(1);
     await press("Escape");
@@ -105,7 +108,7 @@ describe("bot setup and tools in the real renderer", () => {
     await press("Control+n");
     expect(await evaluate("document.querySelector('[role=dialog]')?.getAttribute('aria-busy')")).toBe("true");
     expect(await evaluate("[...document.querySelectorAll('[role=dialog] fieldset button, [role=dialog] input, [role=dialog] select, [role=dialog] textarea')].every(b => b.matches(':disabled'))")).toBe(true);
-    await evaluate("[...document.querySelectorAll('[role=dialog] button')].find(b => b.textContent.includes('Create bot')).click()");
+    expect(await evaluate("[...document.querySelectorAll('[role=dialog] button')].some(b => b.textContent.includes('Create bot'))")).toBe(false);
     expect(await evaluate("window.botCreateRequests")).toBe(1);
     // Close remains usable; a slow server must not trap the user in a modal.
     await click("Close");
@@ -215,12 +218,15 @@ describe("bot setup and tools in the real renderer", () => {
     const ops = BOT_ROLES.find((role) => role.id === "ops")!;
     await press("Control+n");
     await chooseRole(ops.id);
+    await toSummary();
     await click("Create bot");
     await expect.poll(snapshot, { timeout: 10_000 }).toContain("Fixture preset rejected");
     expect((await bots()).map(bot => bot.id)).toEqual(beforeFailure.map(bot => bot.id));
     expect(await dialogCount()).toBe(1);
     await click("Create bot");
     await expect.poll(async () => (await bots()).length, { timeout: 10_000 }).toBe(beforeFailure.length + 1);
+    await expect.poll(snapshot, { timeout: 10_000 }).toContain(`${ops.name} is ready`);
+    await click("Start a conversation with the bot");
     await expect.poll(dialogCount, { timeout: 10_000 }).toBe(0);
     expect((await bots()).filter(bot => !beforeFailure.some(old => old.id === bot.id))).toMatchObject([{ name: ops.name, soul: ops.soul }]);
     const logs = await ui("console");

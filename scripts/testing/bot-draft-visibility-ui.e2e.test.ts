@@ -32,9 +32,7 @@ if (!enabled) console.log("skipping draft visibility UI: set OMB_UI_E2E=1 to ins
     const before = await bots();
     await ui("press", "--keys", "Control+n");
     await expect.poll(snapshot).toContain("Who can see it");
-    // The dialog appears before its defaults request completes. Never click
-    // the disabled Create button while the fixture is still loading its draft.
-    await expect.poll(async () => (await ui("eval", "--js", "[...document.querySelectorAll('[role=dialog] button')].find(button => button.textContent.trim() === 'Create bot')?.disabled")).result).toBe(false);
+    await expect.poll(async () => (await ui("eval", "--js", "document.querySelector('[role=dialog] input[id^=bot-name-]')?.value")).result).not.toBe("");
     // Native select popups do not accept routed keys consistently in headless
     // macOS. Exercise the real select's change handler without the OS popup;
     // creation and its resulting audience still run through the real UI/API.
@@ -43,10 +41,13 @@ if (!enabled) console.log("skipping draft visibility UI: set OMB_UI_E2E=1 to ins
     expect(audience).toBeDefined();
     await ui("eval", "--js", "(() => { const select = document.querySelector('[data-new-bot-visibility] select'); select.value = 'admins'; select.dispatchEvent(new Event('change', { bubbles: true })); return true; })()");
     await expect.poll(async () => (await ui("eval", "--js", "document.querySelector('[data-new-bot-visibility] select')?.value")).result).toBe("admins");
+    for (let step = 0; step < 3; step++) await ui("click", "--name", "Next");
     await ui("click", "--name", "Create bot");
     await expect.poll(async () => (await bots()).length, { timeout: 15_000 }).toBe(before.length + 1);
     const created = (await bots()).find(bot => !before.some(old => old.id === bot.id));
     expect(created?.visibility).toBe("admins");
-    await expect.poll(snapshot).not.toContain('dialog "New bot"');
+    await expect.poll(snapshot).toContain("is ready");
+    await ui("click", "--name", "Start a conversation with the bot");
+    await expect.poll(snapshot).not.toContain("is ready");
   } finally { await waitForExit(child, { signal: "SIGINT", graceMs: 30_000 }); }
 }, 720_000);

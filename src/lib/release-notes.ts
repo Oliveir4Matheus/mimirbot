@@ -5,6 +5,14 @@ export interface ReleaseNotes {
 
 /** Shown once after an update, so they ship inside the app and work offline. Add the entry for a version when you raise it. */
 export const RELEASE_NOTES: Record<string, ReleaseNotes> = {
+  "0.1.137": {
+    features: [
+      "O modal de novo bot agora é um passo a passo: Identidade, Permissões, Essência e Resumo, com o avanço marcado por bolinhas no rodapé. No Resumo você cria o bot ou segue para as configurações avançadas (habilidades, memória, rotinas, acessos, modelo, voz e alertas) e termina em Salvar e fechar.",
+      "O departamento do novo bot agora tem busca: a lista mostra 3 por vez, rola e filtra enquanto você digita.",
+      "Ao criar um bot, uma tela confirma o resultado, com atalhos para criar outro bot ou iniciar a conversa com ele.",
+    ],
+    fixes: [],
+  },
   "0.1.136": {
     features: [],
     fixes: ["Na aba Conversas, os botões de mudar de página ficam sempre na mesma altura, mesmo na última página, com poucas conversas."],

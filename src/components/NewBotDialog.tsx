@@ -1,48 +1,35 @@
 import { useEffect, useRef, useState } from "react";
-import { Loader2, Plus, Trash2, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { api, BotEditorStore, useStore, type Bot, type ModelSelection } from "@/state/store";
 import { BotCreationDraft, EMPTY_BOT_DEFAULTS } from "@/lib/bot-creation-draft";
 import { createConfiguredBot, preparedBotTemplate } from "@/lib/create-configured-bot";
-import { BOT_ROLES, roleProfilePatch } from "@/lib/bot-roles";
-import { readyBot, readyBotTemplate } from "@/lib/ready-bots";
-import { chosenPreset, presetDraftPatch, presetGroups, presetPictureFile, presetSummaryLines, type BotPreset } from "@/lib/bot-presets";
-import { cn } from "@/lib/cn";
 import { t } from "@/lib/i18n";
-import type { LocaleKey } from "@/locales";
 import { useOwnerOrAdmin } from "@/lib/use-owner-or-admin";
 import { useAdvancedMode } from "@/lib/interface-mode";
 import { botCreated } from "@/lib/product-events";
+import { readyBot, readyBotTemplate } from "@/lib/ready-bots";
 import { useShowThreads } from "@/lib/thread-preferences";
 import { departmentOwner } from "./TeamOwner";
-import { openServerMenu } from "./DesktopWorkspaceSwitcher";
 import { useTeamPeople, type TeamPeople } from "@/state/team-people";
 import { teamChats } from "@/state/team-chats";
 import { openBot } from "@/state/thread-navigation";
 import { visibilityFromForm, type VisibilityMode } from "./bot-settings/VisibilitySection";
 import type { NewBotDefaults } from "../../shared/new-bot-defaults";
-import type { Routine } from "@/lib/routines";
-import { IdentitySection } from "./bot-settings/IdentitySection";
-import { SoulSection } from "./bot-settings/SoulSection";
-import { SkillsSection } from "./bot-settings/SkillsSection";
-import { AccessSection } from "./bot-settings/AccessSection";
-import { ModelSection } from "./bot-settings/ModelSection";
-import { PermissionsSection } from "./bot-settings/PermissionsSection";
-import { VoiceSection } from "./bot-settings/VoiceSection";
-import { useBotSettingsDerived } from "./bot-settings/useBotSettingsDerived";
 import { BotEditorContext } from "./bot-settings/BotEditorContext";
-import { inputCls } from "./bot-settings/field";
-import { RoutineEditor } from "./RoutinesPage";
 import { LocalComputerAutoWarning } from "./LocalComputerAutoWarning";
 import { SharePresetDialog } from "./SharePresetDialog";
 import { SettingRow } from "./SettingsPrimitives";
-import { Select } from "./Select";
+import { BotAvatar } from "./Avatar";
+import { SharedInTeam } from "./new-bot/DraftPieces";
+import { BUTTON, NewBotFrame, type FrameTab } from "./new-bot/NewBotFrame";
+import { StepContent, type OwnerControl, type VisibilityControl } from "./new-bot/StepContent";
+import {
+  STEP_LABEL, advancedSteps, blockingStep, flowOf, missingFields, missingIn, stepOfField, stepsFor,
+  type NewBotStep, type RequiredField,
+} from "./new-bot/steps";
 
-const SECTIONS = ["Identity", "Soul", "Skills", "Memory", "Routines", "Access", "Model", "Permissions", "Voice & alerts"] as const;
-type Section = typeof SECTIONS[number];
-const SECTION_KEYS: Record<Section, LocaleKey> = {
-  Identity: "botSettings.sections.identity", Soul: "botSettings.sections.soul", Skills: "botSettings.sections.skills",
-  Memory: "botSettings.sections.memory", Routines: "botSettings.sections.routines", Access: "botSettings.sections.access",
-  Model: "botSettings.sections.model", Permissions: "botSettings.sections.permissions", "Voice & alerts": "botSettings.sections.voice",
+const FIELD_ID: Record<RequiredField, (draftId: string) => string> = {
+  name: (id) => `bot-name-${id}`,
 };
 
 /** Companion pairing permits creation, but not reading host defaults or patching host settings. */
@@ -90,9 +77,13 @@ export function LocalNewBotDialog({ defaultsMode = false, onClose, section, onCr
   const parent = useStore();
   const [, render] = useState(0);
   const [draft, setDraft] = useState(() => new BotCreationDraft(EMPTY_BOT_DEFAULTS, () => render(value => value + 1)));
-  const [active, setActive] = useState<Section>("Identity");
+  const [step, setStep] = useState<NewBotStep>("identity");
   const [ready, setReady] = useState(false);
   const [localSaving, setSaving] = useState(false);
+  const [created, setCreated] = useState<Bot | null>(null);
+  const [attempt, setAttempt] = useState(0);
+  const [visited, setVisited] = useState<ReadonlySet<NewBotStep>>(() => new Set());
+  const [focusField, setFocusField] = useState<RequiredField | null>(null);
   const saving = localSaving || parent.state.botCreationPending;
   const savingRef = useRef(false);
   const alive = useRef(true);
@@ -105,7 +96,7 @@ export function LocalNewBotDialog({ defaultsMode = false, onClose, section, onCr
   const [chosenOwner, setChosenOwner] = useState<string | null>(null);
   const ownerOrAdmin = useOwnerOrAdmin();
   const showThreads = useShowThreads();
-  const sections = useAdvancedMode() ? SECTIONS : SECTIONS.filter((section) => section !== "Model");
+  const advancedMode = useAdvancedMode();
   const choosesVisibility = !defaultsMode && typeof window !== "undefined" && !window.ogb && ownerOrAdmin === true;
   const dialog = useRef<HTMLDivElement>(null);
   const closeRef = useRef(() => {});
@@ -132,7 +123,7 @@ export function LocalNewBotDialog({ defaultsMode = false, onClose, section, onCr
         setReady(true);
       }).catch(cause => { if (!cancelled) setError(String(cause)); });
     return () => { cancelled = true; };
-  }, [defaultsMode, section, readyBotId]);
+  }, [defaultsMode, section, readyBotId, attempt]);
   useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
   useEffect(() => () => draft.dispose(), [draft]);
   // Disabling the focused Create button drops focus to the page in Chromium.
@@ -157,13 +148,50 @@ export function LocalNewBotDialog({ defaultsMode = false, onClose, section, onCr
     window.addEventListener("keydown", onKey);
     return () => { window.removeEventListener("keydown", onKey); if (previous?.isConnected) previous.focus(); };
   }, []);
+  useEffect(() => {
+    if (!focusField) return;
+    dialog.current?.querySelector<HTMLElement>(`[id="${FIELD_ID[focusField](draft.id)}"]`)?.focus();
+    setFocusField(null);
+  }, [focusField, step, draft.id]);
+
+  const bot = draft.bot;
+  const missing = defaultsMode ? [] : missingFields(bot);
+  const flow = defaultsMode ? "basic" : flowOf(step);
+  const steps = stepsFor(flow, { withModel: advancedMode, defaultsMode });
+  const basicSteps = stepsFor("basic", { withModel: advancedMode, defaultsMode });
+  const index = steps.indexOf(step);
+  const visit = (target: NewBotStep) => { setStep(target); setVisited(previous => new Set(previous).add(target)); };
+  const go = (target: NewBotStep) => {
+    if (!defaultsMode) {
+      const blocker = flowOf(target) === "advanced"
+        ? (missing.length ? stepOfField(missing[0]!) : null)
+        : blockingStep(target, basicSteps, bot);
+      if (blocker) { visit(blocker); setFocusField(missingIn(blocker, bot)[0] ?? null); return; }
+    }
+    visit(target);
+  };
+  const next = () => {
+    const lacking = defaultsMode ? [] : missingIn(step, bot);
+    if (lacking.length) { setFocusField(lacking[0]!); return; }
+    const target = steps[index + 1];
+    if (target) go(target);
+  };
+  const back = () => {
+    const target = steps[index - 1];
+    if (target) visit(target);
+    else if (flow === "advanced") visit("summary");
+  };
+  const advance = () => go(advancedSteps(advancedMode)[0]!);
+
   const save = async () => {
     if (!ready || savingRef.current || parent.state.botCreationPending) return;
+    if (!defaultsMode && missingFields(draft.bot).length) return;
     if (!defaultsMode && draft.bot.approvalMode === "auto" && draft.bot.computer === "local" && !draft.consent.acknowledgeLocalAuto) { setWarning("local"); return; }
     const visibility = choosesVisibility ? visibilityFromForm(audience, people) : null;
     if (visibility && !visibility.ok) { setError(t("botSettings.visibility.needPeople")); return; }
     savingRef.current = true; setSaving(true); setError("");
     parent.dispatch({ type: "botCreationPending", on: true });
+    let finished: Bot | null = null;
     try {
       if (defaultsMode) await api("/api/config", { method: "PATCH", body: JSON.stringify({ newBotDefaults: await preparedBotTemplate(draft) }) });
       else {
@@ -173,10 +201,12 @@ export function LocalNewBotDialog({ defaultsMode = false, onClose, section, onCr
         parent.dispatch({ type: "botAdded", bot, preserveSelection });
         if (!preserveSelection && teamChats()) openBot(parent.dispatch, bot, showThreads);
         if (warnings.length) parent.dispatch({ type: "error", message: warnings.join("\n") });
+        finished = bot;
         try { await onCreated?.(bot); }
         catch (cause) { parent.dispatch({ type: "error", message: cause instanceof Error ? cause.message : String(cause) }); }
       }
-      savingRef.current = false; if (alive.current) closeRef.current();
+      savingRef.current = false;
+      if (alive.current) { if (finished) setCreated(finished); else closeRef.current(); }
     } catch (cause) { if (alive.current) setError(cause instanceof Error ? cause.message : String(cause)); }
     finally {
       savingRef.current = false;
@@ -184,8 +214,17 @@ export function LocalNewBotDialog({ defaultsMode = false, onClose, section, onCr
       if (alive.current) setSaving(false);
     }
   };
-  const bot = draft.bot;
-  const scopedStore: ReturnType<typeof useStore> = {
+  const createAnother = () => {
+    setCreated(null); setReady(false); setStep("identity"); setVisited(new Set());
+    setChosenOwner(null); setAudience("everyone"); setPeople(""); setError("");
+    setAttempt(value => value + 1);
+  };
+  const startChatting = () => {
+    if (created) openBot(parent.dispatch, created, showThreads);
+    closeRef.current();
+  };
+
+  const scoped: ReturnType<typeof useStore> = {
     ...parent,
     state: { ...parent.state, bots: [bot, ...parent.state.bots], routines: draft.routines, routineRuns: [], routinesLoadState: "ready" },
     flushBotPatches: async () => bot,
@@ -199,68 +238,69 @@ export function LocalNewBotDialog({ defaultsMode = false, onClose, section, onCr
       else parent.dispatch(action);
     },
   };
-  const title = defaultsMode ? t("newBot.defaults") : t("sidebar.newBot");
-  return <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 p-3 sm:p-5" hidden={!defaultsMode && parent.state.appSettingsOpen}>
-    <div ref={dialog} role="dialog" aria-modal="true" aria-label={title} aria-busy={saving} tabIndex={-1}
-      className="flex h-[min(760px,94dvh)] w-full max-w-[900px] flex-col overflow-hidden rounded-2xl border border-hairline/50 bg-panel shadow-2xl outline-none">
-      <div className="flex shrink-0 items-center justify-between border-b border-hairline/40 px-5 py-4">
-        <h2 className="text-[17px] font-semibold text-ink">{title}</h2>
-        <button type="button" onClick={() => closeRef.current()} aria-label={t("common.close")}
-          className="flex size-8 shrink-0 items-center justify-center rounded-lg text-ink-secondary hover:bg-control hover:text-ink disabled:opacity-40"><X size={18} className="pointer-events-none" /></button>
-      </div>
-        {team && !defaultsMode && teamName && <SharedInTeam team={teamName} />}
-        {choosesVisibility && (
-          <div className="flex flex-wrap items-center gap-2 px-5 pt-3 text-[13px] text-ink-secondary" data-new-bot-visibility>
-            <label className="flex items-center gap-2">
-              {t("botSettings.visibility.title")}
-              <Select size="sm"
-                value={audience}
-                disabled={saving}
-                onChange={(event) => setAudience(event.target.value as VisibilityMode)}
-              >
-                <option value="everyone">{t("botSettings.visibility.everyone")}</option>
-                <option value="admins">{t("botSettings.visibility.admins")}</option>
-                <option value="people">{t("botSettings.visibility.people")}</option>
-              </Select>
-            </label>
-            {audience === "people" && (
-              <input
-                value={people}
-                disabled={saving}
-                onChange={(event) => setPeople(event.target.value)}
-                placeholder={t("botSettings.visibility.peoplePlaceholder")}
-                aria-label={t("botSettings.visibility.peopleLabel")}
-                className="min-w-[16rem] flex-1 rounded-lg border border-hairline/40 bg-inset px-3 py-1.5 text-[13px] text-ink placeholder:text-ink-secondary focus:outline-none"
-              />
-            )}
-          </div>
-        )}
-      <div className="flex min-h-0 flex-1 flex-col sm:flex-row">
-        <nav aria-label={t("newBot.sections")} className="flex shrink-0 gap-1 overflow-x-auto border-b border-hairline/40 p-2 sm:w-40 sm:flex-col sm:border-b-0 sm:border-r">
-          {sections.map(label => <button key={label} type="button" onClick={() => setActive(label)} aria-current={active === label ? "page" : undefined}
-            className={cn("shrink-0 rounded-lg px-3 py-2 text-left text-[13px]", active === label ? "bg-control text-ink" : "text-ink-secondary hover:bg-control/50")}>{t(SECTION_KEYS[label])}</button>)}
-        </nav>
-        <div className="min-h-0 min-w-0 flex-1 overflow-y-auto p-4 sm:p-5">
-          {!ready && !error && <div role="status" className="flex items-center gap-2 text-[13px] text-ink-secondary"><Loader2 size={16} className="animate-spin" />{t("newBot.loading")}</div>}
-          {ready && <fieldset disabled={saving} className="min-w-0">
-            <BotEditorStore value={scopedStore}><BotEditorContext.Provider value={{ request: draft.request, draft: true, uploadAvatar: draft.uploadAvatar }}>
-              <DraftSection active={active} draft={draft} defaultsMode={defaultsMode}
-                owner={team && !defaultsMode ? { value: reportsToFor(chosenOwner, bot.section, parent.state.bots, team), choose: setChosenOwner } : undefined} />
-            </BotEditorContext.Provider></BotEditorStore>
-          </fieldset>}
-        </div>
-      </div>
-      {error && <p role="alert" className="max-h-24 overflow-y-auto border-t border-hairline/40 px-5 py-3 text-[13px] text-danger">{error}</p>}
-      <div className="flex shrink-0 justify-end gap-2 border-t border-hairline/40 px-5 py-3">
-        <button type="button" onClick={() => closeRef.current()} className="rounded-lg px-4 py-2 text-[13px] text-ink-secondary hover:bg-control">{t("common.cancel")}</button>
-        <button type="button" disabled={!ready || saving || (!defaultsMode && !bot.name.trim())} onClick={() => void save()}
-          className="flex items-center gap-2 rounded-lg bg-accent px-5 py-2 text-[13px] font-medium text-white hover:brightness-110 disabled:opacity-40">
-          {saving && <Loader2 size={15} className="animate-spin" />}{t(defaultsMode ? "newBot.saveDefaults" : "newBot.create")}
-        </button>
-      </div>
-      <LocalComputerAutoWarning open={warning === "local"} onCancel={() => setWarning(null)} onConfirm={() => { draft.consent.acknowledgeLocalAuto = true; setWarning(null); void save(); }} />
-    </div>
-  </div>;
+
+  const showBadges = !defaultsMode && flow === "basic";
+  const tabs: FrameTab[] = steps.map((id) => {
+    const label = t(STEP_LABEL[id]);
+    const lacking = id === "summary" ? missing.length : missingIn(id, bot).length;
+    const seen = visited.has(id) && id !== step;
+    const done = showBadges ? lacking === 0 : !defaultsMode && seen;
+    const description = done ? t("newBot.progress.stepDone", { step: label }) : lacking && showBadges ? t("newBot.progress.stepPending", { step: label, count: lacking }) : label;
+    return { id, label, missing: showBadges ? lacking : 0, done, description };
+  });
+  const lastStep = index === steps.length - 1;
+  const creating = !defaultsMode && flow === "basic" && step === "summary";
+  const stepLacks = !defaultsMode && missingIn(step, bot).length > 0;
+  const saveDisabled = !ready || saving || (!defaultsMode && missing.length > 0);
+  const saveLabel = t(defaultsMode ? "newBot.saveDefaults" : flow === "advanced" ? "newBot.nav.saveAndClose" : "newBot.create");
+  const spinner = saving && <Loader2 size={15} className="animate-spin" />;
+  const title = defaultsMode ? t("newBot.defaults") : flow === "advanced" && !created ? t("newBot.advancedTitle") : t("sidebar.newBot");
+  const who = flow === "advanced" && !defaultsMode && !created && (
+    <span className="flex min-w-0 items-center gap-2 border-s border-hairline/40 ps-3 text-[13px] text-ink-secondary">
+      <BotAvatar bot={bot} size={24} /><span className="truncate">{bot.name}</span>
+    </span>
+  );
+  let note: string | undefined;
+  if (!defaultsMode && flow === "basic") note = missing.length ? t("newBot.progress.missing", { count: missing.length }) : creating ? undefined : t("newBot.progress.ready");
+  else if (!defaultsMode && index === 0) note = t("newBot.progress.optional");
+
+  const actions = <>
+    {flow === "basic" && <button type="button" onClick={() => closeRef.current()} className={BUTTON.ghost}>{t("common.cancel")}</button>}
+    {(index > 0 || flow === "advanced") && <button type="button" onClick={back} className={BUTTON.secondary}><ChevronLeft size={14} />{t("newBot.nav.back")}</button>}
+    {!creating && !lastStep && <button type="button" disabled={stepLacks} onClick={next} className={flow === "basic" && !defaultsMode ? BUTTON.primary : BUTTON.secondary}>
+      {t(flow === "basic" && !defaultsMode ? "newBot.nav.next" : "newBot.nav.continue")}<ChevronRight size={14} />
+    </button>}
+    {creating && <button type="button" disabled={missing.length > 0} onClick={advance} className={BUTTON.secondary}>{t("newBot.nav.advanced")}</button>}
+    {(creating || flow === "advanced" || defaultsMode) && <button type="button" disabled={saveDisabled} onClick={() => void save()} className={BUTTON.primary}>{spinner}{saveLabel}</button>}
+  </>;
+
+  return <NewBotFrame
+    dialogRef={dialog}
+    title={title}
+    who={who || undefined}
+    hidden={!defaultsMode && parent.state.appSettingsOpen}
+    busy={saving}
+    onClose={() => closeRef.current()}
+    banner={team && !defaultsMode && teamName ? <SharedInTeam team={teamName} /> : undefined}
+    tabs={tabs}
+    activeTab={step}
+    onTab={(id) => go(id as NewBotStep)}
+    error={error}
+    note={note}
+    noteDone={!defaultsMode && flow === "basic" && missing.length === 0}
+    actions={actions}
+    done={created ? { bot: created, onAnother: createAnother, onStart: startChatting } : undefined}
+  >
+    {!ready && !error && <div role="status" className="flex items-center gap-2 text-[13px] text-ink-secondary"><Loader2 size={16} className="animate-spin" />{t("newBot.loading")}</div>}
+    {ready && <fieldset disabled={saving} className="min-w-0">
+      <BotEditorStore value={scoped}><BotEditorContext.Provider value={{ request: draft.request, draft: true, uploadAvatar: draft.uploadAvatar }}>
+        <StepContent step={step} draft={draft} defaultsMode={defaultsMode} onEdit={go}
+          owner={team && !defaultsMode ? { value: reportsToFor(chosenOwner, bot.section, parent.state.bots, team), choose: setChosenOwner } satisfies OwnerControl : undefined}
+          visibility={choosesVisibility ? { audience, people, disabled: saving, setAudience, setPeople } satisfies VisibilityControl : undefined} />
+      </BotEditorContext.Provider></BotEditorStore>
+    </fieldset>}
+    <LocalComputerAutoWarning open={warning === "local"} onCancel={() => setWarning(null)} onConfirm={() => { draft.consent.acknowledgeLocalAuto = true; setWarning(null); void save(); }} />
+  </NewBotFrame>;
 }
 
 /** Who a new team bot reports to: the person chosen, else whoever every bot of its department reports to, else this
@@ -269,146 +309,6 @@ function reportsToFor(chosen: string | null, section: string | undefined, bots: 
   if (chosen) return chosen;
   const department = bots.filter((bot) => !bot.hidden && (bot.section?.trim() || "") === (section?.trim() || ""));
   return departmentOwner(department, team)?.email ?? team.me?.email ?? null;
-}
-
-function SharedInTeam({ team }: { team: string }) {
-  const bridge = typeof window === "undefined" ? undefined : window.ogb?.workspaces;
-  return <div data-new-bot-shared className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-hairline/40 bg-raised/30 px-5 py-2.5 text-[13px] text-ink-secondary">
-    <span>{t("newBot.sharedWith", { team })}</span>
-    {bridge
-      ? <button type="button" onClick={() => void openServerMenu(bridge).catch(() => {})} className="font-medium text-accent hover:underline">{t("newBot.justForYou")}</button>
-      : <span>{t("newBot.justForYou").replace(/\s*→$/, "")}</span>}
-  </div>;
-}
-
-function DraftSection({ active, draft, defaultsMode, owner }: { active: Section; draft: BotCreationDraft; defaultsMode: boolean;
-  owner?: { value: string | null; choose(email: string): void } }) {
-  const bot = draft.bot;
-  const { state } = useStore();
-  const team = useTeamPeople();
-  const derived = useBotSettingsDerived(bot);
-  if (active === "Identity") return <div className="space-y-4">
-    <StartingRole draft={draft} defaultsMode={defaultsMode} />
-    <IdentitySection bot={bot} patch={derived.patch} activeState={derived.activeState} mascotMotion={null}
-      namePlaceholder={defaultsMode ? t("newBot.randomName") : undefined} />
-    <label className="block text-[13px] text-ink-secondary">{t("newBot.team")}
-      <Select size="lg" className="mt-1.5 w-full" value={bot.section ?? ""} onChange={event => draft.patch({ section: event.target.value })}>
-        <option value="">{t("teamSettings.general")}</option>{[...new Set([...(state.sections ?? []), ...state.bots.map(bot => bot.section ?? "")])].filter(Boolean).map(name => <option key={name}>{name}</option>)}
-      </Select>
-    </label>
-    {owner && team && <label className="block text-[13px] text-ink-secondary" data-new-bot-reports-to>{t("newBot.reportsTo")}
-      <Select size="lg" className="mt-1.5 w-full" value={owner.value ?? ""} onChange={event => owner.choose(event.target.value)}>
-        {team.people.map(person => <option key={person.email} value={person.email}>{person.you ? t("owner.you", { name: person.name }) : person.name}</option>)}
-      </Select>
-      <span className="mt-1 block text-[12px]">{t("owner.pickHint")}</span>
-    </label>}
-  </div>;
-  if (active === "Soul") return <SoulSection bot={bot} patch={derived.patch} />;
-  if (active === "Skills") return <SkillsSection bot={bot} />;
-  if (active === "Memory") return <DraftMemory draft={draft} />;
-  if (active === "Routines") return <DraftRoutines draft={draft} />;
-  if (active === "Access") return <AccessSection bot={bot} derived={derived} />;
-  if (active === "Model") return <ModelSection bot={bot} />;
-  if (active === "Permissions") return <PermissionsSection bot={bot} derived={derived} />;
-  return <VoiceSection bot={bot} derived={derived} />;
-}
-
-function StartingRole({ draft, defaultsMode }: { draft: BotCreationDraft; defaultsMode: boolean }) {
-  const [presets, setPresets] = useState<BotPreset[]>([]);
-  const [loads, setLoads] = useState(0);
-  const [error, setError] = useState("");
-  const presetPicture = useRef(false);
-  useEffect(() => {
-    if (defaultsMode) return;
-    let cancelled = false;
-    void api<{ presets: BotPreset[] }>("/api/bot-presets")
-      .then(result => { if (!cancelled) setPresets(result.presets); })
-      .catch(() => { if (!cancelled) setPresets([]); });
-    return () => { cancelled = true; };
-  }, [defaultsMode, loads]);
-  const chosen = draft.preset ? presets.find(preset => preset.id === draft.preset!.id) : undefined;
-  const choose = async (value: string) => {
-    setError("");
-    const preset = value.startsWith("preset:") ? presets.find(candidate => candidate.id === value.slice("preset:".length)) : undefined;
-    if (!preset) {
-      draft.choosePreset(undefined);
-      const role = BOT_ROLES.find(role => role.id === value);
-      draft.chooseRole(role?.id);
-      const look = role && readyBot(role.id)?.look;
-      if (role) draft.patch({ ...roleProfilePatch(role), ...look });
-      return;
-    }
-    draft.patch(presetDraftPatch(preset));
-    draft.choosePreset(chosenPreset(preset));
-    const picture = presetPictureFile(preset);
-    try {
-      if (picture) {
-        draft.patch({ avatarUrl: await draft.uploadAvatar(picture), avatarCrop: preset.bot.appearance!.avatar!.crop });
-        presetPicture.current = true;
-      } else if (presetPicture.current) {
-        draft.patch({ avatarUrl: "" });
-        presetPicture.current = false;
-      }
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
-    }
-  };
-  const remove = async (preset: BotPreset) => {
-    setError("");
-    try {
-      await api(`/api/bot-presets/${encodeURIComponent(preset.id)}`, { method: "DELETE" });
-      if (draft.preset?.id === preset.id) draft.choosePreset(undefined);
-      setLoads(value => value + 1);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
-    }
-  };
-  const roles = BOT_ROLES.map(role => <option key={role.id} value={role.id}>{role.title}</option>);
-  return <div>
-    <label className="block text-[13px] text-ink-secondary">{t("newBot.startingRole")}
-      <Select size="lg" className="mt-1.5 w-full" value={draft.preset ? `preset:${draft.preset.id}` : ""} onChange={event => void choose(event.target.value)}>
-        <option value="">{t("newBot.customSettings")}</option>
-        {presetGroups(presets).map(group => <optgroup key={group.label} label={group.label}>
-          {group.presets.map(preset => <option key={preset.id} value={`preset:${preset.id}`}>{preset.name}</option>)}
-        </optgroup>)}
-        {presets.length ? <optgroup label={t("newBot.builtInRoles")}>{roles}</optgroup> : roles}
-      </Select>
-    </label>
-    {chosen && <div className="mt-2 space-y-1 rounded-lg bg-card px-3 py-2.5 text-[12.5px] text-ink-secondary" data-new-bot-preset>
-      {presetSummaryLines(chosen).map((line, index) => <p key={index} className="break-words">{line}</p>)}
-      {chosen.source === "file" && <button type="button" onClick={() => void remove(chosen)}
-        className="mt-1 rounded-md px-2 py-1 text-[12px] text-ink-secondary hover:bg-control hover:text-ink">{t("newBot.presetRemove")}</button>}
-    </div>}
-    {error && <p role="alert" className="mt-2 text-[12.5px] text-danger">{error}</p>}
-  </div>;
-}
-
-function DraftMemory({ draft }: { draft: BotCreationDraft }) {
-  const [path, setPath] = useState("MEMORY.md");
-  const [name, setName] = useState("");
-  return <div className="space-y-3">
-    <Select size="lg" className="w-full" aria-label={t("memory.fileLabel", { path })} value={path} onChange={event => setPath(event.target.value)}>
-      {[...new Set(["MEMORY.md", ...Object.keys(draft.template.memory)])].map(file => <option key={file}>{file}</option>)}
-    </Select>
-    <textarea className={cn(inputCls, "min-h-72 font-mono")} aria-label={t("memory.contents")} value={draft.template.memory[path] ?? ""} onChange={event => draft.setMemory(path, event.target.value)} />
-    <div className="flex gap-2"><input className={inputCls} aria-label={t("memory.newTopicLabel")} placeholder={t("memory.newTopicLabel")} value={name} onChange={event => setName(event.target.value)} />
-      <button type="button" aria-label={t("memory.addTopic")} disabled={!/^[a-zA-Z0-9_-]+$/.test(name)} className="rounded-lg bg-control px-3 disabled:opacity-40" onClick={() => { const next = `memory/${name}.md`; if (!(next in draft.template.memory)) draft.setMemory(next, ""); setPath(next); setName(""); }}><Plus size={16} /></button>
-      {path !== "MEMORY.md" && <button type="button" aria-label={t("memory.removeTopic")} className="rounded-lg bg-control px-3" onClick={() => { draft.setMemory(path, null); setPath("MEMORY.md"); }}><Trash2 size={16} /></button>}
-    </div>
-  </div>;
-}
-
-function DraftRoutines({ draft }: { draft: BotCreationDraft }) {
-  const [editing, setEditing] = useState<Routine | "new" | null>(null);
-  return <div className="space-y-3">
-    <button type="button" className="rounded-lg bg-accent px-3 py-2 text-[13px] text-white" onClick={() => setEditing("new")}>{t("computer.routines.create")}</button>
-    {draft.routines.map(routine => <div key={routine.id} className="flex items-center gap-2 rounded-lg bg-card p-3">
-      <button type="button" className="min-w-0 flex-1 text-left text-[13px]" onClick={() => setEditing(routine)}>{routine.name}</button>
-      <label className="flex items-center gap-1.5 text-[12px] text-ink-secondary"><input type="checkbox" checked={routine.enabled} onChange={event => draft.setRoutineEnabled(routine.id, event.target.checked)} />{t("newBot.enabled")}</label>
-      <button type="button" aria-label={t("newBot.removeRoutine", { name: routine.name })} onClick={() => draft.removeRoutine(routine.id)} className="rounded p-1.5 hover:bg-control"><Trash2 size={15} /></button>
-    </div>)}
-    {editing && <RoutineEditor routine={editing === "new" ? undefined : editing} bots={[draft.bot]} lockedBotId={draft.id} onClose={() => setEditing(null)} />}
-  </div>;
 }
 
 export function DefaultBotSettings() {

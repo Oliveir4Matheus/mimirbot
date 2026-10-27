@@ -119,7 +119,35 @@ Companion connections retain the single-request Create bot flow: they cannot
 read host defaults or patch host settings. `companion/test/proxy.test.ts` checks
 creation succeeds while those routes remain blocked. The dialog tests also
 check that a caller's synchronous exception or rejected promise after creation
-is reported without leaving a retryable creation dialog open.
+is reported while the dialog shows the new bot as ready, never a retryable
+creation form.
+
+The creation dialog is a step-by-step flow. Basic steps: Identity, Permissions,
+Soul, Summary. **Create bot** and **Continue to advanced settings** sit on the
+Summary. The advanced steps are Skills, Memory, Routines, Access, Model (only
+in Advanced mode) and Voice & alerts, closed by **Save and close**, which
+creates the bot exactly as **Create bot** does. Only a name is required: while
+it is empty, Identity cannot be left forward and the tab for a later step
+returns to it. A title and instructions stay optional, so a blank bot can still
+be shaped later with `/setup`.
+Editing the defaults for new bots chains every section in one run with **Save
+defaults** always available and no field required. In the renderer fixture,
+choose **Configure new bot**, then check:
+
+1. The dialog is at most 60% of the window high and 640 px wide; a phone-sized
+   window keeps it inside the screen with no sideways scroll.
+2. With the name cleared, Next is off and the status line says a required field
+   is missing; type a name and every step opens. A bot created with no title or
+   instructions exists, blank.
+3. The Department list shows three rows, scrolls, and filters as you type,
+   ignoring case and accents.
+4. Cancel, Escape and the close button leave the server unchanged; Save and
+   close creates one bot with the title, blurb and instructions entered, and
+   the confirmation offers **Create another bot** and **Start a conversation
+   with the bot**.
+5. Repeat in every skin (Settings → General): every colour comes from the skin
+   tokens, so nothing may look foreign to the palette.
+
 
 In the renderer fixture, open **App settings → General → Defaults for new bots → Edit**.
 The full creation dialog retains upstream's **Who can see it** selection for

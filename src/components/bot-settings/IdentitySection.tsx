@@ -68,6 +68,7 @@ export function IdentitySection({
       {shows("title") && <Field label={t("botSettings.identity.title")}>
         <ProposalStatus bot={bot} kind="chief" />
         <input
+          id={`bot-title-${bot.id}`}
           className={inputCls}
           maxLength={BOT_PROFILE_LIMITS.title}
           placeholder={t("botSettings.identity.titlePlaceholder")}

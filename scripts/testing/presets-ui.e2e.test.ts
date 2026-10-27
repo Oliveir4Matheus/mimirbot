@@ -123,7 +123,6 @@ describe("Preset bots in the real renderer", () => {
       const before = await bots();
       await clickWhenFree("New or share");
       await click("New Bot");
-      await expect.poll(async () => (await ui("eval", "--js", "[...document.querySelectorAll('[role=dialog] button')].find(button => button.textContent.trim() === 'Create bot')?.disabled")).result, { timeout: 20_000 }).toBe(false);
       await expect.poll(() => evaluate("[...document.querySelectorAll('[role=dialog] select optgroup')].map(group => group.label).join(' | ')"), { timeout: 10_000 })
         .toBe("From Acme Partners | Imported presets | Built-in roles");
       // Native select popups do not take routed keys reliably in headless
@@ -131,8 +130,10 @@ describe("Preset bots in the real renderer", () => {
       await evaluate(`(() => { const select = [...document.querySelectorAll('[role=dialog] select')].find(item => item.querySelector('optgroup')); select.value = ${JSON.stringify(value)}; select.dispatchEvent(new Event('change', { bubbles: true })); return true; })()`);
       await expect.poll(snapshot, { timeout: 10_000 }).toContain(expected);
       await ui("screenshot", "--out", evidence(shot));
+      for (let step = 0; step < 3; step++) await click("Next");
       await click("Create bot");
       await expect.poll(async () => (await bots()).length, { timeout: 15_000 }).toBe(before.length + 1);
+      await ui("press", "--keys", "Escape");
       return (await bots()).find((bot) => !before.some((old) => old.id === bot.id))!;
     };
     const fromFile = await create(`preset:${filePreset!.id}`, "Skills, added switched off: follow-up", "new-bot-file");
