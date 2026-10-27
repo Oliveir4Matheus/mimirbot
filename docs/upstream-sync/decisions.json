@@ -1313,9 +1313,10 @@
     {
       "sha": "40beb5c5cdd10b113398c4e90e47a508ac7a25b9",
       "subject": "fix(ui): fold a room snapshot onto messages streamed meanwhile",
-      "status": "pending",
-      "reason": "Coordination, threads and rooms batch; owner left it undecided.",
-      "decidedAt": "2026-10-26"
+      "status": "applied",
+      "reason": "Cherry-picked with the room-snapshot fix first so store.tsx drops back to its pin.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "d89d27f32e8e0d0e5135a8191f94ce526b29ca04"
     },
     {
       "sha": "8580421ceb70151721594d4b8ef2088b7471c9bd",
@@ -1360,9 +1361,10 @@
     {
       "sha": "89fcbc801b36da510a4591e032657106f86d53a8",
       "subject": "refactor(ui): move room frame handling out of store.tsx for the size ratchet",
-      "status": "pending",
-      "reason": "Coordination, threads and rooms batch; owner left it undecided.",
-      "decidedAt": "2026-10-26"
+      "status": "applied",
+      "reason": "Cherry-picked with the room-snapshot fix first so store.tsx drops back to its pin.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "b5a038dc15ee26b9a657c58cec6d13389cde6489"
     },
     {
       "sha": "7d4f7da2e1b4757c7e4924d1474e997221b483c4",
@@ -1428,9 +1430,9 @@
     {
       "sha": "b8d393b907b2679a2c496a3bd81731fb166273be",
       "subject": "test(notices): main's Use my Mac popup waits like the other full-screen asks",
-      "status": "pending",
-      "reason": "Left undecided by the owner (not discussed yet).",
-      "decidedAt": "2026-10-26"
+      "status": "ignored",
+      "reason": "Changes when the welcome flow shows a popup; we ignore upstream welcome changes.",
+      "decidedAt": "2026-10-27"
     },
     {
       "sha": "62c809ec20ffa9283ef8a9389e3110b8c0cd6088",
@@ -1442,9 +1444,9 @@
     {
       "sha": "74e75a116642ac9e7c20c0b79031d7b7378e3cbe",
       "subject": "Ask once per Cloud to let the bots use this Mac, from the page's notice queue",
-      "status": "pending",
-      "reason": "Left undecided by the owner (not discussed yet).",
-      "decidedAt": "2026-10-26"
+      "status": "ignored",
+      "reason": "Changes when the welcome flow shows a popup; we ignore upstream welcome changes.",
+      "decidedAt": "2026-10-27"
     },
     {
       "sha": "f1ef288fd36d4604b7aaddc79e891cb93a32bf01",
@@ -1500,9 +1502,10 @@
     {
       "sha": "53a0f41cd38e6e8226cad6bc3f7632869168b085",
       "subject": "Terminal refusal points at Settings → MausBot Cloud → Terminal; drop the always-on card hint",
-      "status": "pending",
-      "reason": "Left undecided by the owner (not discussed yet).",
-      "decidedAt": "2026-10-26"
+      "status": "applied",
+      "reason": "Net result of both commits: a refused Cloud terminal request names the computer and the Settings switch; the always-on card hint they add and remove is not taken.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "81bed9612227bcffcf032b447ee2d34bfcc5a3de"
     },
     {
       "sha": "22bfaa8170204b50b91cc0c21c462679284f19fe",
@@ -1515,9 +1518,10 @@
     {
       "sha": "7ff9858e3e0c47447d98aedd4da19014f1824669",
       "subject": "Name the computer and the switch when Cloud Terminal is off",
-      "status": "pending",
-      "reason": "Left undecided by the owner (not discussed yet).",
-      "decidedAt": "2026-10-26"
+      "status": "applied",
+      "reason": "Net result of both commits: a refused Cloud terminal request names the computer and the Settings switch; the always-on card hint they add and remove is not taken.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "81bed9612227bcffcf032b447ee2d34bfcc5a3de"
     },
     {
       "sha": "e13d3aea0275a54eb0f0e1e42d2abbfe6c23c214",
@@ -1605,6 +1609,137 @@
       "status": "pending",
       "reason": "Left undecided by the owner (not discussed yet).",
       "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "e5b70f0d22133b014df834d121e92174cac43a20",
+      "subject": "fix(tunnel): bundle cloudflared 2026.10.3, which drops the compromised eMudhra certificates",
+      "status": "applied",
+      "reason": "Bug fix cherry-picked clean from the new upstream commits, owner approved the batch.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "726bd8c45a3797d479143a78fdafb547cbd82a95"
+    },
+    {
+      "sha": "7581a9950c04a46e4edfb658a565e1476eebcb9e",
+      "subject": "fix(charts): a stacked bar over dates draws stacked bars, one per week",
+      "status": "applied",
+      "reason": "Bug fix cherry-picked clean from the new upstream commits, owner approved the batch.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "037b42e14a4026fd2285180af7994c1361aa88ca"
+    },
+    {
+      "sha": "fcd744a9d0d3fba66b43cfb2fcbd9cd3c4c09ddf",
+      "subject": "fix(lending): writing a new file into a lent folder makes its missing folders",
+      "status": "applied",
+      "reason": "Bug fix cherry-picked clean from the new upstream commits, owner approved the batch.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "5213ba565191c8ac1040368faeb43200b87f6836"
+    },
+    {
+      "sha": "a6213e9c7ce9e5d2a73910766a63163679cb61bf",
+      "subject": "fix(bot-apps): switching an app on lets the bot call its tools",
+      "status": "applied",
+      "reason": "Bug fix cherry-picked clean from the new upstream commits, owner approved the batch.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "3118344156b9dcc2e701b6f26758fa7c187116c7"
+    },
+    {
+      "sha": "1305ee1caff82957b48d73294cefef562ca4dfa9",
+      "subject": "fix(settings): the Composio key row shows Configured only for a key of your own",
+      "status": "applied",
+      "reason": "Bug fix cherry-picked clean from the new upstream commits, owner approved the batch.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "655e947d4e14dd4c69567c0651b97930799562b6"
+    },
+    {
+      "sha": "da17551313b5888d24af226a00c6413a917039d2",
+      "subject": "test(acp): the fake writes its question answer whole, so a test never reads it half-written",
+      "status": "applied",
+      "reason": "Bug fix cherry-picked clean from the new upstream commits, owner approved the batch.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "358dc58bb481b54aa27fc0e96e952d6e80595538"
+    },
+    {
+      "sha": "65ce6862aefafb61cb3fe8f626818ce81d213080",
+      "subject": "fix(automations): keep the card for a missed run that has no conversation (#3607)",
+      "status": "applied",
+      "reason": "Bug fix cherry-picked clean from the new upstream commits, owner approved the batch.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "2e3cd5a1d761966365ec84774e79d0b26dc5df9e"
+    },
+    {
+      "sha": "dd070353c9349eeb4dee5c4c3c063deeae8dc05b",
+      "subject": "fix(chat): mark a hand-off chip red when the teammate's work failed (#3592)",
+      "status": "applied",
+      "reason": "Bug fix cherry-picked clean from the new upstream commits, owner approved the batch.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "e2711a551fcc2f2c38bd1ce0fd26413253afef7b"
+    },
+    {
+      "sha": "4e668895419249ec90de7fa0d185e23dd0d4c675",
+      "subject": "fix(pi): wait for a slow session reply instead of prompting on a session Pi then replaces (#3601)",
+      "status": "applied",
+      "reason": "Bug fix cherry-picked clean from the new upstream commits, owner approved the batch.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "df4746169fb49a6f7acf685900441d4e2936089f"
+    },
+    {
+      "sha": "0cd63a7db4ca4abe1d01d1962c9f29c5bcbfaf97",
+      "subject": "fix(openai-compat): run Gemini's tool calls, which stream whole with an id and no index (#3605)",
+      "status": "applied",
+      "reason": "Bug fix cherry-picked clean from the new upstream commits, owner approved the batch.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "228c12f4429926569db1109e40f1be9e3020b89e"
+    },
+    {
+      "sha": "03498ed0a08530f25b9e0d421ef1a5f27ad93b15",
+      "subject": "fix: keep a reply in the shown chat unread while the window is in the background",
+      "status": "applied",
+      "reason": "Bug fix cherry-picked clean from the new upstream commits, owner approved the batch.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "b87faac8dadd5c2a31caa9693fa667a3ba550750"
+    },
+    {
+      "sha": "2f82d42240585d0d30f1203f593015841d238739",
+      "subject": "fix(chat): the working status shows one phrase at a time",
+      "status": "applied",
+      "reason": "Bug fix cherry-picked clean from the new upstream commits, owner approved the batch.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "09a7350df5021d8cf1379d697516759e3bd3dd95"
+    },
+    {
+      "sha": "3ee2e31d4759b67f29b3c118845fc96ad310ccef",
+      "subject": "feat(ui): follow the computer's light or dark by default, quieter Midnight and Daylight, a roomier first window",
+      "status": "ignored",
+      "reason": "Upstream theme and visual change (colours, fonts, canvas); we skip those.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "cbb683488b10ab3e56af88b4629b55bd50c260b7",
+      "subject": "fix(ui): retone Midnight's purple bot name for the new canvas, add before/after evidence",
+      "status": "ignored",
+      "reason": "Upstream theme and visual change (colours, fonts, canvas); we skip those.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "1a244d76a1d507f6ee72ad54dd167f882c812685",
+      "subject": "docs(evidence): retake the theme before/after with the bot faces painted",
+      "status": "ignored",
+      "reason": "Upstream theme and visual change (colours, fonts, canvas); we skip those.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "bc029e4155585c2a82df8ee8b60080555574aca6",
+      "subject": "fix(desktop): open the first window at 1040x760 and paint the theme's canvas before load",
+      "status": "ignored",
+      "reason": "Upstream theme and visual change (colours, fonts, canvas); we skip those.",
+      "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "30e53702ade93d8eea1835e11ed4c42f5601f8fd",
+      "subject": "fix(main): refresh the tool-list goldens and round two half-pixel font sizes",
+      "status": "ignored",
+      "reason": "Upstream theme and visual change (colours, fonts, canvas); we skip those.",
+      "decidedAt": "2026-10-27"
     }
   ]
 }
