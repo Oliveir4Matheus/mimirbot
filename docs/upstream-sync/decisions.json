@@ -1,0 +1,1592 @@
+{
+  "upstream": {
+    "repo": "https://github.com/milind-soni/OpenMausBot",
+    "branch": "main",
+    "mergeBase": "0d8eacc65cd3b783a0d28d019d39e6367780b911",
+    "triagedUpTo": "bb3fd61c56274faa6f28addcf22e25fff2c9c527"
+  },
+  "statuses": {
+    "adopted": "cherry-picked into mimirbot (ourCommit)",
+    "ignored": "decided not to take; do not propose again",
+    "deferred": "wanted, but blocked by files we changed; revisit",
+    "approved": "decided to take; not applied to mimirbot yet",
+    "observation": "no decision; kept on watch until it matters to us",
+    "pending": "shown to the owner and left undecided on purpose; ask again only when it becomes relevant",
+    "applied": "cherry-picked into mimirbot (ourCommit), adapted to our UI and logic where it conflicted"
+  },
+  "defaultStatus": "A commit in mergeBase..triagedUpTo that is not listed here has not been shown to the owner yet.",
+  "rules": [
+    {
+      "id": "bots-stay-in-department",
+      "text": "Bots only interact with bots of their own department. Skip upstream changes that widen peer, room or Chief reach across departments, and their tests.",
+      "examples": [
+        "78c79a4405fe3fbf96f4f03a6f5b9e22b15150d6",
+        "d1d6ce48fb9c93669bd8632b6413c8763afbd2e9"
+      ]
+    },
+    {
+      "id": "ignore-upstream-onboarding",
+      "text": "Skip upstream onboarding, welcome flow, app tour and first-launch card changes, and their tests, docs and translations.",
+      "examples": [
+        "19ab6384fad820b4aecffabfdb7f05f675052007"
+      ]
+    },
+    {
+      "id": "ignore-upstream-design-refresh",
+      "text": "Skip upstream visual redesign changes: fonts, type and radius scale, chat styling, bubble and theme colours. Their bug fixes in the same area still get triaged on their own.",
+      "examples": [
+        "fea554a64d4756462cf2f3a5e5e1cb123440d3e7"
+      ]
+    },
+    {
+      "id": "ignore-upstream-set-me-up",
+      "text": "Skip the upstream Set me up button and everything wired to it: setup-request routes, setup offer on the greeting, composer chip, companion routes for it.",
+      "examples": [
+        "c2c2e1d6d0fa216ff885a827e366aa01cd19a23e"
+      ]
+    }
+  ],
+  "commits": [
+    {
+      "sha": "2996d256fddf0f1a73dc6d2c257fffafbc1ecb9f",
+      "subject": "test(onboarding): the send-key tour hint opens the app tour as Settings does",
+      "status": "adopted",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "8cc9ffdfc731ab12f4cd64527a676b853f70f2a5"
+    },
+    {
+      "sha": "4fbab8fac979a2fafdcf8f16fcdd3ae1a5e582da",
+      "subject": "test(onboarding): walk the short welcome in the manual UI check",
+      "status": "adopted",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "90e9fc31c2600e650716e2d75759833f0ea06819"
+    },
+    {
+      "sha": "cb750af39cdf99415a49284f8d8ab994778bc0ee",
+      "subject": "test(onboarding): cover Connect an AI's failed check in its own test",
+      "status": "adopted",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "66262fec770f693a17ab453315b86d74d13ee90d"
+    },
+    {
+      "sha": "3a9d9fa5f2d20b48fd9b33fd99eddbfb07dce850",
+      "subject": "docs(pr): screenshots for the shorter welcome",
+      "status": "adopted",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "af258309030e3c00fd435f2c4d05091269195b76"
+    },
+    {
+      "sha": "05f23dcea725d98440de291a6687a70e2c4592aa",
+      "subject": "feat(companion): paired phones may press Set me up and close its chip",
+      "status": "adopted",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "e293aacce34ef524a0defaf7f500d001798c9df7"
+    },
+    {
+      "sha": "f0b790a85721a5f2a8e0a51378972648383f8500",
+      "subject": "docs(pr): screenshots for Set me up",
+      "status": "adopted",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "1c454a27e3176dc3668b6ac9dfa832b8ba919aa5"
+    },
+    {
+      "sha": "e86fb1e6a060c035e7980b0690f41922eb1b26a9",
+      "subject": "fix(computer): tell a bot what to do when the driver refuses the person's signed-in Chrome",
+      "status": "adopted",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "cd6dec503d368254ca99dfaef689bcdd702dd63a"
+    },
+    {
+      "sha": "e14c55f449434e0057ad2cb8eede516f8f430d59",
+      "subject": "fix(bot-box): check and forward the harness gate's canonical path",
+      "status": "adopted",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "0c1d076ec4587d5a36573b90fae60ada523eb1d6"
+    },
+    {
+      "sha": "84b63940ca00397d13dc991f23c321dac10ef2b4",
+      "subject": "Say an automation recovered when a quiet run follows a failed one",
+      "status": "adopted",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "955a111bfa5da9f0de11fd08d0c3a67ae35fd620"
+    },
+    {
+      "sha": "d082a6fca7a9a5a02431dfeb7234d95d4496cc53",
+      "subject": "fix(engine-homes): truncate the team's sign-in after an in-place write",
+      "status": "adopted",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "dc80b6ed365b97054d7210e71ad5153a9b889d2f"
+    },
+    {
+      "sha": "d976b6bf63388761fe6c00342cb926ebc049ac37",
+      "subject": "fix(memory): refuse to overwrite a memory file that cannot be read",
+      "status": "adopted",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "9e459128abbfbe4eb7edc9d3a7dd0bffd33ad1b8"
+    },
+    {
+      "sha": "f5c422d10e47c0a5a07974cec5d45c94d4b1ed34",
+      "subject": "fix(data): lex data_sql statements the way DuckDB does",
+      "status": "adopted",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "11b74dc6f8b4e9ac900ca6600cc102e614267de6"
+    },
+    {
+      "sha": "295c69dff74d9e2a4ef6a9d853b16ada22b3aaa3",
+      "subject": "fix(data): classify the whole EXPLAIN operand and keep load names unique",
+      "status": "adopted",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "b68d6f601ad0792113ec948f94b0963186de9100"
+    },
+    {
+      "sha": "6922b70f3c37d6c7d3f984bb50ef2560150e7686",
+      "subject": "fix(data): match DuckDB on identifiers, string continuation and Unicode spaces",
+      "status": "adopted",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "93435930ae30490eb086016db6bc5a35e30a692a"
+    },
+    {
+      "sha": "50c42c79232b2fdc9019c40ab9a48ec627dcbfd9",
+      "subject": "fix(browser): fail a Chrome download cleanly when its archive cannot be written",
+      "status": "adopted",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "0ea431a961a1ed8ba44ffa0c003cd2319a02a22a"
+    },
+    {
+      "sha": "76f01fd89b4b9a93af5097152347674e5a2c3ad3",
+      "subject": "fix(bot-box): end plain HTTP proxy requests whose client left or whose gate closed",
+      "status": "adopted",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "824410175f7cdd30aeb49a9e079462b335208795"
+    },
+    {
+      "sha": "88060af8ff65e4dfdaf9f6ecec97be1b218e047e",
+      "subject": "fix(composio-broker): stop reading request bodies past their limit",
+      "status": "adopted",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "60b7d59070656ab92a0cd3bb1c271e1e545e9024"
+    },
+    {
+      "sha": "3a59359564f3728f64150e6cde777af8093f0535",
+      "subject": "ci: pin cloudflare/wrangler-action to the v3.15.0 commit",
+      "status": "adopted",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "6e411ffa585b1176a36b977349fffb5bf41ffb32"
+    },
+    {
+      "sha": "27a68e261bf4114a71ab128631cce57174254a06",
+      "subject": "ci: typecheck and test the composio broker before deploying it",
+      "status": "adopted",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "b6e90fffa2c47b42a6dd1cf1a55ba6bbbd5def24"
+    },
+    {
+      "sha": "0a5640ce76914eadf72b00e4331409f3c7db0b3c",
+      "subject": "fix(sentinel): count one record once per detector, not once overall",
+      "status": "adopted",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "f4f60c24ab965ba6f2e6607f278a6fbc3c1a9fba"
+    },
+    {
+      "sha": "a5a0ba03b82425e8fd9d605af11f039e49f515d7",
+      "subject": "fix(headless): give each exported bot its own skill folder",
+      "status": "adopted",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "689d8f7916cb284cee9fca54f368bd43301efb7c"
+    },
+    {
+      "sha": "8571d788dc2eb35cf7db33e034f0a2838777232c",
+      "subject": "fix(tts): refuse redirects on ElevenLabs requests that carry the key",
+      "status": "adopted",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "5d83840faad1e218df1d66386c2917dea2afe149"
+    },
+    {
+      "sha": "fff498cfed63d8483c91a94abea51f68d03dc8c1",
+      "subject": "refactor(apps): share one list of app RPC methods",
+      "status": "adopted",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "8453c41eb3674d6dec9c4be40732b3c2a2efd8c0"
+    },
+    {
+      "sha": "f412e0523b395dcddd9a45c3630709ed67487e62",
+      "subject": "fix(ui): load older pages before focusing a search hit",
+      "status": "adopted",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "ad92cc3d74b82049ba90029e26fb36176745f8aa"
+    },
+    {
+      "sha": "24f0120a60468580e585e8da51708229e33ef64d",
+      "subject": "fix(ui): retry a failed owner lookup instead of caching it",
+      "status": "adopted",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "11101d96dee834af92617d9370b5045f2f008f78"
+    },
+    {
+      "sha": "9ee83332ec99bc668caaf24394fcd58bedd7eda8",
+      "subject": "fix(ui): let the modal focus trap reach links",
+      "status": "adopted",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "8d3738b5670f547933bed3050adfd4c54debd606"
+    },
+    {
+      "sha": "b34ac3ba6bf6c234249a98bdbddd0194e571dfad",
+      "subject": "fix(automation-reports): a report marks its chat unread itself",
+      "status": "adopted",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "b06ba1cc061aff913742f3264bbacc173b300e1b"
+    },
+    {
+      "sha": "8e9a653e610e7e1f6c1305236db3afb85295f699",
+      "subject": "Mac voice speaks text that starts with a dash instead of reading it as options",
+      "status": "adopted",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "46ee7df5137955bb46f4debcfc45e1ca582b31c3"
+    },
+    {
+      "sha": "b256103228b77cc8095d42208baee2082ad18acd",
+      "subject": "Files never brings version-control metadata down from My Cloud",
+      "status": "adopted",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "5504d66cb10eb12da511131706f2c17d3ce28771"
+    },
+    {
+      "sha": "7639157fc443f63e20c820a0b4d1c4a6f737bd17",
+      "subject": "test(host e2e): run the saved-login e2e on every host, for its own-desktop sign-in case",
+      "status": "adopted",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "e2b620797c8a273d98f2b59b6d3de4ac5104693a"
+    },
+    {
+      "sha": "586f5b00dd6778a83b500f6c6f00cb20737fae0e",
+      "subject": "Ratchets fail only on growth; each release lowers their numbers, so shrinking PRs stop conflicting",
+      "status": "adopted",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "d75626792f17947450ce415854527f0d4fc663c0"
+    },
+    {
+      "sha": "ba8f69cfa976d5af5aa9b97e9e489125c4be0cd2",
+      "subject": "fix(ratchets): tighten-ratchets loads on Windows",
+      "status": "adopted",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "814cb583714e04f6a55de7d2ff6e66e478e67b63"
+    },
+    {
+      "sha": "700f662976dc249dab4ffc2f078222f4945d3663",
+      "subject": "test(ratchets): a PR that shrinks a file no longer fails the tightness check",
+      "status": "adopted",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "d6ace6cb5f2fc7af25da92623d42621560ddbe56"
+    },
+    {
+      "sha": "78c79a4405fe3fbf96f4f03a6f5b9e22b15150d6",
+      "subject": "Every bot can reach every bot",
+      "status": "ignored",
+      "reason": "Product rule: bots only interact with bots of their own department. This commit lets every bot reach every bot.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "d1d6ce48fb9c93669bd8632b6413c8763afbd2e9",
+      "subject": "test(chief rooms): a Chief can make a room across departments; its own peers list still refuses",
+      "status": "ignored",
+      "reason": "Test for 78c79a440 (cross-department Chief room); it fails on our base because we do not take that change.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "d2b7f5bc4fb5671acbb3db9d57630c79b0962d7e",
+      "subject": "fix(onboarding): welcome draft and optional-email helpers",
+      "status": "ignored",
+      "reason": "Upstream onboarding and welcome flow; MimirBot keeps its own onboarding, so none of these are taken.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "87c156828f554a344100715c0a50cefd1be05579",
+      "subject": "A run nobody stopped says it was cut off, and a stopped run says why",
+      "status": "deferred",
+      "reason": "Needs the automations.run.stoppedBecause key in src/locales/*.json, which we changed; take it after the locale conflicts are resolved.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "78ae85c9b9e5287f12ef1b6bc26c8196f768309a",
+      "subject": "i18n(onboarding): translate the shorter welcome's four new strings",
+      "status": "ignored",
+      "reason": "Upstream onboarding and welcome flow; MimirBot keeps its own onboarding, so none of these are taken.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "7c7a412644c95a8c294b16cb3fc12fae594f8b00",
+      "subject": "test(onboarding): give the welcome step test its own web storage",
+      "status": "ignored",
+      "reason": "Upstream onboarding and welcome flow; MimirBot keeps its own onboarding, so none of these are taken.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "c76c8440b80b374f4fd8b0c80319158d2beed78a",
+      "subject": "docs(verification): cite the onboarding tests by their full paths",
+      "status": "ignored",
+      "reason": "Upstream onboarding and welcome flow; MimirBot keeps its own onboarding, so none of these are taken.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "90a13092e2560d359253df80e0b5739651de8880",
+      "subject": "fix(onboarding): the launch flags hold where browser storage is blocked",
+      "status": "ignored",
+      "reason": "Upstream onboarding and welcome flow; MimirBot keeps its own onboarding, so none of these are taken.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "f3755db3621682a9c8fe9bcb7856edb527fac410",
+      "subject": "fix(onboarding): Escape on MausBot's card keeps it as seen",
+      "status": "ignored",
+      "reason": "Upstream onboarding and welcome flow; MimirBot keeps its own onboarding, so none of these are taken.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "2f127f45f92c09233607a76937bb466ec866953a",
+      "subject": "fix(onboarding): MausBot's first-launch card waits like the Cloud Pro popup, and goes first",
+      "status": "ignored",
+      "reason": "Upstream onboarding and welcome flow; MimirBot keeps its own onboarding, so none of these are taken.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "4e71c81024c01ed4df2a8124891cb34ae8c27fe9",
+      "subject": "test(onboarding): the manual UI check expects a name-only greeting",
+      "status": "ignored",
+      "reason": "Upstream onboarding and welcome flow; MimirBot keeps its own onboarding, so none of these are taken.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "6c6e5e25981974186ccd416e0f38b91a90fb86c3",
+      "subject": "fix(onboarding): the greeting asks for a name only",
+      "status": "ignored",
+      "reason": "Upstream onboarding and welcome flow; MimirBot keeps its own onboarding, so none of these are taken.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "bf92c96b271df1b274b32a69d658b7a5c5be561c",
+      "subject": "fix(onboarding): MausBot's first-launch card no longer waits for an app tour",
+      "status": "ignored",
+      "reason": "Upstream onboarding and welcome flow; MimirBot keeps its own onboarding, so none of these are taken.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "2a3904611e425a904d6a18884a9b225ad4a0e21f",
+      "subject": "refactor(phone): drop the pairing flow's unreachable skip",
+      "status": "ignored",
+      "reason": "Upstream onboarding and welcome flow; MimirBot keeps its own onboarding, so none of these are taken.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "330f2514efc9912040d8c9d7e5dd740025bcc591",
+      "subject": "fix(onboarding): Skip during Continue's save no longer loses the name",
+      "status": "ignored",
+      "reason": "Upstream onboarding and welcome flow; MimirBot keeps its own onboarding, so none of these are taken.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "9ee33e3b8a4333545cf8d3d3945e77f6d46592cc",
+      "subject": "fix(onboarding): the first-reply check is unknown until the bots load",
+      "status": "ignored",
+      "reason": "Upstream onboarding and welcome flow; MimirBot keeps its own onboarding, so none of these are taken.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "c19a416c0c5e95f4171d209cc12dcd5dc4c34705",
+      "subject": "fix(onboarding): the greeting no longer promises update emails",
+      "status": "ignored",
+      "reason": "Upstream onboarding and welcome flow; MimirBot keeps its own onboarding, so none of these are taken.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "86992dc4a91e2191484359da499fe117198086c8",
+      "subject": "fix(onboarding): the product-updates question never follows the welcome's email ask",
+      "status": "ignored",
+      "reason": "Upstream onboarding and welcome flow; MimirBot keeps its own onboarding, so none of these are taken.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "c0b4956fcd42ffb1ad92da3c40a5e2c81699e510",
+      "subject": "test(onboarding): the manual UI check passes on the short welcome",
+      "status": "ignored",
+      "reason": "Upstream onboarding and welcome flow; MimirBot keeps its own onboarding, so none of these are taken.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "670cc8cddb880a50e6adab2a17ba2afae521a652",
+      "subject": "refactor(phone): drop the welcome's phone-step variant of the pairing flow",
+      "status": "ignored",
+      "reason": "Upstream onboarding and welcome flow; MimirBot keeps its own onboarding, so none of these are taken.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "0ffec1dd54eff2b412a4f2b098fee13681452416",
+      "subject": "fix(onboarding): promotions wait for a new install's first reply",
+      "status": "ignored",
+      "reason": "Upstream onboarding and welcome flow; MimirBot keeps its own onboarding, so none of these are taken.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "f1c1b760d3b9587b5d1a6d7c00559d4fb6a4064f",
+      "subject": "fix(onboarding): forget welcome drafts that can no longer apply",
+      "status": "ignored",
+      "reason": "Upstream onboarding and welcome flow; MimirBot keeps its own onboarding, so none of these are taken.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "2c7033bf3d471d9a5397ba5ba7b6801a76801e8e",
+      "subject": "fix(onboarding): the welcome's corner button says Skip setup",
+      "status": "ignored",
+      "reason": "Upstream onboarding and welcome flow; MimirBot keeps its own onboarding, so none of these are taken.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "49b582802e56aece97e9d31e818c251ad5a42fa7",
+      "subject": "fix(onboarding): the email line says what Continue really does with it",
+      "status": "ignored",
+      "reason": "Upstream onboarding and welcome flow; MimirBot keeps its own onboarding, so none of these are taken.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "7f61ed1fcf978d22e24337a45e38411e5bf14034",
+      "subject": "fix(onboarding): flag a wrong email when the field is left or Continue is tried",
+      "status": "ignored",
+      "reason": "Upstream onboarding and welcome flow; MimirBot keeps its own onboarding, so none of these are taken.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "56e40ecea9986ba948a5b3da2f08de0a9c8b082a",
+      "subject": "fix(onboarding): a late resumed step holds clicks, and never pulls the person away",
+      "status": "ignored",
+      "reason": "Upstream onboarding and welcome flow; MimirBot keeps its own onboarding, so none of these are taken.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "ef6522d0aa823dee332da589c596c47ef56f8461",
+      "subject": "fix(onboarding): the profile is sent once, however the welcome ends",
+      "status": "ignored",
+      "reason": "Upstream onboarding and welcome flow; MimirBot keeps its own onboarding, so none of these are taken.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "c7a69306a0b9cca07524cd812054687bb5c88835",
+      "subject": "fix(onboarding): a hosted workspace's welcome never touches the profile or a draft",
+      "status": "ignored",
+      "reason": "Upstream onboarding and welcome flow; MimirBot keeps its own onboarding, so none of these are taken.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "0fd51c6abd924d645bf72ea776c3535315447029",
+      "subject": "fix(onboarding): a reload can no longer end the welcome early",
+      "status": "ignored",
+      "reason": "Upstream onboarding and welcome flow; MimirBot keeps its own onboarding, so none of these are taken.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "6004caf2f234658e61e52c91d6bed4a7907e9052",
+      "subject": "fix(onboarding): unique id for the email note",
+      "status": "ignored",
+      "reason": "Upstream onboarding and welcome flow; MimirBot keeps its own onboarding, so none of these are taken.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "eb47b6a903015a15cb91477b5c27fb243572f9f1",
+      "subject": "fix(onboarding): no empty progress row on a one-step welcome; document the short welcome",
+      "status": "ignored",
+      "reason": "Upstream onboarding and welcome flow; MimirBot keeps its own onboarding, so none of these are taken.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "9a63471c12fe7bb19aba2046d954a9f01e8f3fb5",
+      "subject": "fix(onboarding): Maybe later and Skip keep the email on this computer only",
+      "status": "ignored",
+      "reason": "Upstream onboarding and welcome flow; MimirBot keeps its own onboarding, so none of these are taken.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "b690aaac96a109c2c6d5e321131f9f17efae8d2c",
+      "subject": "fix(onboarding): Settings describes the shorter welcome",
+      "status": "ignored",
+      "reason": "Upstream onboarding and welcome flow; MimirBot keeps its own onboarding, so none of these are taken.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "23d540d240a6bce7b7ef15e2137ecb367b34d015",
+      "subject": "fix(onboarding): Skip never covers the title on a phone",
+      "status": "ignored",
+      "reason": "Upstream onboarding and welcome flow; MimirBot keeps its own onboarding, so none of these are taken.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "74b7b3fcf393a325cccd8e6b82efe3c73c19a93b",
+      "subject": "fix(onboarding): optional email, one step per click, reload resumes the welcome",
+      "status": "ignored",
+      "reason": "Upstream onboarding and welcome flow; MimirBot keeps its own onboarding, so none of these are taken.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "08e67c1d8e3cece3a42eeba8c0d7e6aac90cc8b3",
+      "subject": "fix(onboarding): app tour only from Settings; spotlights and popups stop waiting for it",
+      "status": "ignored",
+      "reason": "Upstream onboarding and welcome flow; MimirBot keeps its own onboarding, so none of these are taken.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "0678e10d6b17909c3348ead5445bc9a2e6611ab1",
+      "subject": "fix(onboarding): finishing the welcome never starts the app tour",
+      "status": "ignored",
+      "reason": "Upstream onboarding and welcome flow; MimirBot keeps its own onboarding, so none of these are taken.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "19ab6384fad820b4aecffabfdb7f05f675052007",
+      "subject": "fix(onboarding): shorter welcome without the reel, phone and first-bot steps",
+      "status": "ignored",
+      "reason": "Upstream onboarding and welcome flow; MimirBot keeps its own onboarding, so none of these are taken.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "fea554a64d4756462cf2f3a5e5e1cb123440d3e7",
+      "subject": "feat(ui): design refresh: bundled Inter, calmer chat, one type and radius scale",
+      "status": "ignored",
+      "reason": "Upstream design refresh (Inter font, calmer chat, type and radius scale, bubble colours); MimirBot has its own look (icon rail, top bar, Apple blue), so none of these are taken.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "191f96f587e794f73417c103def1048a85ae0609",
+      "subject": "fix(ui): keep bot-coloured bubbles on by default",
+      "status": "ignored",
+      "reason": "Upstream design refresh (Inter font, calmer chat, type and radius scale, bubble colours); MimirBot has its own look (icon rail, top bar, Apple blue), so none of these are taken.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "11b33d298995fbdf2599b0c0c08fcf1779e5f90c",
+      "subject": "fix(setup): wire the presser, member-left and the setup text into the server",
+      "status": "ignored",
+      "reason": "Upstream Set me up button (greeting button, composer chip, /api/bots/:id/setup-request); it only replaces typing /setup, which we already have, so none of these are taken.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "8c01945aacbd0c23e0e42e33c01ef28e2bef9227",
+      "subject": "fix(setup): an owner or admin may clear someone else's Set me up request",
+      "status": "ignored",
+      "reason": "Upstream Set me up button (greeting button, composer chip, /api/bots/:id/setup-request); it only replaces typing /setup, which we already have, so none of these are taken.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "95c66a497b77c47f5f7fa226e1d3ae571d82f5ab",
+      "subject": "fix(setup): the presser is a named person, a second press is theirs alone, and Data context follows the words",
+      "status": "ignored",
+      "reason": "Upstream Set me up button (greeting button, composer chip, /api/bots/:id/setup-request); it only replaces typing /setup, which we already have, so none of these are taken.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "fa8c78f59de69db6a725c523576cffbcd6302dac",
+      "subject": "fix(setup): the button needs an AI that can set the bot up, and the chip is the presser's",
+      "status": "ignored",
+      "reason": "Upstream Set me up button (greeting button, composer chip, /api/bots/:id/setup-request); it only replaces typing /setup, which we already have, so none of these are taken.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "38038230893e4d7833b73db9bd93147ad149b06f",
+      "subject": "fix(setup): a retry on the backup AI stays a setup turn",
+      "status": "ignored",
+      "reason": "Upstream Set me up button (greeting button, composer chip, /api/bots/:id/setup-request); it only replaces typing /setup, which we already have, so none of these are taken.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "41ed0cb19faa25c4c90e11792200cf15dd266a8d",
+      "subject": "fix(setup): refuse the press on an AI without setup tools, and record the presser",
+      "status": "ignored",
+      "reason": "Upstream Set me up button (greeting button, composer chip, /api/bots/:id/setup-request); it only replaces typing /setup, which we already have, so none of these are taken.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "de6e1032e71fe6e910b63d3e3b679b826a1925cb",
+      "subject": "fix(setup): the presser's line alone takes Set me up, and only while the bot is blank",
+      "status": "ignored",
+      "reason": "Upstream Set me up button (greeting button, composer chip, /api/bots/:id/setup-request); it only replaces typing /setup, which we already have, so none of these are taken.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "3f81d75920c846c4ba1c73f99da035dddcc21a61",
+      "subject": "feat(setup): Set me up under a new bot's greeting, and its chip in the composer",
+      "status": "ignored",
+      "reason": "Upstream Set me up button (greeting button, composer chip, /api/bots/:id/setup-request); it only replaces typing /setup, which we already have, so none of these are taken.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "fa7d1cb1496dfccf1a3234baf7c1e02c8911d975",
+      "subject": "feat(setup): wire Set me up into the server",
+      "status": "ignored",
+      "reason": "Upstream Set me up button (greeting button, composer chip, /api/bots/:id/setup-request); it only replaces typing /setup, which we already have, so none of these are taken.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "312933621e7c3154027ada1e75cb97bc81b98cdd",
+      "subject": "feat(setup): a Chief that sets itself up stays the Chief",
+      "status": "ignored",
+      "reason": "Upstream Set me up button (greeting button, composer chip, /api/bots/:id/setup-request); it only replaces typing /setup, which we already have, so none of these are taken.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "84b812995db157e8349833faf3fb3c2f6a8227d3",
+      "subject": "feat(setup): POST and DELETE /api/bots/:id/setup-request",
+      "status": "ignored",
+      "reason": "Upstream Set me up button (greeting button, composer chip, /api/bots/:id/setup-request); it only replaces typing /setup, which we already have, so none of these are taken.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "b50b89dcf9e2c29e4cfcc6225609cbeedd4ee4dc",
+      "subject": "fix(setup): type the greeting's setupOffer as true",
+      "status": "ignored",
+      "reason": "Upstream Set me up button (greeting button, composer chip, /api/bots/:id/setup-request); it only replaces typing /setup, which we already have, so none of these are taken.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "c2c2e1d6d0fa216ff885a827e366aa01cd19a23e",
+      "subject": "feat(setup): Set me up is answered by the server, and the next line runs as setup",
+      "status": "ignored",
+      "reason": "Upstream Set me up button (greeting button, composer chip, /api/bots/:id/setup-request); it only replaces typing /setup, which we already have, so none of these are taken.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "cab134ceba4f5e66a560478d3e225b164d37acfe",
+      "subject": "feat(setup): a blank bot's greeting offers Set me up",
+      "status": "ignored",
+      "reason": "Upstream Set me up button (greeting button, composer chip, /api/bots/:id/setup-request); it only replaces typing /setup, which we already have, so none of these are taken.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "7c77ef330e9e3b61f54996ddc436d5fc0412c244",
+      "subject": "Updater: surface repeated silent update-check failures",
+      "status": "applied",
+      "reason": "Updater: keeps checking while an update is staged and reports repeated check failures; applies to the AppImage too.",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "8b3c361ce16c94853b54ec9ac57bb34f88338fb6"
+    },
+    {
+      "sha": "23753fc0e13ea0628fbc1b683b7d0a36bb873155",
+      "subject": "fix(updater): the check-failure notice does not stop hourly checks",
+      "status": "applied",
+      "reason": "Updater: keeps checking while an update is staged and reports repeated check failures; applies to the AppImage too.",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "2568326fb0cb89dd9a07fb5460717a1f6ee6bdfd"
+    },
+    {
+      "sha": "5379b47dd240cae626d30cc8dc5eaa22d25352ca",
+      "subject": "Updater: keep checking while an update is staged, and replace it with a newer release",
+      "status": "applied",
+      "reason": "Updater: keeps checking while an update is staged and reports repeated check failures; applies to the AppImage too. Written on top of 6b0053ae9 (the .deb commit): applying it alone conflicts in electron/updater-coordinator.mjs and needs the .deb parts left out by hand.",
+      "decidedAt": "2026-10-26",
+      "plan": "Apply by hand without the .deb parts (elevatedInstall, relaunch); keep isNewerVersion and the quiet recheck that downloads a newer release.",
+      "ourCommit": "09fe68c4c05aeb9d102e0baf27aa16e6a2ee2b33"
+    },
+    {
+      "sha": "09c7df3fb4835c1e78f6cbcf6094c22b6fefddb0",
+      "subject": "fix(updater): a failed replacement download drops the staged update",
+      "status": "applied",
+      "reason": "Updater: keeps checking while an update is staged and reports repeated check failures; applies to the AppImage too. Written on top of 6b0053ae9 (the .deb commit): applying it alone conflicts in electron/updater-coordinator.mjs and needs the .deb parts left out by hand.",
+      "decidedAt": "2026-10-26",
+      "plan": "Apply by hand without the .deb parts (elevatedInstall, relaunch); keep isNewerVersion and the quiet recheck that downloads a newer release.",
+      "ourCommit": "ea2a28665d83c3e1e5b7bb434f673cf9cba9a826"
+    },
+    {
+      "sha": "3eb2878f59bca9de657a4f2309121a0cb50071e9",
+      "subject": "Updater: the Cloud-page test expects the quiet hourly re-check while 2.0.0 is staged",
+      "status": "applied",
+      "reason": "Updater: keeps checking while an update is staged and reports repeated check failures; applies to the AppImage too.",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "f17d67fb966c3384f572b232070197b6fadf925e"
+    },
+    {
+      "sha": "99b6dbf0c7ddece823e657e3f219e6f3cbbc785b",
+      "subject": "test(updater): run the root install script tests on Linux only",
+      "status": "observation",
+      "reason": "Test for the .deb install script (electron/elevated-install.mjs); goes together with 6b0053ae9.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "6b0053ae9cddee417d696c4708aa6f6a5073e8f6",
+      "subject": "Linux .deb: install updates behind one password prompt instead of a terminal",
+      "status": "observation",
+      "reason": "Linux .deb installs updates through pkexec and a root script. Only matters to .deb installs and runs as root, so it waits until someone uses the .deb and it can be tested on Ubuntu.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "14265e33c330f46999a93c170507a9816f774fc6",
+      "subject": "Reads that hand out a stored secret need the desktop app or a same-origin page",
+      "status": "applied",
+      "reason": "Security and robustness batch (A access and secrets), approved as a whole.",
+      "decidedAt": "2026-10-26",
+      "note": "Check that the desktop owner header name still matches after our X-OpenMausBot-* rename exclusion.",
+      "ourCommit": "f3dbd6eab3df0a5c0852d8171da36ed969a3c040"
+    },
+    {
+      "sha": "c7ab27ba5aff2e5bacbac81068997d202913b6c3",
+      "subject": "Desktop owner header counts only on the app window's own requests",
+      "status": "applied",
+      "reason": "Security and robustness batch (A access and secrets), approved as a whole.",
+      "decidedAt": "2026-10-26",
+      "note": "Check that the desktop owner header name still matches after our X-OpenMausBot-* rename exclusion.",
+      "ourCommit": "fddf4c87b40231a8cbebad051ec08a1f92e1e923"
+    },
+    {
+      "sha": "228e004faa0af8132b03f793d054188956fe9e59",
+      "subject": "fix(bots): new bots get the same settings limits as edits",
+      "status": "applied",
+      "reason": "Security and robustness batch (A access and secrets), approved as a whole.",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "41c62858cadf1b9aa2688cc3faa823f7a93e4aba"
+    },
+    {
+      "sha": "9a2f39acae936b09c3da27030ae44e9fe9f99f8d",
+      "subject": "fix(tasks): require owner or admin to change a bot's default model",
+      "status": "applied",
+      "reason": "Security and robustness batch (A access and secrets), approved as a whole.",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "096ef4c0d0fca5a68a6a4f151840c290645a01d7"
+    },
+    {
+      "sha": "0957451b7d9944c4f63008585d734e31aba8c1ba",
+      "subject": "fix(notifications): mark read only what the viewer's list shows",
+      "status": "applied",
+      "reason": "Security and robustness batch (A access and secrets), approved as a whole.",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "91d2dfc8c07f75f1b06505c470fa5a0e77f92998"
+    },
+    {
+      "sha": "0832670fbbcda41dc5ba2cfe61fbdb3bc5cddfa0",
+      "subject": "Charts interpret a bot's Vega expressions instead of compiling them to code",
+      "status": "applied",
+      "reason": "Security and robustness batch (A access and secrets), approved as a whole.",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "5f47d1df0f37f6f7f982dcc995056481b5a47307"
+    },
+    {
+      "sha": "46975aac0ca448a46395cc5e628d1991bfc3bac2",
+      "subject": "fix(threads): never cache protected message images",
+      "status": "applied",
+      "reason": "Security and robustness batch (A access and secrets), approved as a whole.",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "e52d53cd3263c260b5bb105ce6ed4506c498241d"
+    },
+    {
+      "sha": "0c1a9e27a27217661cad2482dfe995cd8fbb1f40",
+      "subject": "Update dependencies with published security advisories",
+      "status": "applied",
+      "reason": "Security and robustness batch (A access and secrets), approved as a whole.",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "c60279ce27f297078311a329ea941d579049458d"
+    },
+    {
+      "sha": "95a0787dafbe18fd4a3a32908994d928938630c2",
+      "subject": "fix(webhooks): answer an unparseable request target with 400",
+      "status": "applied",
+      "reason": "Security and robustness batch (B malformed requests), approved as a whole.",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "449c1d2849d7c4839155e877fa5725b85dc8b62c"
+    },
+    {
+      "sha": "af449299b4872475af6df69aceba83ffaabdf6d3",
+      "subject": "fix(companion): keep one malformed request or socket from stopping the sidecar",
+      "status": "applied",
+      "reason": "Security and robustness batch (B malformed requests), approved as a whole.",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "8e93a10b0f79105cbcdd9d22fca59d81f1ddadd8"
+    },
+    {
+      "sha": "650553c591a66255d6679f1048c56e1851499916",
+      "subject": "fix(electron): keep a malformed request or reset viewer socket from stopping the app",
+      "status": "applied",
+      "reason": "Security and robustness batch (B malformed requests), approved as a whole.",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "7069cc3677fe1b7905cefa04b3f0ff0a983dedba"
+    },
+    {
+      "sha": "51e7a688664bce2ac33443dc3d3abeee9347dca2",
+      "subject": "fix: log what the last-resort webhook and pairing catches answer with 500",
+      "status": "applied",
+      "reason": "Security and robustness batch (B malformed requests), approved as a whole.",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "de1f56eb8cead05bdd4b1b82fd4384622ef34236"
+    },
+    {
+      "sha": "f4f2e3d8bffc3564d30837d4d8b608e02a928c41",
+      "subject": "fix(routines): revalidate due routines after cancelling and contain background tick failures",
+      "status": "applied",
+      "reason": "Security and robustness batch (C state and data), approved as a whole.",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "decbdc9f5f80478f82c6de59c8ff528f3ec75860"
+    },
+    {
+      "sha": "871f6386cdac446373a5fc0615a1d403ffbbe513",
+      "subject": "fix(webhooks): open a new Updates task when the saved one is gone",
+      "status": "applied",
+      "reason": "Security and robustness batch (C state and data), approved as a whole.",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "43028f55a65252d2cdc6a65bdaed59425aac9284"
+    },
+    {
+      "sha": "c3c32fd129a448887d95f390e9d03c7fcfefdc2c",
+      "subject": "fix(webhooks): answer a retried room delivery only after the original settles",
+      "status": "applied",
+      "reason": "Security and robustness batch (C state and data), approved as a whole.",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "ee83b127f805dfec634fafe117f41679ffb2339a"
+    },
+    {
+      "sha": "e0280d52098dd19148300b17e0b86a12b10f6f4e",
+      "subject": "fix(pages): publish one page when the same source is published twice at once",
+      "status": "applied",
+      "reason": "Security and robustness batch (C state and data), approved as a whole.",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "5ec2ca663953eef146a8c39b65798b7907fb7343"
+    },
+    {
+      "sha": "976cf28cdda51cfd58d2b029dd3f79cf6f2375e8",
+      "subject": "fix(browser): keep the sweep off a Chrome that is still starting",
+      "status": "applied",
+      "reason": "Security and robustness batch (C state and data), approved as a whole.",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "457a20f3d652874c173e92d5b64232613aef6059"
+    },
+    {
+      "sha": "fa0402dbce2dbca15f152a54ced02489a413fd95",
+      "subject": "fix(limits): clear the usage refresh after it is stored",
+      "status": "applied",
+      "reason": "Security and robustness batch (C state and data), approved as a whole.",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "0763e85715e854e61ee59dce11de60130dfed35e"
+    },
+    {
+      "sha": "9b8493ff4fad648d117fc6f6c87dbb35cef067a8",
+      "subject": "fix(control-plane): let one HighLevel callback own each OAuth flow",
+      "status": "applied",
+      "reason": "Security and robustness batch (C state and data), approved as a whole.",
+      "decidedAt": "2026-10-26",
+      "note": "Cloudflare control-plane only; matters if we host that service.",
+      "ourCommit": "b95e54fd58d93c728ab29a73e776c28a63d34efe"
+    },
+    {
+      "sha": "7a6241523c1ff07b6c8ae1eab2df349f637d7bf6",
+      "subject": "fix(packaging): ship DuckDB and resvg with the npm package and Podman image",
+      "status": "applied",
+      "reason": "Security and robustness batch (D packaging), approved as a whole.",
+      "decidedAt": "2026-10-26",
+      "note": "npm package and Podman image only; no effect on the AppImage.",
+      "ourCommit": "728415351504f79741594e813d7bb36a24a3ab1d"
+    },
+    {
+      "sha": "f0273fc93fa6e40eee007265571cbf7d3e75b69a",
+      "subject": "fill_login moves a screen sign-in to the bot's own browser",
+      "status": "approved",
+      "reason": "Security and robustness batch (E small features), approved as a whole.",
+      "decidedAt": "2026-10-26",
+      "note": "Bundles UI changes: the Computer tab gains Browser as a selectable place, a My Chrome label and a using-now hint. Needs the owner's decision, or the server logic taken without the UI."
+    },
+    {
+      "sha": "664f5ed042e8fbb345a832fdb7cd247b0bd16d95",
+      "subject": "Fix the keys: say which headers a server refused and ask for just those values",
+      "status": "observation",
+      "reason": "Fix the keys: edits McpServerEditor.tsx and McpSecretRows.tsx, which only exist after 259c9d8e3, so it waits with it. Moved from approved.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "17e2352e357d574414978f0ba4ea5b4d62d00ee7",
+      "subject": "Cloud browser: say once why Instagram, YouTube and Google sign-in may refuse when no computer shares its connection",
+      "status": "applied",
+      "reason": "Security and robustness batch (E small features), approved as a whole.",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "771dbaa6a5d51c9920e5468f12852076c21a6d51"
+    },
+    {
+      "sha": "890af0c9620b463296a9b740e16b75ad3c0d900a",
+      "subject": "fix(auth): let client sessions load linked-image previews",
+      "status": "applied",
+      "reason": "Security and robustness batch (E small features), approved as a whole.",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "a64a6301f24052f6f7f980cde94ffac1192b671f"
+    },
+    {
+      "sha": "89bfd108086cda6468e4baf7664ae0a5834adbce",
+      "subject": "fix(ui): poll engine limits as a background read",
+      "status": "applied",
+      "reason": "Security and robustness batch (E small features), approved as a whole.",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "4ba8e0d9b4b2e6233a8959304acafe8cbe750cc1"
+    },
+    {
+      "sha": "294f910fd0164842dd42afb11e3ab3dc003a9341",
+      "subject": "fix: keep email-less paired profiles neutral",
+      "status": "applied",
+      "reason": "Security and robustness batch (F sidebar profile), approved as a whole.",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "dc474fa990f986eea966770a1ed3020d2dd58e95"
+    },
+    {
+      "sha": "ac32419a59dce43f7aedb352d6e76728d0ca8362",
+      "subject": "fix: keep unverified sidebar sessions neutral",
+      "status": "applied",
+      "reason": "Security and robustness batch (F sidebar profile), approved as a whole.",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "a5738df4f54c220bd1bab7b5b728a04da0db0a10"
+    },
+    {
+      "sha": "192a9e0dd9fe9603cd9f9aa9c09095544b3e6d31",
+      "subject": "fix: show the signed-in email in the sidebar profile",
+      "status": "applied",
+      "reason": "Security and robustness batch (F sidebar profile), approved as a whole.",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "15452c57aa2619ff08825ccbf78ba95ad0930851"
+    },
+    {
+      "sha": "ead27095b5c45aaa949853160e05f68e481e3c0f",
+      "subject": "fix(muse-code): make a second Stop and dispose wait for an acknowledged interrupt",
+      "status": "applied",
+      "reason": "Engines batch (stop, steer, models), approved as a whole.",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "33f1f336cbb15db135f362508232ed7fcf2445bd"
+    },
+    {
+      "sha": "2eac6af9a45dac0c052d3981884368ac1c0dcc74",
+      "subject": "fix(openai-chat): keep the reasoning on an answer resent after a steer or a nudge",
+      "status": "applied",
+      "reason": "Engines batch (stop, steer, models), approved as a whole.",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "711f4f3afc4c4042f705718f33d4d562343fa294"
+    },
+    {
+      "sha": "2aa6ae57d62b4ded1a1023e8004472ac5cb966a7",
+      "subject": "fix(openai-chat): end the last allowed step without a correction or a nudge",
+      "status": "applied",
+      "reason": "Engines batch (stop, steer, models), approved as a whole.",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "42de0e34eb0bc21701764635ccd71fde70b71d0f"
+    },
+    {
+      "sha": "2270933a61de38d199b411762fcf6ffe90478868",
+      "subject": "fix(acp): fail a stopped turn whose agent process could not be ended",
+      "status": "applied",
+      "reason": "Engines batch (stop, steer, models), approved as a whole.",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "4c57416a644878713cb684fae36db7eaf2048492"
+    },
+    {
+      "sha": "7617039ea4f726cd874e856c1e1e7c9d35fb70cd",
+      "subject": "fix(openai-chat): tell the person when a turn ends before reading a steer",
+      "status": "applied",
+      "reason": "Engines batch (stop, steer, models), approved as a whole.",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "673a40929b21dc72beacb3c248f9467cdd81bc76"
+    },
+    {
+      "sha": "dad54b5658786e5559eb7dcaa4db6f1d8f51c07e",
+      "subject": "fix(openai-chat): refuse a steer during the last allowed step",
+      "status": "applied",
+      "reason": "Engines batch (stop, steer, models), approved as a whole.",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "0ca513d8677344fe875e54a3a937b3c8d2d71328"
+    },
+    {
+      "sha": "0777931a9e195b9d52dda059752a67edd214769f",
+      "subject": "fix(muse-code): close a host that finishes starting after Stop",
+      "status": "applied",
+      "reason": "Engines batch (stop, steer, models), approved as a whole.",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "3d247409e3bf11287511eb193c479eaa3979951a"
+    },
+    {
+      "sha": "a018aaa7afc2985012e2707ac15c1e93b7a4dd4f",
+      "subject": "fix(muse-code): end the host when Muse never answers turn/interrupt",
+      "status": "applied",
+      "reason": "Engines batch (stop, steer, models), approved as a whole.",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "65bde9b4cad5ae91ec3be178fd436f7a581f0848"
+    },
+    {
+      "sha": "e2e2e4b5656b3c96ff25085310d41c503bcba096",
+      "subject": "fix(acp): end an unshared agent that ignored Stop before the turn settles",
+      "status": "applied",
+      "reason": "Engines batch (stop, steer, models), approved as a whole.",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "ae862a4af231f8cbf2587d1a4118d71e6e49478b"
+    },
+    {
+      "sha": "68e631b0ee0cae369841ec866ff46a523dd7682d",
+      "subject": "OpenCode effort survey: stop on an unanswered selection",
+      "status": "applied",
+      "reason": "Engines batch (stop, steer, models), approved as a whole.",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "538e82d4f9b363d6a19f5126c33ddf8db9eab557"
+    },
+    {
+      "sha": "b6d89aac2decb9830940f89e2ea2ccfadedfadcb",
+      "subject": "OpenCode: offer each model's effort levels on OpenCode 2, Copilot included",
+      "status": "applied",
+      "reason": "Engines batch (stop, steer, models), approved as a whole.",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "f0b756fa832b9d86981aa4815cb8a5a39824fde2"
+    },
+    {
+      "sha": "2d3990788d902859b4463c32b68adcf4d29a8cc4",
+      "subject": "Name the AI in a stop reason's plain words, as engine errors do",
+      "status": "applied",
+      "reason": "Engines batch (stop, steer, models), approved as a whole.",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "1249ffef1512855ec98692fd17b814da2838ba4b"
+    },
+    {
+      "sha": "0bbd9d4c56e39d2ea1e5f8531effa3eb4ac02371",
+      "subject": "test: prove each stop reason's own advice, not pinned sentences",
+      "status": "applied",
+      "reason": "Engines batch (stop, steer, models), approved as a whole.",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "ac050403a2f0b64b07280a2b2de502f446e0e26b"
+    },
+    {
+      "sha": "d1502c64888effea698e59f79487062b52b9822c",
+      "subject": "fix: advise per ACP stop reason, not one shared line",
+      "status": "applied",
+      "reason": "Engines batch (stop, steer, models), approved as a whole.",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "d8d00eef16c72722a9026b0f11e452f6cd72d529"
+    },
+    {
+      "sha": "cc411b61b947df38884cbaa3fefe33c8ed339a17",
+      "subject": "Say when Codex refuses a tool call as unsupported, and share the retry_thread refusal checks",
+      "status": "applied",
+      "reason": "Engines batch (stop, steer, models), approved as a whole.",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "6af5e3c18849d92ad8ed6a1b7321b6ad962f6383"
+    },
+    {
+      "sha": "ea5c2f067f5ab01eac7353b55721a3b51880894d",
+      "subject": "refactor(acp): move the turn and session state types out of core.ts",
+      "status": "applied",
+      "reason": "Engines batch (stop, steer, models), approved as a whole.",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "c5298657c2b00d7a73da7805712b7873fc71f4d6"
+    },
+    {
+      "sha": "b1161a42a97e8ff56bb9b23b1ca1a8c4eb664368",
+      "subject": "fix(muse-code): end the host when Stop is not confirmed",
+      "status": "applied",
+      "reason": "Engines batch (stop, steer, models), approved as a whole.",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "bbef317385caad93dba345b0529ab4c9b2075356"
+    },
+    {
+      "sha": "86f082c933e770037724ef4073fc9acfbf493e37",
+      "subject": "fix(openai-chat): never drop a steer that arrives during the final answer",
+      "status": "applied",
+      "reason": "Engines batch (stop, steer, models), approved as a whole.",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "c99fc0b1dc04fce1f0b6ea148ef0bbbb64ac6b81"
+    },
+    {
+      "sha": "179775d2b784a987744d817bdcb0fb64d674c281",
+      "subject": "fix(acp): confirm a shared session ended before Stop settles",
+      "status": "applied",
+      "reason": "Engines batch (stop, steer, models), approved as a whole.",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "9a4ffd7261a28b09fe233c54346bdf34cb1b38c3"
+    },
+    {
+      "sha": "1d8e16345424be5865960287b48e9359529e11e3",
+      "subject": "fix(muse-code): start muse serve through the shared launcher",
+      "status": "applied",
+      "reason": "Engines batch (stop, steer, models), approved as a whole.",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "6fd2d5d332fec9ac3e69630604a1e34cb11ef83f"
+    },
+    {
+      "sha": "f827be0104ddd488154bff1f031365f64299f520",
+      "subject": "fix(procs): signal live root group even when start identity is unrecorded",
+      "status": "applied",
+      "reason": "Engines batch (stop, steer, models), approved as a whole.",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "7293d063670cf857b3f484fe99410534a5aa5ef1"
+    },
+    {
+      "sha": "1d1559fb163be11cc6a012a1ad9733c26edfa6ef",
+      "subject": "Prevent Stop from leaving sandbox jobs running",
+      "status": "applied",
+      "reason": "Engines batch (stop, steer, models), approved as a whole.",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "e3dbb9c3e44c7dbf15ce24f489f16bac0d353650"
+    },
+    {
+      "sha": "2a5e497070c639a0964595ed7f2353bd15b5d252",
+      "subject": "Antigravity startup: a temp count that runs out of time is not proof of no progress",
+      "status": "applied",
+      "reason": "Engines batch (stop, steer, models), approved as a whole.",
+      "decidedAt": "2026-10-26",
+      "note": "Conflicts with our Antigravity runtime and usage work in server/drivers/antigravity-*.ts; resolve by hand.",
+      "ourCommit": "60f275a95f4d29d76c9a531caed710417faba0a0"
+    },
+    {
+      "sha": "5d3cfc5892654fe4819f8d37834cebfa0b898ede",
+      "subject": "Antigravity: pin Google's ACP server 1.4.3 so Gemini 4 Argon is offered",
+      "status": "ignored",
+      "reason": "Already in our base: ANTIGRAVITY_RELEASE_VERSION is 1.4.3 with the same archive hashes.",
+      "decidedAt": "2026-10-26",
+      "note": "Conflicts with our Antigravity runtime and usage work in server/drivers/antigravity-*.ts; resolve by hand."
+    },
+    {
+      "sha": "d87e746621fde61231d70618316cfba36e2a8e15",
+      "subject": "Antigravity on Windows: keep waiting while the runtime is still unpacking",
+      "status": "applied",
+      "reason": "Engines batch (stop, steer, models), approved as a whole.",
+      "decidedAt": "2026-10-26",
+      "note": "Conflicts with our Antigravity runtime and usage work in server/drivers/antigravity-*.ts; resolve by hand.",
+      "ourCommit": "d5625a2ed6f1bbb5b485a9533f129aefa08ccd33"
+    },
+    {
+      "sha": "d67c1b3352cac8f9474e15da5f5ba0e420b5fa10",
+      "subject": "Say why an ACP turn stopped instead of \"Model turn failed: refusal\"",
+      "status": "applied",
+      "reason": "Engines batch (stop, steer, models), approved as a whole.",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "fd0ebd9edb132c60ae643d679a64b947df1ac261"
+    },
+    {
+      "sha": "259c9d8e3c5c6f883fc958aa444ec7036c44ad4c",
+      "subject": "Add an MCP server by pasting its link or setup command",
+      "status": "observation",
+      "reason": "MCP by link: on watch until we add MCP servers often. 3,571 lines, 1,258 of them in locales.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "5a9ba47aed4abee02548f100d5ac60a8bb8b527b",
+      "subject": "test: include the MCP query_result helper in app tool expectations",
+      "status": "observation",
+      "reason": "Test that goes with the MCP by-link work; waits with it.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "4003ac6ec3d491a338353d5ae77ea145881cc896",
+      "subject": "Composio: apps that need your own OAuth app connect with an auth config made in the dashboard",
+      "status": "observation",
+      "reason": "Composio own-key auth configs: on watch until someone uses their own Composio key with apps like Xero or Buffer.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "b60d40898b692494466ad389795539f8ba42b9b2",
+      "subject": "fix(composio-broker): resume the idle trigger sweep where it stopped",
+      "status": "observation",
+      "reason": "Composio broker trigger sweep: on watch with the other Composio commits; matters only if we host the broker.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "8913822186ce4c57e39dabf46668309000ca5b5a",
+      "subject": "fix(pages): stop publishing once the tool call's turn has ended",
+      "status": "applied",
+      "reason": "Loose fixes batch, approved.",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "519460bce523e8895be02a8c5fa0a785fc69db5b"
+    },
+    {
+      "sha": "4a6a9c4e167703613ab4f8d2ab5ab6a2f6564be8",
+      "subject": "fix(browser): close a browser that was still starting when its profile stops",
+      "status": "applied",
+      "reason": "Loose fixes batch, approved.",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "3ae64c46c1a90baee83598496dcc44fed099c24d"
+    },
+    {
+      "sha": "cf54e14ba3d269e5334e4b842d7c5fbe0ab0f138",
+      "subject": "test(browser): the sweep leaves a registered Chrome's folder the process list missed",
+      "status": "applied",
+      "reason": "Loose fixes batch, approved. Test for 976cf28cd.",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "13ef764bc19e89bdd43269fd7ed38291faf17036"
+    },
+    {
+      "sha": "bad5ed25ebbdf37c2e79f4fffa5102d5eff12afd",
+      "subject": "Keep the owner's profile for admin and Team Cloud sessions",
+      "status": "applied",
+      "reason": "Loose fixes batch, approved. Goes with the sidebar profile commits.",
+      "decidedAt": "2026-10-26",
+      "ourCommit": "b1a51dbf03c3edd4be21c9261070cd9d8947a921"
+    },
+    {
+      "sha": "dd6235012575874020ba92c639aab17a04833946",
+      "subject": "fix(sidebar): list the same pinned bots on every client of a server",
+      "status": "ignored",
+      "reason": "Older version of the same idea. Our base already has universalPins, viewerEmail and welcoming in partitionSidebarBots, so applying it would regress the sidebar.",
+      "decidedAt": "2026-10-26",
+      "note": "Touches src/components/Sidebar.tsx, which we changed for the icon rail; expect a conflict."
+    },
+    {
+      "sha": "8d8d22f5b254c7f59ca6ff9a731644ffbcb962d2",
+      "subject": "fix(analytics): the first-run screen no longer ties an email to usage stats",
+      "status": "ignored",
+      "reason": "Tied to the upstream short welcome (the email field is gone there), which we ignore; applying it would break our welcome that still has the field.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "6da56eb3c0538881e79cf9fc71fb45a75e3e46b0",
+      "subject": "fix(notices): the product-updates question may follow MausBot's card",
+      "status": "ignored",
+      "reason": "Tied to the upstream short welcome (the email field is gone there), which we ignore; applying it would break our welcome that still has the field.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "5e57d8af9e9574edd4a3984fa06bd1b31b042bc1",
+      "subject": "chore(i18n): drop three keys this branch added and no longer uses",
+      "status": "ignored",
+      "reason": "Tied to the upstream short welcome (the email field is gone there), which we ignore; applying it would break our welcome that still has the field.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "117d3c646d13bddfc09adfd0b7b7138830edd625",
+      "subject": "fix(updates): let the latest consent answer win over a sync in flight",
+      "status": "observation",
+      "reason": "Product-updates consent sync to the upstream Admin; looks irrelevant to us, not confirmed.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "f08c737d20d1af544a94784d817085a42505b2eb",
+      "subject": "fix(external-runtime): a finished hand-off leaves the runtime's conversation read",
+      "status": "observation",
+      "reason": "Looks like the counterpart of upstream change #3197 (no unread on external runtime), which we do not have; not confirmed.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "3bc9f57f77641623abd9fc9a150424687d649b33",
+      "subject": "test(agents catalog): refresh the tool-list goldens after rebasing onto main",
+      "status": "observation",
+      "reason": "Golden refresh for the tool catalog after upstream coordination changes; only matters with them.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "2971e0d6d2f093685e62c8ddcffb37bedd0b146e",
+      "subject": "A Chief's new bots start with the Chief's connected apps",
+      "status": "pending",
+      "reason": "Coordination, threads and rooms batch; owner left it undecided.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "93c93ee9febc4f1386250435321381a36e9172a0",
+      "subject": "test(comms): a Chief-made operator starts with the Chief's connected apps",
+      "status": "pending",
+      "reason": "Coordination, threads and rooms batch; owner left it undecided.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "e048001193110990102d839e4cd301739f0e37e9",
+      "subject": "fix(coordination): a teammate's thread starts in the delegating bot's project folder by default",
+      "status": "pending",
+      "reason": "Coordination, threads and rooms batch; owner left it undecided.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "d6306866f799adf5a0c44e91658d385edd555d6e",
+      "subject": "fix(coordination): keep coordinate_bots within the catalog budget, and refresh the bridged goldens",
+      "status": "pending",
+      "reason": "Coordination, threads and rooms batch; owner left it undecided.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "fc839de38a7346ba75dec5101d524cc355acf876",
+      "subject": "feat(threads): allow 16 parallel threads per bot and keep the main chat out of the queue",
+      "status": "pending",
+      "reason": "Coordination, threads and rooms batch; owner left it undecided.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "1aa2e20251d26479b61ac44e8655b34b2c33d2cc",
+      "subject": "Start a person's direct message beside the bot's room turn when a thread slot is free.",
+      "status": "pending",
+      "reason": "Coordination, threads and rooms batch; owner left it undecided.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "559ce8cce063411b930457579a80fe1972b5c715",
+      "subject": "One room-turn rule for a person's sends, now and queued; index.ts stays at its pin",
+      "status": "pending",
+      "reason": "Coordination, threads and rooms batch; owner left it undecided.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "40beb5c5cdd10b113398c4e90e47a508ac7a25b9",
+      "subject": "fix(ui): fold a room snapshot onto messages streamed meanwhile",
+      "status": "pending",
+      "reason": "Coordination, threads and rooms batch; owner left it undecided.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "8580421ceb70151721594d4b8ef2088b7471c9bd",
+      "subject": "fix(ui): drop stale room thread switches",
+      "status": "pending",
+      "reason": "Coordination, threads and rooms batch; owner left it undecided.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "9cb71b5d07deb9bf8d2d9a04b0e124c0fc0c0258",
+      "subject": "fix(ui): reopen a waiting card when its answer fails to send",
+      "status": "pending",
+      "reason": "Coordination, threads and rooms batch; owner left it undecided.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "2d6694ff9c0d72df784cdb2fa53611de76f7e518",
+      "subject": "fix(chat): show a hand-off's done_when under its chip",
+      "status": "pending",
+      "reason": "Coordination, threads and rooms batch; owner left it undecided.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "703dd46cdb35d96fdf0ad95fddc6ab96119e24fd",
+      "subject": "fix(chat): translate the done-when line, keep peerAsk's doc on peerAsk",
+      "status": "pending",
+      "reason": "Coordination, threads and rooms batch; owner left it undecided.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "16159307aeddc6a2a1ec923d923eb309bc4f18a9",
+      "subject": "fix(ratchet): move the room holds banner and the new-conversation prompt out of GroupView and ChatView",
+      "status": "pending",
+      "reason": "Coordination, threads and rooms batch; owner left it undecided.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "89fcbc801b36da510a4591e032657106f86d53a8",
+      "subject": "refactor(ui): move room frame handling out of store.tsx for the size ratchet",
+      "status": "pending",
+      "reason": "Coordination, threads and rooms batch; owner left it undecided.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "7d4f7da2e1b4757c7e4924d1474e997221b483c4",
+      "subject": "refactor(ratchet): move tomlInlineTable into codex-process.ts",
+      "status": "pending",
+      "reason": "Coordination, threads and rooms batch; owner left it undecided.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "0273143e82138dc18435bcab8ab37a141e5729c3",
+      "subject": "test(direct-coordination): pick the self-opened hold's plan by its text",
+      "status": "pending",
+      "reason": "Coordination, threads and rooms batch; owner left it undecided.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "82a9a9cef793eb8e94b8f879852ed5d2dd433de7",
+      "subject": "test(direct-coordination): stop the source only once its assigning turn ended",
+      "status": "pending",
+      "reason": "Coordination, threads and rooms batch; owner left it undecided.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "1c39cdc91076aad4243fe74b96e7538813fa2943",
+      "subject": "test(delta-context): change the Codex model only once the source is waiting",
+      "status": "pending",
+      "reason": "Coordination, threads and rooms batch; owner left it undecided.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "272df2717ffdd07d8e03c64f1826159c7b0864c1",
+      "subject": "test: wait for the parked room event to reach its history",
+      "status": "pending",
+      "reason": "Coordination, threads and rooms batch; owner left it undecided.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "164372adb2f1ca62281b253e2d8831bb42b4f6a2",
+      "subject": "test: stabilize server ports and coordination readiness",
+      "status": "pending",
+      "reason": "Coordination, threads and rooms batch; owner left it undecided.",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "f02d759f990db5cac640a5e4867a78121216d098",
+      "subject": "Let the owner's group chats use the lent Mac; Terminal on My Cloud's page; plain refusal messages (#3493)",
+      "status": "pending",
+      "reason": "Left undecided by the owner (not discussed yet).",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "2b7010d2d089979b090ca4799b28f32401577736",
+      "subject": "Team Cloud: teammates' pictures instead of their initials",
+      "status": "pending",
+      "reason": "Left undecided by the owner (not discussed yet).",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "b8d393b907b2679a2c496a3bd81731fb166273be",
+      "subject": "test(notices): main's Use my Mac popup waits like the other full-screen asks",
+      "status": "pending",
+      "reason": "Left undecided by the owner (not discussed yet).",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "62c809ec20ffa9283ef8a9389e3110b8c0cd6088",
+      "subject": "Team Cloud: @mention teammates, and bots can pass a message to a person",
+      "status": "pending",
+      "reason": "Left undecided by the owner (not discussed yet).",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "74e75a116642ac9e7c20c0b79031d7b7378e3cbe",
+      "subject": "Ask once per Cloud to let the bots use this Mac, from the page's notice queue",
+      "status": "pending",
+      "reason": "Left undecided by the owner (not discussed yet).",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "f1ef288fd36d4604b7aaddc79e891cb93a32bf01",
+      "subject": "Share this computer's internet connection with My Cloud by default",
+      "status": "pending",
+      "reason": "Left undecided by the owner (not discussed yet).",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "b2d0e846d57e9cd56619adec1c7c7db2f1f32bf7",
+      "subject": "Speak replies sooner: a short first block, and speech while the reply is written",
+      "status": "pending",
+      "reason": "Left undecided by the owner (not discussed yet).",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "fe5c5b07b472b230823449f62de4b1be260b93cc",
+      "subject": "test(ratchet): lower server/index.ts to its measured 16,237 lines",
+      "status": "pending",
+      "reason": "Left undecided by the owner (not discussed yet).",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "5598f8811b46f739f14638996437bce6741b27de",
+      "subject": "One-on-one /goal runs on the group goal-run engine, as a room of one",
+      "status": "pending",
+      "reason": "Left undecided by the owner (not discussed yet).",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "df40e3c8847e6d988fcb2da2b864f071189cfc70",
+      "subject": "fix(ratchet): keep server/index.ts at its pin",
+      "status": "pending",
+      "reason": "Left undecided by the owner (not discussed yet).",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "cbfb7a94abb6a293f33dad719fe48eddb98b1651",
+      "subject": "Goal runs: move the run loop, lead turns and run card out of index.ts",
+      "status": "pending",
+      "reason": "Left undecided by the owner (not discussed yet).",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "d975593478df8e6340440ada69dfbbc00c208ebc",
+      "subject": "Goal runs: drop the separate one-on-one goal engine",
+      "status": "pending",
+      "reason": "Left undecided by the owner (not discussed yet).",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "53a0f41cd38e6e8226cad6bc3f7632869168b085",
+      "subject": "Terminal refusal points at Settings → MausBot Cloud → Terminal; drop the always-on card hint",
+      "status": "pending",
+      "reason": "Left undecided by the owner (not discussed yet).",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "22bfaa8170204b50b91cc0c21c462679284f19fe",
+      "subject": "fix(routines): reuse a room goal's task after its start could not be saved",
+      "status": "pending",
+      "reason": "Left undecided by the owner (not discussed yet).",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "7ff9858e3e0c47447d98aedd4da19014f1824669",
+      "subject": "Name the computer and the switch when Cloud Terminal is off",
+      "status": "pending",
+      "reason": "Left undecided by the owner (not discussed yet).",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "e13d3aea0275a54eb0f0e1e42d2abbfe6c23c214",
+      "subject": "fix(chat): harden bot /goal after review",
+      "status": "pending",
+      "reason": "Left undecided by the owner (not discussed yet).",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "3d52976c6a48b6c5f295ad12226904dcc50660cd",
+      "subject": "Lending: a ready Linux computer-control connection counts for apps and screen",
+      "status": "pending",
+      "reason": "Left undecided by the owner (not discussed yet).",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "43b4971f4c45406980a04ddbe6936a3c8eba1d04",
+      "subject": "Server menu: keep My Cloud's status line on Windows and Linux when My Cloud is home",
+      "status": "pending",
+      "reason": "Left undecided by the owner (not discussed yet).",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "12fc6ce7cf6c3fa4d49907193748e7a64918299b",
+      "subject": "feat(chat): give each bot conversation a /goal",
+      "status": "pending",
+      "reason": "Left undecided by the owner (not discussed yet).",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "9e653373bc9d623f88ebc240cb2a5cc2f1735c67",
+      "subject": "test: retry the owned identity probe once after an aborted navigation",
+      "status": "pending",
+      "reason": "Left undecided by the owner (not discussed yet).",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "e13646e69f078ff3eb30a2bb63a0311f5ca18f21",
+      "subject": "test: wait for completed cloud sleep retry instead of a fixed delay",
+      "status": "pending",
+      "reason": "Left undecided by the owner (not discussed yet).",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "8cfef6493cc5523eb4277e1f6cfb554999c42e1d",
+      "subject": "test: fix Windows browser fixtures and catalog expectations",
+      "status": "pending",
+      "reason": "Left undecided by the owner (not discussed yet).",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "9558ad9c67dea044f280486d4e85fb40ac845c95",
+      "subject": "test(ci): match the shared Vitest timeout",
+      "status": "pending",
+      "reason": "Left undecided by the owner (not discussed yet).",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "1a7dd2eaec7f9e27bbf5a577f99813ec828fa774",
+      "subject": "test: fix Windows drive-root fixture and allow CI headroom",
+      "status": "pending",
+      "reason": "Left undecided by the owner (not discussed yet).",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "26c3e1f7484bcbc17044607ad661a241a389ad94",
+      "subject": "test: allow Windows Chrome cleanup handles to settle",
+      "status": "pending",
+      "reason": "Left undecided by the owner (not discussed yet).",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "b6d032585afbc0db142d364b2f1ff7804e4e0b3d",
+      "subject": "Allow additional upstream metadata in the session preservation test",
+      "status": "pending",
+      "reason": "Left undecided by the owner (not discussed yet).",
+      "decidedAt": "2026-10-26"
+    },
+    {
+      "sha": "ab0296993be2794eb0e5e49f873ddb6945f10bbe",
+      "subject": "Fix cross-platform CI fixtures after upstream sync",
+      "status": "pending",
+      "reason": "Left undecided by the owner (not discussed yet).",
+      "decidedAt": "2026-10-26"
+    }
+  ]
+}

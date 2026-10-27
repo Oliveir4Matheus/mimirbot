@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { APP_NAME, RELEASES_URL, appVersion, openExternalLink } from "@/lib/app-links";
-import { t } from "@/lib/i18n";
+import { activeLocale, t } from "@/lib/i18n";
 import { welcomeOnScreen } from "@/lib/onboarding";
 import type { ReleaseNotes } from "@/lib/release-notes";
 import { readSeenVersion, whatsNewDecision, writeSeenVersion } from "@/lib/whats-new";
@@ -16,7 +16,7 @@ export function WhatsNewDialog() {
   useEffect(() => {
     if (decided.current || !onboarding || welcomeOnScreen()) return;
     decided.current = true;
-    const decision = whatsNewDecision({ lastSeen: readSeenVersion(), current: appVersion(), onboarded: Boolean(onboarding.completedAt) });
+    const decision = whatsNewDecision({ lastSeen: readSeenVersion(), current: appVersion(), onboarded: Boolean(onboarding.completedAt), locale: activeLocale() });
     if (decision.kind === "show") setNotes(decision.notes);
     else if (decision.kind === "baseline") writeSeenVersion(appVersion());
   }, [onboarding]);

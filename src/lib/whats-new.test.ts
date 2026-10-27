@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import type { ReleaseNotes } from "./release-notes";
+import { RELEASE_NOTES, type LocalizedReleaseNotes } from "./release-notes";
 import { compareVersions, notesSince, whatsNewDecision } from "./whats-new";
 
-const notes: Record<string, ReleaseNotes> = {
-  "0.1.129": { features: ["B"], fixes: ["b"] },
-  "0.1.128": { features: ["A"], fixes: [] },
-  "0.1.127": { features: ["Z"], fixes: ["z"] },
+const notes: Record<string, LocalizedReleaseNotes> = {
+  "0.1.129": { en: { features: ["B"], fixes: ["b"] }, "pt-br": { features: ["B pt"], fixes: ["b pt"] } },
+  "0.1.128": { en: { features: ["A"], fixes: [] } },
+  "0.1.127": { en: { features: ["Z"], fixes: ["z"] }, "pt-br": { features: ["Z pt"], fixes: ["z pt"] } },
 };
 
 describe("compareVersions", () => {
@@ -27,6 +27,23 @@ describe("notesSince", () => {
   it("has nothing for a version without notes", () => {
     expect(notesSince("0.1.129", "0.1.130", notes)).toBeNull();
   });
+
+  it("reads each version in the person's language", () => {
+    expect(notesSince("0.1.127", "0.1.129", notes, "pt-br")).toEqual({ features: ["B pt", "A"], fixes: ["b pt"] });
+  });
+
+  it("falls back to English for a language a version does not have, or one it never had", () => {
+    expect(notesSince("0.1.127", "0.1.129", notes, "es")).toEqual({ features: ["B", "A"], fixes: ["b"] });
+  });
+});
+
+describe("RELEASE_NOTES", () => {
+  it("says the same in English and Portuguese for every version", () => {
+    for (const [version, entry] of Object.entries(RELEASE_NOTES)) {
+      expect(entry["pt-br"]?.features.length, version).toBe(entry.en.features.length);
+      expect(entry["pt-br"]?.fixes.length, version).toBe(entry.en.fixes.length);
+    }
+  });
 });
 
 describe("whatsNewDecision", () => {
@@ -34,6 +51,13 @@ describe("whatsNewDecision", () => {
 
   it("shows the notes after an update", () => {
     expect(whatsNewDecision(base)).toMatchObject({ kind: "show" });
+  });
+
+  it("shows the current version's notes in the active language", () => {
+    const current = Object.keys(RELEASE_NOTES)[0]!;
+    const previous = Object.keys(RELEASE_NOTES)[1]!;
+    const decision = whatsNewDecision({ lastSeen: previous, current, onboarded: true, locale: "pt-br" });
+    expect(decision).toMatchObject({ kind: "show", notes: RELEASE_NOTES[current]!["pt-br"] });
   });
 
   it("stays quiet when the version was already seen", () => {

@@ -1,4 +1,4 @@
-import { RELEASE_NOTES, type ReleaseNotes } from "@/lib/release-notes";
+import { RELEASE_NOTES, type LocalizedReleaseNotes, type ReleaseNotes } from "@/lib/release-notes";
 
 export const WHATS_NEW_SEEN_KEY = "whats-new-seen-version";
 
@@ -16,25 +16,31 @@ export function compareVersions(left: string, right: string): number {
   return 0;
 }
 
-/** Every version after `lastSeen` up to `current` merged, newest first; only `current` when nothing was seen before. */
-export function notesSince(lastSeen: string | null, current: string, notes: Record<string, ReleaseNotes> = RELEASE_NOTES): ReleaseNotes | null {
+/** Every version after `lastSeen` up to `current` merged, newest first; only `current` when nothing was seen before. Each version reads in `locale` when it has that text and in English otherwise. */
+export function notesSince(
+  lastSeen: string | null,
+  current: string,
+  notes: Record<string, LocalizedReleaseNotes> = RELEASE_NOTES,
+  locale = "en",
+): ReleaseNotes | null {
   const versions = Object.keys(notes)
     .filter((version) => compareVersions(version, current) <= 0 && (lastSeen === null ? version === current : compareVersions(version, lastSeen) > 0))
     .sort((left, right) => compareVersions(right, left));
-  const features = versions.flatMap((version) => notes[version]!.features);
-  const fixes = versions.flatMap((version) => notes[version]!.fixes);
+  const read = (version: string) => notes[version]![locale] ?? notes[version]!.en;
+  const features = versions.flatMap((version) => read(version).features);
+  const fixes = versions.flatMap((version) => read(version).fixes);
   return features.length || fixes.length ? { features, fixes } : null;
 }
 
 export type WhatsNewDecision = { kind: "none" } | { kind: "baseline" } | { kind: "show"; notes: ReleaseNotes };
 
 /** A fresh install (not onboarded, nothing seen) and a downgrade only record the version; the screen is for people updating. */
-export function whatsNewDecision(input: { lastSeen: string | null; current: string; onboarded: boolean }): WhatsNewDecision {
-  const { lastSeen, current, onboarded } = input;
+export function whatsNewDecision(input: { lastSeen: string | null; current: string; onboarded: boolean; locale?: string }): WhatsNewDecision {
+  const { lastSeen, current, onboarded, locale } = input;
   if (!parseVersion(current) || lastSeen === current) return { kind: "none" };
   if (lastSeen === null && !onboarded) return { kind: "baseline" };
   if (lastSeen !== null && compareVersions(lastSeen, current) > 0) return { kind: "baseline" };
-  const notes = notesSince(lastSeen, current);
+  const notes = notesSince(lastSeen, current, RELEASE_NOTES, locale);
   return notes ? { kind: "show", notes } : { kind: "baseline" };
 }
 

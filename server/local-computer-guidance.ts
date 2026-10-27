@@ -4,7 +4,7 @@
 type JsonObject = Record<string, unknown>;
 
 export const OWN_PROFILE_UNAVAILABLE =
-  "Computer control on this computer cannot attach to the person's own signed-in browser profile, and OpenMausBot has no setting that lets them allow it, so do not retry strategy existing_profile or ask them to grant it. To work in a site they are signed in to, use the screen: launch_app with urls opens the page in their own browser, signed in as they are; read it with get_window_state and act with click, type_text and press_key. Or use your own browser tools if you have them, and call request_sign_in when the site needs their login there.";
+  "Computer control on this computer cannot attach to the person's own signed-in browser profile, and MimirBot has no setting that lets them allow it, so do not retry strategy existing_profile or ask them to grant it. To work in a site they are signed in to, use the screen: launch_app with urls opens the page in their own browser, signed in as they are; read it with get_window_state and act with click, type_text and press_key. Or use your own browser tools if you have them, and call request_sign_in when the site needs their login there.";
 
 const REFUSAL_CODE = "browser_consent_required";
 
