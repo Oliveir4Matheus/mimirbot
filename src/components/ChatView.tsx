@@ -79,6 +79,7 @@ import { ChatErrorBanner, ChatNotice } from "./ChatErrorBanner";
 import { ThreadContextWarning } from "./ContextWarning";
 import { useLimitResetContinue } from "./LimitResetContinue";
 import { ChatFindBar } from "./ChatFindBar";
+import { DaySeparator } from "./DaySeparator";
 import { ReplyQuote } from "./ReplyQuote";
 import { ConnectorCard } from "./ConnectorCard";
 import { SecretRequestCard } from "./SecretRequestCard";
@@ -117,7 +118,7 @@ import { useUnreadDivider } from "@/hooks/use-unread-divider";
 import { NewMessagesDivider } from "./NewMessagesDivider";
 import { unreadMessageIds } from "@/lib/unread-divider";
 import { appendComposerDraft, appendDraftAttachments, useReplyDraft } from "@/lib/drafts";
-import { dayLabel, localDay, transcriptLookups, type TranscriptLookups } from "@/lib/transcript-derivations";
+import { localDay, transcriptLookups, type TranscriptLookups } from "@/lib/transcript-derivations";
 import { splitTranscriptCitations, type CitationAttachment } from "@/lib/citations";
 import { EmptyChat } from "./ChatEmptyState";
 import { PinnedBanner } from "./ChatPinnedBanner";
@@ -173,14 +174,6 @@ function useDrawnBots(bots: readonly Bot[]): readonly Bot[] {
   const cache = useRef({ signature, bots });
   if (cache.current.signature !== signature) cache.current = { signature, bots };
   return cache.current.bots;
-}
-
-function DaySeparator({ at, today }: { at: number; today: number }) {
-  return (
-    <div className="py-3 text-center text-[13px] text-ink-secondary">
-      {dayLabel(at, today)} {formatTime(at)}
-    </div>
-  );
 }
 
 export function ErrorRow({
