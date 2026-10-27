@@ -1276,9 +1276,10 @@
     {
       "sha": "e048001193110990102d839e4cd301739f0e37e9",
       "subject": "fix(coordination): a teammate's thread starts in the delegating bot's project folder by default",
-      "status": "pending",
-      "reason": "Coordination, threads and rooms batch; owner left it undecided.",
-      "decidedAt": "2026-10-26"
+      "status": "applied",
+      "reason": "Cherry-picked clean after the owner approved the easy-to-apply batch.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "8e7ffd9da1831bf85c23da5a8b00b684d73d6462"
     },
     {
       "sha": "d6306866f799adf5a0c44e91658d385edd555d6e",
@@ -1290,9 +1291,10 @@
     {
       "sha": "fc839de38a7346ba75dec5101d524cc355acf876",
       "subject": "feat(threads): allow 16 parallel threads per bot and keep the main chat out of the queue",
-      "status": "pending",
-      "reason": "Coordination, threads and rooms batch; owner left it undecided.",
-      "decidedAt": "2026-10-26"
+      "status": "applied",
+      "reason": "Cherry-picked clean after the owner approved the easy-to-apply batch.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "bd1edd2903be22e722084a348e980c9fc640376f"
     },
     {
       "sha": "1aa2e20251d26479b61ac44e8655b34b2c33d2cc",
@@ -1318,37 +1320,42 @@
     {
       "sha": "8580421ceb70151721594d4b8ef2088b7471c9bd",
       "subject": "fix(ui): drop stale room thread switches",
-      "status": "pending",
-      "reason": "Coordination, threads and rooms batch; owner left it undecided.",
-      "decidedAt": "2026-10-26"
+      "status": "applied",
+      "reason": "Cherry-picked clean after the owner approved the easy-to-apply batch.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "b9c73a8a2710987b0c0b880b567472d277372bc1"
     },
     {
       "sha": "9cb71b5d07deb9bf8d2d9a04b0e124c0fc0c0258",
       "subject": "fix(ui): reopen a waiting card when its answer fails to send",
-      "status": "pending",
-      "reason": "Coordination, threads and rooms batch; owner left it undecided.",
-      "decidedAt": "2026-10-26"
+      "status": "applied",
+      "reason": "Cherry-picked clean after the owner approved the easy-to-apply batch.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "70987984312efa48138b0268c13de73f334641a2"
     },
     {
       "sha": "2d6694ff9c0d72df784cdb2fa53611de76f7e518",
       "subject": "fix(chat): show a hand-off's done_when under its chip",
-      "status": "pending",
-      "reason": "Coordination, threads and rooms batch; owner left it undecided.",
-      "decidedAt": "2026-10-26"
+      "status": "applied",
+      "reason": "Cherry-picked clean after the owner approved the easy-to-apply batch.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "f8bff82ef1a3c607747c681eed279471d934d255"
     },
     {
       "sha": "703dd46cdb35d96fdf0ad95fddc6ab96119e24fd",
       "subject": "fix(chat): translate the done-when line, keep peerAsk's doc on peerAsk",
-      "status": "pending",
-      "reason": "Coordination, threads and rooms batch; owner left it undecided.",
-      "decidedAt": "2026-10-26"
+      "status": "applied",
+      "reason": "Cherry-picked clean after the owner approved the easy-to-apply batch.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "2710fb707958f71727eb356f4edeacc353ac43a5"
     },
     {
       "sha": "16159307aeddc6a2a1ec923d923eb309bc4f18a9",
       "subject": "fix(ratchet): move the room holds banner and the new-conversation prompt out of GroupView and ChatView",
-      "status": "pending",
-      "reason": "Coordination, threads and rooms batch; owner left it undecided.",
-      "decidedAt": "2026-10-26"
+      "status": "applied",
+      "reason": "Cherry-picked clean after the owner approved the easy-to-apply batch.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "2fb610ef8000387ee17b15492675b4242ef2db34"
     },
     {
       "sha": "89fcbc801b36da510a4591e032657106f86d53a8",
@@ -1360,37 +1367,42 @@
     {
       "sha": "7d4f7da2e1b4757c7e4924d1474e997221b483c4",
       "subject": "refactor(ratchet): move tomlInlineTable into codex-process.ts",
-      "status": "pending",
-      "reason": "Coordination, threads and rooms batch; owner left it undecided.",
-      "decidedAt": "2026-10-26"
+      "status": "applied",
+      "reason": "Cherry-picked clean after the owner approved the easy-to-apply batch.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "42dd53a1ffd5176aebb5280c3de7c451ab20c452"
     },
     {
       "sha": "0273143e82138dc18435bcab8ab37a141e5729c3",
       "subject": "test(direct-coordination): pick the self-opened hold's plan by its text",
-      "status": "pending",
-      "reason": "Coordination, threads and rooms batch; owner left it undecided.",
-      "decidedAt": "2026-10-26"
+      "status": "applied",
+      "reason": "Cherry-picked clean after the owner approved the easy-to-apply batch.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "557bfbc6e4fd857db1f18e1b56c60f28f40cd848"
     },
     {
       "sha": "82a9a9cef793eb8e94b8f879852ed5d2dd433de7",
       "subject": "test(direct-coordination): stop the source only once its assigning turn ended",
-      "status": "pending",
-      "reason": "Coordination, threads and rooms batch; owner left it undecided.",
-      "decidedAt": "2026-10-26"
+      "status": "applied",
+      "reason": "Cherry-picked clean after the owner approved the easy-to-apply batch.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "1c6b90ee7f89504b4b1425152f3e88c703dcb488"
     },
     {
       "sha": "1c39cdc91076aad4243fe74b96e7538813fa2943",
       "subject": "test(delta-context): change the Codex model only once the source is waiting",
-      "status": "pending",
-      "reason": "Coordination, threads and rooms batch; owner left it undecided.",
-      "decidedAt": "2026-10-26"
+      "status": "applied",
+      "reason": "Cherry-picked clean after the owner approved the easy-to-apply batch.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "0d971406478ee0c96939fd8e2af2fdb911e2be34"
     },
     {
       "sha": "272df2717ffdd07d8e03c64f1826159c7b0864c1",
       "subject": "test: wait for the parked room event to reach its history",
-      "status": "pending",
-      "reason": "Coordination, threads and rooms batch; owner left it undecided.",
-      "decidedAt": "2026-10-26"
+      "status": "applied",
+      "reason": "Cherry-picked clean after the owner approved the easy-to-apply batch.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "c42e572ae635a76b4c8ac73162b870f2d4088904"
     },
     {
       "sha": "164372adb2f1ca62281b253e2d8831bb42b4f6a2",
@@ -1451,37 +1463,39 @@
     {
       "sha": "fe5c5b07b472b230823449f62de4b1be260b93cc",
       "subject": "test(ratchet): lower server/index.ts to its measured 16,237 lines",
-      "status": "pending",
-      "reason": "Left undecided by the owner (not discussed yet).",
-      "decidedAt": "2026-10-26"
+      "status": "ignored",
+      "reason": "Superseded: upstream built a separate one-on-one /goal engine and then removed it; the net result is the group-engine /goal taken from 5598f8811. Ratchet pins re-measured on our code.",
+      "decidedAt": "2026-10-27"
     },
     {
       "sha": "5598f8811b46f739f14638996437bce6741b27de",
       "subject": "One-on-one /goal runs on the group goal-run engine, as a room of one",
-      "status": "pending",
-      "reason": "Left undecided by the owner (not discussed yet).",
-      "decidedAt": "2026-10-26"
+      "status": "applied",
+      "reason": "Goal runs: the run loop moved out of index.ts and a one-on-one /goal runs on the group goal-run engine; the e2e test uses our .mimirbot data directory.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "98869b1954a8ce83e17bed927ddf002eddc3c5ae"
     },
     {
       "sha": "df40e3c8847e6d988fcb2da2b864f071189cfc70",
       "subject": "fix(ratchet): keep server/index.ts at its pin",
-      "status": "pending",
-      "reason": "Left undecided by the owner (not discussed yet).",
-      "decidedAt": "2026-10-26"
+      "status": "ignored",
+      "reason": "Superseded: upstream built a separate one-on-one /goal engine and then removed it; the net result is the group-engine /goal taken from 5598f8811. Ratchet pins re-measured on our code.",
+      "decidedAt": "2026-10-27"
     },
     {
       "sha": "cbfb7a94abb6a293f33dad719fe48eddb98b1651",
       "subject": "Goal runs: move the run loop, lead turns and run card out of index.ts",
-      "status": "pending",
-      "reason": "Left undecided by the owner (not discussed yet).",
-      "decidedAt": "2026-10-26"
+      "status": "applied",
+      "reason": "Goal runs: the run loop moved out of index.ts and a one-on-one /goal runs on the group goal-run engine; the e2e test uses our .mimirbot data directory.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "a5c3e417b4305ccb5fb071453a00c7874b59eb2b"
     },
     {
       "sha": "d975593478df8e6340440ada69dfbbc00c208ebc",
       "subject": "Goal runs: drop the separate one-on-one goal engine",
-      "status": "pending",
-      "reason": "Left undecided by the owner (not discussed yet).",
-      "decidedAt": "2026-10-26"
+      "status": "ignored",
+      "reason": "Superseded: upstream built a separate one-on-one /goal engine and then removed it; the net result is the group-engine /goal taken from 5598f8811. Ratchet pins re-measured on our code.",
+      "decidedAt": "2026-10-27"
     },
     {
       "sha": "53a0f41cd38e6e8226cad6bc3f7632869168b085",
@@ -1493,9 +1507,10 @@
     {
       "sha": "22bfaa8170204b50b91cc0c21c462679284f19fe",
       "subject": "fix(routines): reuse a room goal's task after its start could not be saved",
-      "status": "pending",
-      "reason": "Left undecided by the owner (not discussed yet).",
-      "decidedAt": "2026-10-26"
+      "status": "applied",
+      "reason": "Cherry-picked clean after the owner approved the easy-to-apply batch.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "352913f6cc9b50dbf09efc51d5db468adea670c9"
     },
     {
       "sha": "7ff9858e3e0c47447d98aedd4da19014f1824669",
@@ -1507,30 +1522,32 @@
     {
       "sha": "e13d3aea0275a54eb0f0e1e42d2abbfe6c23c214",
       "subject": "fix(chat): harden bot /goal after review",
-      "status": "pending",
-      "reason": "Left undecided by the owner (not discussed yet).",
-      "decidedAt": "2026-10-26"
+      "status": "ignored",
+      "reason": "Superseded: upstream built a separate one-on-one /goal engine and then removed it; the net result is the group-engine /goal taken from 5598f8811. Ratchet pins re-measured on our code.",
+      "decidedAt": "2026-10-27"
     },
     {
       "sha": "3d52976c6a48b6c5f295ad12226904dcc50660cd",
       "subject": "Lending: a ready Linux computer-control connection counts for apps and screen",
-      "status": "pending",
-      "reason": "Left undecided by the owner (not discussed yet).",
-      "decidedAt": "2026-10-26"
+      "status": "applied",
+      "reason": "Cherry-picked clean after the owner approved the easy-to-apply batch.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "d22e2ad676d1981a140969661b54f0987ee23a36"
     },
     {
       "sha": "43b4971f4c45406980a04ddbe6936a3c8eba1d04",
       "subject": "Server menu: keep My Cloud's status line on Windows and Linux when My Cloud is home",
-      "status": "pending",
-      "reason": "Left undecided by the owner (not discussed yet).",
-      "decidedAt": "2026-10-26"
+      "status": "applied",
+      "reason": "Cherry-picked clean after the owner approved the easy-to-apply batch.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "f9fc4075148cb807c24045a725539847ceb69253"
     },
     {
       "sha": "12fc6ce7cf6c3fa4d49907193748e7a64918299b",
       "subject": "feat(chat): give each bot conversation a /goal",
-      "status": "pending",
-      "reason": "Left undecided by the owner (not discussed yet).",
-      "decidedAt": "2026-10-26"
+      "status": "ignored",
+      "reason": "Superseded: upstream built a separate one-on-one /goal engine and then removed it; the net result is the group-engine /goal taken from 5598f8811. Ratchet pins re-measured on our code.",
+      "decidedAt": "2026-10-27"
     },
     {
       "sha": "9e653373bc9d623f88ebc240cb2a5cc2f1735c67",
@@ -1577,9 +1594,10 @@
     {
       "sha": "b6d032585afbc0db142d364b2f1ff7804e4e0b3d",
       "subject": "Allow additional upstream metadata in the session preservation test",
-      "status": "pending",
-      "reason": "Left undecided by the owner (not discussed yet).",
-      "decidedAt": "2026-10-26"
+      "status": "applied",
+      "reason": "Cherry-picked clean after the owner approved the easy-to-apply batch.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "30b34f719c1507046983ca2336fefd8f7e3b72dc"
     },
     {
       "sha": "ab0296993be2794eb0e5e49f873ddb6945f10bbe",
