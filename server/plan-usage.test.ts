@@ -11,13 +11,13 @@ import {
   loadPlanUsage,
   parseClaudeUsage,
   parseCodexUsage,
-  parseAntigravityUsage,
   parseGrokUsage,
   planAccountsFromInstances,
   type PlanAccount,
   type PlanFetch,
   type PlanResponse,
 } from "./plan-usage.ts";
+import { parseAntigravityUsage } from "./plan-usage-antigravity.ts";
 
 const SECRET = "plan-usage-fixture-secret";
 const NOW = 1_800_000_000_000;

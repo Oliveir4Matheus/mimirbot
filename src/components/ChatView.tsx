@@ -1205,7 +1205,6 @@ export function ChatView({ bot: profile }: { bot: Bot }) {
         }
       />
 
-
       </GlassBar>
 
       <div

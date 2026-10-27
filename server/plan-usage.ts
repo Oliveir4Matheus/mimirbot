@@ -10,6 +10,8 @@ import { AntigravitySetupError } from "./drivers/antigravity-runtime.ts";
 import { clearAntigravityUsageCache, createAntigravityUsageReader, type AntigravityUsageReader } from "./drivers/antigravity-usage.ts";
 import { codexHome } from "./drivers/codex-identity.ts";
 import { harnessHome, sealedFixture } from "./env-path.ts";
+import { parseAntigravityUsage } from "./plan-usage-antigravity.ts";
+import { addModelWindow, closedWindow, extraLine, isoOrNull, openWindow, sortModelWindows, timeMs } from "./plan-windows.ts";
 
 export type PlanDriver = "claude" | "codex" | "grok" | "antigravity";
 
@@ -315,34 +317,6 @@ function keepLastGood(row: PlanProviderRow, now: number): PlanProviderRow {
   return kept && transient && now - kept.at <= LAST_GOOD_MS ? kept.row : row;
 }
 
-function closedWindow(): PlanWindow {
-  return { available: false, remainingPercent: null, usedPercent: null, resetsAt: null };
-}
-
-function openWindow(usedPercent: number, resetsAt: string | null): PlanWindow {
-  const used = clampPercent(usedPercent);
-  return {
-    available: true,
-    usedPercent: used,
-    remainingPercent: clampPercent(100 - used),
-    resetsAt,
-  };
-}
-
-function extraLine(label: string, window: PlanWindow): PlanExtra {
-  return {
-    label,
-    remainingPercent: window.remainingPercent ?? 0,
-    usedPercent: window.usedPercent ?? 0,
-    resetsAt: window.resetsAt,
-  };
-}
-
-function clampPercent(value: number): number {
-  if (!Number.isFinite(value)) return 0;
-  return Math.min(100, Math.max(0, value));
-}
-
 function asRecord(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   return value as Record<string, unknown>;
@@ -351,25 +325,6 @@ function asRecord(value: unknown): Record<string, unknown> | null {
 function finiteNumber(value: unknown): number | null {
   if (typeof value !== "number" || !Number.isFinite(value)) return null;
   return value;
-}
-
-function timeMs(value: unknown): number | null {
-  if (typeof value === "number" && Number.isFinite(value)) {
-    return Math.abs(value) >= 1e12 ? value : value * 1000;
-  }
-  if (typeof value !== "string") return null;
-  const trimmed = value.trim();
-  if (!trimmed || trimmed.length > 80) return null;
-  if (/^\d+(\.\d+)?$/.test(trimmed)) return timeMs(Number(trimmed));
-  const parsed = Date.parse(trimmed);
-  return Number.isFinite(parsed) ? parsed : null;
-}
-
-function isoOrNull(value: unknown): string | null {
-  const ms = timeMs(value);
-  if (ms == null) return null;
-  const date = new Date(ms);
-  return Number.isNaN(date.getTime()) ? null : date.toISOString();
 }
 
 function planLabel(value: unknown): string | null {
@@ -463,17 +418,6 @@ function claudeModelWindow(key: string): { name: string; window: string } | null
   const family = CLAUDE_MODEL_FAMILIES.find((name) => lower === name || lower.startsWith(`${name}_`));
   if (!family) return null;
   return { name: titleWords(suffix), window: weekly ? "Weekly" : "5-hour" };
-}
-
-function addModelWindow(models: PlanModelUsage[], name: string, line: PlanExtra): void {
-  const found = models.find((model) => model.name.toLowerCase() === name.toLowerCase());
-  if (found) found.windows.push(line);
-  else models.push({ name, windows: [line] });
-}
-
-function sortModelWindows(models: PlanModelUsage[]): void {
-  const rank = (label: string) => (label === "5-hour" ? 0 : label === "Weekly" ? 1 : 2);
-  for (const model of models) model.windows.sort((a, b) => rank(a.label) - rank(b.label));
 }
 
 interface DurationWindow {
@@ -947,60 +891,6 @@ async function fetchGrok(account: PlanAccount, token: string, deps: PlanUsageDep
   }
   const windows = parseGrokUsage(creditsBody, billingBody ?? undefined, settings.ok ? settings.body : undefined);
   return okRow(account, windows);
-}
-
-const QUOTA_HEADING = /^#{1,6}\s*Quota Limits\s*$/i;
-const QUOTA_GROUP = /^[-*]\s+\*\*([^*]+)\*\*\s*$/;
-const QUOTA_BUCKET = /^\s+[-*]\s+\*\*([^*]+?):?\*\*:?\s*(\d+(?:\.\d+)?)%\s+remaining(?:\s+\(resets\s+([^)]+)\))?/i;
-
-interface QuotaGroup {
-  name: string;
-  buckets: Array<{ label: string; usedPercent: number; resetsAt: string | null }>;
-}
-
-/** Reads the "Quota Limits" section of the runtime's `/usage` answer; null when it lists no bucket (an API key sign-in has none). */
-export function parseAntigravityUsage(answer: string): PlanWindows | null {
-  const groups: QuotaGroup[] = [];
-  let inSection = false;
-  for (const line of answer.split(/\r?\n/)) {
-    if (line.startsWith("#")) {
-      inSection = QUOTA_HEADING.test(line);
-      continue;
-    }
-    if (!inSection) continue;
-    const name = QUOTA_GROUP.exec(line)?.[1]?.trim();
-    if (name) {
-      groups.push({ name, buckets: [] });
-      continue;
-    }
-    const bucket = QUOTA_BUCKET.exec(line);
-    const group = groups.at(-1);
-    if (!bucket || !group) continue;
-    group.buckets.push({ label: bucket[1]!.trim(), usedPercent: 100 - Number(bucket[2]), resetsAt: isoOrNull(bucket[3]?.trim()) });
-  }
-  const filled = groups.filter((group) => group.buckets.length > 0);
-  if (filled.length === 0) return null;
-  const gemini = filled.find((group) => /^gemini\b/i.test(group.name)) ?? filled[0]!;
-  let fiveHour = closedWindow();
-  let weekly = closedWindow();
-  const extra: PlanExtra[] = [];
-  for (const bucket of gemini.buckets) {
-    const window = openWindow(bucket.usedPercent, bucket.resetsAt);
-    if (/\b5\s*-?\s*h|five/i.test(bucket.label) && !fiveHour.available) fiveHour = window;
-    else if (/week/i.test(bucket.label) && !weekly.available) weekly = window;
-    else extra.push(extraLine(bucket.label, window));
-  }
-  const models: PlanModelUsage[] = [];
-  for (const group of filled) {
-    for (const bucket of group.buckets) addModelWindow(models, group.name, extraLine(quotaBucketLabel(bucket.label), openWindow(bucket.usedPercent, bucket.resetsAt)));
-  }
-  sortModelWindows(models);
-  return { plan: null, fiveHour, weekly, extra, models };
-}
-
-function quotaBucketLabel(label: string): string {
-  if (/week/i.test(label)) return "Weekly";
-  return /\b5\s*-?\s*h|five/i.test(label) ? "5-hour" : label;
 }
 
 /** Signed in and answering, but with no usage to show: the rail keeps the icon. */
