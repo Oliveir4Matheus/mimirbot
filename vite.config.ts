@@ -13,6 +13,9 @@ const { version } = JSON.parse(
   readFileSync(fileURLToPath(new URL("./package.json", import.meta.url)), "utf8"),
 ) as { version: string };
 
+// Intl formats with the machine's locale (12-hour clock, "12,345"); the suite's expectations are en-US.
+process.env.LC_ALL = "en_US.UTF-8";
+
 const root = fileURLToPath(new URL(".", import.meta.url));
 const include = [
   "evals/**/*.test.ts",

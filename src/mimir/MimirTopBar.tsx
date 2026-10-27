@@ -9,10 +9,13 @@ import { cn } from "@/lib/cn";
 import { t } from "@/lib/i18n";
 import { useShowThreads } from "@/lib/thread-preferences";
 import { useStore, type Bot } from "@/state/store";
+import { useCaptionChrome } from "@/components/DesktopCapabilities";
 import { openThread, type ThreadTarget } from "@/state/thread-navigation";
 
 // SAFETY: Electron's -webkit-app-region is not in React's CSSProperties type; the renderer accepts it as an inline style.
 const NO_DRAG = { WebkitAppRegion: "no-drag" } as CSSProperties;
+
+const useNoDrag = () => (useCaptionChrome().draggable ? NO_DRAG : undefined);
 
 export const TOP_ICON_BUTTON = "grid size-[33px] shrink-0 place-items-center rounded-[7px] text-ink-tertiary transition-colors hover:bg-raised hover:text-ink disabled:pointer-events-none disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus";
 
@@ -34,6 +37,7 @@ function WorkspaceMark({ color, local }: { color?: string; local: boolean }) {
 export function MimirWorkspaceButton({ cloudHome, owner, howTo, onMenuClosed }: {
   cloudHome: boolean; owner: string | null; howTo: boolean; onMenuClosed: () => void;
 }) {
+  const noDrag = useNoDrag();
   const bridge = window.ogb?.workspaces;
   const [current, setCurrent] = useState<{ local: boolean; name: string; origin?: string; color?: string; home?: boolean } | null>(null);
   const [open, setOpen] = useState(false);
@@ -60,7 +64,7 @@ export function MimirWorkspaceButton({ cloudHome, owner, howTo, onMenuClosed }: 
         aria-expanded={open}
         data-tour="server-switcher"
         title={current?.origin ? `${current.name} · ${current.origin}` : current?.name}
-        style={NO_DRAG}
+        style={noDrag}
         onClick={() => {
           if (open) return;
           setError("");
@@ -107,8 +111,9 @@ function useHistory() {
 const ARROW = { back: "M19 12H5M11 6l-6 6 6 6", forward: "M5 12h14m-6-6 6 6-6 6" };
 
 function TopIcon({ label, onClick, disabled = false, children }: { label: string; onClick: () => void; disabled?: boolean; children: ReactNode }) {
+  const noDrag = useNoDrag();
   return (
-    <button type="button" aria-label={label} title={label} onClick={onClick} disabled={disabled} style={NO_DRAG} className={TOP_ICON_BUTTON}>
+    <button type="button" aria-label={label} title={label} onClick={onClick} disabled={disabled} style={noDrag} className={TOP_ICON_BUTTON}>
       <svg viewBox="0 0 24 24" aria-hidden="true" className="size-[18px]" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
         {children}
       </svg>
@@ -141,6 +146,7 @@ export function MimirChatNav({ bot }: { bot: Pick<Bot, "id" | "threadId"> }) {
 
 /** Opens and closes the bot panel on the right, after the model. */
 export function MimirPanelToggle() {
+  const noDrag = useNoDrag();
   const { state, dispatch } = useStore();
   const label = state.settingsOpen ? t("desktopViewer.closePanel") : t("chat.openProfile");
   return (
@@ -152,7 +158,7 @@ export function MimirPanelToggle() {
         title={label}
         aria-expanded={state.settingsOpen}
         onClick={() => dispatch({ type: "toggleSettings" })}
-        style={NO_DRAG}
+        style={noDrag}
         className={cn(TOP_ICON_BUTTON, "w-[31px]", state.settingsOpen && "text-ink")}
       >
         <svg viewBox="0 0 24 24" aria-hidden="true" className="size-5" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinejoin="round">

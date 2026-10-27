@@ -5,6 +5,13 @@ export interface ReleaseNotes {
 
 /** Shown once after an update, so they ship inside the app and work offline. Add the entry for a version when you raise it. */
 export const RELEASE_NOTES: Record<string, ReleaseNotes> = {
+  "0.1.138": {
+    features: [],
+    fixes: [
+      "No Linux, a barra superior do chat deixa de marcar áreas de arrastar a janela, já que o sistema usa a barra de título nativa.",
+      "Os textos em japonês voltam a usar o nome MimirBot.",
+    ],
+  },
   "0.1.137": {
     features: [
       "O modal de novo bot agora é um passo a passo: Identidade, Permissões, Essência e Resumo, com o avanço marcado por bolinhas no rodapé. No Resumo você cria o bot ou segue para as configurações avançadas (habilidades, memória, rotinas, acessos, modelo, voz e alertas) e termina em Salvar e fechar.",

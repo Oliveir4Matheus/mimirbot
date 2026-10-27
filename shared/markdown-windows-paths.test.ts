@@ -51,6 +51,6 @@ describe("Windows path destinations", () => {
     const result = parsed("[a](docs/\\_notes.md \"C:\\.title\") [b](/Users/maus/\\.x) C:\\Users\\Maus\\.mimirbot");
     expect(result.urls).toEqual(["docs/_notes.md", "/Users/maus/.x"]);
     expect(result.titles).toEqual(["C:.title"]);
-    expect(result.text).toContain("C:\\Users\\Maus.openmausbot");
+    expect(result.text).toContain("C:\\Users\\Maus.mimirbot");
   });
 });
