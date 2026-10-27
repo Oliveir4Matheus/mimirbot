@@ -7,6 +7,8 @@ export interface AcpModelSelection {
   agentDefault?: string;
   /** Accept ACP's legacy models state and session/set_model when no model config option exists. */
   allowLegacy?: boolean;
+  /** The agent reports a model family in `configId` and the variant in its thought-level option; the model id saved for the bot is `<family>-<variant>`. */
+  familyVariants?: boolean;
 }
 
 interface ModelControlsInput {
@@ -33,11 +35,24 @@ export class SessionModelControls {
   }
 
   modelOf(result: any): string | null {
+    const reported = this.reportedOption(result);
+    if (!reported || !this.input.selection?.familyVariants) return reported;
+    const variant = acpVariantOption(result)?.currentValue;
+    return variant ? `${reported}-${variant}` : reported;
+  }
+
+  private reportedOption(result: any): string | null {
     const configId = this.input.selection?.configId ?? "model";
     if (this.input.selection?.allowLegacy) return acpModelOption(result, configId)?.currentValue ?? null;
     const option = (Array.isArray(result?.configOptions) ? result.configOptions : [])
       .find((entry: any) => entry?.id === configId);
     return typeof option?.currentValue === "string" ? option.currentValue : null;
+  }
+
+  private selects(wanted: string): boolean {
+    const state = this.input.state();
+    return this.modelOf(state) === wanted
+      || (this.input.selection?.familyVariants === true && this.reportedOption(state) === wanted);
   }
 
   receive(result: any, replace = false): void {
@@ -68,7 +83,7 @@ export class SessionModelControls {
   async select(request: Request, sessionId: string, timeoutMs: number): Promise<string | null> {
     const wanted = this.input.model();
     let selected = this.modelOf(this.input.state());
-    if (!wanted || this.usesAgentDefault() || wanted === selected) return selected;
+    if (!wanted || this.usesAgentDefault() || this.selects(wanted)) return selected;
     const configId = this.input.selection?.configId ?? "model";
     const option = this.input.selection?.allowLegacy ? acpModelOption(this.input.state(), configId) : undefined;
     if (option && option.configId === undefined) {
@@ -88,7 +103,7 @@ export class SessionModelControls {
         (response) => this.receive(response));
     }
     selected = this.modelOf(this.input.state());
-    if (selected !== wanted) {
+    if (!this.selects(wanted)) {
       throw new Error(`${this.input.displayName} did not switch to ${wanted} (still ${selected ?? "unknown"})`);
     }
     return selected;

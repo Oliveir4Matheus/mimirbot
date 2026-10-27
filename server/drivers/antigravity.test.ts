@@ -19,6 +19,7 @@ import {
   antigravityProfileDirectory,
   authorizationUrlFromLine,
   catalogFromAntigravityConfigOptions,
+  catalogFromAntigravitySession,
   isValidAntigravityInitializeResult,
   parseAntigravityAuthorizationUrl,
   prepareAntigravityProfile,
@@ -99,6 +100,36 @@ describe("official Antigravity catalog", () => {
         { id: "account-high", label: "Account High" },
         { id: "account-low", label: "Account Low" },
       ],
+    });
+  });
+});
+
+describe("Antigravity grouped model catalog", () => {
+  const session = {
+    configOptions: [{ id: "model", type: "select", currentValue: "gemini-3.8-flash", options: [{ value: "gemini-3.8-flash", name: "Gemini 3.8 Flash" }] }],
+    models: {
+      currentModelId: "gemini-3.8-flash-high",
+      availableModels: [
+        { modelId: "gemini-3.8-flash-high", name: "Gemini 3.8 Flash (High)" },
+        { modelId: "gemini-3.8-flash-low", name: "Gemini 3.8 Flash (Low)" },
+      ],
+    },
+  };
+
+  it("lists every concrete id the bots save instead of the grouped family", () => {
+    expect(catalogFromAntigravitySession(session, "gemini-3.8-flash-high")).toEqual({
+      default: "gemini-3.8-flash-high",
+      options: [
+        { id: "gemini-3.8-flash-high", label: "Gemini 3.8 Flash (High)" },
+        { id: "gemini-3.8-flash-low", label: "Gemini 3.8 Flash (Low)" },
+      ],
+    });
+  });
+
+  it("falls back to the config options when the flat list is absent", () => {
+    expect(catalogFromAntigravitySession({ configOptions: session.configOptions }, "missing")).toEqual({
+      default: "gemini-3.8-flash",
+      options: [{ id: "gemini-3.8-flash", label: "Gemini 3.8 Flash" }],
     });
   });
 });

@@ -538,6 +538,15 @@ export function catalogFromAntigravityConfigOptions(
   return { default: options.some((option) => option.id === fallbackDefault) ? fallbackDefault : current || options[0]!.id, options };
 }
 
+/** agy_acp_server 1.4.3 groups thinking levels into one `model` option, while `models` still lists every concrete id the bots save. */
+export function catalogFromAntigravitySession(session: any, fallbackDefault: string): ModelCatalog | null {
+  const listed = Array.isArray(session?.models?.availableModels) ? session.models.availableModels : [];
+  const options = modelOptions(listed.map((entry: any) => ({ value: entry?.modelId, name: entry?.name })));
+  if (!options.length) return catalogFromAntigravityConfigOptions(session?.configOptions, fallbackDefault);
+  const current = typeof session.models.currentModelId === "string" ? session.models.currentModelId : "";
+  return { default: options.some((option) => option.id === fallbackDefault) ? fallbackDefault : current || options[0]!.id, options };
+}
+
 export async function probeAntigravityModels(input: {
   runtime: AntigravityRuntime;
   profile: AntigravityProfile;
@@ -560,7 +569,7 @@ export async function probeAntigravityModels(input: {
       { cwd: input.cwd ?? input.profile.directory, mcpServers: [] },
       remaining(),
     );
-    const catalog = catalogFromAntigravityConfigOptions(session?.configOptions, input.fallbackDefault);
+    const catalog = catalogFromAntigravitySession(session, input.fallbackDefault);
     if (!catalog) throw new Error("Antigravity did not return a model catalog for this Google account.");
     return catalog;
   } finally {

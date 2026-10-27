@@ -88,4 +88,46 @@ describe("ACP session model controls", () => {
     expect(controls.modelOf(state())).toBeNull();
     expect(() => controls.variant("low")).toThrow("does not advertise variant");
   });
+
+  describe("an agent that groups thinking levels into a model family", () => {
+    const grouped = (level: string) => ({ configOptions: [
+      { id: "model", type: "select", category: "model", currentValue: "flash", options: [{ value: "flash", name: "Flash" }] },
+      { id: "thinking_level", type: "select", category: "thought_level", currentValue: level,
+        options: [{ value: "low", name: "Low" }, { value: "high", name: "High" }] },
+    ] });
+    const family = (wanted: string) => {
+      let state: any;
+      const controls = new SessionModelControls({
+        selection: { configId: "model", familyVariants: true }, variants: false,
+        displayName: "Grouped ACP", model: () => wanted, reportedModel: () => wanted,
+        state: () => state, store: (value) => { state = value; }, report: vi.fn(),
+      });
+      controls.receive(grouped("high"), true);
+      return controls;
+    };
+
+    it("confirms a concrete model id from the family and its level", async () => {
+      const controls = family("flash-low");
+      const request = vi.fn(async (_method, _params, _timeout, receive) => { receive(grouped("low")); return grouped("low"); });
+      await expect(controls.select(request, "s", 100)).resolves.toBe("flash-low");
+      expect(request).toHaveBeenCalledWith("session/set_config_option", { sessionId: "s", configId: "model", value: "flash-low" }, 100, expect.any(Function));
+    });
+
+    it("sends nothing when the session already runs the requested level", async () => {
+      const request = vi.fn();
+      await expect(family("flash-high").select(request, "s", 100)).resolves.toBe("flash-high");
+      expect(request).not.toHaveBeenCalled();
+    });
+
+    it("accepts the family id itself", async () => {
+      const request = vi.fn();
+      await expect(family("flash").select(request, "s", 100)).resolves.toBe("flash-high");
+      expect(request).not.toHaveBeenCalled();
+    });
+
+    it("still rejects a level the agent did not apply", async () => {
+      const request = vi.fn(async (_method, _params, _timeout, receive) => { receive(grouped("high")); return grouped("high"); });
+      await expect(family("flash-low").select(request, "s", 100)).rejects.toThrow("did not switch to flash-low (still flash-high)");
+    });
+  });
 });
