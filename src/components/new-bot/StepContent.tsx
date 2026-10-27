@@ -11,7 +11,7 @@ import { BotAvatar } from "../Avatar";
 import { Select } from "../Select";
 import { SearchableSelect } from "../SearchableSelect";
 import { AccessSection } from "../bot-settings/AccessSection";
-import { IdentitySection } from "../bot-settings/IdentitySection";
+import { CompactRow, IdentitySection } from "../bot-settings/IdentitySection";
 import { ModelSection } from "../bot-settings/ModelSection";
 import { PermissionsSection } from "../bot-settings/PermissionsSection";
 import { SkillsSection } from "../bot-settings/SkillsSection";
@@ -90,45 +90,55 @@ function IdentityStep({ draft, defaultsMode, owner, visibility, derived }: {
   if (current && !departments.includes(current)) departments.push(current);
   const options = [{ value: "", label: t("teamSettings.general") }, ...departments.map((name) => ({ value: name, label: name }))];
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <StartingRole draft={draft} defaultsMode={defaultsMode} />
       <IdentitySection bot={bot} patch={derived.patch} activeState={derived.activeState} mascotMotion={null}
-        namePlaceholder={defaultsMode ? t("newBot.randomName") : undefined} parts={["avatar", "provenance", "name", "title"]} />
-      <div className="block text-[13px] text-ink-secondary">
-        <div className="mb-1.5">{t("newBot.team")}</div>
-        <SearchableSelect value={current} options={options} ariaLabel={t("newBot.team")} searchLabel={t("newBot.department.search")}
-          emptyLabel={t("newBot.department.none")} onChange={(section) => draft.patch({ section })} />
-      </div>
-      {owner && team && <label className="block text-[13px] text-ink-secondary" data-new-bot-reports-to>{t("newBot.reportsTo")}
-        <Select size="lg" className="mt-1.5 w-full" value={owner.value ?? ""} onChange={(event) => owner.choose(event.target.value)}>
-          {team.people.map((person) => <option key={person.email} value={person.email}>{person.you ? t("owner.you", { name: person.name }) : person.name}</option>)}
-        </Select>
-        <span className="mt-1 block text-[12px]">{t("owner.pickHint")}</span>
-      </label>}
-      {visibility && (
-        <div className="flex flex-wrap items-center gap-2 text-[13px] text-ink-secondary" data-new-bot-visibility>
-          <label className="flex items-center gap-2">
-            {t("botSettings.visibility.title")}
-            <Select size="sm" value={visibility.audience} disabled={visibility.disabled}
-              onChange={(event) => visibility.setAudience(event.target.value as VisibilityMode)}>
-              <option value="everyone">{t("botSettings.visibility.everyone")}</option>
-              <option value="admins">{t("botSettings.visibility.admins")}</option>
-              <option value="people">{t("botSettings.visibility.people")}</option>
-            </Select>
-          </label>
-          {visibility.audience === "people" && (
-            <input
-              value={visibility.people}
-              disabled={visibility.disabled}
-              onChange={(event) => visibility.setPeople(event.target.value)}
-              placeholder={t("botSettings.visibility.peoplePlaceholder")}
-              aria-label={t("botSettings.visibility.peopleLabel")}
-              className="min-w-[16rem] flex-1 rounded-lg border border-hairline/40 bg-inset px-3 py-1.5 text-[13px] text-ink placeholder:text-ink-secondary focus:outline-none"
-            />
+        parts={["avatar", "provenance"]} compact />
+      <div>
+        <div className="mb-2 px-1 text-[13px] text-ink-secondary">{t("newBot.identity.profile")}</div>
+        <div className="divide-y divide-hairline/40 overflow-hidden rounded-xl border border-hairline/40 bg-card">
+          <IdentitySection bot={bot} patch={derived.patch} activeState={derived.activeState} mascotMotion={null}
+            namePlaceholder={defaultsMode ? t("newBot.randomName") : undefined} parts={["name", "title"]} compact />
+          <CompactRow label={t("newBot.team")}>
+            <SearchableSelect value={current} options={options} ariaLabel={t("newBot.team")} searchLabel={t("newBot.department.search")}
+              emptyLabel={t("newBot.department.none")} onChange={(section) => draft.patch({ section })} />
+          </CompactRow>
+          {owner && team && <div className="px-4 py-3" data-new-bot-reports-to>
+            <label className="block text-[13px] text-ink-secondary">{t("newBot.reportsTo")}
+              <Select size="lg" className="mt-1.5 w-full" value={owner.value ?? ""} onChange={(event) => owner.choose(event.target.value)}>
+                {team.people.map((person) => <option key={person.email} value={person.email}>{person.you ? t("owner.you", { name: person.name }) : person.name}</option>)}
+              </Select>
+              <span className="mt-1 block text-[12px]">{t("owner.pickHint")}</span>
+            </label>
+          </div>}
+          {visibility && (
+            <div className="flex flex-wrap items-center gap-2 px-4 py-3 text-[13px] text-ink-secondary" data-new-bot-visibility>
+              <label className="flex items-center gap-2">
+                {t("botSettings.visibility.title")}
+                <Select size="sm" value={visibility.audience} disabled={visibility.disabled}
+                  onChange={(event) => visibility.setAudience(event.target.value as VisibilityMode)}>
+                  <option value="everyone">{t("botSettings.visibility.everyone")}</option>
+                  <option value="admins">{t("botSettings.visibility.admins")}</option>
+                  <option value="people">{t("botSettings.visibility.people")}</option>
+                </Select>
+              </label>
+              {visibility.audience === "people" && (
+                <input
+                  value={visibility.people}
+                  disabled={visibility.disabled}
+                  onChange={(event) => visibility.setPeople(event.target.value)}
+                  placeholder={t("botSettings.visibility.peoplePlaceholder")}
+                  aria-label={t("botSettings.visibility.peopleLabel")}
+                  className="min-w-[16rem] flex-1 rounded-lg border border-hairline/40 bg-inset px-3 py-1.5 text-[13px] text-ink placeholder:text-ink-secondary focus:outline-none"
+                />
+              )}
+            </div>
           )}
         </div>
-      )}
-      <IdentitySection bot={bot} patch={derived.patch} activeState={derived.activeState} mascotMotion={null} parts={["blurb"]} />
+      </div>
+      <div className="overflow-hidden rounded-xl border border-hairline/40 bg-card px-4 py-3">
+        <IdentitySection bot={bot} patch={derived.patch} activeState={derived.activeState} mascotMotion={null} parts={["blurb"]} />
+      </div>
     </div>
   );
 }

@@ -65,6 +65,10 @@ export function stepsFor(flow: StepFlow, options: { withModel: boolean; defaults
   return flow === "basic" ? [...BASIC_STEPS] : advanced;
 }
 
+/** A step is checked only once the person has been on it and moved on, and, in the basic flow, only when it lacks nothing required. */
+export const stepDone = (options: { showBadges: boolean; defaultsMode: boolean; lacking: number; seen: boolean }): boolean =>
+  options.seen && !options.defaultsMode && (!options.showBadges || options.lacking === 0);
+
 export const flowOf = (step: NewBotStep): StepFlow => (ADVANCED_STEPS as readonly string[]).includes(step) ? "advanced" : "basic";
 
 /** The first step that still lacks a required field before `target`, or null when `target` can be opened. */

@@ -5102,6 +5102,8 @@
   "newBot.customSettings": "Configurações personalizadas",
   "newBot.randomName": "Nome aleatório",
   "newBot.team": "Departamento",
+  "newBot.identity.moreAvatar": "Mais opções de avatar",
+  "newBot.identity.profile": "Perfil",
   "newBot.enabled": "Ativada",
   "newBot.removeRoutine": "Remover {name}",
   "memory.contents": "Conteúdo da memória",

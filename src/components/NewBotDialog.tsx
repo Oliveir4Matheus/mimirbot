@@ -24,7 +24,7 @@ import { SharedInTeam } from "./new-bot/DraftPieces";
 import { BUTTON, NewBotFrame, type FrameTab } from "./new-bot/NewBotFrame";
 import { StepContent, type OwnerControl, type VisibilityControl } from "./new-bot/StepContent";
 import {
-  STEP_LABEL, advancedSteps, blockingStep, flowOf, missingFields, missingIn, stepOfField, stepsFor,
+  STEP_LABEL, advancedSteps, blockingStep, flowOf, missingFields, missingIn, stepDone, stepOfField, stepsFor,
   type NewBotStep, type RequiredField,
 } from "./new-bot/steps";
 
@@ -160,7 +160,7 @@ export function LocalNewBotDialog({ defaultsMode = false, onClose, section, onCr
   const steps = stepsFor(flow, { withModel: advancedMode, defaultsMode });
   const basicSteps = stepsFor("basic", { withModel: advancedMode, defaultsMode });
   const index = steps.indexOf(step);
-  const visit = (target: NewBotStep) => { setStep(target); setVisited(previous => new Set(previous).add(target)); };
+  const visit = (target: NewBotStep) => { setStep(target); setVisited(previous => new Set(previous).add(step).add(target)); };
   const go = (target: NewBotStep) => {
     if (!defaultsMode) {
       const blocker = flowOf(target) === "advanced"
@@ -244,7 +244,7 @@ export function LocalNewBotDialog({ defaultsMode = false, onClose, section, onCr
     const label = t(STEP_LABEL[id]);
     const lacking = id === "summary" ? missing.length : missingIn(id, bot).length;
     const seen = visited.has(id) && id !== step;
-    const done = showBadges ? lacking === 0 : !defaultsMode && seen;
+    const done = stepDone({ showBadges, defaultsMode, lacking, seen });
     const description = done ? t("newBot.progress.stepDone", { step: label }) : lacking && showBadges ? t("newBot.progress.stepPending", { step: label, count: lacking }) : label;
     return { id, label, missing: showBadges ? lacking : 0, done, description };
   });

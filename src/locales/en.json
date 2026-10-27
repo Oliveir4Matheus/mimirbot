@@ -5379,6 +5379,8 @@
   "newBot.customSettings": "Custom settings",
   "newBot.randomName": "Random name",
   "newBot.team": "Department",
+  "newBot.identity.moreAvatar": "More avatar options",
+  "newBot.identity.profile": "Profile",
   "newBot.enabled": "Enabled",
   "newBot.removeRoutine": "Remove {name}",
   "memory.contents": "Memory contents",

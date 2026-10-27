@@ -3,7 +3,7 @@ import en from "@/locales/en.json";
 import ptBr from "@/locales/pt-br.json";
 import {
   ADVANCED_STEPS, BASIC_STEPS, REQUIRED_FIELDS, STEP_LABEL, STEP_SUBTITLE, advancedSteps, blockingStep, departmentsOf, flowOf, missingFields, missingIn,
-  stepOfField, stepsFor,
+  stepDone, stepOfField, stepsFor,
 } from "./steps";
 
 const complete = { name: "Ada" };
@@ -62,6 +62,24 @@ describe("opening a step ahead", () => {
   it("never blocks going back, staying put, or a complete draft", () => {
     expect(blockingStep("identity", steps, { name: "" })).toBeNull();
     expect(blockingStep("summary", steps, complete)).toBeNull();
+  });
+});
+
+describe("stepDone", () => {
+  const basic = { showBadges: true, defaultsMode: false };
+
+  it("never checks a step the person has not been through, even one with nothing required", () => {
+    expect(stepDone({ ...basic, lacking: 0, seen: false })).toBe(false);
+  });
+
+  it("checks a step the person has passed once nothing required is missing", () => {
+    expect(stepDone({ ...basic, lacking: 0, seen: true })).toBe(true);
+    expect(stepDone({ ...basic, lacking: 1, seen: true })).toBe(false);
+  });
+
+  it("checks an advanced step as soon as it was passed, and nothing when editing the defaults", () => {
+    expect(stepDone({ showBadges: false, defaultsMode: false, lacking: 0, seen: true })).toBe(true);
+    expect(stepDone({ showBadges: false, defaultsMode: true, lacking: 0, seen: true })).toBe(false);
   });
 });
 

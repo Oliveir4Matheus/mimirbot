@@ -23,7 +23,7 @@ function makeBot(overrides: Partial<Bot> = {}): Bot {
   };
 }
 
-function renderCard(bot: Bot) {
+function renderCard(bot: Bot, compact = false) {
   return renderToStaticMarkup(
     createElement(
       StoreProvider,
@@ -33,6 +33,7 @@ function renderCard(bot: Bot) {
         activeState: "idle",
         mascotMotion: null,
         onPatch: vi.fn(),
+        compact,
       }),
     ),
   );
@@ -102,5 +103,23 @@ describe("BotProfileAvatarCard body picker", () => {
 
       expect(markup).not.toContain(">Body<");
     }
+  });
+});
+
+describe("BotProfileAvatarCard compact layout", () => {
+  it("puts the body and color pickers first and folds the rest under more avatar options", () => {
+    const markup = renderCard(makeBot(), true);
+    const more = markup.indexOf("More avatar options");
+
+    expect(more).toBeGreaterThan(markup.indexOf(">Body<"));
+    expect(more).toBeGreaterThan(markup.indexOf(">Color<"));
+    for (const folded of [">Expression<", ">Shape<", "Upload image", ">Halloween<", "Reset mascot"]) {
+      expect(markup.indexOf(folded), folded).toBeGreaterThan(more);
+    }
+    for (const id of MASCOT_BODY_IDS) expect(markup).toContain(`aria-label="Use the ${MASCOT_BODIES[id].name} body"`);
+  });
+
+  it("leaves the settings card as it was", () => {
+    expect(renderCard(makeBot())).not.toContain("More avatar options");
   });
 });

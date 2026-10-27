@@ -7,6 +7,24 @@ export type LocalizedReleaseNotes = { en: ReleaseNotes } & Partial<Record<string
 
 /** Shown once after an update, so they ship inside the app and work offline. Add the entry for a version when you raise it: `en` is required, other locales (keyed like src/locales) are optional and fall back to `en`. */
 export const RELEASE_NOTES: Record<string, LocalizedReleaseNotes> = {
+  "0.1.140": {
+    en: {
+      features: [
+        "The Identity step of a new bot is cleaner: the avatar sits on top with just Body and Color, the rest of the avatar options fold under \"More avatar options\", and name, title and department share one Profile card with character counters and a single button for a random name.",
+      ],
+      fixes: [
+        "In the new bot flow, steps with nothing required, like Permissions and Soul, no longer show the check before you have been through them.",
+      ],
+    },
+    "pt-br": {
+      features: [
+        "A etapa Identidade do novo bot ficou mais limpa: o avatar fica no topo só com Corpo e Cor, o resto das opções do avatar fica recolhido em \"Mais opções de avatar\", e nome, título e departamento ficam num único cartão de Perfil, com contador de caracteres e um só botão para nome aleatório.",
+      ],
+      fixes: [
+        "No fluxo de novo bot, as etapas sem nada obrigatório, como Permissões e Essência, não mostram mais o check antes de você passar por elas.",
+      ],
+    },
+  },
   "0.1.139": {
     en: {
       features: [

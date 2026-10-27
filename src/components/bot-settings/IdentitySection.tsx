@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { DefaultBotHideRow } from "../DefaultBotControls";
-import { BookOpen } from "lucide-react";
+import { BookOpen, Shuffle } from "lucide-react";
 
 import { useStore, type Bot } from "@/state/store";
 import type { MausMotion, MausState } from "@/lib/mascot";
@@ -25,6 +25,7 @@ export function IdentitySection({
   mascotMotion,
   namePlaceholder,
   parts,
+  compact = false,
 }: {
   bot: Bot;
   patch: (patch: BotPatch) => void;
@@ -32,6 +33,7 @@ export function IdentitySection({
   mascotMotion: { kind: Exclude<MausMotion, "none">; nonce: number } | null;
   namePlaceholder?: string;
   parts?: readonly IdentityPart[];
+  compact?: boolean;
 }) {
   const [instructionsOpen, setInstructionsOpen] = useState(false);
   const { draft } = useBotEditor();
@@ -39,11 +41,34 @@ export function IdentitySection({
   const shows = (part: IdentityPart) => !parts || parts.includes(part);
 
   return (
-    <div className="flex flex-col gap-4">
-      {shows("avatar") && <BotProfileAvatarCard bot={bot} activeState={activeState} mascotMotion={mascotMotion} onPatch={patch} />}
+    <div className={compact && !shows("avatar") && shows("name") ? "divide-y divide-hairline/40" : "flex flex-col gap-4"}>
+      {shows("avatar") && <BotProfileAvatarCard bot={bot} activeState={activeState} mascotMotion={mascotMotion} onPatch={patch} compact={compact} />}
       {shows("provenance") && <PackageProvenance bot={bot} />}
 
-      {shows("name") && <div>
+      {shows("name") && (compact ? <CompactRow
+        htmlFor={`bot-name-${bot.id}`}
+        label={t("botSettings.identity.name")}
+        count={`${bot.name.length}/${BOT_PROFILE_LIMITS.name}`}
+      >
+        <ProposalStatus bot={bot} kind="chief" />
+        <div className="flex items-center gap-2">
+          <input
+            id={`bot-name-${bot.id}`}
+            className={inputCls}
+            maxLength={BOT_PROFILE_LIMITS.name}
+            value={bot.name}
+            placeholder={namePlaceholder}
+            onChange={(e) => patch({ name: e.target.value })}
+          />
+          {draft && <button
+            type="button"
+            aria-label={t("newBot.randomName")}
+            title={t("newBot.randomName")}
+            className="flex size-10 shrink-0 items-center justify-center rounded-lg text-ink-secondary hover:bg-control hover:text-ink"
+            onClick={() => patch({ name: randomBotName(Math.random() < 0.5 ? "female" : "male", bot.name, state.bots.map(existing => existing.name)) })}
+          ><Shuffle size={16} aria-hidden /></button>}
+        </div>
+      </CompactRow> : <div>
         <div className="mb-1.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
           <label htmlFor={`bot-name-${bot.id}`} className="text-[13px] text-ink-secondary">{t("botSettings.identity.name")}</label>
           {draft && <div className="flex flex-wrap gap-1">
@@ -64,8 +89,12 @@ export function IdentitySection({
           placeholder={namePlaceholder}
           onChange={(e) => patch({ name: e.target.value })}
         />
-      </div>}
-      {shows("title") && <Field label={t("botSettings.identity.title")}>
+      </div>)}
+      {shows("title") && (compact ? <CompactRow
+        htmlFor={`bot-title-${bot.id}`}
+        label={t("botSettings.identity.title")}
+        count={`${bot.title.length}/${BOT_PROFILE_LIMITS.title}`}
+      >
         <ProposalStatus bot={bot} kind="chief" />
         <input
           id={`bot-title-${bot.id}`}
@@ -75,7 +104,17 @@ export function IdentitySection({
           value={bot.title}
           onChange={(e) => patch({ title: e.target.value })}
         />
-      </Field>}
+      </CompactRow> : <Field label={t("botSettings.identity.title")}>
+        <ProposalStatus bot={bot} kind="chief" />
+        <input
+          id={`bot-title-${bot.id}`}
+          className={inputCls}
+          maxLength={BOT_PROFILE_LIMITS.title}
+          placeholder={t("botSettings.identity.titlePlaceholder")}
+          value={bot.title}
+          onChange={(e) => patch({ title: e.target.value })}
+        />
+      </Field>)}
       {shows("blurb") && <div className="block">
         <div className="mb-1.5 flex items-center justify-between gap-3">
           <label htmlFor={`bot-instructions-${bot.id}`} className="text-[13px] text-ink-secondary">
@@ -111,6 +150,18 @@ export function IdentitySection({
 
       <DefaultBotHideRow bot={bot} />
       {instructionsOpen && <BotInstructionsDialog bot={bot} inline={draft} onClose={() => setInstructionsOpen(false)} />}
+    </div>
+  );
+}
+
+export function CompactRow({ htmlFor, label, count, children }: { htmlFor?: string; label: string; count?: string; children: ReactNode }) {
+  return (
+    <div className="px-4 py-3">
+      <div className="mb-1.5 flex items-center justify-between gap-3 text-[13px] text-ink-secondary">
+        {htmlFor ? <label htmlFor={htmlFor}>{label}</label> : <span>{label}</span>}
+        {count && <span className="tabular-nums text-[12px] text-ink-tertiary">{count}</span>}
+      </div>
+      {children}
     </div>
   );
 }
