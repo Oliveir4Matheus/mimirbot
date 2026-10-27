@@ -3,7 +3,7 @@ import { Check, ChevronDown, ChevronLeft, ChevronRight, KeyRound, Loader2, Plus,
 import { useStore, currentTaskBot, type Bot, type InstanceInfo, type ModelSelection } from "@/state/store";
 import type { EffortLevel } from "../../shared/wire";
 import type { ModelVariantOption } from "../../shared/runtime-events";
-import { filterCustomModels, partitionCustomModels, suggestedModels } from "@/lib/custom-models";
+import { filterCustomModels, partitionCustomModels, preferredModels, suggestedModels } from "@/lib/custom-models";
 import { configuredModelInstances, isClaudeAccount, isCustomOnly, SIGN_IN_FAMILY_LABEL, signInFamily, splitEngineRail, type SignInFamily } from "@/lib/engine-rail";
 import { InstanceProviderMark } from "./ProviderIcons";
 import { EngineSetup, EngineUpdateNotice, hasSavedApiKey, needsCli, needsSignIn } from "./EngineSetup";
@@ -683,7 +683,7 @@ export function ModelPicker({
   const currentModel = selection.instanceId === railInstance?.instanceId ? selection.model : undefined;
   const filteredOfficial = filterCustomModels(official, query);
   const compactOfficial = railInstance
-    ? suggestedModels(official, railInstance.models.default, currentModel, COMPACT_MODEL_COUNT)
+    ? suggestedModels(official, railInstance.models.default, currentModel, COMPACT_MODEL_COUNT, preferredModels(railInstance.driverKind))
     : [];
   const shownOfficial = query ? filteredOfficial : showAll ? official : compactOfficial;
   const filteredCustom = filterCustomModels(custom, query);
@@ -722,7 +722,7 @@ export function ModelPicker({
   const simpleAll = [...simpleOfficial, ...simpleLocal.pinned, ...simpleLocal.rest];
   const simpleSetup = Boolean(railInstance && (railInstance.policy || needsCli(railInstance) || (simpleSignIn && simpleAll.length === 0)));
   const simpleSuggested = railInstance
-    ? suggestedModels(simpleAll, railInstance.models.default, currentModel, COMPACT_MODEL_COUNT)
+    ? suggestedModels(simpleAll, railInstance.models.default, currentModel, COMPACT_MODEL_COUNT, preferredModels(railInstance.driverKind))
     : [];
   const simpleOpened = [...simpleSuggested, ...simpleAll.filter((option) => !simpleSuggested.includes(option))];
   const simpleSearch = showAll && simpleAll.length > SIMPLE_SEARCH_AFTER;

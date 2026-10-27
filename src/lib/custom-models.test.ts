@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { filterCustomModels, partitionCustomModels, suggestedModels } from "./custom-models";
+import { filterCustomModels, isZenFreeModel, partitionCustomModels, suggestedModels } from "./custom-models";
 
 const rows = [
   { id: "omlx::gemma-4-31b-it-bf16", label: "gemma-4-31b-it-bf16 (oMLX)", loaded: true },
@@ -48,5 +48,20 @@ describe("suggestedModels", () => {
   it("does not duplicate a current default", () => {
     const options = ["a", "b", "c"].map((id) => ({ id }));
     expect(suggestedModels(options, "b", "b", 3).map((option) => option.id)).toEqual(["b", "a", "c"]);
+  });
+
+  it("lists the preferred models right after the active and default ones", () => {
+    const options = ["opencode-go/beam-free", "opencode-go/glm", "opencode/big-pickle", "opencode/paid", "opencode/deepseek-v4.1-flash-free"].map((id) => ({ id }));
+    expect(suggestedModels(options, "opencode/big-pickle", undefined, 3, (option) => isZenFreeModel(option.id)).map((option) => option.id))
+      .toEqual(["opencode/big-pickle", "opencode/deepseek-v4.1-flash-free", "opencode-go/beam-free"]);
+  });
+});
+
+describe("isZenFreeModel", () => {
+  it("is a Zen id ending in -free, not a Go or paid one", () => {
+    expect(isZenFreeModel("opencode/deepseek-v4.1-flash-free")).toBe(true);
+    expect(isZenFreeModel("opencode/deepseek-v4.1-flash")).toBe(false);
+    expect(isZenFreeModel("opencode-go/beam-free")).toBe(false);
+    expect(isZenFreeModel("nvidia/free")).toBe(false);
   });
 });
