@@ -319,7 +319,7 @@ it("the owner's own room turn writing the bot's memory directly keeps the Mac in
     expect(posted.status, JSON.stringify(posted.body)).toBeLessThan(300);
   });
   expect((await sees(roomTools)).computers).toHaveLength(1);
-  appendFileSync(join(home, ".openmausbot", "workspaces", bot.id, "MEMORY.md"), "\n- Today's plan: ship it.\n");
+  appendFileSync(join(home, ".mimirbot", "workspaces", bot.id, "MEMORY.md"), "\n- Today's plan: ship it.\n");
   expect((await api("POST", `/api/groups/${room.body.group.id}/interrupt`, { token: owner, body: {} })).status).toBe(200);
   const ownerTools = await toolsFor(async () => say(owner, bot, "Read plan.md from my Mac.", await newThread(bot)));
   expect((await sees(ownerTools)).computers).toHaveLength(1);

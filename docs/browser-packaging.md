@@ -92,7 +92,7 @@ device link, to the DevTools port the computer finds itself, and only the
 person's own conversations and routines use it. My Chrome works only on a
 personal Cloud home: on a Team Cloud and on self-hosted servers profiles stay
 built-in. Details: [the browser engine plan, step 5](plans/browser-engine.md)
-and [MausBot Cloud](cloud-pro.md#your-chrome).
+and [MimirBot Cloud](cloud-pro.md#your-chrome).
 
 ## What a bot's browser can reach
 

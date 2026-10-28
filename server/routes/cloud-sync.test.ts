@@ -118,7 +118,7 @@ it("lent folders: says it keeps their copies, registers one out of bots' reach, 
   expect((await call("GET", "/api/sync")).body.lentCopies).toBe(true);
   const registered = await call("POST", "/api/sync/folders", { computerId: PC, computerName: "Ash-MBP", pcPath: "/Users/ash/Notes", name: "Notes", lent: true, git: { repo: "ash/notes", branch: "main", head: null } });
   const folder = registered.body.folder;
-  expect(folder.cloudPath).toBe(join(home, ".openmausbot", "sync", "lent", "Ash-MBP", "Notes"));
+  expect(folder.cloudPath).toBe(join(home, ".mimirbot", "sync", "lent", "Ash-MBP", "Notes"));
   // The repository can't be cloned here: once that is known, the copy is Files'.
   expect(folder.cloning).toBe(true);
   await routes.idle();

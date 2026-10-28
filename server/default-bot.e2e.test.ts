@@ -80,7 +80,7 @@ it("makes MimirBot a new install's first bot, never deleted, hidden by its switc
   }
 }, 120_000);
 
-it("lets MausBot read the unread notifications and mark finished work read, and gives no other bot the tools", async () => {
+it("lets MimirBot read the unread notifications and mark finished work read, and gives no other bot the tools", async () => {
   const fixture = await launchVerificationServer({ ...process.env, FAKE_CLAUDE_MODE: "hang" });
   const api = async (path: string) => (await (await fetch(`${fixture.info.url}${path}`, { signal: AbortSignal.timeout(10_000) })).json()) as any;
   const control = (args: string[]) => runControlOmb([...args, "--url", fixture.info.url]) as Promise<any>;

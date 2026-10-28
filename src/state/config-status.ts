@@ -155,7 +155,7 @@ export interface BrowserEngineSummary {
   myChromeOn?: { name: string; device: "PC" | "Mac" | "computer"; online: boolean };
   /** On My Cloud with no computer lending Chrome: it can be lent from the desktop app. */
   myChromeLendable?: true;
-  /** browserEngine.engine: "chrome" when the bots' browsers run on OpenMimirBot's own Chrome driver. */
+  /** browserEngine.engine: "chrome" when the bots' browsers run on MimirBot's own Chrome driver. */
   engine?: "agent-browser" | "chrome";
 }
 

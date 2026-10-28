@@ -80,7 +80,7 @@ test("a folder added on the Files page is lent, read only, and Stop sharing take
     app: { getPath: (name) => join(dir, name) }, ipcMain: { handle: (channel, handler) => handlers.set(channel, handler) },
     dialog: { showOpenDialog: async () => ({ canceled: false, filePaths: [picked] }) }, shell: { trashItem: async () => {} }, powerMonitor: { on: () => {} },
     fetch: async () => { throw new Error("offline"); }, localWorkspaceOnly: (_channel, handler) => handler, send: () => {}, cloudOrigin: () => null,
-    cloudAccount: () => ({ openDashboard: async () => {}, state: () => ({}) }), localDataDir: join(dir, "home", ".openmausbot"),
+    cloudAccount: () => ({ openDashboard: async () => {}, state: () => ({}) }), localDataDir: join(dir, "home", ".mimirbot"),
     lending: { environment: () => env, sharing: () => sharing, validate: async ([folder]) => [{ ...folder, name: "Clients" }] },
   });
   // Close before removing: Windows will not delete a folder whose Files database is still open.

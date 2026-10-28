@@ -452,7 +452,7 @@ describe("over the owner's own session", () => {
     await route(store, sent(ava.id, ava.threadId, [typed("g1", 1, null)]), false);
     expect(store.messagesFor(ava.threadId)[0]!.sender).toBeUndefined();
     const room = store.createGroup("Launch", [ava.id]);
-    await route(store, { v: 1, dataDir: "/desk/.mimirbot", conversations: [{ room: room.id, threadId: room.threadId, task: null, rows: [typed("r1", 1, null)], leaf: "r1", sent: false }] }, true);
+    await route(store, { v: 1, dataDir: "/desk/.mimirbot", conversations: [{ room: room.id, threadId: room.threadId, task: null, rows: [typed("r1", 1, null)], leaf: "r1", sent: false }] }, false);
     expect(store.messagesFor(room.threadId).map((row) => [row.id, row.sender])).toEqual([["r1", undefined]]);
   });
 

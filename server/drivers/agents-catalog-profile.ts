@@ -15,7 +15,7 @@ export interface CatalogProfile {
   botId: string;
   /** features.chiefEscalations: raise_escalation is mounted. */
   escalations?: boolean;
-  /** The person's MausBot with a Chief's powers: its notification tools are mounted. */
+  /** The person's MimirBot with a Chief's powers: its notification tools are mounted. */
   mausbot?: boolean;
 }
 

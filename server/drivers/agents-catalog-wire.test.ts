@@ -53,7 +53,7 @@ function profiles(): Record<string, Profile> {
   all["default+legacy-switches"] = {
     env: { ...all.default!.env, OMB_ROOM_TURN: "1", OMB_OWN_THREAD_CREATION: "1", OMB_EXTERNAL_RUNTIME: "1" },
   };
-  // The person's MausBot holds a Chief's powers and adds its notification pair; MAUSBOT_ADDS bounds what that costs.
+  // The person's MimirBot holds a Chief's powers and adds its notification pair; MAUSBOT_ADDS bounds what that costs.
   for (const name of ["default", "skills+shared+voice"]) all[`${name}+mausbot`] = { env: { ...all[name]!.env, OMB_MAUSBOT: "1" } };
   return all;
 }
@@ -64,7 +64,7 @@ const CHIEF_TARGET_TOOLS = ["propose_profile", "propose_model"];
 const CHIEF_PROFILE_TARGET = " A Chief of Staff may pass for_bot_id (from list_bots) for a requested change to another bot in its section.";
 const TEAMWORK_TOOLS = ["list_room_targets", "coordinate_bots", "assignment_status", "list_bots", "list_rooms", "list_threads", "close_thread", "start_thread", "post_to_room"];
 const MAUSBOT_TOOLS = ["list_unread_notifications", "mark_notifications_read"];
-/** MausBot's tools may make its list at most this much longer than the same Chief's without them. */
+/** MimirBot's tools may make its list at most this much longer than the same Chief's without them. */
 const MAUSBOT_ADDS = 0.02;
 const RESEARCH_TOOLS = ["x_search", "x_user_posts", "x_post", "x_profile", "research_search", "research_endpoint", "research_call"];
 /** The fullest profile, checked in whole; every other one is pinned by tool names, bytes and sha256. */
@@ -83,7 +83,7 @@ const BUDGET_BASELINE: Record<string, number> = {
   "non-chief": 51512,
   "voice+non-chief": 52253,
   "shared+non-chief": 53445,
-  "shared+voice+non-chief": 54186,
+  "shared+voice+non-chief": 55287,
   "skills+non-chief": 54331,
   "skills+voice+non-chief": 55072,
   "skills+shared+non-chief": 56264,

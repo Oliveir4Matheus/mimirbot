@@ -485,7 +485,7 @@ test("the menu bar says it is the internet connection when that is all that is l
     iconPath: "icon.png", onStop: () => {}, onOpen: () => {}, device: "PC" });
   indicator.update({ lending: true, internetOnly: true, busy: false });
   assert.equal(trays[0].menu[0].label, "Your bots can use this PC's internet connection");
-  assert.equal(trays[0].tip, "OpenMausBot: your bots can use this PC's internet connection");
+  assert.equal(trays[0].tip, "MimirBot: your bots can use this PC's internet connection");
   indicator.update({ lending: true, internetOnly: false, busy: false });
   assert.equal(trays[0].menu[0].label, "Your bots can use this PC");
 });
