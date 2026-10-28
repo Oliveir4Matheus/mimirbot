@@ -549,12 +549,13 @@ export function createComputerSharing({ file, fetch: fetchImpl, environments, cu
     },
     /** Lending to My Cloud is running, so it calls My Cloud whenever it is awake. */
     lendingToCloud: () => [...running.keys()].some(id => Boolean(records[id]?.cloud)),
+    beginCloudSave(env) { return changeGrant(env.id); },
     /** Folders, apps and screen, the internet connection and, only when the person ticks it in this computer's own
      * Settings, a terminal (unrestricted commands as this user; off unless `input.terminal === true`); the Cloud account
      * and its machine must be verified now. The internet connection alone is a grant too. */
-    async saveCloud(env, input) {
+    async saveCloud(env, input, version = changeGrant(env.id)) {
       if (closed) throw new Error("Lending is unavailable while the app is closing.");
-      const version = changeGrant(env.id);
+      if (grantVersions.get(env.id) !== version) return cloudState(env);
       const current = verifiedCloud(env);
       if (!current) throw Object.assign(new Error("Open My Cloud first."), { problem: "connect-first" });
       const folders = await validateSharedFolders(input?.folders);
