@@ -1,0 +1,10 @@
+{
+  "name": "mausbot-connector",
+  "private": true,
+  "type": "module",
+  "description": "Runs a MimirBot Cloud home on a server of its owner's, under MimirBot's control, over one outbound connection.",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=24"
+  }
+}
