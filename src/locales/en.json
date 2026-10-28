@@ -1273,8 +1273,6 @@
   "whatsNew.features": "New features",
   "whatsNew.fixes": "What was fixed",
   "whatsNew.done": "Got it",
-  "update.card.idleNote": "Restart now, or leave it: {app} installs it by itself the next time you're away and nothing is running.",
-  "update.updatedItself": "{app} updated itself to {version}.",
   "common.save": "Save",
   "common.saved": "Saved",
   "common.cancel": "Cancel",

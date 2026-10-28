@@ -269,12 +269,5 @@ export function createUpdaterCoordinator(updater, setState, { handOffInstall = n
       });
   }
 
-  /** The downloaded update that `install` would install now by quitting and reopening the app, or null: none is ready,
-   * another update action holds it, or it installs through a password prompt or a terminal. */
-  function installable() {
-    if (recoveryRequired || installOperation || downloadOperation || elevatedInstall || handOffInstall || (nativeStaging && !nativeReady)) return null;
-    return staged?.patch.status === "downloaded" && typeof staged.version === "string" ? { version: staged.version } : null;
-  }
-
-  return { check, install, installable };
+  return { check, install };
 }

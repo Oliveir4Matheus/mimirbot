@@ -2804,7 +2804,5 @@
   "voice.library": "Бібліотека голосів ElevenLabs",
   "voice.libraryHint": "Вибраний голос буде додано до ваших голосів.",
   "voice.adding": "Додавання…",
-  "toolDetail.unverified": "Немає результату",
-  "update.card.idleNote": "Перезапустіть зараз або залиште як є: {app} сам установить оновлення, коли вас наступного разу не буде поруч і нічого не працюватиме.",
-  "update.updatedItself": "{app} оновився сам до версії {version}."
+  "toolDetail.unverified": "Немає результату"
 }

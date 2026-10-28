@@ -2327,7 +2327,5 @@
   "voice.adding": "जोड़ी जा रही है…",
   "toolDetail.unverified": "कोई परिणाम नहीं",
   "inspector.run.unverified": "कोई परिणाम नहीं",
-  "chat.verify.unverified": "{count} बिना परिणाम",
-  "update.card.idleNote": "अभी रीस्टार्ट करें, या ऐसे ही छोड़ दें: अगली बार जब आप दूर हों और कुछ न चल रहा हो, {app} इसे अपने आप इंस्टॉल कर लेगा।",
-  "update.updatedItself": "{app} ने खुद को {version} पर अपडेट कर लिया।"
+  "chat.verify.unverified": "{count} बिना परिणाम"
 }

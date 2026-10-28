@@ -61,13 +61,6 @@ describe("UpdateBanner", () => {
     expect(render(state)).toBe("");
   });
 
-  it("says a ready update installs by itself the next time the person is away, beside its Restart", () => {
-    const html = render({ status: "downloaded", version: "0.2.0", installsByItself: true });
-    expect(html).toContain("MimirBot installs it by itself the next time you");
-    expect(html).toContain("Restart to update");
-    expect(render({ status: "downloaded", version: "0.2.0", installMode: "handoff", installsByItself: true })).not.toContain("by itself");
-  });
-
   it("offers restart only after native preparation is complete", () => {
     const html = render({ status: "downloaded", version: "0.2.0" });
     expect(html).toContain("0.2.0 is ready");

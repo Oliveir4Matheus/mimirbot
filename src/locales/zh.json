@@ -3206,7 +3206,5 @@
   "voice.yourVoices": "你的语音",
   "voice.library": "ElevenLabs 语音库",
   "voice.libraryHint": "选择后会添加到你的语音中。",
-  "voice.adding": "正在添加…",
-  "update.card.idleNote": "现在重启，或者先不管它：下次你不在、也没有任务在运行时，{app} 会自动安装。",
-  "update.updatedItself": "{app} 已自动更新到 {version}。"
+  "voice.adding": "正在添加…"
 }

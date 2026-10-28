@@ -4226,7 +4226,5 @@
   "voice.yourVoices": "你的語音",
   "voice.library": "ElevenLabs 語音庫",
   "voice.libraryHint": "選擇後會加入你的語音。",
-  "voice.adding": "正在加入…",
-  "update.card.idleNote": "現在重新啟動，或先不用管：下次你不在、也沒有工作在執行時，{app} 會自動安裝。",
-  "update.updatedItself": "{app} 已自動更新至 {version}。"
+  "voice.adding": "正在加入…"
 }

@@ -2327,7 +2327,5 @@
   "voice.adding": "Ajout en cours…",
   "toolDetail.unverified": "Aucun résultat",
   "inspector.run.unverified": "Aucun résultat",
-  "chat.verify.unverified": "{count} sans résultat",
-  "update.card.idleNote": "Redémarrez maintenant, ou laissez faire : {app} l’installe tout seul la prochaine fois que vous serez absent et que rien ne tourne.",
-  "update.updatedItself": "{app} s’est mis à jour tout seul vers la version {version}."
+  "chat.verify.unverified": "{count} sans résultat"
 }

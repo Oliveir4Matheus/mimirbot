@@ -2345,7 +2345,5 @@
   "voice.adding": "Wird hinzugefügt…",
   "toolDetail.unverified": "Kein Ergebnis",
   "inspector.run.unverified": "Kein Ergebnis",
-  "chat.verify.unverified": "{count} ohne Ergebnis",
-  "update.card.idleNote": "Jetzt neu starten oder einfach lassen: {app} installiert es von selbst, sobald du das nächste Mal weg bist und nichts läuft.",
-  "update.updatedItself": "{app} hat sich selbst auf {version} aktualisiert."
+  "chat.verify.unverified": "{count} ohne Ergebnis"
 }
