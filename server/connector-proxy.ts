@@ -10,6 +10,7 @@ import {
   parseConnectorAllowedToolsEnv,
   parseConnectorServiceSlugsEnv,
 } from "./connector-advertisement.ts";
+import { APP_TOOL_NAMES_ENV, APP_TOOLS_ENV, appToolAnswer, appToolCall, appToolEntries, parseAppToolsEnv } from "./connector-app-tools.ts";
 import { withSignedOutHint } from "./connector-signed-out-hint.ts";
 import { AUTH_CONFIG_ID } from "../shared/connector-availability.ts";
 import { fitToolListResult } from "./mcp-tool-schema.ts";
@@ -27,6 +28,8 @@ const ALLOWED_TOOLS = parseConnectorAllowedToolsEnv(process.env[CONNECTOR_ALLOWE
 const SERVICE_SLUGS = parseConnectorServiceSlugsEnv(process.env[CONNECTOR_SERVICE_SLUGS_ENV]);
 const SCHEMA_PROFILE = toolSchemaProfileFromEnv(process.env);
 const TOOL_LIMIT = toolLimitFromEnv(process.env);
+const APP_TOOLS = parseAppToolsEnv(process.env[APP_TOOLS_ENV]);
+const APP_TOOL_NAMES = process.env[APP_TOOL_NAMES_ENV] === "dotted" ? "dotted" : "plain";
 const MAX_RESPONSE_BYTES = 20 * 1024 * 1024;
 const INITIALIZE_RELAY_TIMEOUT_MS = 1_000;
 const RELAY_TIMEOUT_MS = 10 * 60_000;
@@ -207,6 +210,15 @@ async function showConnectorCards(items: ConnectorRequest[]): Promise<void> {
   }
 }
 
+/** The upstream list with the app tools after it, unless it already has one by that name. */
+function withAppTools(frame: Json): Json {
+  const result = frame.result as { tools?: unknown } | undefined;
+  if (!APP_TOOLS.length || !result || !Array.isArray(result.tools)) return frame;
+  const listed = new Set(result.tools.map((tool) => (tool as { name?: unknown })?.name));
+  const added = appToolEntries(APP_TOOLS, APP_TOOL_NAMES).filter((tool) => !listed.has(tool.name));
+  return { ...frame, result: { ...result, tools: [...result.tools, ...added] } };
+}
+
 function fittedList(frame: Json): Json {
   if ((!SCHEMA_PROFILE && TOOL_LIMIT === undefined) || !("result" in frame)) return frame;
   const log = (line: string) => process.stderr.write(`connector-proxy: ${line}\n`);
@@ -258,6 +270,13 @@ async function handle(message: Json): Promise<void> {
       send(textResult(id, "MimirBot is handling connection completion and will continue the task automatically."));
       return;
     }
+    const app = appToolCall(name, params.arguments);
+    if (app) {
+      const call = app.frame(id);
+      const response = await relay(call);
+      if (response && id !== undefined) send(appToolAnswer(app.slug, withSignedOutHint(call, response, SERVICE_SLUGS)));
+      return;
+    }
   }
   try {
     // The engine lists tools once per session, so one failed listing would leave the whole session without them.
@@ -265,8 +284,7 @@ async function handle(message: Json): Promise<void> {
       ? await relay(message).catch(() => delay(TOOLS_LIST_RETRY_MS).then(() => relay(message)))
       : await relay(message);
     if (response && id !== undefined) {
-      send(method === "tools/list" ? fittedList(ALLOWED_TOOLS ? filterToolsListFrame(response, ALLOWED_TOOLS, SERVICE_SLUGS) : response)
-        : method === "tools/call" ? withSignedOutHint(message, response, SERVICE_SLUGS) : response);
+      send(method === "tools/list" ? fittedList(withAppTools(ALLOWED_TOOLS ? filterToolsListFrame(response, ALLOWED_TOOLS, SERVICE_SLUGS) : response))        : method === "tools/call" ? withSignedOutHint(message, response, SERVICE_SLUGS) : response);
     }
   } catch (error) {
     if (id === undefined) return;
