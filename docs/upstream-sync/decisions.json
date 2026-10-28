@@ -879,10 +879,10 @@
     {
       "sha": "f0273fc93fa6e40eee007265571cbf7d3e75b69a",
       "subject": "fill_login moves a screen sign-in to the bot's own browser",
-      "status": "approved",
-      "reason": "Security and robustness batch (E small features), approved as a whole.",
-      "decidedAt": "2026-10-26",
-      "note": "Bundles UI changes: the Computer tab gains Browser as a selectable place, a My Chrome label and a using-now hint. Needs the owner's decision, or the server logic taken without the UI."
+      "status": "applied",
+      "reason": "Upstream sync, small batch. Server logic and Computer tab; the guidance text and catalog follow MimirBot names.",
+      "decidedAt": "2026-10-28",
+      "ourCommit": "77bba6c08476928b121f67b6dbf9d3870636d867"
     },
     {
       "sha": "664f5ed042e8fbb345a832fdb7cd247b0bd16d95",
@@ -3122,6 +3122,64 @@
       "status": "observation",
       "reason": "Changes how the app behaves; no decision yet.",
       "decidedAt": "2026-10-27"
+    },
+    {
+      "sha": "7d31befefcaa48c02302dc64a1de005ee36ea4f5",
+      "subject": "fix(activity): the Activity panel shows a finished tool run without a reload (#3699)",
+      "status": "applied",
+      "reason": "Upstream sync, small batch.",
+      "decidedAt": "2026-10-28",
+      "ourCommit": "4408b8874719dc9763b0d47578899a067830ce76"
+    },
+    {
+      "sha": "742d306f9f38465e40a7da85162edf84c86eb078",
+      "subject": "fix(opencode): a quiet OpenCode turn names the model error it logged (#3701)",
+      "status": "applied",
+      "reason": "Upstream sync, small batch.",
+      "decidedAt": "2026-10-28",
+      "ourCommit": "d3aed6bab4de4df4e384bb6606cc7f0dcb136375"
+    },
+    {
+      "sha": "7e28ea4174e1bd8e23175293862f011c469eb453",
+      "subject": "test(reactions): the yes-or-no guidance no longer says to end the turn (#3679)",
+      "status": "deferred",
+      "reason": "Test text for 6ed71aa83 (Bots answer first), which is still an observation; the test fails without that prompt change.",
+      "decidedAt": "2026-10-28"
+    },
+    {
+      "sha": "9235ff897ef29303a96174394feeaa94bc490628",
+      "subject": "test(ui): the renderer e2e tests follow the current sidebar, Team map and settings (#3700)",
+      "status": "pending",
+      "reason": "Renderer e2e tests follow upstream sidebar, Team map and settings; only worth it if they cover screens we have.",
+      "decidedAt": "2026-10-28"
+    },
+    {
+      "sha": "49088dc76b80f2039e4becd676e39f59378abc6c",
+      "subject": "fix(browser): the bot's live page fills its panel on both engines, at a desktop's width (#3691)",
+      "status": "pending",
+      "reason": "Live browser page fills its panel on both engines; touches the browser code we adapted.",
+      "decidedAt": "2026-10-28"
+    },
+    {
+      "sha": "14067581e48a7abfd63e61575c4a47765f2b690f",
+      "subject": "Settings: API keys in plain sections, one key row everywhere (#3692)",
+      "status": "pending",
+      "reason": "Settings API keys redesign (73 files); a UI redesign, likely ignored.",
+      "decidedAt": "2026-10-28"
+    },
+    {
+      "sha": "29d3bbb6f3ae64d8d866670372265aa2bc310588",
+      "subject": "Advanced mode takes Simple's visual language: palette, menus, surfaces, buttons and icons (#3690)",
+      "status": "pending",
+      "reason": "Advanced mode takes the Simple look (65 files); likely ignored by the design-refresh rule.",
+      "decidedAt": "2026-10-28"
+    },
+    {
+      "sha": "3dc8728250732d1966426aae8bb3fe76e7e6b323",
+      "subject": "A one-time Simple mode popup for everyone, and the mode on app_active (#3688)",
+      "status": "pending",
+      "reason": "One-time Simple mode popup; likely ignored by the onboarding rule.",
+      "decidedAt": "2026-10-28"
     }
   ]
 }
