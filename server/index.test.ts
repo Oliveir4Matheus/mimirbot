@@ -9563,7 +9563,7 @@ describe("harness HTTP API", () => {
   ])("returns the correct browser upload result for $mode", async ({ mode, sizes, message, status }) => {
     const bot = (await api("POST", "/api/bots")).body.bot;
     const gate = join(home, "browser-upload-read-gate");
-    const folder = join(home, ".openmausbot", "browser-uploads");
+    const folder = join(home, ".mimirbot", "browser-uploads");
     const backup = folder + ".backup";
     let blockedFolder = false;
     let pending: Promise<Response> | undefined;
@@ -9574,7 +9574,7 @@ describe("harness HTTP API", () => {
       expect((await api("PATCH", `/api/bots/${bot.id}`, {
         approvalMode: "auto", modelSelection: { instanceId: "claude", model: "claude-sonnet-5" },
       })).status).toBe(200);
-      const workspace = join(home, ".openmausbot", "workspaces", bot.id);
+      const workspace = join(home, ".mimirbot", "workspaces", bot.id);
       mkdirSync(workspace, { recursive: true });
       const files = sizes.map((size, i) => {
         const file = join(workspace, `upload-${i}.bin`);
