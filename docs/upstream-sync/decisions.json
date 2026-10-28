@@ -3180,6 +3180,59 @@
       "status": "pending",
       "reason": "One-time Simple mode popup; likely ignored by the onboarding rule.",
       "decidedAt": "2026-10-28"
+    },
+    {
+      "sha": "fac52da25ec3b6f298343909f505a0540f7f2c07",
+      "subject": "fix(chat): engine exits by signal or with a multi-word name read as a plain line",
+      "status": "applied",
+      "note": "Approved by the owner in the new-commits batch.",
+      "decidedAt": "2026-10-28",
+      "ourCommit": "79fe2efed"
+    },
+    {
+      "sha": "82c41f8a15aea9d3571ddf082e8f7de9493cb19e",
+      "subject": "fix(memory): upkeep stops writing after stop(); dreaming counts the My Cloud owner's lines (#3714)",
+      "status": "applied",
+      "note": "Approved by the owner in the new-commits batch.",
+      "decidedAt": "2026-10-28"
+    },
+    {
+      "sha": "6e0e143935be596b8fb38fcc6f08a0ef1e275894",
+      "subject": "fix(composer): the caret stays at the end of the text in Simple mode (#3718)",
+      "status": "applied",
+      "note": "Approved by the owner in the new-commits batch.",
+      "decidedAt": "2026-10-28",
+      "ourCommit": "6e383b4df"
+    },
+    {
+      "sha": "6656b9e240ce3d64192d0f152294f909668f896f",
+      "subject": "fix(browser): stage Chrome uploads before any wait; refuse workspace uploads on Windows (#3716)",
+      "status": "applied",
+      "note": "Approved by the owner in the new-commits batch.",
+      "decidedAt": "2026-10-28"
+    },
+    {
+      "sha": "ae1aada6b67b68d03921f910f4b4b97a66cea1a7",
+      "subject": "Lent screen: say the real reason it is busy, free stale holds, and let bots work while the person does (#3721)",
+      "status": "applied",
+      "note": "Approved by the owner in the new-commits batch.",
+      "decidedAt": "2026-10-28",
+      "ourCommit": "6f5bb31fe"
+    },
+    {
+      "sha": "c90f3d6466c73d80f8e010e20fb861e65bf45543",
+      "subject": "fix(acp): main's file-size and comment guards pass again (#3720)",
+      "status": "applied",
+      "note": "Approved by the owner in the new-commits batch.",
+      "decidedAt": "2026-10-28",
+      "ourCommit": "ec8d2c28c"
+    },
+    {
+      "sha": "e3b9af2547316251c0c5fbcbec3c8b4640c60230",
+      "subject": "fix(composio-broker): bind sessions to the current acting user (#3717)",
+      "status": "observation",
+      "note": "Only matters if we host the Composio broker; on watch with the other Composio commits.",
+      "decidedAt": "2026-10-28"
     }
   ]
 }
