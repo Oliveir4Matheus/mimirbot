@@ -118,7 +118,11 @@ export class Speaker {
       utterances = await this.prepare(text, opts.voiceId, controller.signal);
       recordPrepared(opts.messageId, utterances.length);
     } catch (e) {
-      if (live()) this.set({ ...IDLE, error: e instanceof Error ? e.message : String(e) });
+      // Read the ownership before aborting: aborting clears live(), and the owning
+      // request still has to surface its failure instead of leaving the spinner up.
+      const wasLive = live();
+      controller.abort();
+      if (wasLive) this.set({ ...IDLE, error: e instanceof Error ? e.message : String(e) });
       if (this.request === controller) this.request = null;
       return;
     }
