@@ -35,6 +35,7 @@ import {
 import { api, useStore, formatTime, visibleMessages, currentTaskBot, botOpensTo, openBot, openThread, type Action, type AppState, type Bot, type BotProject, type Group, type InstanceInfo, type Message } from "@/state/store";
 import { approvalModeFor } from "../../shared/approval-mode";
 import { liveActivityLabel } from "@/lib/live-activity";
+import { SidebarWorkingStep } from "./SidebarWorkingStep";
 import { llmThreadTitlesEnabled } from "@/lib/feature-flags";
 
 import { BotAvatar } from "./Avatar";
@@ -53,7 +54,6 @@ import { BulkSelectFilters, ThreadListFooter, deleteThreadsInBulk, useBulkSelect
 import { BotDeleteMenuItem, useDeleteAllThreads } from "./BotMenuDelete"; import { HideDefaultBotItem } from "./DefaultBotControls";
 import { StackedMauses } from "./StackedMauses";
 import { LocalComputerAutoWarning } from "./LocalComputerAutoWarning";
-import { WorkingDots } from "./WorkingIndicator";
 import { nextRename } from "@/lib/rename";
 import { useDesktopCapabilities } from "./DesktopCapabilities";
 import { MIN_QUERY, SearchResults } from "./SearchResults";
@@ -1065,12 +1065,9 @@ export const BotListItem = memo(function BotListItem(props: BotRowProps) {
               {t("sidebar.bot.deletingRow")}
             </span>
           ) : (
-            <span className={cn("flex min-w-0 items-center gap-1.5 truncate text-[13px] leading-[18px]", waiting ? "font-semibold text-warning" : "text-ink-secondary")}>
+            <span className={cn("flex min-w-0 items-center gap-1.5 truncate text-[13px] leading-[18px]", waiting ? simpleRow ? "text-warning" : "font-semibold text-warning" : "text-ink-secondary")}>
               {working ? (
-                <span className="flex h-[1.5em] items-center" role="status">
-                  <WorkingDots size={3.5} />
-                  <span className="sr-only">{t("sidebar.preview.working")}</span>
-                </span>
+                <SidebarWorkingStep bot={bot} last={last} />
               ) : (
                 <span dir="auto" className="truncate">{waiting ? t("sidebar.preview.waiting") : teammateWait ? t("sidebar.preview.waitingOnTeammate") : queued ? t("task.queued") : botPreview(bot, visible, instances, advanced)}</span>
               )}
