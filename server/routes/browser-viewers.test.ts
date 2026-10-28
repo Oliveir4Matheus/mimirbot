@@ -54,6 +54,8 @@ interface Fixture {
   resumes: Array<string | null | undefined>;
   /** The person each v1 view was opened for. */
   people: Array<string | undefined>;
+  /** The panel size each v1 view opened at. */
+  sizes: Array<{ width: number; height: number } | null | undefined>;
   /** Whose browser each view was opened on, and each check that the view still shows it. */
   opened: Audience[];
   checked: Audience[];
@@ -76,7 +78,7 @@ async function serve({ attach, current = () => true, download, audience = () => 
   download?: (id: string) => Download | undefined;
   audience?: (threadId: string | null) => Audience | null;
 } = {}): Promise<Fixture> {
-  const fixture = { origin: "", attachments: [], inputs: [], answers: [], pickerChecks: 0, resumes: [], people: [], opened: [], checked: [], dataDir: mkdtempSync(join(tmpdir(), "omb-browser-viewers-")) } as unknown as Fixture;
+  const fixture = { origin: "", attachments: [], inputs: [], answers: [], pickerChecks: 0, resumes: [], people: [], sizes: [], opened: [], checked: [], dataDir: mkdtempSync(join(tmpdir(), "omb-browser-viewers-")) } as unknown as Fixture;
   folders.push(fixture.dataDir);
   const viewer = { id: "viewer", input: async (message: unknown) => { fixture.inputs.push(message); }, close: async () => {} } as unknown as Viewer;
   const service = {
@@ -97,6 +99,7 @@ async function serve({ attach, current = () => true, download, audience = () => 
       open: async (options) => {
         fixture.resumes.push(options.resume);
         fixture.people.push(options.person);
+        fixture.sizes.push(options.size);
         fixture.isCurrent = options.isCurrent;
         options.res.writeHead(204).end();
       },
@@ -323,6 +326,14 @@ describe("the v1 live view", () => {
     expect((await fetch(`http://${fixture.origin}/api/bots/pepper/browser/live`)).status).toBe(204);
     expect(fixture.resumes).toEqual(["old-viewer", null]);
     expect(fixture.people).toEqual(["local-owner", "local-owner"]);
+  });
+
+  it("opens the view at the panel's size, and leaves a collapsed or missing one to the page", async () => {
+    const fixture = await serve();
+    for (const query of ["?width=365&height=686", "?width=365&height=40", "", "?width=wide&height=686"]) {
+      expect((await fetch(`http://${fixture.origin}/api/bots/pepper/browser/live${query}`)).status).toBe(204);
+    }
+    expect(fixture.sizes).toEqual([{ width: 365, height: 686 }, null, null, null]);
   });
 });
 

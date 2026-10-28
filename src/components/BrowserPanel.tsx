@@ -115,7 +115,7 @@ export function LiveBrowser({ bot, signIn, page }: { bot: Bot; signIn?: BrowserS
     return createLiveStreamClient(bot.id, events, (body, viewerId) => api(withBrowserScope(`/api/bots/${encodeURIComponent(bot.id)}/browser/action`, scope), {
       // 120 s matches the server's browser requestTimeoutMs.
       method: "POST", body: JSON.stringify({ ...body, viewerId }), timeoutMs: 120_000,
-    }), resume.current, scope);
+    }), resume.current, scope, { width: target.width, height: target.height });
   }, [bot.id, bot.browserProfile, scopedThread, stream]);
 
   const interact = useCallback((input: PreviewStreamInput) => {
@@ -331,7 +331,6 @@ export function LiveBrowser({ bot, signIn, page }: { bot: Bot; signIn?: BrowserS
           ref={surface}
           connect={connect}
           input={interact}
-          followSize={stream}
           label={`${bot.name}’s browser page`}
           onClient={onClient}
           onControl={onControl}
