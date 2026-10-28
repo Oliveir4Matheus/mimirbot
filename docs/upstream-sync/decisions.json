@@ -1416,9 +1416,10 @@
     {
       "sha": "f02d759f990db5cac640a5e4867a78121216d098",
       "subject": "Let the owner's group chats use the lent Mac; Terminal on My Cloud's page; plain refusal messages (#3493)",
-      "status": "pending",
-      "reason": "Left undecided by the owner (not discussed yet).",
-      "decidedAt": "2026-10-26"
+      "status": "applied",
+      "reason": "Prerequisite of the Cloud batch (internet shared by default; Terminal on My Cloud's page). Needed by 293310515.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "cca9b244dd188ff12568a302a5e1662235e95e58"
     },
     {
       "sha": "2b7010d2d089979b090ca4799b28f32401577736",
@@ -1451,9 +1452,10 @@
     {
       "sha": "f1ef288fd36d4604b7aaddc79e891cb93a32bf01",
       "subject": "Share this computer's internet connection with My Cloud by default",
-      "status": "pending",
-      "reason": "Left undecided by the owner (not discussed yet).",
-      "decidedAt": "2026-10-26"
+      "status": "applied",
+      "reason": "Prerequisite of the Cloud batch (internet shared by default; Terminal on My Cloud's page). Needed by 293310515.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "9eb7c8d925322475bf346e27cd2283fd8907704b"
     },
     {
       "sha": "b2d0e846d57e9cd56619adec1c7c7db2f1f32bf7",
@@ -2708,58 +2710,66 @@
     {
       "sha": "7e2c72fb078854694047cbdcf37a3829ce64eb09",
       "subject": "feat(skills): assign library skills to every bot",
-      "status": "pending",
-      "reason": "MausBot settings, notifications and every-bot library skills (batch C); shown to the owner, left undecided.",
-      "decidedAt": "2026-10-27"
+      "status": "applied",
+      "reason": "Upstream sync batch C (MausBot notifications, every-bot library skills), adapted to MimirBot's names and routes.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "b9076b25625a680181c23fe6a935b1e4d82bf560"
     },
     {
       "sha": "1bb03d94607739def09773f255d4021bfeb8e99d",
       "subject": "MausBot can change a short allowlist of settings when asked in chat",
-      "status": "pending",
-      "reason": "MausBot settings, notifications and every-bot library skills (batch C); shown to the owner, left undecided.",
-      "decidedAt": "2026-10-27"
+      "status": "applied",
+      "reason": "Upstream sync batch C (MausBot notifications, every-bot library skills), adapted to MimirBot's names and routes.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "1364c9b265035cd27c5e12517d24ac18455af19e"
     },
     {
       "sha": "c14551a2d9481311e1601d71349a7a5c9aa737e2",
       "subject": "MausBot reads the unread notifications and marks the safe ones read",
-      "status": "pending",
-      "reason": "MausBot settings, notifications and every-bot library skills (batch C); shown to the owner, left undecided.",
-      "decidedAt": "2026-10-27"
+      "status": "applied",
+      "reason": "Upstream sync batch C (MausBot notifications, every-bot library skills), adapted to MimirBot's names and routes.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "791f084b3c53ecc49a5d05e8bce016f92d188bb5"
     },
     {
       "sha": "7c49cb4672aa19d1da865066af0f7885851842cb",
       "subject": "MausBot settings: refuse workspace-wide changes on a team, report failed saves, pin the tool schemas",
-      "status": "pending",
-      "reason": "MausBot settings, notifications and every-bot library skills (batch C); shown to the owner, left undecided.",
-      "decidedAt": "2026-10-27"
+      "status": "applied",
+      "reason": "Upstream sync batch C (MausBot notifications, every-bot library skills), adapted to MimirBot's names and routes.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "27e9259c4eb8c113471a452b3b50207d7df26202"
     },
     {
       "sha": "348110c09750b6d0998fcb426185597b3b537d4d",
       "subject": "MausBot notifications: deferred runs need the person, done items may ask, refuse on any team",
-      "status": "pending",
-      "reason": "MausBot settings, notifications and every-bot library skills (batch C); shown to the owner, left undecided.",
-      "decidedAt": "2026-10-27"
+      "status": "applied",
+      "reason": "Upstream sync batch C (MausBot notifications, every-bot library skills), adapted to MimirBot's names and routes.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "c990f86acfae1893a23f354c3bfb49dcfe6e80d4"
     },
     {
       "sha": "b8a57db58f5fbeaae4ef65ae02856aded5358d79",
       "subject": "MausBot settings: hiding MausBot from the sidebar waits for the person's yes",
-      "status": "pending",
-      "reason": "MausBot settings, notifications and every-bot library skills (batch C); shown to the owner, left undecided.",
-      "decidedAt": "2026-10-27"
+      "status": "applied",
+      "reason": "Upstream sync batch C (MausBot notifications, every-bot library skills), adapted to MimirBot's names and routes.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "a31c23d03ca62e94eb401d2520356e107da291e0"
     },
     {
       "sha": "14be868357c629f9e29aff9eb797e55329acc6b9",
       "subject": "MausBot keeps only the notification pair, inside the tool budget",
-      "status": "pending",
-      "reason": "MausBot settings, notifications and every-bot library skills (batch C); shown to the owner, left undecided.",
-      "decidedAt": "2026-10-27"
+      "status": "applied",
+      "reason": "Upstream sync batch C (MausBot notifications, every-bot library skills), adapted to MimirBot's names and routes.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "f43262aaed92c589595cd2dcd9964fedfc972552"
     },
     {
       "sha": "361564168a094e11f6e8990ba8771a446d896f48",
       "subject": "Every-bot library skills: stay out while the library is off, and translate the switch",
-      "status": "pending",
-      "reason": "MausBot settings, notifications and every-bot library skills (batch C); shown to the owner, left undecided.",
-      "decidedAt": "2026-10-27"
+      "status": "applied",
+      "reason": "Upstream sync batch C (MausBot notifications, every-bot library skills), adapted to MimirBot's names and routes.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "da27708711d31acb1ac651fe0c1b8eb573abfea1"
     },
     {
       "sha": "b9e666ec11bfca83d774d79d11edb87cb3e18250",
@@ -2911,170 +2921,186 @@
     {
       "sha": "fbda03e6155b9c07682723aa0d548c1b24f40cf0",
       "subject": "feat(brief): ideas from a nightly dream (#3608)",
-      "status": "observation",
-      "reason": "Cloud, desktop lending, Team Cloud or new locales; matters only if we use that part.",
-      "decidedAt": "2026-10-27"
+      "status": "applied",
+      "reason": "Upstream sync batch Cloud, adapted to MimirBot's names, our locale catalogs and our own terminal lend.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "fc3e305347820beac013c296ee03410cd4b71bda"
     },
     {
       "sha": "8277001bc68f9ff837f61d2d257cb4a1e3b74943",
       "subject": "feat(desktop): Open at login, from the app menu and Settings (#3603)",
-      "status": "observation",
-      "reason": "Cloud, desktop lending, Team Cloud or new locales; matters only if we use that part.",
-      "decidedAt": "2026-10-27"
+      "status": "applied",
+      "reason": "Upstream sync batch Cloud, adapted to MimirBot's names, our locale catalogs and our own terminal lend.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "bb3afa871be901475bc9ac37a3e16db75215b159"
     },
     {
       "sha": "2933105152fb41a2248e64be3a722c2b6f4c89ad",
       "subject": "Lend the terminal from the menu-bar icon, and keep it through the default lend (#3600)",
-      "status": "observation",
-      "reason": "Cloud, desktop lending, Team Cloud or new locales; matters only if we use that part.",
-      "decidedAt": "2026-10-27"
+      "status": "applied",
+      "reason": "Upstream sync batch Cloud, adapted to MimirBot's names, our locale catalogs and our own terminal lend.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "1064ac65b6153dc7041627c785ee32f950775bf8"
     },
     {
       "sha": "d3ce1736459c0dcce249ecf6af0beb01666f15e9",
       "subject": "My Chrome on My Cloud: Cloud bots use your real Chrome on a lent Mac or PC (#3597)",
-      "status": "observation",
-      "reason": "Cloud, desktop lending, Team Cloud or new locales; matters only if we use that part.",
-      "decidedAt": "2026-10-27"
+      "status": "applied",
+      "reason": "Upstream sync batch Cloud, adapted to MimirBot's names, our locale catalogs and our own terminal lend.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "82dca111eba36c0198dac15a1265d7300457fc05"
     },
     {
       "sha": "c8cd45935721a19e67f335e78fa318ece51c6ef0",
       "subject": "About and the update row say which server they describe (#3617)",
-      "status": "observation",
-      "reason": "Cloud, desktop lending, Team Cloud or new locales; matters only if we use that part.",
-      "decidedAt": "2026-10-27"
+      "status": "applied",
+      "reason": "Upstream sync batch Cloud, adapted to MimirBot's names, our locale catalogs and our own terminal lend.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "1fc04f511147bce1eb5d93ce04d484313d8abb93"
     },
     {
       "sha": "fc44a5eaae327b5b2608bf4955b582fe35b79d9d",
       "subject": "fix(i18n): Russian note names \"Approve for me\" as its button does (#3621)",
-      "status": "observation",
-      "reason": "Cloud, desktop lending, Team Cloud or new locales; matters only if we use that part.",
-      "decidedAt": "2026-10-27"
+      "status": "applied",
+      "reason": "Upstream sync batch Cloud, adapted to MimirBot's names, our locale catalogs and our own terminal lend.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "5a69d0f7b40323e4af6153db9db8445c7404afec"
     },
     {
       "sha": "55b3f1fa79b017216690d679bc8e3cb4957d1236",
       "subject": "Move status: tell Admin where a computer's move to My Cloud stands, and why none started (#3626)",
-      "status": "observation",
-      "reason": "Cloud, desktop lending, Team Cloud or new locales; matters only if we use that part.",
-      "decidedAt": "2026-10-27"
+      "status": "applied",
+      "reason": "Upstream sync batch Cloud, adapted to MimirBot's names, our locale catalogs and our own terminal lend.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "9597a3bf0844c78e8af20dfe6856c83ce20a9bf8"
     },
     {
       "sha": "7b16145c1f48b070e344c1f6a965e257f2f2163b",
       "subject": "fix(i18n): Russian \"Use my Mac\" popup words, and the lending note names its button (#3625)",
-      "status": "observation",
-      "reason": "Cloud, desktop lending, Team Cloud or new locales; matters only if we use that part.",
+      "status": "deferred",
+      "reason": "Russian popup words file electron/use-my-computer-words.mjs belongs to the once-per-Cloud popup we ignored; only its Russian lending.explain line was taken, by hand.",
       "decidedAt": "2026-10-27"
     },
     {
       "sha": "acb81f05517c3118521119c744c9da75431142a1",
       "subject": "Desktop: a downloaded update installs by itself at a quiet moment (#3624)",
-      "status": "observation",
-      "reason": "Cloud, desktop lending, Team Cloud or new locales; matters only if we use that part.",
+      "status": "ignored",
+      "reason": "Installs a downloaded update by itself at a quiet moment; our updater installs through the elevated hand-off, so the electron update-when-quiet tests fail against it.",
       "decidedAt": "2026-10-27"
     },
     {
       "sha": "2a4cd46a9474aa2163e8a8031b5b86ad753d938e",
       "subject": "fix(lending): a cloud bot's command on a lent computer runs up to 2 minutes, or longer when it asks",
-      "status": "observation",
-      "reason": "Cloud, desktop lending, Team Cloud or new locales; matters only if we use that part.",
-      "decidedAt": "2026-10-27"
+      "status": "applied",
+      "reason": "Upstream sync batch Cloud, adapted to MimirBot's names, our locale catalogs and our own terminal lend.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "72ae8fad4ef37f30a08e0c5cbb3990d77d388f54"
     },
     {
       "sha": "97a8537cb5e98946a29c033c3ea448331d71004e",
       "subject": "Lent folders keep working while the Mac is away",
-      "status": "observation",
-      "reason": "Cloud, desktop lending, Team Cloud or new locales; matters only if we use that part.",
-      "decidedAt": "2026-10-27"
+      "status": "applied",
+      "reason": "Upstream sync batch Cloud, adapted to MimirBot's names, our locale catalogs and our own terminal lend.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "214796dead0e93ae759efcc6bfa12005eceecaec"
     },
     {
       "sha": "59b83605b232475b5d2c3202243ba2c232e7ff4b",
       "subject": "Lent folders: review fixes",
-      "status": "observation",
-      "reason": "Cloud, desktop lending, Team Cloud or new locales; matters only if we use that part.",
-      "decidedAt": "2026-10-27"
+      "status": "applied",
+      "reason": "Upstream sync batch Cloud, adapted to MimirBot's names, our locale catalogs and our own terminal lend.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "eea57c839d3bf33af2fbb995a61f024d109188a4"
     },
     {
       "sha": "1fe9ab421ee32c44070df732ca8f8291a6e93351",
       "subject": "Lent folders: a change that can't land shows; replaced files keep permissions",
-      "status": "observation",
-      "reason": "Cloud, desktop lending, Team Cloud or new locales; matters only if we use that part.",
-      "decidedAt": "2026-10-27"
+      "status": "applied",
+      "reason": "Upstream sync batch Cloud, adapted to MimirBot's names, our locale catalogs and our own terminal lend.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "6e37e9feea3a34640cc088e882e40d3d5b4b2432"
     },
     {
       "sha": "ee2196e43832209760a672f26480c29c5c769b5a",
       "subject": "Lent GitHub repositories start their Cloud copy as a clone",
-      "status": "observation",
-      "reason": "Cloud, desktop lending, Team Cloud or new locales; matters only if we use that part.",
-      "decidedAt": "2026-10-27"
+      "status": "applied",
+      "reason": "Upstream sync batch Cloud, adapted to MimirBot's names, our locale catalogs and our own terminal lend.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "7e8e1139d88193f8a5226fd83e019e9d9d044c18"
     },
     {
       "sha": "47405e69e7abc34aa58f93b803ee0b395ec5538b",
       "subject": "Only the desktop app's own server may use this computer",
-      "status": "observation",
-      "reason": "Cloud, desktop lending, Team Cloud or new locales; matters only if we use that part.",
+      "status": "deferred",
+      "reason": "Rewrites the local-computer grant (71 files); our own Use my computer implementation diverged, so it needs a hand port, not a pick.",
       "decidedAt": "2026-10-27"
     },
     {
       "sha": "434508da921dad3bab1a62b31be28d7dda6ff502",
       "subject": "Lent folders on Windows: native real paths in tests, rename and permissions that hold there",
-      "status": "observation",
-      "reason": "Cloud, desktop lending, Team Cloud or new locales; matters only if we use that part.",
-      "decidedAt": "2026-10-27"
+      "status": "applied",
+      "reason": "Upstream sync batch Cloud, adapted to MimirBot's names, our locale catalogs and our own terminal lend.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "cf57fe91e6d8e7ab269f9b1dc8e68cc0b4d0f94b"
     },
     {
       "sha": "3556a6fbe539b58793137c2ffdcb8856b5172e74",
       "subject": "fix(lending): \"is a file, not a folder\" on Windows too",
-      "status": "observation",
-      "reason": "Cloud, desktop lending, Team Cloud or new locales; matters only if we use that part.",
-      "decidedAt": "2026-10-27"
+      "status": "applied",
+      "reason": "Upstream sync batch Cloud, adapted to MimirBot's names, our locale catalogs and our own terminal lend.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "90b76c58572cfa4a2154bd1d4d23ad4dd96749c7"
     },
     {
       "sha": "c6780e912bc21fdf9ef293198a0c28e9b0ab3a95",
       "subject": "Fix the cleanup fixture and the record-file check on Windows",
-      "status": "observation",
-      "reason": "Cloud, desktop lending, Team Cloud or new locales; matters only if we use that part.",
+      "status": "ignored",
+      "reason": "Windows fixture fix for server/desktop-computer.test.ts, which we removed.",
       "decidedAt": "2026-10-27"
     },
     {
       "sha": "32e46312a77ab9d2cdbc40eb790b8dd4da09488c",
       "subject": "Team Cloud: each person's Chief is their inbox",
-      "status": "observation",
-      "reason": "Cloud, desktop lending, Team Cloud or new locales; matters only if we use that part.",
+      "status": "ignored",
+      "reason": "Team Cloud inbox: 51 files that need server/host/team-messages.ts, which we removed.",
       "decidedAt": "2026-10-27"
     },
     {
       "sha": "02189b60ee35d50bb9774ca321ca701fac96b32f",
       "subject": "A new Cloud's first hour: the Chief greets, connects Gmail and Calendar, takes a first look, and keeps count",
-      "status": "observation",
-      "reason": "Cloud, desktop lending, Team Cloud or new locales; matters only if we use that part.",
+      "status": "ignored",
+      "reason": "A new Cloud's first hour: a first-run greeting flow; rule ignore-upstream-onboarding.",
       "decidedAt": "2026-10-27"
     },
     {
       "sha": "c7899ef99685581f6999cfeb5abbf5c4a282b189",
       "subject": "The morning brief is pushed once when another edit comes as it posts; Polish says 'około 2 godzin'",
-      "status": "observation",
-      "reason": "Cloud, desktop lending, Team Cloud or new locales; matters only if we use that part.",
+      "status": "deferred",
+      "reason": "Morning brief push-once fix; its code sits in the first-hour files we ignored (brief.ts, first-hour-words).",
       "decidedAt": "2026-10-27"
     },
     {
       "sha": "e4274af782bf79ecff554abe08080f11604255bd",
       "subject": "fix(first-hour): the greeting says \"the Cloud\", as the app does",
-      "status": "observation",
-      "reason": "Cloud, desktop lending, Team Cloud or new locales; matters only if we use that part.",
+      "status": "ignored",
+      "reason": "Follow-up to the first-hour greeting we ignored.",
       "decidedAt": "2026-10-27"
     },
     {
       "sha": "5c7e39ec052a3ed9959263d58f9d0d5abaf4a9b1",
       "subject": "feat(i18n): add Russian localization (#3612)",
-      "status": "observation",
-      "reason": "Cloud, desktop lending, Team Cloud or new locales; matters only if we use that part.",
-      "decidedAt": "2026-10-27"
+      "status": "applied",
+      "reason": "Upstream sync batch Cloud, adapted to MimirBot's names, our locale catalogs and our own terminal lend.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "3d51b3c4c2e3e13ae0e1a696a9b00a51daf22d89"
     },
     {
       "sha": "a7c8827b7b4a64c87dd38871f851bfc9aaa65012",
       "subject": "feat(i18n): add Italian locale (#3622)",
-      "status": "observation",
-      "reason": "Cloud, desktop lending, Team Cloud or new locales; matters only if we use that part.",
-      "decidedAt": "2026-10-27"
+      "status": "applied",
+      "reason": "Upstream sync batch Cloud, adapted to MimirBot's names, our locale catalogs and our own terminal lend.",
+      "decidedAt": "2026-10-27",
+      "ourCommit": "84cb7e974794d20c0069f7981a56ad8ca84b23bc"
     },
     {
       "sha": "3ca542f0ce25bfccb8a53d9b645bd5c73dc454ab",
