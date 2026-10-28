@@ -208,7 +208,7 @@ Search, SSE (live and replayed), attachments, notifications, usage traces, routi
 (kept as when, bot, tool and outcome, without their words), a bot's activity, synced folders and a team backup go
 through the same check, a deleted private chat included. Incidents and escalations from a private chat go to its person,
 never into a Chief's thread; a conversation a bot opens from a shared chat is the team's, never the last speaker's;
-`retry_thread`, `close_thread` and `session_read` reach only what the turn may read; and team memory is never published
+`retry_thread`, `close_thread` and `session_search` reading a message reach only what the turn may read; and team memory is never published
 from a private chat. Then the memory system prompt
 (the turn's layer, plus the team's notes read-only), recall (`buildRecall.memoryIds`: the layer and the team's), recent
 work, `session_search` (memory of the layer and the team's; conversations the turn may read), memory writes
