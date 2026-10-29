@@ -3677,6 +3677,90 @@
       "status": "applied",
       "decidedAt": "2026-10-29",
       "ourCommit": "2c2da2556c28ec2604cb1bd517e75c1c2951a21f"
+    },
+    {
+      "sha": "c005a8143e075acd35fe1c345eaa265d813a299c",
+      "subject": "fix(mcp): keep personal credentials out of shared config",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "36d298d661e17a86856756e6b543daa51968399f",
+      "note": "First of the personal-MCP batch. The batch was applied in the upstream parent-graph order (c005a8143, f45b8adc9, 07b88a336, 667b5bb5e, 56ed71f75, 90e7906c5, 6fdb435e4, 1931ecf70), not the order the commits were listed in: the list was neither chronological nor topological. Route deps take teamConnections.personMcp/people; the personal test path uses sessionMember plus personKey, and our panel hunks were dropped (see the deferred commits below)."
+    },
+    {
+      "sha": "f45b8adc989a79d0886585f41ada93eea6a30b8e",
+      "subject": "fix(mcp): skip personal servers in shared app probes",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "a9df850146b0bec190cc9bd5a92adce11e719f31",
+      "note": "createChatAppsMcp gains personMcp and index.ts passes teamConnections.personMcp; the e2e case was written into server/cloud-team-connections.e2e.test.ts against our fixtures."
+    },
+    {
+      "sha": "07b88a336e0e1410344024db917778fd5ec06c73",
+      "subject": "fix(mcp): preserve panel OAuth for personal connection tests",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "fbf7a810cd67af0b5d90cf58037311db7cb549e7",
+      "note": "Kept the route fix (a personal test keeps the server's OAuth and only swaps the header key) and the e2e case; the commit's panel hunk was not needed here."
+    },
+    {
+      "sha": "667b5bb5e66ff19139d519fa269a1a8731c55fe9",
+      "subject": "fix(mcp): reject shared personal headers and ambiguous key edits",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "4bf6a345e988a3a1a12d1129d07722bd0c7eb6b4",
+      "note": "personalHeaderRefusal added to our create/import/update handlers, with our own unit cases in server/routes/mcp-servers.test.ts. The panel and McpServersPanel.add.test.ts hunks were dropped: they edit the paste-to-add editor, which our fork does not have."
+    },
+    {
+      "sha": "56ed71f758f008cb9fc26364a38bbc0549cba9bf",
+      "subject": "fix: bind personal MCP key saves to the expected URL",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "a128de9fc0777282cc061639cc2d1ceed6663c21",
+      "note": "Route requires the submitted URL and re-reads the server before saving, with new cases in server/routes/team-connections.test.ts; docs/team-cloud.md and the e2e were adapted to our wording and fixtures. The panel hunk (sending url with the key) belongs to the paste editor and was dropped."
+    },
+    {
+      "sha": "90e7906c5829527a04f20f0e5d0d01eb70ea4952",
+      "subject": "fix(mcp): accept member key saves that only know the host",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "6b1f9b997fceb0f4f160de946b43b95864c3f47b"
+    },
+    {
+      "sha": "6fdb435e4fadf0c579a9e6f3185c464965fa1ddd",
+      "subject": "fix(mcp): avoid personal lookups for known team edits",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "c7bd5b5f20e3237b9d44e451ee2ac622f8a8149d",
+      "note": "withServerDetails now tags every listing with scope person|team and the route skips the personal lookup for team servers; server/index.test.ts expects scope \"team\". Panel and mcp-draft.ts hunks dropped (paste editor absent)."
+    },
+    {
+      "sha": "1931ecf70c54f8fc5557bbec9c25b1c29786bfd2",
+      "subject": "A bot's own MCP server starts only for that bot, and one that doesn't start is left out",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "460f58ee738c798a9b828f8360bd298ad2781ded",
+      "note": "Server side taken whole (mcp-bot-servers.ts, mcp-health.ts, host/mcp-servers-host.ts, bot field in the registry, probe asBot, mcpFailed notice, own/offFor listing). Adapted: the internal MCP add no longer redeems a secret card (our fork has no secretCards) and calls mcpServersHost.botAdd with the read body; the Composio wiring drops teamConnections.primeApps(), which our host does not have. UI: our panel keeps its design and gains only the own-bot and off-for lines at our type scale, the listing type the panel imported from upstream's mcp-draft.ts was merged into the panel, and mcp-draft.ts plus McpServersPanel.add.test.ts stay absent (they only exist with 259c9d8e3). The e2e uses our .mimirbot data directory, and the new strings went into src/locales/en.json only."
+    },
+    {
+      "sha": "5c8b975fbb82528faafe0fd35380ef22aa8e242a",
+      "subject": "fix(mcp): keep failed personal connections disabled",
+      "status": "deferred",
+      "decidedAt": "2026-10-29",
+      "reason": "Only edits the paste-to-add editor (addItems in src/components/McpServersPanel.tsx) and its McpServersPanel.add.test.ts; our fork has neither, because upstream 259c9d8e3 (add an MCP server by pasting its link) is not taken. The server side it relies on (person scope plus the personal key route) is already in from 56ed71f75."
+    },
+    {
+      "sha": "4bec110a6d60a4a34d681baa9dff130b431dd575",
+      "subject": "fix(mcp): keep replacement personal keys out of shared headers",
+      "status": "deferred",
+      "decidedAt": "2026-10-29",
+      "reason": "Edits saveEdit in the paste-to-add editor, its McpServersPanel.add.test.ts and server/cloud-team-gateway-mcp.e2e.test.ts; none of the three exist in our fork (upstream 259c9d8e3 is not taken). Our plain edit form cannot leak a personal key into shared headers because the server refuses any non-blank header value on a person-scoped server (personalHeaderRefusal, 667b5bb5e)."
+    },
+    {
+      "sha": "0a223df4dba20ba05ab57ec46ede497ce2b68755",
+      "subject": "fix(mcp): defer shared headers until personal setup succeeds",
+      "status": "deferred",
+      "decidedAt": "2026-10-29",
+      "reason": "Same paste-to-add editor path as 5c8b975fb (addItems sends blank headers for a personal key and disables the server until the key is saved); our fork has no paste editor or ownKey flow (upstream 259c9d8e3 not taken). The server-side guarantees it protects are already applied."
     }
   ]
 }
