@@ -3839,6 +3839,58 @@
       "status": "applied",
       "decidedAt": "2026-10-29",
       "ourCommit": "8d0c5780f954cd223f66ef640a0e1a8c3a19ffdb"
+    },
+    {
+      "sha": "3c04a89d91971a8547035b8415ad6519422b1d8b",
+      "subject": "fix(team): check current bot ownership after reading handoff bodies",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "afaaa4de68afb644d0d1841f4c7c86540045b930"
+    },
+    {
+      "sha": "ec834e08e7f1d10ab691d09da9bfe77b6b9e83d0",
+      "subject": "fix(team-owners): hide unavailable bots before reading handoff bodies",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "daada3b1b73e01e3e69178832f2def128eeb7c7f",
+      "note": "server/body-thread-guards.e2e.test.ts never existed in the fork; recreated it with only the test this commit adds, since the rest of the file is unrelated upstream work."
+    },
+    {
+      "sha": "b355c661208b3dabefcf1e0296e3a42eb371b705",
+      "subject": "A new bot's setup answers follow its name (#3743)",
+      "status": "ignored",
+      "decidedAt": "2026-10-29",
+      "rule": "ignore-upstream-set-me-up",
+      "note": "Confined to the Set me up flow: server/setup-suggestions.ts, shared/setup-card.ts, src/components/SetupOffer.tsx, the setupOffer/setupChoices/setupChoicesPending wire fields and the fake-claude setup-answer delay."
+    },
+    {
+      "sha": "baa8425f30a58cdc9a1dbb9c1545cb80e6f9e30b",
+      "subject": "fix(team): an inbox item stays listed only while it really waits, and its count shows on the inbox (#3724)",
+      "status": "deferred",
+      "decidedAt": "2026-10-29",
+      "note": "Batch 11 inbox item/count fix. Depends on the Team Cloud inbox base the fork never adopted (upstream 32e46312a ignored, 62c809ec2 pending): server/host/person-inbox.ts, team-messages.ts, representative.ts, shared/inbox.ts and the inbox UI. Importing that is a 100+ file product change (removes team-briefs.ts, rewires notifications), not a safe adaptation; revisit only if the fork adopts the inbox base."
+    },
+    {
+      "sha": "adacab69a9197aa74238bd7aefb8b887a2203e6e",
+      "subject": "test: the coordination e2e tests switch off smart setup answers (#3744)",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "3a0258384e2a671ae4f180d509d4936ea4b917d8",
+      "note": "Adds features.smartSetupChoices: false to two e2e configs; harmless here since the fork has no smart setup and the config schema strips the unknown key."
+    },
+    {
+      "sha": "3ff8778788c42e7b6c2b2d358f1ffdfadcc28d6c",
+      "subject": "feat(team): the inbox as a list in the right panel, and one live card in the inbox chat (#3735)",
+      "status": "deferred",
+      "decidedAt": "2026-10-29",
+      "note": "Batch 11 inbox panel/card feature. Same missing Team Cloud inbox base as baa8425f30 (person-inbox.ts, team-messages.ts, shared/inbox.ts, inbox UI); not applicable without adopting 62c809ec2 and 32e46312a first."
+    },
+    {
+      "sha": "d915c2d8a3f123cfefe7354a0f7fdf56aa8f2889",
+      "subject": "test(team-messages): Marco's assistant reads a fixed clock, so his Thursday slot is still ahead (#3850)",
+      "status": "deferred",
+      "decidedAt": "2026-10-29",
+      "note": "Batch 11 test fix for server/host/team-messages.test.ts, which does not exist without the Team Cloud inbox base."
     }
   ]
 }
