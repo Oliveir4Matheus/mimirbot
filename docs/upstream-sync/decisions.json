@@ -3939,6 +3939,53 @@
       "decidedAt": "2026-10-29",
       "ourCommit": "d3409bd7cdda9eae8fbdc8a340f7dffab73725ad",
       "note": "Added the undici 8.11.2 dependency (package.json and pnpm-lock.yaml applied cleanly; pnpm install --frozen-lockfile to materialize it). A reply wait over 5 minutes uses undici's fetch and Agent with header/body timeouts off; a loopback/private-network server is polled every 30 s and three misses stop the reply."
+    },
+    {
+      "sha": "fa748e22445b2d0d3e35ab783615feb8d79221af",
+      "subject": "fix(sync): serialize concurrent cloud file mutations",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "ff7ed067b8749dbd1a0720dd35807050b8001bf7",
+      "note": "Batch 10, applied first: it is the parent of c146e17e8e, which is the parent of da828d3e08, so the given order was reordered to fa748, c146, da828, 773bd, 9cd48. Applied cleanly: a per-folder/path mutation queue now guards commit, delete, restore and unregister."
+    },
+    {
+      "sha": "c146e17e8e275f27799b5e8ae0a4690b8027061b",
+      "subject": "fix(sync): reject malformed Unicode wire paths",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "f8d41b0d105bf9be9e3d7bba80d42cc22b883945",
+      "note": "Applied cleanly to electron/cloud-sync-rules.mjs (validWirePath now requires isWellFormed()) and its node test, plus the concurrent-commit regression in server/cloud-sync-concurrent.test.ts."
+    },
+    {
+      "sha": "da828d3e08c64a1332bdf049b780a8a00f091bfa",
+      "subject": "test(cloud-sync): the concurrency tests use a fixed disk size",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "011e473272dc48312180f121f1f54ee03170e037",
+      "note": "Applied cleanly: one-line test helper change in server/cloud-sync-concurrent.test.ts."
+    },
+    {
+      "sha": "773bdc1f5c16c0292ae30fe73054f073cab1cdf7",
+      "subject": "Own-server homes: trust only the tunnel to name a client, and start again after an unclean kill (#3727)",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "653e5d79f191f8530d0772296b4c974d6930d08f",
+      "note": "Conflicts in deploy/fly/Caddyfile (kept our MimirBot wording plus the own-server sentence) and electron/data-dir-lease.mjs (our MimirBot advice text with upstream's \"or container\"). The new \"Another MimirBot home is already running on this volume\" message was renamed from MausBot in cloud-home-start.ts, cloud-home.test.ts and the docker.yml step. Added the lease's pid-namespace/start-time identity, the volume flock and edgeClientAddress; the docker.yml own-server job needs Docker in CI, which this fork's workflow already runs."
+    },
+    {
+      "sha": "9cd48bc396cbb1a295bfa7e92ec995aa2bb082e6",
+      "subject": "MausBot connector: run a Cloud home on its owner's own server, over one outbound connection (#3732)",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "5d73301461928484a6680e458247e1fe7b9e1909",
+      "note": "Applied cleanly as a new connector/ package; it is not a pnpm workspace member because it has no npm dependencies and runs its TypeScript directly under node, so it needs no lockfile entry and its 7 vitest files run from the root config (vite.config.ts and tsconfig.server.json now include connector/). User-facing prose says MimirBot; identifiers, the MAUSBOT_ settings and the image name stay as upstream. connector-release.yml takes the owner from github.repository, so it publishes to this fork's ghcr namespace; connector-e2e.yml pulls upstream's published home image digests and is not runnable here."
+    },
+    {
+      "sha": "d779bb16f555633ab942475452cf86df824ed1e0",
+      "subject": "feat(cloud): this computer works for each of your Clouds automatically (#3734)",
+      "status": "deferred",
+      "decidedAt": "2026-10-29",
+      "note": "Batch 10, skipped after a trial pick (51 content conflicts, 8 upstream deletes of files we changed). It needs the multi-Cloud rail base the fork never adopted: electron/cloud-rail.mjs, the session contract v1 clouds list, otherOwnClouds/parseCloudList and pairHome(cloudId) in electron/cloud-account.mjs (ours has pairHome() for My Cloud only and no state().clouds), account().isOwnCloud(), and the Admin routes POST/PATCH desktop/clouds. It also deletes our Use my computer model outright (electron/use-my-computer.mjs, electron/cloud-lending-ipc.mjs, src/components/CloudLending.tsx, LentComputers.tsx, the popup and its words) in favour of automatic lending to every own Cloud, which reverses the fork's decision behind deferred 47405e69e7. Needs a hand port on top of an adopted rail base, not a pick."
     }
   ]
 }
