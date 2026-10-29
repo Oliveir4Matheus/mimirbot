@@ -3891,6 +3891,54 @@
       "status": "deferred",
       "decidedAt": "2026-10-29",
       "note": "Batch 11 test fix for server/host/team-messages.test.ts, which does not exist without the Team Cloud inbox base."
+    },
+    {
+      "sha": "a8ac33f3609e94b67baa81a4274556f855f1ad6b",
+      "subject": "fix(container): keep browser locks across driver restarts",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "0d7854a1d6a552a2a565032b232bd37e11ff3a32",
+      "note": "Batch 19, applied first: it is the upstream parent of 8119d08650, so the given list was reordered to a8ac, 8119, a623, 42ca, 800c, 0bfa. Moves the workspace preparation script into the new server/container-workspace.ts and clears browser locks once per container start (boot ID + PID 1 start time); image layer 6 to 7."
+    },
+    {
+      "sha": "8119d08650677301a3caed5d82b5a7eec94caef6",
+      "subject": "feat(local-vm): preserve user-installed apps across updates (#3812)",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "9138ee88818dceaae9928e37d9bf3070d6f34f20",
+      "note": "Conflict in server/config.ts: kept the fork's features list (no smartSetupChoices) and added localVm.preserveInstalledApps. Opt-in ~/.local rescue into workspace/.desktop-apps, wired through desktop-updates and the config status."
+    },
+    {
+      "sha": "a62301002515b5a28af34fbc22ce58ed6e4bfa4d",
+      "subject": "feat(providers): choose how long to wait for a local model's reply (#3805)",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "e451ae197777c55817f377138f33f1721c3615e5",
+      "note": "Conflict in src/components/OpenAiCompatServers.tsx: the fork has no cn/KEY_FIELD styling, so kept its INPUT/ICON_BUTTON classes and added REPLY_WAIT_CHOICES plus the per-server wait picker. Adds replyWaitMinutes to the instance PATCH schema and the driver's timeout."
+    },
+    {
+      "sha": "42ca852be35a8861aed7a2a26294c0193238eac7",
+      "subject": "Localize local environment settings (#3802)",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "df9c15a09460f25e3fa3f1a9057107d8a1de64e9",
+      "note": "Applied to the fork's ConnectedWorkspacesSettings. Only src/locales/en.json got the connectedWorkspaces.* strings: src/locales/zh.json was reverted (partial, diverged locales). The zh-only test became a catalog/English-fallback test, since this fork carries no zh translation for these keys."
+    },
+    {
+      "sha": "800c130b61686d1fef6dd92793223de41af165ea",
+      "subject": "main: Local VM settings move out of config.ts, the reply-wait picker uses Select (#3826)",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "fb9d46a7b248ab7c710e7cc33c667fd28721d2eb",
+      "note": "Conflicts in server/index.test.ts (kept the fork's .mimirbot config path, took preserveInstalledApps: false) and OpenAiCompatServers.tsx (kept the fork's imports, added Select). Local VM defaults and readers now live in server/local-vm-settings.ts and config.ts re-exports them."
+    },
+    {
+      "sha": "0bfaa886dbad786a4cc569d3c9c1f88355ca0806",
+      "subject": "fix(local-models): a local model's reply wait goes past 5 minutes; a dead server stops it early",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "d3409bd7cdda9eae8fbdc8a340f7dffab73725ad",
+      "note": "Added the undici 8.11.2 dependency (package.json and pnpm-lock.yaml applied cleanly; pnpm install --frozen-lockfile to materialize it). A reply wait over 5 minutes uses undici's fetch and Agent with header/body timeouts off; a loopback/private-network server is polled every 30 s and three misses stop the reply."
     }
   ]
 }
