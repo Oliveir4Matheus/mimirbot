@@ -56,7 +56,8 @@ posixOnly("usage attribution e2e", () => {
   const ledger = (botId: string) => {
     const file = join(home, ".mimirbot", "usage", `${new Date().toISOString().slice(0, 7)}.jsonl`);
     if (!existsSync(file)) return [];
-    return readFileSync(file, "utf8").trim().split("\n").filter(Boolean).map((line) => JSON.parse(line)).filter((row) => row.botId === botId);
+    const text = readFileSync(file, "utf8");
+    return text.slice(0, text.lastIndexOf("\n") + 1).split("\n").filter(Boolean).map((line) => JSON.parse(line)).filter((row) => row.botId === botId);
   };
   const newBot = async (instanceId: string, model: string) => {
     const created = (await api("POST", "/api/bots")).body.bot;
