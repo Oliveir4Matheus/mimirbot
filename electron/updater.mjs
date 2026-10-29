@@ -21,20 +21,20 @@ let state = { status: "idle" };
 let updaterCoordinator = null;
 let pageAllowed = () => false;
 
+function appendUpdaterLog(level, values) {
+  try {
+    const directory = app.getPath("logs");
+    mkdirSync(directory, { recursive: true, mode: 0o700 });
+    const message = values
+      .map((value) => (value instanceof Error ? value.stack ?? value.message : String(value)))
+      .join(" ");
+    appendFileSync(join(directory, "updater.log"), `[${new Date().toISOString()}] [${level}] ${message}\n`, { mode: 0o600 });
+  } catch {
+  }
+}
+
 function updaterLogger() {
-  const directory = app.getPath("logs");
-  const file = join(directory, "updater.log");
-  const write = (level, values) => {
-    try {
-      mkdirSync(directory, { recursive: true, mode: 0o700 });
-      const message = values
-        .map((value) => (value instanceof Error ? value.stack ?? value.message : String(value)))
-        .join(" ");
-      appendFileSync(file, `[${new Date().toISOString()}] [${level}] ${message}\n`, { mode: 0o600 });
-    } catch {
-    }
-  };
-  return Object.fromEntries(["debug", "info", "warn", "error"].map((level) => [level, (...values) => write(level, values)]));
+  return Object.fromEntries(["debug", "info", "warn", "error"].map((level) => [level, (...values) => appendUpdaterLog(level, values)]));
 }
 
 // electron-updater would install a .deb through a polkit root prompt and `dpkg -i` (no dependency resolution) over the running app.
@@ -66,7 +66,11 @@ export function sendUpdaterState() {
 export function registerUpdaterIpc({ pageAllowed: allowed }) {
   pageAllowed = allowed;
   const guarded = (channel, handler) => (event) => {
-    if (!pageAllowed(event)) throw new Error(`${channel} is only available in this app's window`);
+    if (!pageAllowed(event)) {
+      // Recorded rather than dropped: a refused page sees no update at all, so the reason has to outlive the window.
+      appendUpdaterLog("warn", [`${channel} refused for ${event?.senderFrame?.url ?? "an unknown frame"}`]);
+      throw new Error(`${channel} is only available in this app's window`);
+    }
     return handler();
   };
   ipcMain.handle("update:get-state", guarded("update:get-state", () => state));
@@ -98,6 +102,7 @@ export function startUpdater() {
 
   // Broadcast the install flavour before the first check so the banner never offers a restart it cannot deliver.
   const packageType = linuxPackageType({ readMarker: (file) => (existsSync(file) ? readFileSync(file, "utf8") : null) });
+  autoUpdater.logger.info(`startup packageType=${packageType} appImage=${process.env.APPIMAGE ?? "unset"} execPath=${process.execPath}`);
   const handOff = HAND_OFF_TYPES.has(packageType);
   // On macOS this also starts Squirrel.Mac's native staging at once; a system package is never installed on quit.
   autoUpdater.autoInstallOnAppQuit = !handOff;

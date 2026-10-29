@@ -308,6 +308,16 @@ it("My Cloud's page reads and drives the update channels, and another server's p
   for (const channel of handlers.keys()) expect(() => handlers.get(channel)(local.event), channel).not.toThrow();
 });
 
+it("this computer's page drives the updater from any of its own frames, the way the rest of the app reads it", async () => {
+  const rule = mainRule();
+  const { handlers } = await load(rule.pageAllowed);
+  const local = page(LOCAL);
+  rule.show(local);
+  const fromFrame = { sender: local.webContents, senderFrame: { url: `${LOCAL}/composer` } };
+  for (const channel of handlers.keys()) expect(() => handlers.get(channel)(fromFrame), channel).not.toThrow();
+  expect(rule.pageAllowed(fromFrame)).toBe(true);
+});
+
 it("sends update news only to a page allowed to read it", async () => {
   const rule = mainRule();
   const { updater, autoUpdater, handlers } = await load(rule.pageAllowed);

@@ -2673,7 +2673,10 @@ const cloudPageSender = (channel, handler) => (event) => {
   if (!asking) throw new Error(`${channel} is only available in this app's window`);
   return handler(asking === "cloud");
 };
-const updaterPageAllowed = event => cloudPageAsking(event) !== null;
+// This computer's page may always drive the updater, read the same way as the desktop preferences rule below.
+// `cloudPageAsking` alone also required the sender to be the window's main frame, which left the update row and
+// its Restart button unreachable for a local page that is not.
+const updaterPageAllowed = event => senderIsLocal(event) || cloudPageAsking(event) !== null;
 const updaterPageOffered = event => {
   if (updaterPageAllowed(event)) return true;
   if (desktopRemoteAccess || cloudSignInRestored) return false;

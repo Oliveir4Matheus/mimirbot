@@ -279,7 +279,7 @@ const bridge = {
       ipcRenderer
         .invoke("update:get-state")
         .then((s) => cb(s))
-        .catch(() => {});
+        .catch((error) => console.warn("[updater] this page cannot read the update state:", error));
       const handler = (_event, s) => cb(s);
       ipcRenderer.on("update:state", handler);
       return () => ipcRenderer.removeListener("update:state", handler);
