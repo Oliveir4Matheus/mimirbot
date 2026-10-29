@@ -19,20 +19,14 @@ import { useOwnerOrAdmin } from "@/lib/use-owner-or-admin";
 
 import { t } from "@/lib/i18n";
 import { COMPACT_SQUARE } from "@/lib/compact-chip";
+import { effortLabel, modelLabel, modelProvider, ModelTriggerLabel, ModelTriggerLevel } from "./ModelTriggerLabel";
+export { effortLabel };
 import { threadsOnOwnModel } from "../../shared/thread-model";
 import { ThreadModelsLine } from "./ThreadModelsLine";
 import { Select } from "./Select";
 
 type ModelOption = InstanceInfo["models"]["options"][number];
 const COMPACT_MODEL_COUNT = 5;
-
-function modelLabel(instance: InstanceInfo | undefined, model: string): string {
-  return instance?.models.options.find((option) => option.id === model)?.label ?? model;
-}
-
-function modelProvider(instance: InstanceInfo | undefined, model: string): string | undefined {
-  return instance?.models.options.find((option) => option.id === model)?.provider;
-}
 
 export function engineStatus(instance: InstanceInfo): string {
   if (needsCli(instance)) return t("model.setupRequired");
@@ -61,10 +55,6 @@ export function probeLocalModels(
 export function offersLocalModels(instance: InstanceInfo | undefined, localCount: number): boolean {
   if (!instance) return false;
   return localCount > 0 || (instance.driverKind === "claudeAgent" && !needsCli(instance) && !instance.policy);
-}
-
-export function effortLabel(level: EffortLevel): string {
-  return t(`model.effort.${level}` as Parameters<typeof t>[0]);
 }
 
 /**
@@ -797,22 +787,8 @@ export function ModelPicker({
         <span data-model-account-compact className="hidden max-w-20 truncate @max-4xl/chathead:inline">{active.displayName}</span>
       )}
       <span className={cn("flex min-w-0 items-center gap-1", !contained && active && "@max-4xl/chathead:hidden")}>
-        <span className="min-w-0 max-w-[160px] truncate">
-          {active && showActiveAccount && (
-            <span data-model-account className="text-ink-secondary">{active.displayName} · </span>
-          )}
-          {modelLabel(active, selection.model)}
-          {active && modelProvider(active, selection.model) && (
-            <span className="text-ink-secondary"> · {modelProvider(active, selection.model)}</span>
-          )}
-        </span>
-        {selectedVariantLabel !== undefined ? (
-          <span data-model-variant className="max-w-[120px] truncate text-ink-secondary">· {selectedVariantLabel}</span>
-        ) : selection.effort && (
-          <span data-model-effort className="shrink-0 text-ink-secondary">
-            · {effortLabel(selection.effort)}
-          </span>
-        )}
+        <ModelTriggerLabel instance={active} model={selection.model} showAccount={showActiveAccount} />
+        <ModelTriggerLevel variant={selectedVariantLabel} effort={selection.effort} />
       </span>
       <ChevronDown
         size={14}

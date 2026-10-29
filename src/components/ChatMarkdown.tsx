@@ -1,7 +1,7 @@
 // Security: model output never reaches the DOM as raw HTML (no rehype-raw); Shiki's output is generator-escaped.
 import { createContext, memo, use, useContext, useEffect, useMemo, useRef, useState, type ComponentProps, type ReactNode } from "react";
 import type { HighlighterCore } from "shiki/core";
-import Markdown, { defaultUrlTransform, type Components, type ExtraProps } from "react-markdown";
+import Markdown, { type Components, type ExtraProps } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import { fromMarkdown, type Options as MarkdownParseOptions } from "mdast-util-from-markdown";
@@ -27,6 +27,8 @@ import { githubRefFromProps, remarkGithubRefs } from "@/lib/github-refs";
 import { GITHUB_REF_ICONS, LinkHoverCard } from "@/components/LinkHoverCard";
 import { useThreadLinkMenu } from "@/components/ThreadLinkMenu";
 import { looksLikeThreadRefUrl, parseThreadRefUrl, resolveThreadRefAddress, remarkThreadRefs } from "../lib/thread-refs";
+import { chatUrlTransform, localFilePath } from "./chat-url-transform";
+export { chatUrlTransform, localFilePath };
 import { MarkdownImagePreview, MessageFolderFiles, OutsideWorkspaceFile, saveFailureText, useLocalFileSave, type MessageAttachmentContext } from "./AttachmentPreview";
 import { ThreadLink, ThreadRefsContext, threadLinkFromProps, type ThreadRefsValue } from "./ThreadRefs";
 import { MarkdownTable } from "./MarkdownTable";
@@ -187,46 +189,6 @@ const highlightKey = (lang: string, code: string) => `${lang}:${hash(code)}`;
 export const HIGHLIGHT_MAX_CHARS = 100_000;
 const mermaidKey = (scheme: "dark" | "light", code: string) => `${scheme}:${hash(code)}`;
 
-const WINDOWS_PATH = /^[a-zA-Z]:[\\/]/;
-const absolutePath = (value: string): string | null => {
-  if (value.startsWith("/") || WINDOWS_PATH.test(value)) return value;
-  return null;
-};
-
-export const localFilePath = (href?: string): string | null => {
-  if (!href) return null;
-  if (/^file:\/\//i.test(href)) {
-    try {
-      const url = new URL(href);
-      if (url.username || url.password || url.port || url.search || url.hash) return null;
-      const path = decodeURIComponent(url.pathname);
-      if (url.hostname && url.hostname !== "localhost") return `//${url.hostname}${path}`;
-      // WHATWG file URLs spell a Windows drive as /C:/ on every host; a raw /C:/… Markdown target is a POSIX path.
-      return /^\/[a-z]:[\\/]/i.test(path) ? path.slice(1) : absolutePath(path);
-    } catch {
-      return null;
-    }
-  }
-  if (href.startsWith("\\\\")) return href;
-  // //host/path is a protocol-relative web URL in Markdown; UNC paths come as backslashes or file://server/share.
-  if (href.startsWith("//")) return null;
-  const absolute = absolutePath(href);
-  if (absolute) return absolute;
-  if (href.startsWith("#") || /^[a-z][a-z\d+.-]*:/i.test(href)) return null;
-  return href;
-};
-
-export function chatUrlTransform(value: string, key = "href"): string {
-  if (looksLikeThreadRefUrl(value) || isUseMyComputerUrl(value)) return value;
-  // Markdown-to-HTML percent-encodes a destination's backslashes (C:%5CUsers…); restore them and leave other escapes
-  // for the server's single decode.
-  const url = /^[a-zA-Z]:%5C/i.test(value) ? value.replace(/%5C/gi, "\\") : value;
-  if (/^file:\/\//i.test(url) || WINDOWS_PATH.test(url) || url.startsWith("\\\\")) {
-    return localFilePath(url) ? url : "";
-  }
-  if (key === "href" && /^obsidian:\/\//i.test(value)) return value;
-  return defaultUrlTransform(value);
-}
 
 /** Must parse link destinations exactly as the server's message-file parser does. */
 function remarkWindowsPathDestinations(this: { data(): object }) {
