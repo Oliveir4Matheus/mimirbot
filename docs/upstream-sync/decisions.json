@@ -4034,6 +4034,54 @@
       "decidedAt": "2026-10-29",
       "ourCommit": "d5050a4d105bbaad83a9f64ff4411fe1f9883a71",
       "note": "Applied cleanly and ends up identical to upstream except our MimirBot wording. It matches the fork's own TriggersPage/Automations page (nav label \"Automations\", header \"New\" box, \"Set it up yourself\" > \"On a schedule\" > \"Continue\", the plain routine editor's \"What should happen?\" and \"Tell the bot what to do each time\" fields, li[data-automation] rows and the \"Edit\" panel), so it replaces an older version that still clicked \"Routines\" and read article[aria-label] cards the fork no longer renders. NOT executed here: the fixture launch dies in agent-browser before any assertion because Chrome cannot start in this container (\"No usable sandbox\", and the bundled chrome is not executable), so the file was checked against the fork's components statically only."
+    },
+    {
+      "sha": "36ab6a088ebbdcac1f7acaa12d27b4a98ed23633",
+      "subject": "fix(computer-sharing): invalidate superseded grant saves",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "731808392497146a20841104db384541d8afa557",
+      "note": "Batch 5, applied first: the given order was not topological (8ef91a3bd0 was listed before its ancestors 36ab6a088e and 3b8ba12b43), so the picks followed the upstream parent chain: 36ab6a088e, 3b8ba12b43, 8ef91a3bd0, 31bca1121f, 46d16fb037, 49b0631221. Applied cleanly to our computer-sharing.mjs (a per-environment grantVersions counter; Stop, forget, decline and a newer save each bump it, and save/saveCloud drop their grant when the version moved on). Our Use my computer model is untouched: this is the same lending controller, and the new electron/computer-sharing-races.node-test.mjs arrives with it."
+    },
+    {
+      "sha": "3b8ba12b43a0a2499c0b5dccc5bdb095c9f18d6e",
+      "subject": "fix(updates-consent): discard stale account reads before recording",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "266a5cffffbfd761fb011d853850bcb09eb7440c",
+      "note": "Adapted: upstream's `if (!fresh()) return;` sits on the choices-counter/freshness machinery of 117d3c646, which this fork never took (that commit is still 'observation'). Ported the account half instead: reconcile(fresh) saves through keep() only while the signed-in account is the one the read started under, and settle() re-runs a discarded read against whoever is signed in now, so account B's withdrawal is what gets recorded. The new test (a slow account A read cannot overwrite account B's withdrawal) passes; the 117d3c646 overtake test was left out because the local-answer half still needs the choices counter."
+    },
+    {
+      "sha": "8ef91a3bd0c9dae0bf8171a6c183c146b054eb3d",
+      "subject": "fix(computer-sharing): cancel pending saves from Stop while off",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "ed58d497b21dcbe8cebd4f8e2bedb7ac966f9cbd",
+      "note": "Applied cleanly. main's stopLending() now revokes every environment, not only the ones whose stored cloud grant reads enabled, so a save held in an identity request is cancelled too. The races test drives it through the real main.mjs wiring, extracted with runInNewContext from `function stopLending()` up to `async function openLendingSettings()` and from `const useMyMac = installCloudLending(` up to `const cloudSync =`; both markers exist in our main.mjs unchanged."
+    },
+    {
+      "sha": "31bca1121fff8d0f0eb30e5aac9c97246be3cdcc",
+      "subject": "fix(computer-sharing): capture save cancellation before IPC awaits",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "6b98bc02aff81e65973fd6fc1f319897b99acf00",
+      "note": "Applied with two conflicts, both from a method our fork dropped long ago: upstream's context carried `busy(): boolean`, which neither our computer-sharing.mjs nor its .d.mts has, so it was not brought back. Kept upstream's beginSave wiring in installCloudLending (one version captured before folder checks, confirmations and persistence, bound to the environment the operation started on), beginCloudSave in the controller, the versioned saveCloud, and the main.mjs/e2e wiring. electron/cloud-lending-ipc.mjs ends up identical to upstream."
+    },
+    {
+      "sha": "46d16fb0372f2a953c9752799cd5b721ba6eb3dc",
+      "subject": "test(lending): provide cancellation version in main dialog fixture",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "1a041cd18509b853d2d44f77215ee9618736b701",
+      "note": "Applied cleanly: one line, beginCloudSave: () => 0, in the lending-dialogs fixture's sharing controller. Without it that fixture fails with 'beginCloudSave is not a function' once the IPC commit above is in."
+    },
+    {
+      "sha": "49b063122127f6f8a3655d37dae483ec43a78816",
+      "subject": "fix(computer-sharing): guard worker ownership after identity refresh",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "2952aa727554538849e8d6e12293f8af789bd91a",
+      "note": "Applied cleanly: after the cloudIdentity() await in the lending worker, a worker that was aborted or replaced (running.get(env.id) !== live) breaks instead of writing the refreshed session back into the saved grant. Its test also covers Stop staying off across cloudChanged() and start()."
     }
   ]
 }
