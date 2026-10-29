@@ -35,12 +35,19 @@ describe("CI concurrency", () => {
     expect(workflow.concurrency["cancel-in-progress"]).toBe("${{ github.event_name == 'pull_request' }}");
   });
 
-  it("keeps main to one running and one waiting run, apart from PR and merge-queue groups", () => {
+  it("keeps main's pushes to one running and one waiting run, and gives every other run a group no push joins", () => {
     // One group for every main push: GitHub keeps the running run and only
-    // the newest waiting one, so a burst of merges cannot pile up full runs.
+    // the newest waiting one, so a burst of merges cannot pile up runs. A
+    // merge group has its own ref; the nightly run and each manual run (the
+    // release lane among them) are named by event and branch, so a push
+    // never replaces one that is waiting.
     expect(workflow.concurrency.group).toBe(
-      "ci-${{ github.event_name == 'merge_group' && github.event.merge_group.head_ref || github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || github.ref }}",
+      "ci-${{ github.event_name == 'merge_group' && github.event.merge_group.head_ref || github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || github.event_name == 'push' && github.ref || format('{0}-{1}', github.event_name, github.ref) }}",
     );
+  });
+
+  it("runs the full lane every night", () => {
+    expect(workflow.on.schedule).toEqual([{ cron: expect.stringMatching(/^\d+ \d+ \* \* \*$/) }]);
   });
 
   it("stops a closed PR's run by joining ci.yml's PR group", () => {
@@ -88,8 +95,9 @@ describe("CI concurrency", () => {
     }
     const units = (workflow.jobs.vitest.steps as { name?: string; "timeout-minutes"?: number }[]).find((step) => step.name === "Broker and Electron unit tests")!;
     expect(units["timeout-minutes"]).toBe(5);
-    // Browser jobs keep one job per platform.
-    expect(workflow.jobs["browser-identity"].strategy.matrix.os).toBe("${{ fromJSON(needs.static.outputs.vitest_os) }}");
+    // Browser jobs keep one job per platform.    expect(workflow.jobs["browser-identity"].strategy.matrix.os).toBe("${{ fromJSON(needs.static.outputs.vitest_os) }}");
+    expect(workflow.jobs["browser-driver"].strategy.matrix.os).toBe("${{ fromJSON(needs.static.outputs.vitest_os) }}");
+    expect(workflow.jobs["packaged-server"].strategy.matrix.os).toBe("${{ fromJSON(needs.static.outputs.packaged_server_os) }}");
   });
 
   it("keeps each PR to one macOS job", () => {
@@ -198,6 +206,7 @@ describe("CI concurrency", () => {
       runtime: "${{ steps.scope.outputs.runtime }}",
       vitest_os: "${{ steps.scope.outputs.vitest_os }}",
       vitest_matrix: "${{ steps.scope.outputs.vitest_matrix }}",
+      packaged_server_os: "${{ steps.scope.outputs.packaged_server_os }}",
     });
     expect(workflow.jobs.static.steps.some((step: { run?: string }) =>
       step.run === "pnpm exec vitest run scripts/ci-scope.test.ts scripts/ci-workflow.test.ts scripts/testing/verification-docs.test.ts",
