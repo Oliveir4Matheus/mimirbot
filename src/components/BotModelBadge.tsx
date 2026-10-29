@@ -27,16 +27,3 @@ export function BotModelBadge({ bot, instances, avatarSize }: {
     </span>
   );
 }
-
-/** The engine's mark at the right end of a sidebar row's text; hovering it names the model. */
-export function BotModelMark({ bot, instances }: { bot: Pick<Bot, "modelSelection">; instances: InstanceInfo[] }) {
-  const model = botModel(bot, instances);
-  if (!model) return null;
-  const description = t("sidebar.bot.modelBadge", { model: model.label, engine: model.instance.displayName });
-  return (
-    <span data-testid="model-badge" role="img" aria-label={description} title={model.label}
-      className="ml-auto flex shrink-0 items-center self-center text-ink-secondary">
-      <InstanceProviderMark instance={model.instance} size={14} />
-    </span>
-  );
-}
