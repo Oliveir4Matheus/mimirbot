@@ -1,6 +1,7 @@
 // Nothing here decides whether an action is safe: each level is the provider's own permission mode passed through, and a
 // request reaching this process is one the provider left for a person. The app's own grants are Full access, the person's
-// exact saved commands and remembered MCP read tools, and Approve for me's web search. A bot's question always reaches a human.
+// exact saved commands and remembered MCP read tools, Approve for me's web search, and a bot's plain reads of its own
+// files at every level. A bot's question always reaches a human.
 
 import { supportsApprovalMode, type ApprovalMode } from "../shared/approval-mode.ts";
 import { failedTurnTool, type FailedTurnTool } from "../shared/failed-turn.ts";
@@ -70,12 +71,14 @@ function bareToolName(tool: string): string {
 }
 
 /** The decision log's "which rule": `full-access` and `command-allowlist` are user grants, `web-search` Approve for me's own,
- * `native-approval` a card the provider's reviewer left, `explicit-approval-block` a sandbox widening only Full may answer. */
+ * `own-files` a bot's plain read of its own files, `native-approval` a card the provider's reviewer left,
+ * `explicit-approval-block` a sandbox widening only Full may answer. */
 export type AutoVerdictSource =
   | "full-access"
   | "command-allowlist"
   | "tool-allowlist"
   | "web-search"
+  | "own-files"
   | "native-approval"
   | "explicit-approval-block"
   | "outbound-guard"
@@ -98,6 +101,8 @@ export function autoVerdict(
     commandAllowed?: boolean;
     /** Exact provider/server/tool/config match against a person's saved MCP read grant. */
     toolAllowed?: boolean;
+    /** The request only reads the bot's own files: its SOUL.md, skills, memory and conversation folders. */
+    ownFilesRead?: boolean;
   },
 ): AutoVerdict {
   if (ASKS_A_PERSON.has(bareToolName(tool))) {
@@ -109,6 +114,7 @@ export function autoVerdict(
   if (isOutboundTool(tool)) return { approve: null, source: "outbound-guard" };
   if (context?.commandAllowed) return { approve: `approved ${tool} (saved command)`, source: "command-allowlist" };
   if (context?.toolAllowed) return { approve: `approved ${tool} (always allowed)`, source: "tool-allowlist" };
+  if (context?.ownFilesRead) return { approve: `approved ${tool} (its own files)`, source: "own-files" };
   if (mode === "auto" && WEB_SEARCH.has(bareToolName(tool))) {
     return { approve: `approved ${tool} (web search)`, source: "web-search" };
   }
@@ -123,7 +129,8 @@ export function undeliveredApprovalTool(
 ): FailedTurnTool | { name: string; ok: false } {
   if (outcome !== "rejected") return failedTurnTool("could not deliver approval to the provider; retry the task after reconnecting.");
   const grant = source === "command-allowlist" ? "the saved command permission"
-    : source === "tool-allowlist" ? "the saved tool permission" : "Full access";
+    : source === "tool-allowlist" ? "the saved tool permission"
+      : source === "own-files" ? "the rule for its own files" : "Full access";
   return { name: `The provider rejected this action despite ${grant}.`, ok: false };
 }
 
