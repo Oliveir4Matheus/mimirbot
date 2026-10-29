@@ -3986,6 +3986,54 @@
       "status": "deferred",
       "decidedAt": "2026-10-29",
       "note": "Batch 10, skipped after a trial pick (51 content conflicts, 8 upstream deletes of files we changed). It needs the multi-Cloud rail base the fork never adopted: electron/cloud-rail.mjs, the session contract v1 clouds list, otherOwnClouds/parseCloudList and pairHome(cloudId) in electron/cloud-account.mjs (ours has pairHome() for My Cloud only and no state().clouds), account().isOwnCloud(), and the Admin routes POST/PATCH desktop/clouds. It also deletes our Use my computer model outright (electron/use-my-computer.mjs, electron/cloud-lending-ipc.mjs, src/components/CloudLending.tsx, LentComputers.tsx, the popup and its words) in favour of automatic lending to every own Cloud, which reverses the fork's decision behind deferred 47405e69e7. Needs a hand port on top of an adopted rail base, not a pick."
+    },
+    {
+      "sha": "1f57644f18064fbfc597377c250306a7dc498f6f",
+      "subject": "fix: contain routine check receipt failures",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "dc29840f4bc8ced8fd89bd54021a184fccd4fff0",
+      "note": "Batch 8, applied first: the given order was not topological (74e26667d3 was listed before its ancestors 1f57644f18 and 6c0324e1b2), so the picks followed the upstream parent chain: 1f57644f18, f565968f27, d5a85c7000, 6c0324e1b2, 74e26667d3; 7e75b628fc sits on a separate lineage and went last. Applied cleanly: both scheduler launch sites now catch the whole background check (this.runChecks(...).catch(...)) instead of void-ing it, and server/testing/routine-check-failures.ts plus its spawn-based test arrive new."
+    },
+    {
+      "sha": "f565968f2752e30a32ebaf95c3bfe85889769511",
+      "subject": "fix: discard checks from stale routine definitions",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "8c56b735442a084800aa9b048c6e063f8ae39048",
+      "note": "Applied cleanly. It introduces server/routine-run-definition.ts, which the fork never had: the module is created here with just routineRunDefinition() (the results-thread resolver that upstream adds to it comes later, in 74e26667d3), so no other refactor was needed. runChecks captures routine.updatedAt as its revision, releases a stale batch and rechecks the current definition; newRun now builds the definition fields through the shared helper."
+    },
+    {
+      "sha": "d5a85c7000ee8a8ec0499bddbfdd5c5882af62c3",
+      "subject": "fix: prevent routine dispatch after shutdown begins",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "85841082a5e74e829294baae102941da44d2fa42",
+      "note": "Applied with automatic 3-way merge; our server/index.ts is ~490 lines away from upstream's startTurn, but all three hunks matched their own context and landed at adjusted offsets: companyShutdown now gates directTurnClaimIsCurrent(), the pre-dispatch claim check moved from before the provider setup to after the final recall, the dispatch guard also cancels on companyShutdown, and the routines startTurn callback no longer dispatches once shutdown began. routines.ts gains the closing seal on start(), tick(), runNow(), runChecks() and the queued-run loop."
+    },
+    {
+      "sha": "6c0324e1b29bd69826a73687c5e2291a23a972d5",
+      "subject": "test: preserve upstream check retry semantics",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "955a894ee2fcf9d61fab010b237f5a60788de7ee",
+      "note": "Applied cleanly. The fixture now reads the queued receipt off routines.json, closes the first manager, retries in a fresh one after a restart and asserts the failed run survives, instead of driving the fork-only in-memory rollback. Both cases (manual and scheduled) pass here."
+    },
+    {
+      "sha": "74e26667d35cfafa97d8a5d318cec472694c37a2",
+      "subject": "fix: preserve checked routine result destinations",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "852545949374b283d2c1d6113d611b9aeaf60298",
+      "note": "Applied cleanly. The ResultsThreadAllocation type and the destination rollback move out of routines.ts into server/routine-run-definition.ts as resolveRoutineResultsThread(), and a refreshed manual run now resolves its destination through it, so a checked run follows a bot edit to the current bot's main chat while allocations still roll back."
+    },
+    {
+      "sha": "7e75b628fc672b5d759268eecbfb724913f8beb7",
+      "subject": "test(ui): the cron routines e2e test follows the Automations page (#3834)",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "d5050a4d105bbaad83a9f64ff4411fe1f9883a71",
+      "note": "Applied cleanly and ends up identical to upstream except our MimirBot wording. It matches the fork's own TriggersPage/Automations page (nav label \"Automations\", header \"New\" box, \"Set it up yourself\" > \"On a schedule\" > \"Continue\", the plain routine editor's \"What should happen?\" and \"Tell the bot what to do each time\" fields, li[data-automation] rows and the \"Edit\" panel), so it replaces an older version that still clicked \"Routines\" and read article[aria-label] cards the fork no longer renders. NOT executed here: the fixture launch dies in agent-browser before any assertion because Chrome cannot start in this container (\"No usable sandbox\", and the bundled chrome is not executable), so the file was checked against the fork's components statically only."
     }
   ]
 }
