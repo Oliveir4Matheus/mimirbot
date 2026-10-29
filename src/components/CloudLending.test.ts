@@ -13,7 +13,7 @@ vi.mock("react", async original => ({ ...await original<typeof import("react")>(
 }));
 import { CloudLending, lendingFailureKey, lendingStatusKey, lendingStoppedLine, lendingTitle, lentWhat, thisDevice } from "./CloudLending";
 
-type Node = ReactElement<{ children?: ReactNode; onClick?: () => void; onChange?: (event: { target: { checked: boolean } }) => void; role?: string; type?: string; "aria-label"?: string; disabled?: boolean; checked?: boolean; "data-lending-more"?: boolean; "data-lending-terminal-choice"?: boolean; "data-lending-internet-choice"?: boolean; "data-lending-chrome-choice"?: boolean; }>;
+type Node = ReactElement<{ children?: ReactNode; onClick?: () => void; onChange?: (event: { target: { checked: boolean } }) => void; role?: string; type?: string; "aria-label"?: string; disabled?: boolean; checked?: boolean; className?: string; "data-lending-more"?: boolean; "data-lending-terminal-choice"?: boolean; "data-lending-internet-choice"?: boolean; "data-lending-chrome-choice"?: boolean; }>;
 function nodes(value: ReactNode): Node[] { if (!isValidElement(value)) return []; const node = value as Node; return [node, ...Children.toArray(node.props.children).flatMap(nodes)]; }
 let bridge: CloudLendingBridge;
 function render() { f.index = 0; f.effects = []; let tree: ReactNode; function Capture() { tree = CloudLending({ bridge }); return tree; }
@@ -158,6 +158,57 @@ it("turning the switch off stops lending at once", async () => {
   toggle().props.onClick!();
   await flush();
   expect(bridge.stop).toHaveBeenCalledOnce();
+});
+
+it("a turn-on main refuses leaves the switch off with its reason, never Starting…, and Choose what's lent in reach", async () => {
+  vi.mocked(bridge.save).mockRejectedValueOnce(new Error("Error invoking remote method 'lending:save': Error: lending-refused:not-folder"));
+  vi.mocked(bridge.state).mockResolvedValueOnce(off).mockResolvedValue(off);
+  render(); f.effects[0]!(); await flush();
+  toggle().props.onClick!();
+  await flush();
+  const view = render();
+  expect(toggle().props.checked, "the switch tells what main says, not the click").toBe(false);
+  expect(view.html).not.toContain("Starting…");
+  expect(view.html).toContain("Choose a folder, not a file.");
+  expect(view.nodes.find(node => node.props["data-lending-more"]), "the reason says where to pick one").toBeTruthy();
+  more();
+  expect(render().html, "a folder is all an off switch offers: no screen, internet, Chrome or terminal").toContain("data-lending-more");
+  expect(render().html).not.toContain("data-lending-internet-choice");
+  expect(render().html).not.toContain("data-lending-terminal-choice");
+  const add = render().nodes.find(node => node.type === "button" && node.props.className?.includes("ui-button"))!;
+  add.props.onClick!();
+  await flush();
+  expect(vi.mocked(bridge.save).mock.calls.at(-1)).toEqual([{ folders: [folder], screen: false, internet: false }]);
+});
+
+it("a turn-on that failed is off with the reason and the next flip lends", async () => {
+  vi.mocked(bridge.save).mockRejectedValueOnce(new Error("Error invoking remote method 'lending:save': Error: socket hang up"));
+  await ready(off);
+  toggle().props.onClick!();
+  await flush();
+  let view = render();
+  expect(toggle().props.checked).toBe(false);
+  expect(view.html).toContain("Could not change what is shared. Try again.");
+  toggle().props.onClick!();
+  await flush();
+  expect(vi.mocked(bridge.save).mock.calls.at(-1)).toEqual([{ folders: [], screen: false, internet: false }]);
+  view = render();
+  expect(toggle().props.checked, "main lent it: the switch is on").toBe(true);
+  expect(view.html).not.toContain("Could not change what is shared.");
+  expect(view.nodes.find(node => node.props["data-lending-more"]), "lent, the choices sit behind an on switch again").toBeTruthy();
+  more();
+  expect(render().html).toContain("data-lending-internet-choice");
+});
+
+it("once on, main stopping lending shows off with why, and the choices stay in reach", async () => {
+  const at = new Date(2026, 9, 7, 14, 2).getTime();
+  const stopped: CloudLendingSnapshot = { available: true, screenAvailable: true, activity: [], state: { enabled: false, folders: [], screen: false, internet: false, chrome: false, busy: false, stopped: { reason: "signed-out", at } } };
+  vi.mocked(bridge.state).mockResolvedValue(lent);
+  render(); f.effects[0]!(); await flush();
+  expect(toggle().props.checked).toBe(true);
+  vi.mocked(bridge.state).mockResolvedValue(stopped);
+  const again = render();
+  expect(again.nodes.find(node => node.props["data-lending-more"]), "on, Choose what's lent is one button away").toBeTruthy();
 });
 
 it("apps and screen cannot be chosen until this app's computer control is ready", async () => {
