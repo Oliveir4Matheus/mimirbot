@@ -3142,7 +3142,7 @@
     {
       "sha": "7e28ea4174e1bd8e23175293862f011c469eb453",
       "subject": "test(reactions): the yes-or-no guidance no longer says to end the turn (#3679)",
-      "status": "deferred",
+      "status": "observation",
       "reason": "Test text for 6ed71aa83 (Bots answer first), which is still an observation; the test fails without that prompt change.",
       "decidedAt": "2026-10-28"
     },
@@ -3194,7 +3194,8 @@
       "subject": "fix(memory): upkeep stops writing after stop(); dreaming counts the My Cloud owner's lines (#3714)",
       "status": "applied",
       "note": "Approved by the owner in the new-commits batch.",
-      "decidedAt": "2026-10-28"
+      "decidedAt": "2026-10-28",
+      "ourCommit": "ad5345b7d"
     },
     {
       "sha": "6e0e143935be596b8fb38fcc6f08a0ef1e275894",
@@ -3209,7 +3210,8 @@
       "subject": "fix(browser): stage Chrome uploads before any wait; refuse workspace uploads on Windows (#3716)",
       "status": "applied",
       "note": "Approved by the owner in the new-commits batch.",
-      "decidedAt": "2026-10-28"
+      "decidedAt": "2026-10-28",
+      "ourCommit": "58dd38d66"
     },
     {
       "sha": "ae1aada6b67b68d03921f910f4b4b97a66cea1a7",
