@@ -3,7 +3,8 @@
     "repo": "https://github.com/milind-soni/OpenMausBot",
     "branch": "main",
     "mergeBase": "0d8eacc65cd3b783a0d28d019d39e6367780b911",
-    "triagedUpTo": "e08651f1067c8b4ecadba494d792eb8678ea15dd"
+    "triagedUpTo": "e08651f1067c8b4ecadba494d792eb8678ea15dd",
+    "note": "triagedUpTo is a rough marker, not a guarantee: 115 non-merge commits between mergeBase and upstream/main still have no entry, including ones older than triagedUpTo. Trust the commits[] entries, not this field."
   },
   "statuses": {
     "adopted": "cherry-picked into mimirbot (ourCommit)",
@@ -3319,6 +3320,181 @@
       "status": "applied",
       "decidedAt": "2026-10-29",
       "ourCommit": "73e6b44d8"
+    },
+    {
+      "sha": "905a3d2518d79ce5f9de0f810ee10b1c6d97a865",
+      "subject": "OpenRouter and other API-key models work again on Windows: the built-in tools fit the 128-tool limit (#3811)",
+      "status": "observation",
+      "decidedAt": "2026-10-29",
+      "note": "Tool-count limit for Windows API-key models; the fork has its own tool-count-limit.ts."
+    },
+    {
+      "sha": "44dd7f67f885bc08a8b2243c0fd58fdaf013a8b8",
+      "subject": "fix(antigravity): saved Low/Medium/High Gemini Flash picks run again (#3807)",
+      "status": "observation",
+      "decidedAt": "2026-10-29",
+      "note": "Re-lands 1e4a6de69; the fork's antigravity-acp.ts keeps its own catalog path."
+    },
+    {
+      "sha": "c3d6bb7f11d9cdf103c93748c2c3209084d89996",
+      "subject": "A decision a bot asks you is a tap-to-answer card, and questions and approvals get one calm card (#3777)",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "note": "Already in the fork as its own commit of the same subject; the tree carries the change."
+    },
+    {
+      "sha": "931ef06c742614c4edc98b3ebb8d698833bb2e0f",
+      "subject": "chore(release): bump version to 0.1.132 (#3804)",
+      "status": "ignored",
+      "decidedAt": "2026-10-29",
+      "note": "Upstream's version bump; the fork versions itself at release."
+    },
+    {
+      "sha": "e67c1048bbfc226cbf78b3fbdc991ef4156bd4a0",
+      "subject": "A sidebar colour and picture for everyone, this computer included (#3790)",
+      "status": "ignored",
+      "decidedAt": "2026-10-29",
+      "rule": "ignore-upstream-design-refresh"
+    },
+    {
+      "sha": "65bba93a92745b6b9fedfee991b95874db78979e",
+      "subject": "test(team-inbox): put Marco's busy hour at noon, so it never runs past midnight (#3780)",
+      "status": "ignored",
+      "decidedAt": "2026-10-29",
+      "note": "Test for the Cloud team inbox, which the fork does not have."
+    },
+    {
+      "sha": "976554a4bde20e3e8ea728db71827c9abd9cbbbe",
+      "subject": "Bot-coloured main buttons: Send, Allow and the answers a bot waits for (#3767)",
+      "status": "ignored",
+      "decidedAt": "2026-10-29",
+      "rule": "ignore-upstream-design-refresh"
+    },
+    {
+      "sha": "5e10446bc8d303dda74b7b54dbe49c2b3d52dd08",
+      "subject": "chore(release): bump version to 0.1.131 (#3768)",
+      "status": "ignored",
+      "decidedAt": "2026-10-29",
+      "note": "Upstream's version bump; the fork versions itself at release."
+    },
+    {
+      "sha": "75c6c4b4067eae2e8cf3ba9bb1f4374527bf0266",
+      "subject": "Revert \"fix(antigravity): normalize legacy effort models (#3748)\" for 0.1.131 (#3770)",
+      "status": "observation",
+      "decidedAt": "2026-10-29",
+      "note": "Revert of code the fork never took; nothing to undo."
+    },
+    {
+      "sha": "1e4a6de694aadf4e43fcbfb7de64ef4597709fa3",
+      "subject": "fix(antigravity): normalize legacy effort models (#3748)",
+      "status": "observation",
+      "decidedAt": "2026-10-29",
+      "note": "The upstream reverted it (75c6c4b406) and re-landed it as 44dd7f67f8; neither side is in the fork."
+    },
+    {
+      "sha": "178a3227d38d22409971f0b38288fee20a986f0e",
+      "subject": "feat(desktop): the rail of places as the window's own chrome, on every place (#3739)",
+      "status": "ignored",
+      "decidedAt": "2026-10-29",
+      "rule": "ignore-upstream-design-refresh"
+    },
+    {
+      "sha": "bcd44bd7a9ef57188745e39cafe2c0961bece217",
+      "subject": "feat(workspace): a banner picture at the top of every sidebar of a workspace (#3733)",
+      "status": "ignored",
+      "decidedAt": "2026-10-29",
+      "rule": "ignore-upstream-design-refresh"
+    },
+    {
+      "sha": "a354545f95a4de9888460084469328f1b93b2b7e",
+      "subject": "feat(cloud): a rail of Clouds, ＋ to buy or add your own server, and each place's colour (#3725)",
+      "status": "ignored",
+      "decidedAt": "2026-10-29",
+      "rule": "ignore-upstream-design-refresh"
+    },
+    {
+      "sha": "f98bf6feda2d07e3ce0df2031f8f29e0b0118ec9",
+      "subject": "Give a Cloud's own sidebar a faint night sky at its top",
+      "status": "ignored",
+      "decidedAt": "2026-10-29",
+      "rule": "ignore-upstream-design-refresh"
+    },
+    {
+      "sha": "df01da1e2dbc97599268907c15669cc7b2670ff2",
+      "subject": "Add a linocut night card to the top of the Cloud plans sheet and the Cloud Pro popup",
+      "status": "ignored",
+      "decidedAt": "2026-10-29",
+      "rule": "ignore-upstream-design-refresh"
+    },
+    {
+      "sha": "1bc8c38859ef3fe74c2432129d22667b13550dc5",
+      "subject": "Calm, minimal Cloud plans sheet and Cloud Pro popup (#3723)",
+      "status": "ignored",
+      "decidedAt": "2026-10-29",
+      "rule": "ignore-upstream-design-refresh"
+    },
+    {
+      "sha": "68f96159ea6b0dc54d71329140c3ce44ae6fc95e",
+      "subject": "test(ui): drop a redundant model picker comment",
+      "status": "ignored",
+      "decidedAt": "2026-10-29",
+      "note": "Comment-only change in the upstream model picker; the fork's file differs."
+    },
+    {
+      "sha": "f3134f53d7a212f0e123f2be36457ffc3106f5ef",
+      "subject": "fix(ui): give the model picker a readable surface in the chat header",
+      "status": "ignored",
+      "decidedAt": "2026-10-29",
+      "rule": "ignore-upstream-design-refresh"
+    },
+    {
+      "sha": "55b15b719c39aeafb56a37aafc025eff7ab3a92f",
+      "subject": "fix(model-picker): restore variant reset",
+      "status": "ignored",
+      "decidedAt": "2026-10-29",
+      "rule": "ignore-upstream-design-refresh"
+    },
+    {
+      "sha": "8d0bec78ca2cc1f6ee3bdb8ef7df4c144b33abd6",
+      "subject": "docs: add Antigravity effort level screenshots",
+      "status": "ignored",
+      "decidedAt": "2026-10-29",
+      "note": "Screenshots only."
+    },
+    {
+      "sha": "6a5cb9df75b5def2e434b6d4d8654cbd45d81d51",
+      "subject": "feat: choose white or black mascot facial features (4/4)",
+      "status": "ignored",
+      "decidedAt": "2026-10-29",
+      "rule": "ignore-upstream-design-refresh"
+    },
+    {
+      "sha": "1e350baf82b30dcb6abc48133bff0eabfcba773d",
+      "subject": "feat: choose white or black mascot facial features (3/4)",
+      "status": "ignored",
+      "decidedAt": "2026-10-29",
+      "rule": "ignore-upstream-design-refresh"
+    },
+    {
+      "sha": "2b7ebad5a95a4b690975706f9288e441971850d2",
+      "subject": "feat: choose white or black mascot facial features (2/4)",
+      "status": "ignored",
+      "decidedAt": "2026-10-29",
+      "rule": "ignore-upstream-design-refresh"
+    },
+    {
+      "sha": "b069b7e2d0739c0110a2c4c04585a989cbf28f47",
+      "subject": "feat: choose white or black mascot facial features (1/4)",
+      "status": "ignored",
+      "decidedAt": "2026-10-29",
+      "rule": "ignore-upstream-design-refresh"
+    },
+    {
+      "sha": "d47535ed64077185a7bed23cf40d4229d6ed8f10",
+      "subject": "docs(pr): screenshots for the standalone engine install",
+      "status": "ignored",
+      "decidedAt": "2026-10-29",
+      "note": "Screenshots only."
     }
   ]
 }
