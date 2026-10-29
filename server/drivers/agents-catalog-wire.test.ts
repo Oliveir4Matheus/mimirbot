@@ -77,32 +77,32 @@ const FULL = "skills+shared+voice+escalations+x";
 
 /** Bytes when the budget was last set; a profile may move at most 2% either way (lower it to lock in a win). */
 const BUDGET_BASELINE: Record<string, number> = {
-  "default": 53557,
-  "voice": 54338,
-  "shared": 55657,
-  "shared+voice": 56438,
-  "skills": 56376,
-  "skills+voice": 57157,
-  "skills+shared": 58476,
-  "skills+shared+voice": 59257,
-  "non-chief": 44542,
-  "voice+non-chief": 45323,
-  "shared+non-chief": 46642,
-  "shared+voice+non-chief": 47423,
-  "skills+non-chief": 47361,
-  "skills+voice+non-chief": 48142,
-  "skills+shared+non-chief": 49461,
-  "skills+shared+voice+non-chief": 50242,
-  "skills+shared+voice+cloud-home": 58338,
-  "skills+shared+voice+non-chief+cloud-home": 49323,
-  "default+legacy-switches": 53557,
-  "default+mausbot": 54208,
-  "skills+shared+voice+mausbot": 59908,
-  "skills+shared+voice+escalations": 60087,
-  "skills+shared+voice+escalations+x": 63881,
-  "default+handoff": 52351,
-  "default+room": 47115,
-  "non-chief+room": 38100,
+  "default": 54373,
+  "voice": 55154,
+  "shared": 56473,
+  "shared+voice": 57254,
+  "skills": 57192,
+  "skills+voice": 57973,
+  "skills+shared": 59292,
+  "skills+shared+voice": 60073,
+  "non-chief": 45341,
+  "voice+non-chief": 46122,
+  "shared+non-chief": 47441,
+  "shared+voice+non-chief": 48222,
+  "skills+non-chief": 48160,
+  "skills+voice+non-chief": 48941,
+  "skills+shared+non-chief": 50260,
+  "skills+shared+voice+non-chief": 51041,
+  "skills+shared+voice+cloud-home": 59154,
+  "skills+shared+voice+non-chief+cloud-home": 50122,
+  "skills+shared+voice+escalations": 60903,
+  "skills+shared+voice+escalations+x": 64742,
+  "default+legacy-switches": 54373,
+  "default+mausbot": 55024,
+  "skills+shared+voice+mausbot": 60724,
+  "default+handoff": 53167,
+  "default+room": 47893,
+  "non-chief+room": 38861,
 };
 
 const RPC_PREFIX = '{"jsonrpc":"2.0","id":1,"result":';
@@ -271,7 +271,7 @@ describe("agents proxy tools/list golden", () => {
       }
       expect(chiefTools.find((tool) => tool.name === "propose_profile")!.description).toContain(CHIEF_PROFILE_TARGET);
       expect(JSON.stringify(CHIEF_TARGET_TOOLS.map((tool) => tools.get(tool)))).not.toContain("for_bot_id");
-      for (const trigger of ["trigger_info", "trigger"]) {
+      for (const trigger of ["trigger_info", "trigger", "delete_trigger"]) {
         expect(tools.get(trigger)!.inputSchema.properties, `${name}: ${trigger}`).toHaveProperty("for_bot_id");
       }
     }
