@@ -53,7 +53,7 @@ import {
 import { appendNative } from "./native.ts";
 import { runKeepWarmPing, type KeepWarmContract } from "./claude-keepwarm.ts";
 import { BACKGROUND_CALL_TIMEOUT_MS, backgroundCallArgs, spawnBackgroundCall } from "./claude-background.ts";
-import { permissionLaunchCwd, shellRequest } from "./permission-command.ts";
+import { permissionLaunchCwd, shellRequest } from "./permission-command.ts"; import { claudeAskReads } from "./claude-ask-reads.ts";
 import { SPAWNED_PROXIES } from "../proxy-paths.ts"; import { OWN_APPS_SERVER } from "../../shared/own-apps.ts";
 import { extractMcpImages } from "../mcp-tool-images.ts"; import { claudeToolDraft } from "./tool-progress.ts";
 import {
@@ -876,9 +876,8 @@ export const ClaudeDriver: ProviderDriver<ClaudeConfig> = {
     const listeners = new Set<RuntimeEventListener>();
     const active = new Map<string, { stop: () => void; turnId: string; broker?: Awaited<ReturnType<typeof createPermissionBroker>> }>();
 
-    // Under --input-format stream-json the CLI settles a turn with `result` while stdin stays open,
-    // takes the next stdin message as a new turn, and folds one sent mid-turn into the running turn
-    // before its next model call (2.1.221).
+    // --input-format stream-json (2.1.221): `result` settles a turn with stdin open, and one message sent mid-turn
+    // joins the running turn before its next model call.
     interface Session {
       child: ReturnType<typeof spawnCli>;
       broker?: Awaited<ReturnType<typeof createPermissionBroker>>;
@@ -1187,8 +1186,7 @@ export const ClaudeDriver: ProviderDriver<ClaudeConfig> = {
       const env = environment(turnModel);
       const authSettings = isolated && !injected.injected
         ? readClaudeAuthSettings(env, input.environment) : {};
-      // The hook helper reads its bearer from a per-thread file refreshed every turn, so a
-      // long-lived CLI process never presents a stale token.
+      // A per-thread file the hook helper re-reads each turn, so a long-lived CLI never presents a stale token.
       const hooks = turn.integrations?.hooks;
       const hookTokenPath = hooks ? hookTokenFile(threadId, botId) : null;
       if (hooks && hookTokenPath) {
@@ -1261,10 +1259,8 @@ export const ClaudeDriver: ProviderDriver<ClaudeConfig> = {
         return { turnId };
       }
       if (live) closeSession(threadId, turn.sessionReset ? "context reset" : "spawn contract changed");
-      // A new process gets the stable half only; the volatile half rides its first message, so a relaunch reuses the cached prefix.
       const halves = promptHalves(turn);
-      const launchSystem = halves.stable ?? turn.system;
-
+      const launchSystem = halves.stable ?? turn.system; // a new process gets the stable half only
       // Until sessions.set() below, this turn owns every launch resource and must release it on failure.
       const cleanupUnownedLaunch = () => {
         broker?.close();
@@ -1311,6 +1307,7 @@ export const ClaudeDriver: ProviderDriver<ClaudeConfig> = {
                 summary: askSummary(ask),
                 // The Bash command, for exact-command grants and for the safety floor.
                 ...shellRequest(ask.kind === "permission" && ask.tool === "Bash" ? ask.input.command : undefined, commandCwd),
+                ...claudeAskReads(ask.kind, ask.tool, ask.input),
                 requiresExplicitApproval: ask.kind === "permission" && ask.tool === "Bash" && ask.input.dangerouslyDisableSandbox === true || undefined,
                 nativeReview,
                 allowSession: ask.kind === "permission" && !(controlsHost && typeof ask.tool === "string" && ask.tool.startsWith("mcp__computer")) ? true : undefined,
@@ -1951,8 +1948,8 @@ export const ClaudeDriver: ProviderDriver<ClaudeConfig> = {
       cliVersionChecked = true;
       if (version !== cliHelpVersion) await readCliHelp(version, env);
       const update = claudeCliUpdate(version, config.cli);
-      const warning = claudeInheritWarning(env);
       if (config.requireApiKey && !input.environment.ANTHROPIC_API_KEY) return { state: "unavailable", version, reason: NO_ANTHROPIC_KEY };
+      const warning = claudeInheritWarning(env);
       const probed: typeof lastAuth = config.requireApiKey ? { authenticated: true } : await claudeAuthStatus(config.cli, env);
       const auth = probed.authenticated === undefined ? lastAuth : (lastAuth = probed);
       return { state: "available", version, ...auth, ...claudeBilling(env, auth.account), ...(update ? { update } : {}), ...(warning ? { warning } : {}) };
