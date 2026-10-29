@@ -3284,6 +3284,41 @@
       "decidedAt": "2026-10-29",
       "ourCommit": "79fe2efed",
       "note": "Already here as fac52da25/79fe2efed before lote 1; the cherry-pick came back empty."
+    },
+    {
+      "sha": "d3a31ef1b002b9b634958b44b5049170fbddcc8a",
+      "subject": "test: two e2e tests stop failing on a busy CI runner (#3781)",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "88cc759ea"
+    },
+    {
+      "sha": "46c4fcbe5f41b440bfc6b8bd4abeba58b0b7a460",
+      "subject": "test(team-profile): the unclaimed server profile's person is no bot name (#3799)",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "2998327c8"
+    },
+    {
+      "sha": "d8a0cd6553ac0a6b5e9f6b234d3ffa669ce10254",
+      "subject": "fix(memory): the memory gate counts each engine's share of memory, not shared pages once per process (#3792)",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "a7cd4f021"
+    },
+    {
+      "sha": "1fee5d86b2b772a628eaafbad2fa0175ce1db42c",
+      "subject": "fix(box): the credential broker reaches an MCP server at exactly its own address (#3779)",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "ee671dae7"
+    },
+    {
+      "sha": "267fa44f9fe4ea12f4645fa1185b2e55bdd6a2d9",
+      "subject": "fix(approvals): a bot reading its own files never asks, at any level (#3791)",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "73e6b44d8"
     }
   ]
 }
