@@ -3761,6 +3761,84 @@
       "status": "deferred",
       "decidedAt": "2026-10-29",
       "reason": "Same paste-to-add editor path as 5c8b975fb (addItems sends blank headers for a personal key and disables the server until the key is saved); our fork has no paste editor or ownKey flow (upstream 259c9d8e3 not taken). The server-side guarantees it protects are already applied."
+    },
+    {
+      "sha": "00510c44932aab3f764418e4aab5df1b320e99e9",
+      "subject": "fix(pi): await confirmed CLI termination before completing turns",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "66915935ceeb4b8f3ff7f450833f15342ed8de88",
+      "note": "Applied as-is: our pi.ts was identical to upstream's parent apart from one branding string, so the new server/drivers/pi-rpc.ts, pi-lifecycle.test.ts and fake-pi-lifecycle.mjs came in unchanged. Our killCliTree already returns Promise<boolean> and takes a grace timeout, so settle() now awaits it before turn.completed. Ordering deviation: the requested sequence was not topological (b1585d9f25's parent is af205b0422, whose parent is this commit, and b127a55168 sits on 1fd4123514), so the batch was applied in the upstream parent graph order 00510c4493, af205b0422, b1585d9f25, 97d7c6df37, 1fd4123514, b127a55168, 6c486ad711, 4447ef19eb, 9b06e4dc08, dc1f02aa3d, 7045f15a13. Every commit still cherry-picked cleanly in that order."
+    },
+    {
+      "sha": "af205b0422c232d7b95d30d55e0f7cfb0c090ed8",
+      "subject": "fix(pi): reject failed model selection before prompting",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "10433b5e4a6a33ceabdaf7605624089205f2c4a7"
+    },
+    {
+      "sha": "b1585d9f2580f96877fc26f5772cd0252cc8aad3",
+      "subject": "fix(pi): cancel completion fallback during continuation and maintenance",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "633675ef64a25e99ec792b00ff7dd9b89891a7e8"
+    },
+    {
+      "sha": "97d7c6df3769cb12b1e04bf3b415d2f5f29d41af",
+      "subject": "fix(pi): accumulate usage across tool rounds and continuations",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "e0e3e1a5d1021b74763d5b23830fb761739ca2f5"
+    },
+    {
+      "sha": "1fd4123514de819df02b88f7715deecca36d6adc",
+      "subject": "fix(pi): await Windows termination and preserve cancellation",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "263bd955ea01ba3bfbe9ded70b5b09e50e5e40d0"
+    },
+    {
+      "sha": "b127a5516847d1a638c0aa726c1dafce61590c69",
+      "subject": "fix(pi): cancel completion fallback when a turn continues",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "5706509c7daf5182665a0bcd8f7470b65cc39459"
+    },
+    {
+      "sha": "6c486ad7116426ec6f3303c0d50ad27e3c8d1aef",
+      "subject": "fix(pi): give Pi its TERM grace before the kill, so Stop ends the tool processes it started",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "6ad9efafdad646b4d34c3c7d4220d430843d408a"
+    },
+    {
+      "sha": "4447ef19eb88e958c7d5df174e89e9a88988872f",
+      "subject": "fix(pi): await every turn during shutdown",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "7e8b2192bfb0843ff469356530d82b36fc7ddeb2"
+    },
+    {
+      "sha": "9b06e4dc08a5fccf196604a57e5ff12053224f9a",
+      "subject": "test(pi): check the TERM cleanup only where Pi gets a TERM",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "047202f01a0fd45c1c6479b929f80a3874fe04a6"
+    },
+    {
+      "sha": "dc1f02aa3da8a578d8bfc7afe1a1fe924caaaf9a",
+      "subject": "fix(codex): avoid replaying turn activity after start RPC failures",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "abf63431db0310fab91cfca75b7d6ad17211366c"
+    },
+    {
+      "sha": "7045f15a1376276c61f8a1ddfc1fd37dd42acb26",
+      "subject": "fix(codex): warn about tool activity after turn-start failure",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "8d0c5780f954cd223f66ef640a0e1a8c3a19ffdb"
     }
   ]
 }
