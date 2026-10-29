@@ -567,6 +567,15 @@ describe("the model picker in Simple mode", () => {
     expect(pane(open(forBot))).toBeDefined();
   });
 
+  it("lets the contained trigger shrink inside the bot panel's Model row, and the loose one keep its size", () => {
+    const contained = render(bot(), { contained: true }).nodes.find((node) => node.props["data-tour"] === "model")!;
+    expect(String(contained.props.className)).toContain("min-w-0 max-w-[58%]");
+    expect(String(contained.props.className)).not.toMatch(/\bshrink-0\b/);
+    const loose = render(bot()).nodes.find((node) => node.props["data-tour"] === "model")!;
+    expect(String(loose.props.className)).toContain("shrink-0");
+    expect(String(loose.props.className)).not.toContain("max-w-[58%]");
+  });
+
   it("says so when the browsed provider has no models to list", () => {
     const html = renderToStaticMarkup(createElement(SimpleModelPane, { ...pane(open(bot()))!.props, models: [] }));
     const list = region(html, "data-simple-models", "data-simple-effort-band");
