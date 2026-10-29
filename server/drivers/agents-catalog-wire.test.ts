@@ -77,30 +77,30 @@ const FULL = "skills+shared+voice+escalations+x";
 
 /** Bytes when the budget was last set; a profile may move at most 2% either way (lower it to lock in a win). */
 const BUDGET_BASELINE: Record<string, number> = {
-  "default": 54373,
-  "voice": 55154,
-  "shared": 56473,
-  "shared+voice": 57254,
-  "skills": 57192,
-  "skills+voice": 57973,
-  "skills+shared": 59292,
-  "skills+shared+voice": 60073,
-  "non-chief": 45341,
-  "voice+non-chief": 46122,
-  "shared+non-chief": 47441,
-  "shared+voice+non-chief": 48222,
-  "skills+non-chief": 48160,
-  "skills+voice+non-chief": 48941,
-  "skills+shared+non-chief": 50260,
-  "skills+shared+voice+non-chief": 51041,
-  "skills+shared+voice+cloud-home": 59154,
-  "skills+shared+voice+non-chief+cloud-home": 50122,
-  "skills+shared+voice+escalations": 60903,
-  "skills+shared+voice+escalations+x": 64742,
-  "default+legacy-switches": 54373,
-  "default+mausbot": 55024,
-  "skills+shared+voice+mausbot": 60724,
-  "default+handoff": 53167,
+  "default": 55444,
+  "voice": 56225,
+  "shared": 57544,
+  "shared+voice": 58325,
+  "skills": 58263,
+  "skills+voice": 59044,
+  "skills+shared": 60363,
+  "skills+shared+voice": 61144,
+  "non-chief": 46412,
+  "voice+non-chief": 47193,
+  "shared+non-chief": 48512,
+  "shared+voice+non-chief": 49293,
+  "skills+non-chief": 49231,
+  "skills+voice+non-chief": 50012,
+  "skills+shared+non-chief": 51331,
+  "skills+shared+voice+non-chief": 52112,
+  "skills+shared+voice+cloud-home": 60225,
+  "skills+shared+voice+non-chief+cloud-home": 51193,
+  "skills+shared+voice+escalations": 61974,
+  "skills+shared+voice+escalations+x": 65813,
+  "default+legacy-switches": 55444,
+  "default+mausbot": 56095,
+  "skills+shared+voice+mausbot": 61795,
+  "default+handoff": 54238,
   "default+room": 47893,
   "non-chief+room": 38861,
 };
@@ -182,6 +182,24 @@ describe("agents proxy tools/list golden", () => {
     const wire = wires[FULL]!;
     expect(JSON.parse(wire)).toEqual(golden);
     expect(wire).toBe(JSON.stringify(golden));
+  });
+
+  it("offers wait_until right after the trigger tools, outside a room, and list_waits and cancel_wait only to a bot with a wait", () => {
+    for (const [name, wire] of Object.entries(wires)) {
+      const names = toolsOf(wire).map((tool) => tool.name);
+      const at = names.indexOf("delete_trigger");
+      expect(at, name).toBeGreaterThan(-1);
+      const waits = PROFILES[name]!.env.OMB_ROOM === "1" ? [] : ["wait_until"];
+      expect(names.slice(at + 1, at + 1 + waits.length), name).toEqual(waits);
+      expect(names.filter((tool) => /wait/.test(tool) && tool !== "assignment_status"), name).toEqual(waits);
+    }
+    const waiting = (name: string) => availableTools(catalogProfileFromEnv({ OMB_BOT_ID: "bot-golden", ...PROFILES[name]!.env, OMB_ACTIVE_WAITS: "1" }));
+    for (const name of Object.keys(PROFILES)) {
+      const names = waiting(name).map((tool) => tool.name);
+      const room = PROFILES[name]!.env.OMB_ROOM === "1";
+      expect(names.filter((tool) => /wait/.test(tool) && tool !== "assignment_status"), name).toEqual(room ? ["list_waits"] : ["wait_until", "list_waits", "cancel_wait"]);
+      expect(names.filter((tool) => tool !== "list_waits" && tool !== "cancel_wait"), name).toEqual(toolsOf(wires[name]!).map((tool) => tool.name));
+    }
   });
 
   it("every profile matches its pinned tool names, byte count and sha256", () => {
@@ -281,11 +299,12 @@ describe("agents proxy tools/list golden", () => {
     const names = (name: string) => toolsOf(wires[name]!).map((tool) => tool.name);
     expect(names("default+handoff")).toEqual(names("default").filter((tool) => tool !== "select_computer"));
     for (const name of ["default", "non-chief"]) {
-      expect(names(`${name}+room`), name).toEqual(names(name).filter((tool) => !["select_computer", "show_widget", "show_html"].includes(tool)));
+      expect(names(`${name}+room`), name).toEqual(names(name).filter((tool) => !["select_computer", "show_widget", "show_html", "wait_until", "cancel_wait"].includes(tool)));
     }
     for (const [name, profile] of Object.entries(PROFILES)) {
       expect(names(name).includes("select_computer"), name).toBe(profile.env.OMB_COMPUTER_SELECTION === "1");
       expect(names(name).includes("show_widget"), name).toBe(profile.env.OMB_ROOM !== "1");
+      expect(names(name).includes("wait_until"), name).toBe(profile.env.OMB_ROOM !== "1");
     }
   });
 
