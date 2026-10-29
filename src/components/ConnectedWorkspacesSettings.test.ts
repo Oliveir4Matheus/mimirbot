@@ -2,6 +2,7 @@ import { Children, createElement, isValidElement, type EffectCallback, type Reac
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { setLocale } from "@/lib/i18n";
+import { en } from "@/locales";
 const f = vi.hoisted(() => ({ values: [] as unknown[], index: 0, effects: [] as EffectCallback[] }));
 vi.mock("react", async original => ({ ...await original<typeof import("react")>(),
   useState: (initial: unknown) => { const index = f.index++; if (!(index in f.values)) f.values[index] = typeof initial === "function" ? (initial as () => unknown)() : initial;
@@ -186,4 +187,15 @@ it("My Cloud's entry has one lending control, Let my bots use this computer; oth
   expect(labels).not.toContain("Computer access for My Cloud");
   render().nodes.find(node => node.type === "button" && Children.toArray(node.props.children).join("") === "Let my bots use this computer")!.props.onClick!();
   expect(open).toHaveBeenCalledOnce();
+});
+
+// This fork keeps English as its only complete catalog, so the local environment copy is checked through the English
+// pack (and its fallback) rather than upstream's zh translation.
+it("shows local environment controls from the catalog, falling back to English", async () => {
+  stubEnvironments(); setLocale("fr"); await mount();
+  const { html } = render();
+  expect(html).toContain(en["connectedWorkspaces.localTitle"]);
+  expect(html).toContain(en["connectedWorkspaces.localSubtitle"]);
+  expect(html).toContain(en["connectedWorkspaces.create"]);
+  expect(html).toContain(en["connectedWorkspaces.switchTo"].replace("{name}", "Work"));
 });
