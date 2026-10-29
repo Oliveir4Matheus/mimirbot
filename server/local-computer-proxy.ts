@@ -1,11 +1,12 @@
 // The descriptor and turn token travel in environment variables, never argv or logs.
 import { runMcpBridge } from "./mcp-bridge.ts";
 import { augmentedPath } from "./env-path.ts";
-import { localComputerResultLine } from "./local-computer-guidance.ts";
+import { localComputerRelay, localComputerResultLine } from "./local-computer-guidance.ts";
 
 const {
   OMB_CUA_COMMAND: command,
   OMB_CUA_ARGS: encodedArgs,
+  OMB_CUA_PLATFORM: platform,
   OMB_CONTROL_URL: url,
   OMB_CONTROL_TOKEN: token,
   ...childEnv
@@ -34,4 +35,5 @@ runMcpBridge({
   label: "Local Cua Driver",
   gate: { url: url!, token: token! },
   rewriteResponse: localComputerResultLine,
+  relay: localComputerRelay(platform ?? process.platform),
 });
