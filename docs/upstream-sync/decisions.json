@@ -3142,16 +3142,18 @@
     {
       "sha": "7e28ea4174e1bd8e23175293862f011c469eb453",
       "subject": "test(reactions): the yes-or-no guidance no longer says to end the turn (#3679)",
-      "status": "observation",
-      "reason": "Test text for 6ed71aa83 (Bots answer first), which is still an observation; the test fails without that prompt change.",
-      "decidedAt": "2026-10-28"
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "3d0afa1f523e34d1490d3692ef0a72f1f7f43ad7",
+      "note": "Lote 1. Needed one line in system-prompt.ts: the upstream sentence change lived in 6ed71aa83, which we do not take. The e2e runs in its own fixture."
     },
     {
       "sha": "9235ff897ef29303a96174394feeaa94bc490628",
       "subject": "test(ui): the renderer e2e tests follow the current sidebar, Team map and settings (#3700)",
-      "status": "pending",
-      "reason": "Renderer e2e tests follow upstream sidebar, Team map and settings; only worth it if they cover screens we have.",
-      "decidedAt": "2026-10-28"
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "63b0620458736dffde300e0cd2b130aec3acca3d",
+      "note": "Lote 1. Applied clean. The e2e tests run against the packaged browser engine."
     },
     {
       "sha": "49088dc76b80f2039e4becd676e39f59378abc6c",
@@ -3235,6 +3237,53 @@
       "status": "observation",
       "note": "Only matters if we host the Composio broker; on watch with the other Composio commits.",
       "decidedAt": "2026-10-28"
+    },
+    {
+      "sha": "158417d007f5efd732d34981da9ee1dbcae1155a",
+      "subject": "fix: preserve Obsidian links in web chat (#3687)",
+      "status": "applied",
+      "note": "Lote 1. Applied clean; the test uses our mimirbot.invalid published-page domain.",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "34992cb7a76b88634d983fa3d1c66498e5448895"
+    },
+    {
+      "sha": "afbc78c5c2d5faeb2fb45d464bf4cad243c83c9a",
+      "subject": "fix(grok): skip session/set_model when Grok already runs the picked model (#3641)",
+      "status": "applied",
+      "note": "Lote 1. Applied clean.",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "d0e96c9b8c0a628f6d54ee187c6484ed042dbdc6"
+    },
+    {
+      "sha": "95ea06adc95d9f0b6d97c59598e6a04b1c49526a",
+      "subject": "fix(claude): third-party MCP tools load on demand through Claude Code's tool search (#3759)",
+      "status": "applied",
+      "note": "Lote 1. Adapted: MimirBot's name in the notes and tests, and two comments that pointed at another file are gone.",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "0e32aa2d65fdef0ece180c1cef67c8fc4b390562"
+    },
+    {
+      "sha": "d6ae3c56642734fe7b6c2020e0dda6d4a67d21f7",
+      "subject": "fix(ui): long model names fit their rows, and the sidebar pill says Apps once an app is connected (#3689)",
+      "status": "applied",
+      "note": "Lote 1, partly: the contained model trigger and its span keep long names inside the row. The SidebarConnectApps half has no counterpart here.",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "86e076df9f0297df968b1cf758d5afeb69eab6db"
+    },
+    {
+      "sha": "4b9eb0ff00ec26c1dbe65dd2338df3eeaaf9a23d",
+      "subject": "fix(apps): a turn never waits on a refresh of the connected-apps list (#3766)",
+      "status": "ignored",
+      "reason": "It rewrites appsConnected/withAppTools, which this fork does not have: apps reach a turn through mcpIntegration, and nothing here waits on that list, so only the cache would land as dead code.",
+      "decidedAt": "2026-10-29"
+    },
+    {
+      "sha": "c97961550257252fd98fb4a76e98e580e0553f8a",
+      "subject": "fix(chat): engine exits by signal or with a multi-word name read as a plain line (#3693)",
+      "status": "adopted",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "79fe2efed",
+      "note": "Already here as fac52da25/79fe2efed before lote 1; the cherry-pick came back empty."
     }
   ]
 }
