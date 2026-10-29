@@ -787,6 +787,7 @@ export function ModelPicker({
       aria-haspopup="dialog"
       className={cn(
         "flex h-[35px] items-center gap-2 rounded-lg pl-[3px] pr-2.5 text-[14px] text-ink hover:bg-raised disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent",
+        contained ? "min-w-0 max-w-[58%]" : "shrink-0",
         !contained && active && !showActiveAccount && COMPACT_SQUARE,
       )}
       title={bot.busy ? `${summary}${followLine}\n${t(threadId ? "model.threadBusy" : "model.busy")}` : `${summary}${followLine}`}
@@ -796,7 +797,7 @@ export function ModelPicker({
         <span data-model-account-compact className="hidden max-w-20 truncate @max-4xl/chathead:inline">{active.displayName}</span>
       )}
       <span className={cn("flex min-w-0 items-center gap-1", !contained && active && "@max-4xl/chathead:hidden")}>
-        <span className="max-w-[160px] truncate">
+        <span className="min-w-0 max-w-[160px] truncate">
           {active && showActiveAccount && (
             <span data-model-account className="text-ink-secondary">{active.displayName} · </span>
           )}
