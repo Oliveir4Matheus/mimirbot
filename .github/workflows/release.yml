@@ -41,7 +41,7 @@ on:
         default: false
   push:
     branches:
-      - main
+      - mimirbot
     paths:
       - package.json
 
