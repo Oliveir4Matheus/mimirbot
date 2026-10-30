@@ -268,20 +268,20 @@ describe("control-omb ui drives the real renderer", () => {
     // refuse a version continuation, which would otherwise pick
     // "Claude Sonnet 5.5" when the label asked for is "Claude Sonnet 5".
     const evaluate = async (js: string) => (await ui("eval", info.ui, "--js", js)).result;
-    const clickModel = async (label: string) => {
+    // The trigger renders the model id when the renderer has no catalog entry
+    // for it, and wraps the name in the account and provider otherwise, so try
+    // every name the model has. A version continuation is still refused: the
+    // names for "Claude Sonnet 5" must not pick "Claude Sonnet 5.5" / -5-5.
+    const clickModel = async (...names: string[]) => {
       const result = await evaluate(`(() => {
-        const want = ${JSON.stringify(label)};
-        if (typeof want !== "string" || !want) return { clicked: false, names: ["no label for this model"] };
-        // The trigger carries the account and provider around the model name
-        // ("Claude · Claude Sonnet 5 · anthropic"), so match anywhere in the
-        // accessible name, still refusing a version continuation: "Claude
-        // Sonnet 5" must not pick "Claude Sonnet 5.5".
-        const fits = (text) => {
+        const wants = ${JSON.stringify(names)}.filter((want) => typeof want === "string" && want);
+        if (!wants.length) return { clicked: false, names: ["this model has no label or id"] };
+        const fits = (text) => wants.some((want) => {
           const at = text.indexOf(want);
           if (at < 0) return false;
           const rest = text.slice(at + want.length);
-          return rest === "" || !/^[.\\d]/.test(rest);
-        };
+          return rest === "" || !/^[.\\d-]/.test(rest);
+        });
         const nameOf = (node) => (node.getAttribute("aria-label") || node.textContent || "").trim();
         const nodes = [...document.querySelectorAll('button,[role="button"],[role="menuitem"],[role="option"]')];
         const match = nodes.find((node) => fits(nameOf(node)));
@@ -291,19 +291,19 @@ describe("control-omb ui drives the real renderer", () => {
       })()`);
       expect(result.clicked, JSON.stringify(result)).toBe(true);
     };
-    await clickModel(originalLabel);
+    await clickModel(originalLabel, originalModel);
     expect(await ui("eval", info.ui, "--js", "[...document.querySelectorAll('[aria-label=\"Apply model changes to\"] button')].find(b => b.textContent === 'Only this thread').getAttribute('aria-pressed')"))
       .toMatchObject({ result: "true" });
     await ui("click", info.ui, "--name", "Thread + bot default");
     const scopeShot = join(evidenceDir, "model-scope.png");
     mkdirSync(evidenceDir, { recursive: true });
     await ui("screenshot", info.ui, "--out", scopeShot);
-    await clickModel(nextModel.label);
+    await clickModel(nextModel.label, nextModel.id);
     await expect.poll(async () => (await savedBot()).modelSelection.model, { timeout: 10_000 }).toBe(nextModel.id);
     expect((await savedBot()).tasks.find((task: any) => task.threadId === originalBot.threadId).modelSelection.model).toBe(nextModel.id);
-    await clickModel(nextModel.label);
+    await clickModel(nextModel.label, nextModel.id);
     await ui("click", info.ui, "--name", "Only this thread");
-    await clickModel(originalLabel);
+    await clickModel(originalLabel, originalModel);
     await expect.poll(async () => (await savedBot()).tasks.find((task: any) => task.threadId === originalBot.threadId).modelSelection.model,
       { timeout: 10_000 }).toBe(originalModel);
     expect((await savedBot()).modelSelection.model).toBe(nextModel.id);
