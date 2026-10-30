@@ -271,18 +271,19 @@ describe("control-omb ui drives the real renderer", () => {
     const clickModel = async (label: string) => {
       const result = await evaluate(`(() => {
         const want = ${JSON.stringify(label)};
-        const buttons = [...document.querySelectorAll("button")];
-        const match = buttons.find((button) => {
-          const text = button.textContent.trim();
+        const nodes = [...document.querySelectorAll('button,[role="button"],[role="menuitem"],[role="option"]')];
+        const nameOf = (node) => (node.getAttribute("aria-label") || node.textContent || "").trim();
+        const match = nodes.find((node) => {
+          const text = nameOf(node);
           if (!text.startsWith(want)) return false;
           const rest = text.slice(want.length);
           return rest === "" || !/^[.\\d]/.test(rest);
         });
-        if (!match) return { clicked: false, names: buttons.map((button) => button.textContent.trim()).filter(Boolean).slice(0, 40) };
+        if (!match) return { clicked: false, names: nodes.map(nameOf).filter(Boolean).slice(0, 60) };
         match.click();
         return { clicked: true };
       })()`);
-      expect(result).toMatchObject({ clicked: true });
+      expect(result.clicked, JSON.stringify(result)).toBe(true);
     };
     await clickModel(originalLabel);
     expect(await ui("eval", info.ui, "--js", "[...document.querySelectorAll('[aria-label=\"Apply model changes to\"] button')].find(b => b.textContent === 'Only this thread').getAttribute('aria-pressed')"))
