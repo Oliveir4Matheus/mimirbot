@@ -267,6 +267,7 @@ describe("control-omb ui drives the real renderer", () => {
     // appends its badges ("Default", the context size). Click by text and
     // refuse a version continuation, which would otherwise pick
     // "Claude Sonnet 5.5" when the label asked for is "Claude Sonnet 5".
+    const evaluate = async (js: string) => (await ui("eval", info.ui, "--js", js)).result;
     const clickModel = async (label: string) => {
       const result = await evaluate(`(() => {
         const want = ${JSON.stringify(label)};
