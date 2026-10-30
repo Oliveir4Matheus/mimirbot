@@ -26,8 +26,14 @@ if ([hardDeath, bundled, sessionBlocked].filter(Boolean).length > 1) {
 if (signalShutdown && !bundled) {
   throw new Error("signal-shutdown smoke requires the bundled runtime mode");
 }
+const unpacked = path.join(root, "release", "linux-unpacked");
 const executable = path.resolve(
-  process.env.OMB_SMOKE_EXECUTABLE ?? path.join(root, "release", "linux-unpacked", "openmausbot"),
+  process.env.OMB_SMOKE_EXECUTABLE ??
+    // electron-builder names the binary after the product, which the rebrand
+    // changed; fall back to whatever this checkout actually produced.
+    (["mimirbot", "MimirBot", "openmausbot"]
+      .map((name) => path.join(unpacked, name))
+      .find((candidate) => existsSync(candidate)) ?? path.join(unpacked, "mimirbot")),
 );
 if (!existsSync(executable)) throw new Error(`[smoke-linux-package] missing executable: ${executable}`);
 
