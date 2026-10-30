@@ -102,6 +102,12 @@ const refsNamed = (snapshot: Record<string, any>, name: string, role?: string) =
     .filter(([, element]) => element.name === name && (!role || element.role === role))
     .map(([id]) => `@${id}`);
 
+/** A picker row's accessible name may carry a "· <engine>" suffix, and a
+ * prefix match would confuse "Claude Sonnet 5" with "Claude Sonnet 5.5". */
+const modelRow = (snapshot: Record<string, any>, label: string) =>
+  Object.entries(snapshot.refs as Record<string, { name: string; role: string }>)
+    .find(([, value]) => value.role === "button" && (value.name === label || value.name.startsWith(`${label} ·`)));
+
 describe("control-omb ui drives the real renderer", () => {
   let launched: Launched | undefined;
 
@@ -190,7 +196,13 @@ describe("control-omb ui drives the real renderer", () => {
       return true;
     })()`);
     await click("You");
-    await click("Settings");
+    // The icon rail carries a Settings button too; the account menu's item is
+    // the one that opens the dialog.
+    const accountMenu = await ui("snapshot", info.ui, "--interactive");
+    const settingsItem = Object.entries(accountMenu.refs as Record<string, { name: string; role: string }>)
+      .find(([, entry]) => entry.role === "menuitem" && entry.name === "Settings");
+    expect(settingsItem).toBeDefined();
+    await ui("click", info.ui, "--ref", `@${settingsItem![0]}`);
     // Settings is a lazy chunk: it paints once the chunk arrives.
     await expect.poll(() => evaluate(`(() => {
       const tab = [...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'API keys');
@@ -257,21 +269,25 @@ describe("control-omb ui drives the real renderer", () => {
     const options = models.instances.find((instance: any) => instance.instanceId === originalBot.modelSelection.instanceId).models.options;
     const originalLabel = options.find((option: any) => option.id === originalModel).label;
     const nextModel = options.find((option: any) => option.id !== originalModel);
-    await ui("click", info.ui, "--name", originalLabel);
+    const clickModel = async (label: string) => {
+      const row = modelRow(await ui("snapshot", info.ui, "--interactive"), label);
+      expect(row).toBeDefined();
+      await ui("click", info.ui, "--ref", `@${row![0]}`);
+    };
+    await clickModel(originalLabel);
     expect(await ui("eval", info.ui, "--js", "[...document.querySelectorAll('[aria-label=\"Apply model changes to\"] button')].find(b => b.textContent === 'Only this thread').getAttribute('aria-pressed')"))
       .toMatchObject({ result: "true" });
     await ui("click", info.ui, "--name", "Thread + bot default");
     const scopeShot = join(evidenceDir, "model-scope.png");
     mkdirSync(evidenceDir, { recursive: true });
     await ui("screenshot", info.ui, "--out", scopeShot);
-    await ui("click", info.ui, "--name", nextModel.label);
+    await clickModel(nextModel.label);
     await expect.poll(async () => (await savedBot()).modelSelection.model, { timeout: 10_000 }).toBe(nextModel.id);
     expect((await savedBot()).tasks.find((task: any) => task.threadId === originalBot.threadId).modelSelection.model).toBe(nextModel.id);
-    await ui("click", info.ui, "--name", nextModel.label);
+    await clickModel(nextModel.label);
     await ui("click", info.ui, "--name", "Only this thread");
     const modelSnapshot = await ui("snapshot", info.ui, "--interactive");
-    const originalRow = Object.entries(modelSnapshot.refs as Record<string, { name: string; role: string }>)
-      .find(([, value]) => value.role === "button" && value.name.startsWith(originalLabel));
+    const originalRow = modelRow(modelSnapshot, originalLabel);
     expect(originalRow).toBeDefined();
     await ui("click", info.ui, "--ref", `@${originalRow![0]}`);
     await expect.poll(async () => (await savedBot()).tasks.find((task: any) => task.threadId === originalBot.threadId).modelSelection.model,

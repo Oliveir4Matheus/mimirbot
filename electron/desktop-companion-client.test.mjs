@@ -58,63 +58,63 @@ describe("desktop companion endpoint", () => {
     expect(normalizeTailscaleCompanionEndpoint("http://HOST.example-tailnet.ts.net:9910/")).toBe(
       "http://host.example-tailnet.ts.net:9910",
     );
-    expect(normalizeDesktopCompanionEndpoint(`https://${LABEL}.mimirbot.invalid`)).toBe(
-      `https://${LABEL}.mimirbot.invalid`,
+    expect(normalizeDesktopCompanionEndpoint(`https://${LABEL}.openmausbot.com`)).toBe(
+      `https://${LABEL}.openmausbot.com`,
     );
-    expect(normalizeDesktopCompanionEndpoint(`${LABEL}.mimirbot.invalid`)).toBe(
-      `https://${LABEL}.mimirbot.invalid`,
+    expect(normalizeDesktopCompanionEndpoint(`${LABEL}.openmausbot.com`)).toBe(
+      `https://${LABEL}.openmausbot.com`,
     );
     // The control plane's second Cloudflare account gives addresses here.
-    expect(normalizeDesktopCompanionEndpoint(`https://${LABEL}.mimirbot.invalid`)).toBe(
-      `https://${LABEL}.mimirbot.invalid`,
+    expect(normalizeDesktopCompanionEndpoint(`https://${LABEL}.openmausbot.com`)).toBe(
+      `https://${LABEL}.openmausbot.com`,
     );
     expect(normalizeDesktopCompanionEndpoint(` ${LABEL.toUpperCase()}.Mausbot.SI/ `)).toBe(
-      `https://${LABEL}.mimirbot.invalid`,
+      `https://${LABEL}.mausbot.si`,
     );
     for (const endpoint of [
       "https://unrelated.example.com",
-      `http://${LABEL}.mimirbot.invalid`,
+      `http://${LABEL}.openmausbot.com`,
       "http://10.0.0.4:8810",
       "http://host.local:8810",
       "https://10.0.0.4",
       "http://host.example-tailnet.ts.net/path",
-      `https://${LABEL}.mimirbot.invalid/path`,
+      `https://${LABEL}.openmausbot.com/path`,
       "http://user@host.example-tailnet.ts.net",
       "http://host.example-tailnet.ts.net.evil.test",
-      `https://${LABEL}.mimirbot.invalid.evil.test`,
-      `http://${LABEL}.mimirbot.invalid`,
-      `https://${LABEL}.mimirbot.invalid/path`,
-      `https://${LABEL}.mimirbot.invalid.evil.test`,
-      "https://mimirbot.invalid",
-      "mimirbot.invalid",
+      `https://${LABEL}.openmausbot.com.evil.test`,
+      `http://${LABEL}.openmausbot.com`,
+      `https://${LABEL}.openmausbot.com/path`,
+      `https://${LABEL}.openmausbot.com.evil.test`,
+      "https://openmausbot.com",
+      "openmausbot.com",
       "https://evilmausbot.si",
       `https://${LABEL}.evilmausbot.si`,
-      "https://www.mimirbot.invalid",
-      "https://app.mimirbot.invalid",
-      "https://accounts.mimirbot.invalid",
-      "https://c-opaque.mimirbot.invalid",
-      "https://c-opaque.mimirbot.invalid",
-      `https://${LABEL.slice(0, -1)}.mimirbot.invalid`,
-      `https://${LABEL}0.mimirbot.invalid`,
-      `https://${LABEL.replace("c-", "d-")}.mimirbot.invalid`,
-      `https://${LABEL}.extra.mimirbot.invalid`,
-      `https://www.${LABEL}.mimirbot.invalid`,
+      "https://www.openmausbot.com",
+      "https://app.openmausbot.com",
+      "https://accounts.openmausbot.com",
+      "https://c-opaque.openmausbot.com",
+      "https://c-opaque.openmausbot.com",
+      `https://${LABEL.slice(0, -1)}.openmausbot.com`,
+      `https://${LABEL}0.openmausbot.com`,
+      `https://${LABEL.replace("c-", "d-")}.openmausbot.com`,
+      `https://${LABEL}.extra.openmausbot.com`,
+      `https://www.${LABEL}.openmausbot.com`,
     ]) {
       expect(normalizeDesktopCompanionEndpoint(endpoint), endpoint).toBe("");
     }
   });
 
   it("validates, adds, and removes the encrypted credential document field", () => {
-    const hostedAccess = { ...access, endpoint: `https://${LABEL}.mimirbot.invalid` };
+    const hostedAccess = { ...access, endpoint: `https://${LABEL}.openmausbot.com` };
     expect(desktopCompanionAccess({ [DESKTOP_COMPANION_FIELD]: hostedAccess })).toEqual(
       hostedAccess,
     );
-    const secondDomain = { ...access, endpoint: `https://${LABEL}.mimirbot.invalid` };
+    const secondDomain = { ...access, endpoint: `https://${LABEL}.openmausbot.com` };
     expect(desktopCompanionAccess({ [DESKTOP_COMPANION_FIELD]: secondDomain })).toEqual(
       secondDomain,
     );
     expect(
-      desktopCompanionAccess({ [DESKTOP_COMPANION_FIELD]: { ...access, endpoint: "https://app.mimirbot.invalid" } }),
+      desktopCompanionAccess({ [DESKTOP_COMPANION_FIELD]: { ...access, endpoint: "https://app.openmausbot.com" } }),
     ).toBeNull();
 
     expect(desktopCompanionAccess({ [DESKTOP_COMPANION_FIELD]: access })).toEqual(access);
@@ -165,34 +165,34 @@ describe("desktop companion pairing", () => {
       }),
     );
     const paired = await pairDesktopCompanion({
-      endpoint: `https://${LABEL}.mimirbot.invalid`,
+      endpoint: `https://${LABEL}.openmausbot.com`,
       code: "654321",
       deviceName: "Desktop client",
       requestId: "request-https-01",
       fetchImpl,
     });
-    expect(paired).toEqual({ ...access, endpoint: `https://${LABEL}.mimirbot.invalid` });
+    expect(paired).toEqual({ ...access, endpoint: `https://${LABEL}.openmausbot.com` });
     expect(fetchImpl).toHaveBeenCalledWith(
-      `https://${LABEL}.mimirbot.invalid/api/pair`,
+      `https://${LABEL}.openmausbot.com/api/pair`,
       expect.objectContaining({ method: "POST" }),
     );
 
     const secondDomain = await pairDesktopCompanion({
-      endpoint: `${LABEL}.mimirbot.invalid`,
+      endpoint: `${LABEL}.openmausbot.com`,
       code: "654321",
       deviceName: "Desktop client",
       requestId: "request-https-02",
       fetchImpl,
     });
-    expect(secondDomain).toEqual({ ...access, endpoint: `https://${LABEL}.mimirbot.invalid` });
+    expect(secondDomain).toEqual({ ...access, endpoint: `https://${LABEL}.openmausbot.com` });
     expect(fetchImpl).toHaveBeenLastCalledWith(
-      `https://${LABEL}.mimirbot.invalid/api/pair`,
+      `https://${LABEL}.openmausbot.com/api/pair`,
       expect.objectContaining({ method: "POST" }),
     );
 
     await expect(
       pairDesktopCompanion({
-        endpoint: "https://app.mimirbot.invalid",
+        endpoint: "https://app.openmausbot.com",
         code: "654321",
         deviceName: "Desktop client",
         requestId: "request-https-03",
