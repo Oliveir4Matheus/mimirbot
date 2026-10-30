@@ -4122,6 +4122,38 @@
       "decidedAt": "2026-10-29",
       "ourCommit": "039242565f345737fa8d1a2a6dc500c1597654b3",
       "note": "Applied with adaptations. Upstream translates 12 packs; our fork has 14, so the six strings were also written for it.json and ru.json (following each file's own terms: 'Impostazioni -> Chiavi API', 'Настройки -> Ключи API'). Every translation keeps its own surrounding content; brand names were changed to MimirBot to match our English source. de/fr/hi are partial and lack engineSetup.serverInstalled, so the keys went after engineSetup.serverInstalling (the same slot upstream used there); the other packs got them after serverInstalled. source-hashes.json was recomputed against our English strings (sha256 of each en.json value) for all 14 locales; upstream's hashes were for the OpenMausBot source. pnpm i18n:check passes with 15 languages."
+    },
+    {
+      "sha": "785eff2a5c042b77b453b047c9583da56726d94b",
+      "subject": "test: the screenshot-store and Mac voice tests stop depending on a fast CI machine",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "cd80c0c9108cb8d790aa87db0d8f0727f6dd8a89",
+      "note": "Applied cleanly. browser-evidence.test.ts creates the 200-330 MB fixtures with writeFileSync('') + truncateSync instead of allocating buffers, and voice-notes.e2e.test.ts gives listSystemVoices a 30 s execFile runner and skips only when the Mac lists no voices. It is an ancestor of the other three commits in this batch, so it was applied first."
+    },
+    {
+      "sha": "1e378c49548d7b0858f96d245cae376c1093a1e6",
+      "subject": "fix(browser): the live view resets a browser that stops answering, instead of blaming the bot",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "dc02a3c15c451470fe48c81685c73698b2408837",
+      "note": "Applied cleanly. A status probe that stays unanswered with no bot call, person action or close in the session now resets the daemon once and reports BrowserUnresponsiveError (503, retryable) instead of a busy/error blamed on the bot; runtime.working() is the one predicate for work in progress and the idle-close guard. It is an ancestor of 60bfe50bf upstream, applied before it to keep parent order."
+    },
+    {
+      "sha": "60bfe50bf1c54f664c9fdc65764ddc86eb325efb",
+      "subject": "fix(browser): a person's hold follows the person, and ends when they leave (#3726)",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "41d1ecd91f72eb27df51a32bcbfde0ad7ac23968",
+      "note": "Applied with adaptations to our older browser UI. Six conflicts: browser-live.ts keeps our constructor without the page-size 'order' field, drops the upstream resize action and fit() helper (our BrowserLive route and v1 live view have no size/requested plumbing), and keeps our own holds() removal; core.ts keeps our viewport imports (VIEWPORT_LIMITS; our requestedSize is local) plus the new ViewerHold import; live-v1.ts takes person but not the options.size spread; stream-v2.e2e.test.ts keeps our expected page size [1200,800,2] (upstream's [1280,853,2] depends on fitsScreen) while taking the new control expectation (owned, not controlling); routes/browser-viewers.ts and its test take person without the requestedSize/size fields; BrowserPanel.tsx takes upstream's doc comment. New files server/browser/hold.ts and server/browser/viewers/hold.ts apply as upstream. Locales: keptHint was extended in en plus the 8 packs upstream translates (es, it, ja, pl, pt-br, ru, tr, vi); de/fr/hi/uk/zh/zh-tw do not carry the key, so their packs and hashes are untouched and pnpm i18n:check is green."
+    },
+    {
+      "sha": "58c892684beb31a04e34397f715a135ddbf2262e",
+      "subject": "test(browser): the S4 tab tests and the v1 live view wait for Chrome, not a fixed sleep (#3823)",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "b054a7160e07cd5aec46790a4782c46537f1de1a",
+      "note": "Applied cleanly. S4 tab-close checks poll run.browser.pages() for up to hostTimeout(5s) instead of sleeping 200 ms; runV1Session accepts shown/maxSettleMs and viewers.e2e waits for each normalized step to show what the golden showed; ci-retry-list.json gains the viewers.e2e entry. Batch order followed the upstream parent graph (785eff2a5c -> 1e378c4954 -> 60bfe50bf1 -> 58c892684b), not the listed order, because each later commit is a descendant of the earlier ones."
     }
   ]
 }
