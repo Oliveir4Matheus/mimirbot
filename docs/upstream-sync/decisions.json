@@ -4154,6 +4154,30 @@
       "decidedAt": "2026-10-29",
       "ourCommit": "b054a7160e07cd5aec46790a4782c46537f1de1a",
       "note": "Applied cleanly. S4 tab-close checks poll run.browser.pages() for up to hostTimeout(5s) instead of sleeping 200 ms; runV1Session accepts shown/maxSettleMs and viewers.e2e waits for each normalized step to show what the golden showed; ci-retry-list.json gains the viewers.e2e entry. Batch order followed the upstream parent graph (785eff2a5c -> 1e378c4954 -> 60bfe50bf1 -> 58c892684b), not the listed order, because each later commit is a descendant of the earlier ones."
+    },
+    {
+      "sha": "af59c2ec4a7b3a3a4147d607c7abb00a290b0a17",
+      "subject": "Add GitHub Copilot CLI as a built-in ACP engine (#3740)",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "25cde257a1b52a30a72d4ca3cb0dafc4738958ac",
+      "note": "Applied with two files deliberately left out. Upstream lowers server/config.ts's line ratchet from 1363 to 1301 after moving the fleet tables into the new server/instance-fleets.ts; our config.ts is 1287 lines against a listed 1365, and the ratchet only fails when a file grows (its own header says a shrinking file leaves its number alone, since scripts/tighten-ratchets.mjs lowers it at release), so the number stays. server/first-hour.e2e.test.ts does not exist in our fork, so its githubCopilot entry has no counterpart. Everything else came across, including the new server/drivers/acp/copilot.ts, server/copilot-engine.e2e.test.ts, src/components/CopilotModelPicker.test.ts and docs/verification/copilot-engine.md. The discovery client name stays \"openmausbot-model-discovery\", matching the literals our fork already carries on the wire elsewhere."
+    },
+    {
+      "sha": "f5f9692b61b960b0eda078becdd81411c29dbcec",
+      "subject": "fix(windows): foreground typing lands every character, and a sent menu click is not reported as failed (#3769)",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "07bc535e1f2bc0be79db9548fd5bd9d7f340e705",
+      "note": "Applied with adaptations. The OpenMausBot -> MimirBot rename reaches lent-screen-guidance.test.ts's restart expectation. Our check callback in the mcp-bridge relay takes no argument, so local-computer-guidance.test.ts and local-computer-proxy.test.ts import only localComputerRelay (upstream also pulls in localComputerCallQuery) and assert order as [\"check\", \"fwd:1\"] rather than [\"check:1\", \"fwd:1\"]; the same signature difference shifts the hunk offsets. New files: electron/paced-typing.mjs with its .d.mts and node test, and server/unconfirmed-click.ts with its test; docs/verification/local-computer-launch.md gains the Windows notes."
+    },
+    {
+      "sha": "c97fdf86c313bec60b622e4d8e4f0a33a9215606",
+      "subject": "Fix Grok CLI ACP authentication method (#3798)",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "0e8184c102d842211bea5442a9c1bcb0562774a7",
+      "note": "Applied cleanly, hunk offset aside (our acp.test.ts is one line shorter). grok.ts now picks the first auth method the CLI actually offers, cached_token before grok.com, instead of demanding cached_token and giving up; acp.test.ts covers the fallback."
     }
   ]
 }
