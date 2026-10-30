@@ -39,11 +39,13 @@ on:
         required: false
         type: boolean
         default: false
-  push:
-    branches:
-      - mimirbot
-    paths:
-      - package.json
+  # No push trigger in this fork: this pipeline signs and notarizes macOS with
+  # an Apple Developer certificate and mirrors every asset into
+  # milind-soni/openmausbot-releases with RELEASES_PAT, and the fork has neither
+  # the secrets nor write access to that repository. Bumping package.json here
+  # used to start it, and it stopped at its first guard with everything else
+  # skipped. Fork releases run in fork-release.yml; this file stays as upstream
+  # wrote it, for whoever supplies the secrets by hand.
 
 permissions:
   contents: read
