@@ -271,14 +271,20 @@ describe("control-omb ui drives the real renderer", () => {
     const clickModel = async (label: string) => {
       const result = await evaluate(`(() => {
         const want = ${JSON.stringify(label)};
-        const nodes = [...document.querySelectorAll('button,[role="button"],[role="menuitem"],[role="option"]')];
-        const nameOf = (node) => (node.getAttribute("aria-label") || node.textContent || "").trim();
-        const match = nodes.find((node) => {
-          const text = nameOf(node);
-          if (!text.startsWith(want)) return false;
-          const rest = text.slice(want.length);
+        if (typeof want !== "string" || !want) return { clicked: false, names: ["no label for this model"] };
+        // The trigger carries the account and provider around the model name
+        // ("Claude · Claude Sonnet 5 · anthropic"), so match anywhere in the
+        // accessible name, still refusing a version continuation: "Claude
+        // Sonnet 5" must not pick "Claude Sonnet 5.5".
+        const fits = (text) => {
+          const at = text.indexOf(want);
+          if (at < 0) return false;
+          const rest = text.slice(at + want.length);
           return rest === "" || !/^[.\\d]/.test(rest);
-        });
+        };
+        const nameOf = (node) => (node.getAttribute("aria-label") || node.textContent || "").trim();
+        const nodes = [...document.querySelectorAll('button,[role="button"],[role="menuitem"],[role="option"]')];
+        const match = nodes.find((node) => fits(nameOf(node)));
         if (!match) return { clicked: false, names: nodes.map(nameOf).filter(Boolean).slice(0, 60) };
         match.click();
         return { clicked: true };
