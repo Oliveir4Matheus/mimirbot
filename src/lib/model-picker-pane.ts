@@ -35,7 +35,9 @@ export function usePickerPane(input: PickerPaneInput, onRailChange: () => void) 
       railChanged.current();
     } else if (none) {
       setPane("custom");
-    } else if (before.instanceId === instanceId && !before.hasOfficialModels && !selectedIsCustom) {
+    } else if (!before.hasOfficialModels && !selectedIsCustom) {
+      // The engine's first listing counts as arriving too: a picker opened before the catalog loaded starts on this
+      // engine with an undefined instanceId, so an equality test here would leave it stuck on the empty local pane.
       setPane("main");
     }
   }, [railId, instanceId, hasOfficialModels, customOnly, selectedIsCustom]);
