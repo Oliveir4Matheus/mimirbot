@@ -8,7 +8,10 @@ import {
 } from "@hpke/core";
 
 export const PHONE_SECRET_PROTOCOL_VERSION = 1 as const;
-export const PHONE_SECRET_INFO = "MimirBot phone credential v1";
+// Wire contract with the shipped iOS client: it derives this HPKE info string
+// itself, and the AAD prefix below is still the original one, so a rename here
+// would make every envelope the phone seals fail to open.
+export const PHONE_SECRET_INFO = "OpenMausBot phone credential v1";
 export const PHONE_SECRET_MAX_BYTES = 4_096;
 
 const BASE64URL = /^[A-Za-z0-9_-]+$/;

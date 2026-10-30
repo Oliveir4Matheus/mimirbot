@@ -63,7 +63,13 @@ describe("Preset bots in the real renderer", () => {
 
     await expect.poll(snapshot, { timeout: 10_000 }).toContain('button "You"');
     await click("You");
-    await click("Settings");
+    // The icon rail carries a Settings button too; the account menu's item is
+    // the one that opens the dialog.
+    const accountMenu = await ui("snapshot", "--interactive");
+    const settingsItem = Object.entries(accountMenu.refs as Record<string, { name: string; role: string }>)
+      .find(([, entry]) => entry.role === "menuitem" && entry.name === "Settings");
+    expect(settingsItem).toBeDefined();
+    await ui("click", "--ref", `@${settingsItem![0]}`);
     await expect.poll(snapshot, { timeout: 10_000 }).toContain("Share as preset…");
     await click("Share as preset…");
     await expect.poll(snapshot, { timeout: 20_000 }).toContain("What's in the file");

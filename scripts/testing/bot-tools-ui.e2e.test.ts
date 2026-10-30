@@ -147,7 +147,8 @@ describe("bot setup and tools in the real renderer", () => {
       await expect.poll(() => evaluate("(() => { const row = document.querySelector('[data-bot-settings-section=usage]'); const rect = row?.getBoundingClientRect(); return rect ? Math.max(-rect.top, rect.bottom - innerHeight) : 9999; })()"), { timeout: 10_000 }).toBeLessThanOrEqual(1);
     };
     await openHeaderUsage();
-    await click("Usage");
+    // Two controls carry this name; collapse the one inside the dialog.
+    await evaluate("[...document.querySelectorAll('[role=dialog] button')].find(b => b.textContent.trim() === 'Usage')?.click(); true");
     expect(await usageExpanded()).toBe("false");
     await openHeaderUsage(); // same section, already mounted, after collapse
     const search = await ui("snapshot", "--interactive");
