@@ -5,15 +5,17 @@ import type { CloudOffer } from "../../electron/cloud-home.mjs";
 import { api, useStore } from "@/state/store";
 import { APP_REPOSITORY } from "@/lib/app-links";
 import { track } from "@/lib/analytics";
+import { boatOfferRuns } from "@/lib/boat-offer";
 import { brandStatus } from "@/lib/brand";
 import { buyOfferAllowed, cloudNoticeKind, cloudPlanView, cloudTrialNotice, cloudTrialView, offerTrialDays } from "@/lib/cloud-plan";
 import { jobRoutine, useCloudIntent } from "@/lib/cloud-intent";
 import { CLOUD_INTENT_GIVEN, cloudSetupStage } from "@/lib/cloud-setup";
 import { cornerPopupWaits } from "@/lib/corner-popup";
-import { CLOUD_INTRO, CLOUD_NOTICE, CLOUD_PRO_UPDATE_NOTICE, CLOUD_TRIAL_NOTICE, dismissNotice, introShown, introStage, nextNotice, noticeSeen, PRODUCT_HUNT_NOTICE, PRODUCT_HUNT_UNTIL, PRODUCT_HUNT_URL, STAR_NOTICE, UPDATES_CONSENT_NOTICE, usedBefore } from "@/lib/notices";
+import { BOAT_OFFER_NOTICE, CLOUD_INTRO, CLOUD_NOTICE, CLOUD_PRO_UPDATE_NOTICE, CLOUD_TRIAL_NOTICE, dismissNotice, introShown, introStage, nextNotice, noticeSeen, PRODUCT_HUNT_NOTICE, PRODUCT_HUNT_UNTIL, PRODUCT_HUNT_URL, STAR_NOTICE, UPDATES_CONSENT_NOTICE, usedBefore } from "@/lib/notices";
 import { cloudSignInDue, onboardingCloudOffered, type WelcomeViewer } from "@/lib/onboarding";
 import { useUpdaterState } from "@/lib/updater";
 import { t } from "@/lib/i18n";
+import { BoatOfferCard, reportBoatOffer, type BoatOfferAction } from "./BoatOffer";
 import { engineReady } from "./EngineLibrary";
 import { CLOUD_NOTICE_CARD, cloudNoticeStep, CloudNoticeCard } from "./CloudNotice";
 import { CLOUD_PRO_POPUP_SOURCE, CloudProPopup, cloudProCloudPageView, cloudProPopupView, reportCloudProPopup, useDesktopNotices, useOtherDialogOpen,
@@ -69,6 +71,7 @@ export function AppNotices({ quiet = false, viewer = null, now = Date.now }: { q
   const [failed, setFailed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [popupShown, setPopupShown] = useState(false);
+  const [boatShown, setBoatShown] = useState(false);
   const consentHere = (local || viewer?.cloudHome === true) && brandStatus().source !== "file";
   const consent = useUpdatesConsent(consentHere ? updatesConsentBridge() : undefined);
   const [consentDone, setConsentDone] = useState(false);
@@ -122,6 +125,7 @@ export function AppNotices({ quiet = false, viewer = null, now = Date.now }: { q
   const consentDue = consent.state?.available === true && consent.state.due && !consentDone;
   const consentBlocked = useOtherDialogOpen(consentDue) || Boolean(state.liveCall && state.liveCall.status !== "ended");
   const consentFact = !consentHere || consentDone ? false : consent.state === undefined ? null : consentDue ? (consentBlocked ? null : true) : false;
+  const boatHere = boatOfferRuns(now()) && brandStatus().source !== "file";
 
   const trial = plan?.trial;
   const key = trial ? trialKey(trial) : null;
@@ -141,7 +145,7 @@ export function AppNotices({ quiet = false, viewer = null, now = Date.now }: { q
   };
   const cards = Boolean(bridge || planBridge);
   // After a closed popup only the product-updates question may follow in this launch; nothing else does.
-  const notice = waits ? null : closed ? (consentFact === true ? UPDATES_CONSENT_NOTICE : null) : cards || popupHere || consentHere ? nextNotice({
+  const notice = waits ? null : closed ? (consentFact === true ? UPDATES_CONSENT_NOTICE : null) : cards || popupHere || consentHere || boatHere ? nextNotice({
     [CLOUD_PRO_UPDATE_NOTICE]: !popupPending || moving ? false : popupState === "loading" || moving === null || (popupView !== null && popupBlocked) ? null : popupView !== null,
     [UPDATES_CONSENT_NOTICE]: consentFact,
     [PRODUCT_HUNT_NOTICE]: !cards || moving || brandStatus().source === "file" || now() >= PRODUCT_HUNT_UNTIL ? false
@@ -150,9 +154,11 @@ export function AppNotices({ quiet = false, viewer = null, now = Date.now }: { q
     [CLOUD_TRIAL_NOTICE]: planBridge && plan === null ? null : Boolean(key && (trialDue || trialOpen === key)),
     [CLOUD_NOTICE]: !view ? false : view.kind === "unknown" ? null
       : Boolean(kind && !noticeSeen(record, CLOUD_NOTICE_CARD[kind].dismissed)),
+    [BOAT_OFFER_NOTICE]: !boatHere || moving || !usedBefore(state.bots) || desktopState?.seen.includes(BOAT_OFFER_NOTICE) ? false
+      : organization === null || moving === null || (desktop && !desktopState) ? null : !organization,
     [STAR_NOTICE]: !bridge || moving || brandStatus().source === "file" || !usedBefore(state.bots) ? false : moving === null ? null : true,
   }, id => id === CLOUD_INTRO ? stage === "done" && !introOpen
-    : id === STAR_NOTICE || id === PRODUCT_HUNT_NOTICE ? noticeSeen(record, id) : false) : null;
+    : id === STAR_NOTICE || id === PRODUCT_HUNT_NOTICE || id === BOAT_OFFER_NOTICE ? noticeSeen(record, id) : false) : null;
 
   const shownKey = notice === CLOUD_TRIAL_NOTICE ? key : notice;
   useEffect(() => {
@@ -168,6 +174,9 @@ export function AppNotices({ quiet = false, viewer = null, now = Date.now }: { q
     } else if (shownKey === CLOUD_PRO_UPDATE_NOTICE && !popupShown && popupView) {
       setPopupShown(true);
       void desktop?.shown(CLOUD_PRO_UPDATE_NOTICE).then(first => { if (first) reportCloudProPopup("shown", popupView, page); }, () => {});
+    } else if (shownKey === BOAT_OFFER_NOTICE && !boatShown) {
+      setBoatShown(true);
+      reportBoatOffer("shown", "card");
     }
   }, [shownKey]);
 
@@ -222,6 +231,13 @@ export function AppNotices({ quiet = false, viewer = null, now = Date.now }: { q
   }
   if (notice === PRODUCT_HUNT_NOTICE) {
     return <ProductHuntCard onDone={action => { track("product_hunt_card", { action }); close(); save(PRODUCT_HUNT_NOTICE); }} />;
+  }
+  if (notice === BOAT_OFFER_NOTICE) {
+    const done = (action: BoatOfferAction) => {
+      reportBoatOffer(action, "card"); close(); save(BOAT_OFFER_NOTICE);
+      void desktop?.seen(BOAT_OFFER_NOTICE).catch(() => {});
+    };
+    return <BoatOfferCard onDone={done} />;
   }
   if (notice === STAR_NOTICE) return <StarCard onDismiss={() => { close(); save(STAR_NOTICE); }} />;
   return null;

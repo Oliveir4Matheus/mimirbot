@@ -7,6 +7,7 @@ import { t } from "@/lib/i18n";
 import { withTourReset } from "@/lib/guided-tour";
 import { completionPatch } from "@/lib/onboarding";
 import { AnthropicEveryClaudeBot, ApiKeyRow, OpenCodeProviderKeys, VpsConnection } from "./ApiKeys";
+import { BoatOfferPanel } from "./BoatOffer";
 import { AnalyticsRow } from "./AnalyticsRow";
 import { UpdatesConsentRow } from "./UpdatesConsent";
 import { OpenAtLoginRow } from "./OpenAtLoginRow";
@@ -753,6 +754,7 @@ export function SettingsModal() {
               <OtherOpenAiCompatServers />
               <div className="pt-2 text-[11.5px] font-medium uppercase tracking-wide text-ink-secondary">{t("keys.integrations.title")}</div>
               <ApiKeyRow section="treg" testProvider="treg" /><ApiKeyRow section="box" />
+              <BoatOfferPanel />
               <VpsConnection />
               <ApiKeyRow section="opencodeGo" />
               {state.config?.cloudHome !== true && (
