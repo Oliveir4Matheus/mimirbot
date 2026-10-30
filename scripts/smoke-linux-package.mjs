@@ -46,7 +46,10 @@ writeFileSync(
   path.join(home, ".mimirbot", "config.json"),
   JSON.stringify({ instances: { ghost: { driver: "not-a-real-driver", displayName: "Ghost" } } }),
 );
-for (const appName of ["openmausbot", "MimirBot"]) {
+// Electron derives userData from the package.json name, so the packaged app
+// reads $XDG_CONFIG_HOME/mimirbot; the other two names cover a build whose
+// asar carries a different productName.
+for (const appName of ["openmausbot", "MimirBot", "mimirbot"]) {
   const userData = path.join(xdgConfig, appName);
   mkdirSync(userData, { recursive: true, mode: 0o700 });
   chmodSync(userData, 0o700);
@@ -336,7 +339,7 @@ try {
   if (sessionBlocked) {
     await waitForExit();
     if (existsSync(marker)) throw new Error("release safety block still invoked a CUA executable");
-    const activeUserData = ["openmausbot", "MimirBot"]
+    const activeUserData = ["openmausbot", "MimirBot", "mimirbot"]
       .map((name) => path.join(xdgConfig, name))
       .find((directory) => existsSync(path.join(directory, "cua-connection.json")));
     if (!activeUserData) throw new Error("release safety smoke could not locate the CUA descriptor");
@@ -383,7 +386,7 @@ try {
     if (existsSync(marker)) {
       throw new Error(`packaged app invoked the ambient driver:\n${readFileSync(marker, "utf8")}`);
     }
-    const userData = ["openmausbot", "MimirBot"]
+    const userData = ["openmausbot", "MimirBot", "mimirbot"]
       .map((name) => path.join(xdgConfig, name))
       .find((directory) => existsSync(path.join(directory, "cua-connection.json")));
     if (!userData) throw new Error("bundled smoke could not locate the CUA descriptor");
@@ -479,7 +482,7 @@ try {
       await delay(50);
     }
     if (staleHealth?.ok) throw new Error("embedded harness survived hard Electron death");
-    const userData = ["openmausbot", "MimirBot"]
+    const userData = ["openmausbot", "MimirBot", "mimirbot"]
       .map((name) => path.join(xdgConfig, name))
       .find((directory) => existsSync(path.join(directory, "cua-connection.json")));
     if (!userData) throw new Error("hard-death smoke could not locate the CUA descriptor");
