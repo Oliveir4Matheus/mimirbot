@@ -636,6 +636,7 @@ import { createPersonReplies } from "./person-replies.ts";
 import { personKey, relayedPersonKey } from "./person-key.ts";
 import { createTeamOwners, type AskViewer } from "./host/team-owners.ts";
 import { createCardRequester, linePersonKey } from "./host/thread-person.ts";
+import { createShareAnswer } from "./host/share-answer.ts";
 import { createThreadRoutes } from "./routes/threads.ts";
 import { createWebhookRoutes } from "./routes/webhooks.ts";
 import { withScopeHint } from "./connector-scope-hint.ts";
@@ -4199,6 +4200,8 @@ const coordinator: Coordinator = createCoordinator({
       }
       return outwardActions(turnRows(node));
     },
+    shareAnswer: createShareAnswer({ askedFrom: (node) => (node.parentId ? coordinator.node(node.parentId)?.threadId : undefined), audienceOf: teamHost.audienceOf, pinned: (botId, threadId) => store.taskByThread(botId, threadId)?.cwd, botFolder: (botId) => store.bot(botId)?.cwd, privateFolders: TASK_WORKSPACES_DIR }),
+    joined: (node) => { store.appendMessage(node.threadId, { role: "bot", kind: "activity", tool: { name: "notice: Another teammate asked the same a moment ago, so this gets that answer instead of a second one.", ok: true } }); },
   },
 });
 threadsAwaitingTeammates = () => coordinator.awaitingTeammateThreads();
