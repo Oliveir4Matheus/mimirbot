@@ -4082,6 +4082,46 @@
       "decidedAt": "2026-10-29",
       "ourCommit": "2952aa727554538849e8d6e12293f8af789bd91a",
       "note": "Applied cleanly: after the cloudIdentity() await in the lending worker, a worker that was aborted or replaced (running.get(env.id) !== live) breaks instead of writing the refreshed session back into the saved grant. Its test also covers Stop staying off across cloudChanged() and start()."
+    },
+    {
+      "sha": "683e494fa4875766c1b003d011501db9deeb2e3b",
+      "subject": "fix(settings): the app's own signed-out OpenCode is finished in the app",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "466a9dda5bb41f52698e6682a075d5662b848cb0",
+      "note": "Applied with three conflicts. en.json: kept our MimirBot wording for usingAppCopy and standaloneDownloadNote and added the three appCopy strings with MimirBot in appCopy.remote. EngineSetup.test.ts: our branding differs, so the remote assertion says 'on the computer running MimirBot'. store.tsx: our extra imports (optimistic-send, room-frames) sit where upstream added the engine-install import, so the type import was placed in alphabetical order; the EngineInstall interface moves to src/state/engine-install.ts as upstream did. The file-size ratchet pin stays at 3462: our fork lowers pins only at release (scripts/tighten-ratchets.mjs), and store.tsx now counts 3449, so upstream's 3454 would be a number for their tree, not ours."
+    },
+    {
+      "sha": "fa736533a732f1bc2c9056a967ae483dcc5d0280",
+      "subject": "fix(settings): \"now uses the copy OpenMausBot installed\" stays once OpenCode is Ready",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "baffa3273a9e187097c7d60c7868e226f5c924f0",
+      "note": "Applied cleanly except en.json, where the conflicting line was the brand: kept our MimirBot text and added engineSetup.usingAppCopyDismiss. The new EnginesSettings.app-copy.test.ts NOTICE was changed to the MimirBot sentence so it matches what the app renders. The per-engine switch store (engine-install.ts), AppCopyNotice on the card, and the Settings-exit cleanup are unchanged from upstream."
+    },
+    {
+      "sha": "8e03def8908b914d78f38744a1e1e91b61d84fa5",
+      "subject": "fix(settings): the download note counts decimal megabytes",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "903ea280f746272dd0b4a58c4b1151330d1591b2",
+      "note": "Applied cleanly. The note now rounds decimal megabytes with a 1 MB floor (64,291,659 bytes reads 'About 64 MB'); the test checks both 79,667,571 -> 80 MB and the 64 MB case. It is an ancestor of the app-copy commits upstream, applied here first so the later commits keep their parent order."
+    },
+    {
+      "sha": "c5523971d95002299e3969e502707f5cb64c9d3d",
+      "subject": "fix(settings): size the app-copy notice in whole pixels",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "87a1957fca51cd9d9af2fc09d098a8b949a3b377",
+      "note": "Applied cleanly: the app-copy notice line moves from 11.5px to 12px and its Open API keys button from 12.5px to 13px in EngineAppCopy.tsx."
+    },
+    {
+      "sha": "8ff35b40e32df3ee898ee89aa2cbff78921a64ec",
+      "subject": "i18n(settings): translate the standalone install's six new strings",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "039242565f345737fa8d1a2a6dc500c1597654b3",
+      "note": "Applied with adaptations. Upstream translates 12 packs; our fork has 14, so the six strings were also written for it.json and ru.json (following each file's own terms: 'Impostazioni -> Chiavi API', 'Настройки -> Ключи API'). Every translation keeps its own surrounding content; brand names were changed to MimirBot to match our English source. de/fr/hi are partial and lack engineSetup.serverInstalled, so the keys went after engineSetup.serverInstalling (the same slot upstream used there); the other packs got them after serverInstalled. source-hashes.json was recomputed against our English strings (sha256 of each en.json value) for all 14 locales; upstream's hashes were for the OpenMausBot source. pnpm i18n:check passes with 15 languages."
     }
   ]
 }
