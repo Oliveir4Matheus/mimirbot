@@ -102,11 +102,14 @@ const refsNamed = (snapshot: Record<string, any>, name: string, role?: string) =
     .filter(([, element]) => element.name === name && (!role || element.role === role))
     .map(([id]) => `@${id}`);
 
-/** A picker row's accessible name may carry a "· <engine>" suffix, and a
- * prefix match would confuse "Claude Sonnet 5" with "Claude Sonnet 5.5". */
+/** A picker row's accessible name is its label plus any badges ("Default",
+ * the context size), so match the label and then anything that is not a
+ * version continuation — a bare prefix would confuse "Claude Sonnet 5" with
+ * "Claude Sonnet 5.5". */
 const modelRow = (snapshot: Record<string, any>, label: string) =>
   Object.entries(snapshot.refs as Record<string, { name: string; role: string }>)
-    .find(([, value]) => value.role === "button" && (value.name === label || value.name.startsWith(`${label} ·`)));
+    .find(([, value]) => value.role === "button"
+      && (value.name === label || (value.name.startsWith(label) && !/^[.\d]/.test(value.name.slice(label.length)))));
 
 describe("control-omb ui drives the real renderer", () => {
   let launched: Launched | undefined;
