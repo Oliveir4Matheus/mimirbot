@@ -3495,6 +3495,689 @@
       "status": "ignored",
       "decidedAt": "2026-10-29",
       "note": "Screenshots only."
+    },
+    {
+      "sha": "e0b3f78f61db9f053378ce81634582c2a3489d56",
+      "subject": "refactor(engines): one zip reader for pinned downloads, shared with Antigravity",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "46106d5d213cea2276c146630005e227990eead7"
+    },
+    {
+      "sha": "f32c6f975a56ad7fe381a3380ee73f138ededdd3",
+      "subject": "feat(engines): install an AI's own standalone build, verified, without Node.js",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "40339d3c6fa99aa9531a81f6798e73bdcbaa131e"
+    },
+    {
+      "sha": "03080a48154a7d4fd0f429c6a31f757f5746d006",
+      "subject": "feat(engines): Settings installs the vendor's own build first, npm only without one",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "43f7b859e931a8a27bfd6f421797eb2a503d947b"
+    },
+    {
+      "sha": "111fa150d93d33a557442e7edbf562634af894e2",
+      "subject": "feat(opencode): install OpenCode 1.19.4 from its own release when Node.js is missing",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "2324d2d44d0e56b738d3c89033597fde1056a9a6"
+    },
+    {
+      "sha": "933a2bf07668bca61ba8432def1640d3de75e9e6",
+      "subject": "feat(settings): Install button for a standalone build, without the Node.js line",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "9c4550ff46aa7e6fe66811f84ab4ca4c788b9b52"
+    },
+    {
+      "sha": "32ccd89b3ccf80d12cec2d8e9965217858a99a6c",
+      "subject": "fix(engines): a standalone version that stops starting is downloaded again",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "97107875eaefab309c4ff48b06e153ac350e0741"
+    },
+    {
+      "sha": "462d4cccae5177f5b04b463ebdb8f2e98a13defe",
+      "subject": "fix(engines): archive member names Windows reads as devices or streams are refused",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "5b2c3f66f9bac3324c7e6c448cf2d32cb1951709"
+    },
+    {
+      "sha": "442476aa6006d551cbcc5dc94f85cb4693337afb",
+      "subject": "fix(engines): the CLI test's install steps leave out the standalone pins",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "c34039cd39709245e71f186d12a540e88e0ee634"
+    },
+    {
+      "sha": "9ed04b1699f9e2c152861234f04dc5b81159e136",
+      "subject": "feat(env-path): fallback PATH folders that come after everything else",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "91e950572d71982bb49486ecb71966bf20054563"
+    },
+    {
+      "sha": "98e429fd55ddbd531b49a9fa67716d3ec504154e",
+      "subject": "fix(engines): a standalone engine is proven before it replaces anything, and checked every time it runs",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "1b2feb7a4e7fde8f9a772e304a9752c6f82461ba"
+    },
+    {
+      "sha": "022ffe445176fa5ce43e9d3da97e881b26ad5097",
+      "subject": "fix(opencode): pin each OpenCode build's program hash, not only its archive",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "89093461f04093dad66c31d44e26933e0c470007"
+    },
+    {
+      "sha": "94e36da44370cf2e6093d416c87e13c293c56845",
+      "subject": "fix(settings): no npm or terminal sign-in advice for the app's own OpenCode",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "a7fc873cc386d593ee10306b388a759e5e975972"
+    },
+    {
+      "sha": "e87187dd3b7a572920359e4f12d205b79e2bb714",
+      "subject": "fix(engines): also refuse COM0, LPT0, the superscript ports, CONIN$, CONOUT$ and CLOCK$",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "6ce7c587eb3346505298450487a9faafd4428408"
+    },
+    {
+      "sha": "349cafd813fdb32e35b5fe528523bd5f36214d49",
+      "subject": "fix(env-path): a fallback folder stays last even when the inherited PATH lists it",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "ce12bf90b1f7a4ceae7635f43a39931e3a93ddf8"
+    },
+    {
+      "sha": "67fc6cfeb271bcbe0e33b98fb39588ef40b73f62",
+      "subject": "fix(engines): only the code vouches for an installed program, never the data folder",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "75dfb6651d434a6a81bc89e63a74610d6d7e02c7"
+    },
+    {
+      "sha": "1d1ae440651d32014d3cf0ba923138c2d202472a",
+      "subject": "fix(engines): a locked program and a folder without permission get different words",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "047be8bf1c7c55217e3254fd66b6647c3f2317a4"
+    },
+    {
+      "sha": "297c7372ba41c00288ced11dba11fdd0175bc224",
+      "subject": "fix(opencode): the app's npm-folder copy no longer outranks the person's PATH",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "4cd6b07b024c49dad9933a731cedd75fa4bb51ed"
+    },
+    {
+      "sha": "2a93f274d8109534c25b6feb92e08a2799d4f7f3",
+      "subject": "fix(engines): after installing its own build, an engine whose CLI finds a broken copy runs the app's",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "77d7fe9ed541a24374cd5da6c1d830b1d17a36c7"
+    },
+    {
+      "sha": "0e9b628390f93223ae23f808e925a6f587b0eca0",
+      "subject": "fix(headless): wait out the server's 20-minute engine download",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "fa71f21889081381b89200c0bb32bb906e466422"
+    },
+    {
+      "sha": "d7d5c5ca4e6b3189ab38c5f9a8ba985e2f383c17",
+      "subject": "fix(engines): never delete through a link, and prune only the app's own versions",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "4d6bfc93f2ce588d2ab7f4bb45c4cf557b946ffb"
+    },
+    {
+      "sha": "90514fc1f0e6079f2c5a9a601a2a203e8483a652",
+      "subject": "fix(engines): never repoint a CLI the person chose with Set CLI",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "2e5eeca76373429370078e3ac3deb167ce0ae318"
+    },
+    {
+      "sha": "c51be36f675a4778f6ec3916a3d420ba5e7aff52",
+      "subject": "fix(engines): a device name with spaces before its extension (CON .txt) is refused too",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "efbed7ba3d8cf99f0bda83410728a697d55299c4"
+    },
+    {
+      "sha": "97511f892345f5e00d7e60cee3db35ec557ad0e0",
+      "subject": "fix(bot-box): an AI the app installed without Node.js runs inside the bot box too",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "77e56b3b0eb91bd9e1a0d861e52a2f0fab261ed8"
+    },
+    {
+      "sha": "df00271b30fffc8082655046dc2ad8279936c948",
+      "subject": "test(opencode): which-OpenCode test never reaches a real OpenCode",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "ff7635be9cbc52a06ea4767106aaf7bb56f0976c"
+    },
+    {
+      "sha": "06fa75b35a299a3989b6bec88c9306ff471b4a04",
+      "subject": "fix(engines): an unreadable standalone folder never stops the server at boot",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "bcddc6ef651ee837125cf3e099054ba2344ae600"
+    },
+    {
+      "sha": "dcba1754ac35ee2d65dc8f0a9466b42bcc5b05d8",
+      "subject": "feat(engines): say when an engine's CLI runs the app's own copy",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "2c2da2556c28ec2604cb1bd517e75c1c2951a21f"
+    },
+    {
+      "sha": "c005a8143e075acd35fe1c345eaa265d813a299c",
+      "subject": "fix(mcp): keep personal credentials out of shared config",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "36d298d661e17a86856756e6b543daa51968399f",
+      "note": "First of the personal-MCP batch. The batch was applied in the upstream parent-graph order (c005a8143, f45b8adc9, 07b88a336, 667b5bb5e, 56ed71f75, 90e7906c5, 6fdb435e4, 1931ecf70), not the order the commits were listed in: the list was neither chronological nor topological. Route deps take teamConnections.personMcp/people; the personal test path uses sessionMember plus personKey, and our panel hunks were dropped (see the deferred commits below)."
+    },
+    {
+      "sha": "f45b8adc989a79d0886585f41ada93eea6a30b8e",
+      "subject": "fix(mcp): skip personal servers in shared app probes",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "a9df850146b0bec190cc9bd5a92adce11e719f31",
+      "note": "createChatAppsMcp gains personMcp and index.ts passes teamConnections.personMcp; the e2e case was written into server/cloud-team-connections.e2e.test.ts against our fixtures."
+    },
+    {
+      "sha": "07b88a336e0e1410344024db917778fd5ec06c73",
+      "subject": "fix(mcp): preserve panel OAuth for personal connection tests",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "fbf7a810cd67af0b5d90cf58037311db7cb549e7",
+      "note": "Kept the route fix (a personal test keeps the server's OAuth and only swaps the header key) and the e2e case; the commit's panel hunk was not needed here."
+    },
+    {
+      "sha": "667b5bb5e66ff19139d519fa269a1a8731c55fe9",
+      "subject": "fix(mcp): reject shared personal headers and ambiguous key edits",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "4bf6a345e988a3a1a12d1129d07722bd0c7eb6b4",
+      "note": "personalHeaderRefusal added to our create/import/update handlers, with our own unit cases in server/routes/mcp-servers.test.ts. The panel and McpServersPanel.add.test.ts hunks were dropped: they edit the paste-to-add editor, which our fork does not have."
+    },
+    {
+      "sha": "56ed71f758f008cb9fc26364a38bbc0549cba9bf",
+      "subject": "fix: bind personal MCP key saves to the expected URL",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "a128de9fc0777282cc061639cc2d1ceed6663c21",
+      "note": "Route requires the submitted URL and re-reads the server before saving, with new cases in server/routes/team-connections.test.ts; docs/team-cloud.md and the e2e were adapted to our wording and fixtures. The panel hunk (sending url with the key) belongs to the paste editor and was dropped."
+    },
+    {
+      "sha": "90e7906c5829527a04f20f0e5d0d01eb70ea4952",
+      "subject": "fix(mcp): accept member key saves that only know the host",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "6b1f9b997fceb0f4f160de946b43b95864c3f47b"
+    },
+    {
+      "sha": "6fdb435e4fadf0c579a9e6f3185c464965fa1ddd",
+      "subject": "fix(mcp): avoid personal lookups for known team edits",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "c7bd5b5f20e3237b9d44e451ee2ac622f8a8149d",
+      "note": "withServerDetails now tags every listing with scope person|team and the route skips the personal lookup for team servers; server/index.test.ts expects scope \"team\". Panel and mcp-draft.ts hunks dropped (paste editor absent)."
+    },
+    {
+      "sha": "1931ecf70c54f8fc5557bbec9c25b1c29786bfd2",
+      "subject": "A bot's own MCP server starts only for that bot, and one that doesn't start is left out",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "460f58ee738c798a9b828f8360bd298ad2781ded",
+      "note": "Server side taken whole (mcp-bot-servers.ts, mcp-health.ts, host/mcp-servers-host.ts, bot field in the registry, probe asBot, mcpFailed notice, own/offFor listing). Adapted: the internal MCP add no longer redeems a secret card (our fork has no secretCards) and calls mcpServersHost.botAdd with the read body; the Composio wiring drops teamConnections.primeApps(), which our host does not have. UI: our panel keeps its design and gains only the own-bot and off-for lines at our type scale, the listing type the panel imported from upstream's mcp-draft.ts was merged into the panel, and mcp-draft.ts plus McpServersPanel.add.test.ts stay absent (they only exist with 259c9d8e3). The e2e uses our .mimirbot data directory, and the new strings went into src/locales/en.json only."
+    },
+    {
+      "sha": "5c8b975fbb82528faafe0fd35380ef22aa8e242a",
+      "subject": "fix(mcp): keep failed personal connections disabled",
+      "status": "deferred",
+      "decidedAt": "2026-10-29",
+      "reason": "Only edits the paste-to-add editor (addItems in src/components/McpServersPanel.tsx) and its McpServersPanel.add.test.ts; our fork has neither, because upstream 259c9d8e3 (add an MCP server by pasting its link) is not taken. The server side it relies on (person scope plus the personal key route) is already in from 56ed71f75."
+    },
+    {
+      "sha": "4bec110a6d60a4a34d681baa9dff130b431dd575",
+      "subject": "fix(mcp): keep replacement personal keys out of shared headers",
+      "status": "deferred",
+      "decidedAt": "2026-10-29",
+      "reason": "Edits saveEdit in the paste-to-add editor, its McpServersPanel.add.test.ts and server/cloud-team-gateway-mcp.e2e.test.ts; none of the three exist in our fork (upstream 259c9d8e3 is not taken). Our plain edit form cannot leak a personal key into shared headers because the server refuses any non-blank header value on a person-scoped server (personalHeaderRefusal, 667b5bb5e)."
+    },
+    {
+      "sha": "0a223df4dba20ba05ab57ec46ede497ce2b68755",
+      "subject": "fix(mcp): defer shared headers until personal setup succeeds",
+      "status": "deferred",
+      "decidedAt": "2026-10-29",
+      "reason": "Same paste-to-add editor path as 5c8b975fb (addItems sends blank headers for a personal key and disables the server until the key is saved); our fork has no paste editor or ownKey flow (upstream 259c9d8e3 not taken). The server-side guarantees it protects are already applied."
+    },
+    {
+      "sha": "00510c44932aab3f764418e4aab5df1b320e99e9",
+      "subject": "fix(pi): await confirmed CLI termination before completing turns",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "66915935ceeb4b8f3ff7f450833f15342ed8de88",
+      "note": "Applied as-is: our pi.ts was identical to upstream's parent apart from one branding string, so the new server/drivers/pi-rpc.ts, pi-lifecycle.test.ts and fake-pi-lifecycle.mjs came in unchanged. Our killCliTree already returns Promise<boolean> and takes a grace timeout, so settle() now awaits it before turn.completed. Ordering deviation: the requested sequence was not topological (b1585d9f25's parent is af205b0422, whose parent is this commit, and b127a55168 sits on 1fd4123514), so the batch was applied in the upstream parent graph order 00510c4493, af205b0422, b1585d9f25, 97d7c6df37, 1fd4123514, b127a55168, 6c486ad711, 4447ef19eb, 9b06e4dc08, dc1f02aa3d, 7045f15a13. Every commit still cherry-picked cleanly in that order."
+    },
+    {
+      "sha": "af205b0422c232d7b95d30d55e0f7cfb0c090ed8",
+      "subject": "fix(pi): reject failed model selection before prompting",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "10433b5e4a6a33ceabdaf7605624089205f2c4a7"
+    },
+    {
+      "sha": "b1585d9f2580f96877fc26f5772cd0252cc8aad3",
+      "subject": "fix(pi): cancel completion fallback during continuation and maintenance",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "633675ef64a25e99ec792b00ff7dd9b89891a7e8"
+    },
+    {
+      "sha": "97d7c6df3769cb12b1e04bf3b415d2f5f29d41af",
+      "subject": "fix(pi): accumulate usage across tool rounds and continuations",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "e0e3e1a5d1021b74763d5b23830fb761739ca2f5"
+    },
+    {
+      "sha": "1fd4123514de819df02b88f7715deecca36d6adc",
+      "subject": "fix(pi): await Windows termination and preserve cancellation",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "263bd955ea01ba3bfbe9ded70b5b09e50e5e40d0"
+    },
+    {
+      "sha": "b127a5516847d1a638c0aa726c1dafce61590c69",
+      "subject": "fix(pi): cancel completion fallback when a turn continues",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "5706509c7daf5182665a0bcd8f7470b65cc39459"
+    },
+    {
+      "sha": "6c486ad7116426ec6f3303c0d50ad27e3c8d1aef",
+      "subject": "fix(pi): give Pi its TERM grace before the kill, so Stop ends the tool processes it started",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "6ad9efafdad646b4d34c3c7d4220d430843d408a"
+    },
+    {
+      "sha": "4447ef19eb88e958c7d5df174e89e9a88988872f",
+      "subject": "fix(pi): await every turn during shutdown",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "7e8b2192bfb0843ff469356530d82b36fc7ddeb2"
+    },
+    {
+      "sha": "9b06e4dc08a5fccf196604a57e5ff12053224f9a",
+      "subject": "test(pi): check the TERM cleanup only where Pi gets a TERM",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "047202f01a0fd45c1c6479b929f80a3874fe04a6"
+    },
+    {
+      "sha": "dc1f02aa3da8a578d8bfc7afe1a1fe924caaaf9a",
+      "subject": "fix(codex): avoid replaying turn activity after start RPC failures",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "abf63431db0310fab91cfca75b7d6ad17211366c"
+    },
+    {
+      "sha": "7045f15a1376276c61f8a1ddfc1fd37dd42acb26",
+      "subject": "fix(codex): warn about tool activity after turn-start failure",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "8d0c5780f954cd223f66ef640a0e1a8c3a19ffdb"
+    },
+    {
+      "sha": "3c04a89d91971a8547035b8415ad6519422b1d8b",
+      "subject": "fix(team): check current bot ownership after reading handoff bodies",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "afaaa4de68afb644d0d1841f4c7c86540045b930"
+    },
+    {
+      "sha": "ec834e08e7f1d10ab691d09da9bfe77b6b9e83d0",
+      "subject": "fix(team-owners): hide unavailable bots before reading handoff bodies",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "daada3b1b73e01e3e69178832f2def128eeb7c7f",
+      "note": "server/body-thread-guards.e2e.test.ts never existed in the fork; recreated it with only the test this commit adds, since the rest of the file is unrelated upstream work."
+    },
+    {
+      "sha": "b355c661208b3dabefcf1e0296e3a42eb371b705",
+      "subject": "A new bot's setup answers follow its name (#3743)",
+      "status": "ignored",
+      "decidedAt": "2026-10-29",
+      "rule": "ignore-upstream-set-me-up",
+      "note": "Confined to the Set me up flow: server/setup-suggestions.ts, shared/setup-card.ts, src/components/SetupOffer.tsx, the setupOffer/setupChoices/setupChoicesPending wire fields and the fake-claude setup-answer delay."
+    },
+    {
+      "sha": "baa8425f30a58cdc9a1dbb9c1545cb80e6f9e30b",
+      "subject": "fix(team): an inbox item stays listed only while it really waits, and its count shows on the inbox (#3724)",
+      "status": "deferred",
+      "decidedAt": "2026-10-29",
+      "note": "Batch 11 inbox item/count fix. Depends on the Team Cloud inbox base the fork never adopted (upstream 32e46312a ignored, 62c809ec2 pending): server/host/person-inbox.ts, team-messages.ts, representative.ts, shared/inbox.ts and the inbox UI. Importing that is a 100+ file product change (removes team-briefs.ts, rewires notifications), not a safe adaptation; revisit only if the fork adopts the inbox base."
+    },
+    {
+      "sha": "adacab69a9197aa74238bd7aefb8b887a2203e6e",
+      "subject": "test: the coordination e2e tests switch off smart setup answers (#3744)",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "3a0258384e2a671ae4f180d509d4936ea4b917d8",
+      "note": "Adds features.smartSetupChoices: false to two e2e configs; harmless here since the fork has no smart setup and the config schema strips the unknown key."
+    },
+    {
+      "sha": "3ff8778788c42e7b6c2b2d358f1ffdfadcc28d6c",
+      "subject": "feat(team): the inbox as a list in the right panel, and one live card in the inbox chat (#3735)",
+      "status": "deferred",
+      "decidedAt": "2026-10-29",
+      "note": "Batch 11 inbox panel/card feature. Same missing Team Cloud inbox base as baa8425f30 (person-inbox.ts, team-messages.ts, shared/inbox.ts, inbox UI); not applicable without adopting 62c809ec2 and 32e46312a first."
+    },
+    {
+      "sha": "d915c2d8a3f123cfefe7354a0f7fdf56aa8f2889",
+      "subject": "test(team-messages): Marco's assistant reads a fixed clock, so his Thursday slot is still ahead (#3850)",
+      "status": "deferred",
+      "decidedAt": "2026-10-29",
+      "note": "Batch 11 test fix for server/host/team-messages.test.ts, which does not exist without the Team Cloud inbox base."
+    },
+    {
+      "sha": "a8ac33f3609e94b67baa81a4274556f855f1ad6b",
+      "subject": "fix(container): keep browser locks across driver restarts",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "0d7854a1d6a552a2a565032b232bd37e11ff3a32",
+      "note": "Batch 19, applied first: it is the upstream parent of 8119d08650, so the given list was reordered to a8ac, 8119, a623, 42ca, 800c, 0bfa. Moves the workspace preparation script into the new server/container-workspace.ts and clears browser locks once per container start (boot ID + PID 1 start time); image layer 6 to 7."
+    },
+    {
+      "sha": "8119d08650677301a3caed5d82b5a7eec94caef6",
+      "subject": "feat(local-vm): preserve user-installed apps across updates (#3812)",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "9138ee88818dceaae9928e37d9bf3070d6f34f20",
+      "note": "Conflict in server/config.ts: kept the fork's features list (no smartSetupChoices) and added localVm.preserveInstalledApps. Opt-in ~/.local rescue into workspace/.desktop-apps, wired through desktop-updates and the config status."
+    },
+    {
+      "sha": "a62301002515b5a28af34fbc22ce58ed6e4bfa4d",
+      "subject": "feat(providers): choose how long to wait for a local model's reply (#3805)",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "e451ae197777c55817f377138f33f1721c3615e5",
+      "note": "Conflict in src/components/OpenAiCompatServers.tsx: the fork has no cn/KEY_FIELD styling, so kept its INPUT/ICON_BUTTON classes and added REPLY_WAIT_CHOICES plus the per-server wait picker. Adds replyWaitMinutes to the instance PATCH schema and the driver's timeout."
+    },
+    {
+      "sha": "42ca852be35a8861aed7a2a26294c0193238eac7",
+      "subject": "Localize local environment settings (#3802)",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "df9c15a09460f25e3fa3f1a9057107d8a1de64e9",
+      "note": "Applied to the fork's ConnectedWorkspacesSettings. Only src/locales/en.json got the connectedWorkspaces.* strings: src/locales/zh.json was reverted (partial, diverged locales). The zh-only test became a catalog/English-fallback test, since this fork carries no zh translation for these keys."
+    },
+    {
+      "sha": "800c130b61686d1fef6dd92793223de41af165ea",
+      "subject": "main: Local VM settings move out of config.ts, the reply-wait picker uses Select (#3826)",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "fb9d46a7b248ab7c710e7cc33c667fd28721d2eb",
+      "note": "Conflicts in server/index.test.ts (kept the fork's .mimirbot config path, took preserveInstalledApps: false) and OpenAiCompatServers.tsx (kept the fork's imports, added Select). Local VM defaults and readers now live in server/local-vm-settings.ts and config.ts re-exports them."
+    },
+    {
+      "sha": "0bfaa886dbad786a4cc569d3c9c1f88355ca0806",
+      "subject": "fix(local-models): a local model's reply wait goes past 5 minutes; a dead server stops it early",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "d3409bd7cdda9eae8fbdc8a340f7dffab73725ad",
+      "note": "Added the undici 8.11.2 dependency (package.json and pnpm-lock.yaml applied cleanly; pnpm install --frozen-lockfile to materialize it). A reply wait over 5 minutes uses undici's fetch and Agent with header/body timeouts off; a loopback/private-network server is polled every 30 s and three misses stop the reply."
+    },
+    {
+      "sha": "fa748e22445b2d0d3e35ab783615feb8d79221af",
+      "subject": "fix(sync): serialize concurrent cloud file mutations",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "ff7ed067b8749dbd1a0720dd35807050b8001bf7",
+      "note": "Batch 10, applied first: it is the parent of c146e17e8e, which is the parent of da828d3e08, so the given order was reordered to fa748, c146, da828, 773bd, 9cd48. Applied cleanly: a per-folder/path mutation queue now guards commit, delete, restore and unregister."
+    },
+    {
+      "sha": "c146e17e8e275f27799b5e8ae0a4690b8027061b",
+      "subject": "fix(sync): reject malformed Unicode wire paths",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "f8d41b0d105bf9be9e3d7bba80d42cc22b883945",
+      "note": "Applied cleanly to electron/cloud-sync-rules.mjs (validWirePath now requires isWellFormed()) and its node test, plus the concurrent-commit regression in server/cloud-sync-concurrent.test.ts."
+    },
+    {
+      "sha": "da828d3e08c64a1332bdf049b780a8a00f091bfa",
+      "subject": "test(cloud-sync): the concurrency tests use a fixed disk size",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "011e473272dc48312180f121f1f54ee03170e037",
+      "note": "Applied cleanly: one-line test helper change in server/cloud-sync-concurrent.test.ts."
+    },
+    {
+      "sha": "773bdc1f5c16c0292ae30fe73054f073cab1cdf7",
+      "subject": "Own-server homes: trust only the tunnel to name a client, and start again after an unclean kill (#3727)",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "653e5d79f191f8530d0772296b4c974d6930d08f",
+      "note": "Conflicts in deploy/fly/Caddyfile (kept our MimirBot wording plus the own-server sentence) and electron/data-dir-lease.mjs (our MimirBot advice text with upstream's \"or container\"). The new \"Another MimirBot home is already running on this volume\" message was renamed from MausBot in cloud-home-start.ts, cloud-home.test.ts and the docker.yml step. Added the lease's pid-namespace/start-time identity, the volume flock and edgeClientAddress; the docker.yml own-server job needs Docker in CI, which this fork's workflow already runs."
+    },
+    {
+      "sha": "9cd48bc396cbb1a295bfa7e92ec995aa2bb082e6",
+      "subject": "MausBot connector: run a Cloud home on its owner's own server, over one outbound connection (#3732)",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "5d73301461928484a6680e458247e1fe7b9e1909",
+      "note": "Applied cleanly as a new connector/ package; it is not a pnpm workspace member because it has no npm dependencies and runs its TypeScript directly under node, so it needs no lockfile entry and its 7 vitest files run from the root config (vite.config.ts and tsconfig.server.json now include connector/). User-facing prose says MimirBot; identifiers, the MAUSBOT_ settings and the image name stay as upstream. connector-release.yml takes the owner from github.repository, so it publishes to this fork's ghcr namespace; connector-e2e.yml pulls upstream's published home image digests and is not runnable here."
+    },
+    {
+      "sha": "d779bb16f555633ab942475452cf86df824ed1e0",
+      "subject": "feat(cloud): this computer works for each of your Clouds automatically (#3734)",
+      "status": "deferred",
+      "decidedAt": "2026-10-29",
+      "note": "Batch 10, skipped after a trial pick (51 content conflicts, 8 upstream deletes of files we changed). It needs the multi-Cloud rail base the fork never adopted: electron/cloud-rail.mjs, the session contract v1 clouds list, otherOwnClouds/parseCloudList and pairHome(cloudId) in electron/cloud-account.mjs (ours has pairHome() for My Cloud only and no state().clouds), account().isOwnCloud(), and the Admin routes POST/PATCH desktop/clouds. It also deletes our Use my computer model outright (electron/use-my-computer.mjs, electron/cloud-lending-ipc.mjs, src/components/CloudLending.tsx, LentComputers.tsx, the popup and its words) in favour of automatic lending to every own Cloud, which reverses the fork's decision behind deferred 47405e69e7. Needs a hand port on top of an adopted rail base, not a pick."
+    },
+    {
+      "sha": "1f57644f18064fbfc597377c250306a7dc498f6f",
+      "subject": "fix: contain routine check receipt failures",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "dc29840f4bc8ced8fd89bd54021a184fccd4fff0",
+      "note": "Batch 8, applied first: the given order was not topological (74e26667d3 was listed before its ancestors 1f57644f18 and 6c0324e1b2), so the picks followed the upstream parent chain: 1f57644f18, f565968f27, d5a85c7000, 6c0324e1b2, 74e26667d3; 7e75b628fc sits on a separate lineage and went last. Applied cleanly: both scheduler launch sites now catch the whole background check (this.runChecks(...).catch(...)) instead of void-ing it, and server/testing/routine-check-failures.ts plus its spawn-based test arrive new."
+    },
+    {
+      "sha": "f565968f2752e30a32ebaf95c3bfe85889769511",
+      "subject": "fix: discard checks from stale routine definitions",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "8c56b735442a084800aa9b048c6e063f8ae39048",
+      "note": "Applied cleanly. It introduces server/routine-run-definition.ts, which the fork never had: the module is created here with just routineRunDefinition() (the results-thread resolver that upstream adds to it comes later, in 74e26667d3), so no other refactor was needed. runChecks captures routine.updatedAt as its revision, releases a stale batch and rechecks the current definition; newRun now builds the definition fields through the shared helper."
+    },
+    {
+      "sha": "d5a85c7000ee8a8ec0499bddbfdd5c5882af62c3",
+      "subject": "fix: prevent routine dispatch after shutdown begins",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "85841082a5e74e829294baae102941da44d2fa42",
+      "note": "Applied with automatic 3-way merge; our server/index.ts is ~490 lines away from upstream's startTurn, but all three hunks matched their own context and landed at adjusted offsets: companyShutdown now gates directTurnClaimIsCurrent(), the pre-dispatch claim check moved from before the provider setup to after the final recall, the dispatch guard also cancels on companyShutdown, and the routines startTurn callback no longer dispatches once shutdown began. routines.ts gains the closing seal on start(), tick(), runNow(), runChecks() and the queued-run loop."
+    },
+    {
+      "sha": "6c0324e1b29bd69826a73687c5e2291a23a972d5",
+      "subject": "test: preserve upstream check retry semantics",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "955a894ee2fcf9d61fab010b237f5a60788de7ee",
+      "note": "Applied cleanly. The fixture now reads the queued receipt off routines.json, closes the first manager, retries in a fresh one after a restart and asserts the failed run survives, instead of driving the fork-only in-memory rollback. Both cases (manual and scheduled) pass here."
+    },
+    {
+      "sha": "74e26667d35cfafa97d8a5d318cec472694c37a2",
+      "subject": "fix: preserve checked routine result destinations",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "852545949374b283d2c1d6113d611b9aeaf60298",
+      "note": "Applied cleanly. The ResultsThreadAllocation type and the destination rollback move out of routines.ts into server/routine-run-definition.ts as resolveRoutineResultsThread(), and a refreshed manual run now resolves its destination through it, so a checked run follows a bot edit to the current bot's main chat while allocations still roll back."
+    },
+    {
+      "sha": "7e75b628fc672b5d759268eecbfb724913f8beb7",
+      "subject": "test(ui): the cron routines e2e test follows the Automations page (#3834)",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "d5050a4d105bbaad83a9f64ff4411fe1f9883a71",
+      "note": "Applied cleanly and ends up identical to upstream except our MimirBot wording. It matches the fork's own TriggersPage/Automations page (nav label \"Automations\", header \"New\" box, \"Set it up yourself\" > \"On a schedule\" > \"Continue\", the plain routine editor's \"What should happen?\" and \"Tell the bot what to do each time\" fields, li[data-automation] rows and the \"Edit\" panel), so it replaces an older version that still clicked \"Routines\" and read article[aria-label] cards the fork no longer renders. NOT executed here: the fixture launch dies in agent-browser before any assertion because Chrome cannot start in this container (\"No usable sandbox\", and the bundled chrome is not executable), so the file was checked against the fork's components statically only."
+    },
+    {
+      "sha": "36ab6a088ebbdcac1f7acaa12d27b4a98ed23633",
+      "subject": "fix(computer-sharing): invalidate superseded grant saves",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "731808392497146a20841104db384541d8afa557",
+      "note": "Batch 5, applied first: the given order was not topological (8ef91a3bd0 was listed before its ancestors 36ab6a088e and 3b8ba12b43), so the picks followed the upstream parent chain: 36ab6a088e, 3b8ba12b43, 8ef91a3bd0, 31bca1121f, 46d16fb037, 49b0631221. Applied cleanly to our computer-sharing.mjs (a per-environment grantVersions counter; Stop, forget, decline and a newer save each bump it, and save/saveCloud drop their grant when the version moved on). Our Use my computer model is untouched: this is the same lending controller, and the new electron/computer-sharing-races.node-test.mjs arrives with it."
+    },
+    {
+      "sha": "3b8ba12b43a0a2499c0b5dccc5bdb095c9f18d6e",
+      "subject": "fix(updates-consent): discard stale account reads before recording",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "266a5cffffbfd761fb011d853850bcb09eb7440c",
+      "note": "Adapted: upstream's `if (!fresh()) return;` sits on the choices-counter/freshness machinery of 117d3c646, which this fork never took (that commit is still 'observation'). Ported the account half instead: reconcile(fresh) saves through keep() only while the signed-in account is the one the read started under, and settle() re-runs a discarded read against whoever is signed in now, so account B's withdrawal is what gets recorded. The new test (a slow account A read cannot overwrite account B's withdrawal) passes; the 117d3c646 overtake test was left out because the local-answer half still needs the choices counter."
+    },
+    {
+      "sha": "8ef91a3bd0c9dae0bf8171a6c183c146b054eb3d",
+      "subject": "fix(computer-sharing): cancel pending saves from Stop while off",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "ed58d497b21dcbe8cebd4f8e2bedb7ac966f9cbd",
+      "note": "Applied cleanly. main's stopLending() now revokes every environment, not only the ones whose stored cloud grant reads enabled, so a save held in an identity request is cancelled too. The races test drives it through the real main.mjs wiring, extracted with runInNewContext from `function stopLending()` up to `async function openLendingSettings()` and from `const useMyMac = installCloudLending(` up to `const cloudSync =`; both markers exist in our main.mjs unchanged."
+    },
+    {
+      "sha": "31bca1121fff8d0f0eb30e5aac9c97246be3cdcc",
+      "subject": "fix(computer-sharing): capture save cancellation before IPC awaits",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "6b98bc02aff81e65973fd6fc1f319897b99acf00",
+      "note": "Applied with two conflicts, both from a method our fork dropped long ago: upstream's context carried `busy(): boolean`, which neither our computer-sharing.mjs nor its .d.mts has, so it was not brought back. Kept upstream's beginSave wiring in installCloudLending (one version captured before folder checks, confirmations and persistence, bound to the environment the operation started on), beginCloudSave in the controller, the versioned saveCloud, and the main.mjs/e2e wiring. electron/cloud-lending-ipc.mjs ends up identical to upstream."
+    },
+    {
+      "sha": "46d16fb0372f2a953c9752799cd5b721ba6eb3dc",
+      "subject": "test(lending): provide cancellation version in main dialog fixture",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "1a041cd18509b853d2d44f77215ee9618736b701",
+      "note": "Applied cleanly: one line, beginCloudSave: () => 0, in the lending-dialogs fixture's sharing controller. Without it that fixture fails with 'beginCloudSave is not a function' once the IPC commit above is in."
+    },
+    {
+      "sha": "49b063122127f6f8a3655d37dae483ec43a78816",
+      "subject": "fix(computer-sharing): guard worker ownership after identity refresh",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "2952aa727554538849e8d6e12293f8af789bd91a",
+      "note": "Applied cleanly: after the cloudIdentity() await in the lending worker, a worker that was aborted or replaced (running.get(env.id) !== live) breaks instead of writing the refreshed session back into the saved grant. Its test also covers Stop staying off across cloudChanged() and start()."
+    },
+    {
+      "sha": "683e494fa4875766c1b003d011501db9deeb2e3b",
+      "subject": "fix(settings): the app's own signed-out OpenCode is finished in the app",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "466a9dda5bb41f52698e6682a075d5662b848cb0",
+      "note": "Applied with three conflicts. en.json: kept our MimirBot wording for usingAppCopy and standaloneDownloadNote and added the three appCopy strings with MimirBot in appCopy.remote. EngineSetup.test.ts: our branding differs, so the remote assertion says 'on the computer running MimirBot'. store.tsx: our extra imports (optimistic-send, room-frames) sit where upstream added the engine-install import, so the type import was placed in alphabetical order; the EngineInstall interface moves to src/state/engine-install.ts as upstream did. The file-size ratchet pin stays at 3462: our fork lowers pins only at release (scripts/tighten-ratchets.mjs), and store.tsx now counts 3449, so upstream's 3454 would be a number for their tree, not ours."
+    },
+    {
+      "sha": "fa736533a732f1bc2c9056a967ae483dcc5d0280",
+      "subject": "fix(settings): \"now uses the copy OpenMausBot installed\" stays once OpenCode is Ready",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "baffa3273a9e187097c7d60c7868e226f5c924f0",
+      "note": "Applied cleanly except en.json, where the conflicting line was the brand: kept our MimirBot text and added engineSetup.usingAppCopyDismiss. The new EnginesSettings.app-copy.test.ts NOTICE was changed to the MimirBot sentence so it matches what the app renders. The per-engine switch store (engine-install.ts), AppCopyNotice on the card, and the Settings-exit cleanup are unchanged from upstream."
+    },
+    {
+      "sha": "8e03def8908b914d78f38744a1e1e91b61d84fa5",
+      "subject": "fix(settings): the download note counts decimal megabytes",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "903ea280f746272dd0b4a58c4b1151330d1591b2",
+      "note": "Applied cleanly. The note now rounds decimal megabytes with a 1 MB floor (64,291,659 bytes reads 'About 64 MB'); the test checks both 79,667,571 -> 80 MB and the 64 MB case. It is an ancestor of the app-copy commits upstream, applied here first so the later commits keep their parent order."
+    },
+    {
+      "sha": "c5523971d95002299e3969e502707f5cb64c9d3d",
+      "subject": "fix(settings): size the app-copy notice in whole pixels",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "87a1957fca51cd9d9af2fc09d098a8b949a3b377",
+      "note": "Applied cleanly: the app-copy notice line moves from 11.5px to 12px and its Open API keys button from 12.5px to 13px in EngineAppCopy.tsx."
+    },
+    {
+      "sha": "8ff35b40e32df3ee898ee89aa2cbff78921a64ec",
+      "subject": "i18n(settings): translate the standalone install's six new strings",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "039242565f345737fa8d1a2a6dc500c1597654b3",
+      "note": "Applied with adaptations. Upstream translates 12 packs; our fork has 14, so the six strings were also written for it.json and ru.json (following each file's own terms: 'Impostazioni -> Chiavi API', 'Настройки -> Ключи API'). Every translation keeps its own surrounding content; brand names were changed to MimirBot to match our English source. de/fr/hi are partial and lack engineSetup.serverInstalled, so the keys went after engineSetup.serverInstalling (the same slot upstream used there); the other packs got them after serverInstalled. source-hashes.json was recomputed against our English strings (sha256 of each en.json value) for all 14 locales; upstream's hashes were for the OpenMausBot source. pnpm i18n:check passes with 15 languages."
+    },
+    {
+      "sha": "785eff2a5c042b77b453b047c9583da56726d94b",
+      "subject": "test: the screenshot-store and Mac voice tests stop depending on a fast CI machine",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "cd80c0c9108cb8d790aa87db0d8f0727f6dd8a89",
+      "note": "Applied cleanly. browser-evidence.test.ts creates the 200-330 MB fixtures with writeFileSync('') + truncateSync instead of allocating buffers, and voice-notes.e2e.test.ts gives listSystemVoices a 30 s execFile runner and skips only when the Mac lists no voices. It is an ancestor of the other three commits in this batch, so it was applied first."
+    },
+    {
+      "sha": "1e378c49548d7b0858f96d245cae376c1093a1e6",
+      "subject": "fix(browser): the live view resets a browser that stops answering, instead of blaming the bot",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "dc02a3c15c451470fe48c81685c73698b2408837",
+      "note": "Applied cleanly. A status probe that stays unanswered with no bot call, person action or close in the session now resets the daemon once and reports BrowserUnresponsiveError (503, retryable) instead of a busy/error blamed on the bot; runtime.working() is the one predicate for work in progress and the idle-close guard. It is an ancestor of 60bfe50bf upstream, applied before it to keep parent order."
+    },
+    {
+      "sha": "60bfe50bf1c54f664c9fdc65764ddc86eb325efb",
+      "subject": "fix(browser): a person's hold follows the person, and ends when they leave (#3726)",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "41d1ecd91f72eb27df51a32bcbfde0ad7ac23968",
+      "note": "Applied with adaptations to our older browser UI. Six conflicts: browser-live.ts keeps our constructor without the page-size 'order' field, drops the upstream resize action and fit() helper (our BrowserLive route and v1 live view have no size/requested plumbing), and keeps our own holds() removal; core.ts keeps our viewport imports (VIEWPORT_LIMITS; our requestedSize is local) plus the new ViewerHold import; live-v1.ts takes person but not the options.size spread; stream-v2.e2e.test.ts keeps our expected page size [1200,800,2] (upstream's [1280,853,2] depends on fitsScreen) while taking the new control expectation (owned, not controlling); routes/browser-viewers.ts and its test take person without the requestedSize/size fields; BrowserPanel.tsx takes upstream's doc comment. New files server/browser/hold.ts and server/browser/viewers/hold.ts apply as upstream. Locales: keptHint was extended in en plus the 8 packs upstream translates (es, it, ja, pl, pt-br, ru, tr, vi); de/fr/hi/uk/zh/zh-tw do not carry the key, so their packs and hashes are untouched and pnpm i18n:check is green."
+    },
+    {
+      "sha": "58c892684beb31a04e34397f715a135ddbf2262e",
+      "subject": "test(browser): the S4 tab tests and the v1 live view wait for Chrome, not a fixed sleep (#3823)",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "b054a7160e07cd5aec46790a4782c46537f1de1a",
+      "note": "Applied cleanly. S4 tab-close checks poll run.browser.pages() for up to hostTimeout(5s) instead of sleeping 200 ms; runV1Session accepts shown/maxSettleMs and viewers.e2e waits for each normalized step to show what the golden showed; ci-retry-list.json gains the viewers.e2e entry. Batch order followed the upstream parent graph (785eff2a5c -> 1e378c4954 -> 60bfe50bf1 -> 58c892684b), not the listed order, because each later commit is a descendant of the earlier ones."
+    },
+    {
+      "sha": "af59c2ec4a7b3a3a4147d607c7abb00a290b0a17",
+      "subject": "Add GitHub Copilot CLI as a built-in ACP engine (#3740)",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "25cde257a1b52a30a72d4ca3cb0dafc4738958ac",
+      "note": "Applied with two files deliberately left out. Upstream lowers server/config.ts's line ratchet from 1363 to 1301 after moving the fleet tables into the new server/instance-fleets.ts; our config.ts is 1287 lines against a listed 1365, and the ratchet only fails when a file grows (its own header says a shrinking file leaves its number alone, since scripts/tighten-ratchets.mjs lowers it at release), so the number stays. server/first-hour.e2e.test.ts does not exist in our fork, so its githubCopilot entry has no counterpart. Everything else came across, including the new server/drivers/acp/copilot.ts, server/copilot-engine.e2e.test.ts, src/components/CopilotModelPicker.test.ts and docs/verification/copilot-engine.md. The discovery client name stays \"openmausbot-model-discovery\", matching the literals our fork already carries on the wire elsewhere."
+    },
+    {
+      "sha": "f5f9692b61b960b0eda078becdd81411c29dbcec",
+      "subject": "fix(windows): foreground typing lands every character, and a sent menu click is not reported as failed (#3769)",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "07bc535e1f2bc0be79db9548fd5bd9d7f340e705",
+      "note": "Applied with adaptations. The OpenMausBot -> MimirBot rename reaches lent-screen-guidance.test.ts's restart expectation. Our check callback in the mcp-bridge relay takes no argument, so local-computer-guidance.test.ts and local-computer-proxy.test.ts import only localComputerRelay (upstream also pulls in localComputerCallQuery) and assert order as [\"check\", \"fwd:1\"] rather than [\"check:1\", \"fwd:1\"]; the same signature difference shifts the hunk offsets. New files: electron/paced-typing.mjs with its .d.mts and node test, and server/unconfirmed-click.ts with its test; docs/verification/local-computer-launch.md gains the Windows notes."
+    },
+    {
+      "sha": "c97fdf86c313bec60b622e4d8e4f0a33a9215606",
+      "subject": "Fix Grok CLI ACP authentication method (#3798)",
+      "status": "applied",
+      "decidedAt": "2026-10-29",
+      "ourCommit": "0e8184c102d842211bea5442a9c1bcb0562774a7",
+      "note": "Applied cleanly, hunk offset aside (our acp.test.ts is one line shorter). grok.ts now picks the first auth method the CLI actually offers, cached_token before grok.com, instead of demanding cached_token and giving up; acp.test.ts covers the fallback."
     }
   ]
 }

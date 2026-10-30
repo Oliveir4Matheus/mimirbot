@@ -194,6 +194,7 @@ const dumpEnv = Object.fromEntries(
     "TEST_POLICY",
     "OPENCODE_API_KEY",
     "OPENCODE_PERMISSION",
+    "OPENCODE_DISABLE_AUTOUPDATE",
     "OPENAI_API_KEY",
     "OPENROUTER_API_KEY",
     "ANTHROPIC_API_KEY",
@@ -230,6 +231,10 @@ const dumpEnv = Object.fromEntries(
     "GEMINI_API_KEY",
     "MISTRAL_API_KEY",
     "OMB_ANTHROPIC_API_KEY",
+    "COPILOT_ALLOW_ALL",
+    "COPILOT_GITHUB_TOKEN",
+    "GH_TOKEN",
+    "GITHUB_TOKEN",
   ].flatMap((key) => (process.env[key] === undefined ? [] : [[key, process.env[key]]] as const)),
 );
 const dumpState: Record<string, unknown> = { argv, env: dumpEnv, pid: process.pid };

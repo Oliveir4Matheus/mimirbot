@@ -63,27 +63,40 @@ export function createUpdatesConsent({ prefs, account, available, now = Date.now
     } else save({ ...local, pending: false });
   }
 
-  async function reconcile() {
+  async function reconcile(fresh) {
+    const keep = record => { if (fresh()) save(record); };
     if (!client() || !await available()) return;
     const local = prefs.updatesConsent(), who = signedIn();
     if (!who) return signedOutSync(local);
     if (local?.pending && local.account === who.id) {
       await client().recordUpdatesConsent(local.status, local.version);
-      save({ ...local, pending: false });
+      keep({ ...local, pending: false });
       return;
     }
     const remote = parseAccountConsent(await client().updatesConsent());
+    if (!fresh()) return;
     if (remote) {
       if (local?.status !== remote.status || local.account !== who.id || local.pending)
-        save({ status: remote.status, version: remote.textVersion, at: now(), account: who.id, ...(local?.email ? { email: local.email } : {}) });
+        keep({ status: remote.status, version: remote.textVersion, at: now(), account: who.id, ...(local?.email ? { email: local.email } : {}) });
       return;
     }
     if (!local) return;
     await client().recordUpdatesConsent(local.status, local.version);
-    save({ ...local, account: who.id, pending: false });
+    keep({ ...local, account: who.id, pending: false });
   }
 
-  const sync = () => running ??= reconcile().finally(() => { running = null; });
+  /** The signed-in account is part of what a read is about: a read that answers for one account must not be recorded
+   * on another, so a discarded read is settled again against whoever is signed in now. */
+  async function settle() {
+    for (;;) {
+      const who = signedIn()?.id ?? null;
+      const fresh = () => (signedIn()?.id ?? null) === who;
+      try { await reconcile(fresh); } catch (error) { if (fresh()) throw error; }
+      if (fresh()) return;
+    }
+  }
+
+  const sync = () => running ??= settle().finally(() => { running = null; });
 
   const snapshot = () => {
     const local = prefs.updatesConsent(), who = signedIn();

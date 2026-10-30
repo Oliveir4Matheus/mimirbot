@@ -114,7 +114,9 @@ export function createComputerSharing(options: {
   /** The folders lent to My Cloud, for Files' copies of them (electron/lent-folders.mjs). */
   lentToCloud(env: Workspace | null | undefined): { lendingId: string; folders: Array<{ id: string; path: string; name: string; write: boolean }>; protectedPaths: string[] } | { off: true };
   lendingToCloud(): boolean;
-  saveCloud(env: Workspace, input: { folders: unknown; screen?: boolean; internet?: boolean; chrome?: boolean; terminal?: boolean }): Promise<CloudLendingState>;
+  /** Capture before preparing a choice; Stop or a newer save invalidates this version. */
+  beginCloudSave(env: Workspace): number;
+  saveCloud(env: Workspace, input: { folders: unknown; screen?: boolean; internet?: boolean; chrome?: boolean; terminal?: boolean }, version?: number): Promise<CloudLendingState>;
   cloudChanged(): void;
   start(options?: { maintainer?: boolean }): void;
   close(): void;

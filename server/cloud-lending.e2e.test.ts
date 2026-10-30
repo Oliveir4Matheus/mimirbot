@@ -128,7 +128,7 @@ await import(${JSON.stringify(pathToFileURL(join(SERVER_DIR, "testing", "fake-cl
 `, { mode: 0o755 });
   // No `features` block: the maintainer flag is off, as on every Cloud home.
   writeFileSync(join(dataDir, "config.json"), JSON.stringify({ instances: {
-    ...Object.fromEntries(["codex", "cursor", "openaiCompat", "qwen", "hermes", "pi"].map((id) => [id, { driver: "not-a-real-driver" }])),
+    ...Object.fromEntries(["codex", "cursor", "githubCopilot", "openaiCompat", "qwen", "hermes", "pi"].map((id) => [id, { driver: "not-a-real-driver" }])),
     claude: { driver: "claudeAgent", displayName: "Claude", config: { cli } },
     // A model that uses the Mac, asks a question, and uses it again once the
     // card is answered (fake-acp-cli.ts "lend-question").
@@ -543,7 +543,7 @@ it("My Cloud's own page turns this computer's lending on in place, with the inte
     ipcMain: { handle: (channel: string, handler: (...args: unknown[]) => Promise<any>) => handlers.set(channel, handler) },
     localOnly: (_channel: string, handler: unknown) => handler, cloudPage: (_channel: string, handler: unknown) => handler,
     snapshot: async () => ({ available: true, screenAvailable: false, state: lending.cloudState(env) }),
-    environment: () => env, save: (target: typeof env, choice: { folders: unknown; screen: boolean }) => lending.saveCloud(target, choice as never), stop: () => lending.revoke(env),
+    environment: () => env, beginSave: (target: typeof env) => lending.beginCloudSave(target), save: (target: typeof env, choice: { folders: unknown; screen: boolean }, version: number) => lending.saveCloud(target, choice as never, version), stop: () => lending.revoke(env),
     chooseFolder: async () => null,
     defaults: () => usualFolders([...usual, join(root, "Missing")], validateSharedFolders), validate: validateSharedFolders,
   });

@@ -28,8 +28,11 @@ if (appImages.length !== 1) {
 }
 const [appImage] = appImages;
 
+// Every lane must name the packaged executable explicitly: the smoke's own
+// default still points at the pre-rename binary name.
+const unpackedExecutable = path.join(root, "release", "linux-unpacked", "mimirbot");
 const executables = [
-  path.join(root, "release", "linux-unpacked", "mimirbot"),
+  unpackedExecutable,
   path.join(root, "release", appImage),
 ];
 if (process.env.OMB_SMOKE_INSTALLED_DEB === "1") {
@@ -106,7 +109,7 @@ if (process.exitCode === undefined) {
         ...process.env,
         XDG_RUNTIME_DIR: runtimeDirectory,
         OMB_SMOKE_HARD_DEATH: "1",
-        OMB_SMOKE_EXECUTABLE: path.join(root, "release", "linux-unpacked", "mimirbot"),
+        OMB_SMOKE_EXECUTABLE: unpackedExecutable,
       },
       stdio: "inherit",
     },
@@ -141,6 +144,7 @@ if (process.exitCode === undefined) for (const lane of [
       env: {
         ...process.env,
         XDG_RUNTIME_DIR: runtimeDirectory,
+        OMB_SMOKE_EXECUTABLE: unpackedExecutable,
         OMB_SMOKE_WAYLAND: lane.wayland ? "1" : "0",
         OMB_SMOKE_LINUX_CUA_BLOCKED: lane.blocked ? "1" : "0",
       },

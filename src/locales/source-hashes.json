@@ -2357,7 +2357,13 @@
       "sidebar.update.upToDateOther": "fdb097b8cd4e3866d54a4b840b38432c4db69c7783112a8b4f80386b1cacbe12",
       "sidebar.update.howOther": "c8c6f89ce0b420107b0bf3e98ccc99ddb4677820437a6e5c87d1e6fea870dcf2",
       "sidebar.update.howOtherRestart": "3f3c7744d5366d82720d7dafab9fd13a940da36431e8f2dbed06acd2b73c18f7",
-      "computer.simple.usingNow": "87b34b405a8495e0f1656dd1a47919e55271849e0ad97a682e14ac256fca3eb6"
+      "computer.simple.usingNow": "87b34b405a8495e0f1656dd1a47919e55271849e0ad97a682e14ac256fca3eb6",
+      "engineSetup.usingAppCopy": "0fff299deba161a0cc53b4c4a58b1b14e719c560d3dcdb71fb5e7ca23c179470",
+      "engineSetup.usingAppCopyDismiss": "48845bff334a50a59aaecf499f28a7a24c3b4b891b8b18a9f1169ad8e8a6b261",
+      "engineSetup.appCopy.title": "aa3c05b81a41d7c17aa0b5e56ae5161bc4fcb9ed60d6d22a4edf0ab798061023",
+      "engineSetup.appCopy.description": "c7b7cb1a27d4a3ac004ce4b6c36d68f17c0fae9c1ad3ed035a23c44f9aa7b691",
+      "engineSetup.appCopy.remote": "b91e40795bd325656536ce5ca60385ffccd6f49d27a2ca12e099b1e8a00f85cc",
+      "engineSetup.standaloneDownloadNote": "052fd2ac1cfe94a49c17a5c771b38338045862b684e7fa6e3ea7b282c7ffb0dc"
     },
     "es": {
       "whop.description": "1a07cf04ef17029448d3781415cbac16d54e66b821907a40d94e0e6349710e70",
@@ -4793,7 +4799,7 @@
       "browser.control.yoursHint": "885d6f765308ca994113676f2aa2ff4f3322781640ed412ad19bf972bbd8e9df",
       "browser.control.waiting": "6a7a34d4c108e13007baba82886fc89a838e7eca096edca1920eda685ee73144",
       "browser.control.stale": "a92ba78900569151aef980e6cb493c1ca4bdff6effb0e697388c9241e6d0cc8c",
-      "browser.control.keptHint": "c83eca152b6fb88c4319059708dae1da3537bbe65908250fd9ed18ff58b59a9f",
+      "browser.control.keptHint": "107e9e7abb6ef2ced1ef41437b678f93e5de088cb79d293b2208f25bfdec2d76",
       "browser.control.take": "fbf728c3c3bbd9166ea4557fb267479b842217ac50573a3d11ed1b2ce6b354cb",
       "browser.control.handBack": "b8f8c1ec2f9aa8078a62a4e3be7af090edf6ed18fca3b49a97693ee7e7e33876",
       "browser.typeSecret": "ebfdd1ea18ca82cf67b0a62d7db735a40f88055814337786d728879abf9dd766",
@@ -7730,7 +7736,13 @@
       "sidebar.update.upToDateOther": "fdb097b8cd4e3866d54a4b840b38432c4db69c7783112a8b4f80386b1cacbe12",
       "sidebar.update.howOther": "c8c6f89ce0b420107b0bf3e98ccc99ddb4677820437a6e5c87d1e6fea870dcf2",
       "sidebar.update.howOtherRestart": "3f3c7744d5366d82720d7dafab9fd13a940da36431e8f2dbed06acd2b73c18f7",
-      "computer.simple.usingNow": "87b34b405a8495e0f1656dd1a47919e55271849e0ad97a682e14ac256fca3eb6"
+      "computer.simple.usingNow": "87b34b405a8495e0f1656dd1a47919e55271849e0ad97a682e14ac256fca3eb6",
+      "engineSetup.usingAppCopy": "0fff299deba161a0cc53b4c4a58b1b14e719c560d3dcdb71fb5e7ca23c179470",
+      "engineSetup.usingAppCopyDismiss": "48845bff334a50a59aaecf499f28a7a24c3b4b891b8b18a9f1169ad8e8a6b261",
+      "engineSetup.appCopy.title": "aa3c05b81a41d7c17aa0b5e56ae5161bc4fcb9ed60d6d22a4edf0ab798061023",
+      "engineSetup.appCopy.description": "c7b7cb1a27d4a3ac004ce4b6c36d68f17c0fae9c1ad3ed035a23c44f9aa7b691",
+      "engineSetup.appCopy.remote": "b91e40795bd325656536ce5ca60385ffccd6f49d27a2ca12e099b1e8a00f85cc",
+      "engineSetup.standaloneDownloadNote": "052fd2ac1cfe94a49c17a5c771b38338045862b684e7fa6e3ea7b282c7ffb0dc"
     },
     "fr": {
       "highlevel.unavailable": "87b8ac7f7610e6dd69f520bc59058fd92f307b9f4bcf804075f25d08bcaa7533",
@@ -10070,7 +10082,13 @@
       "sidebar.update.upToDateOther": "fdb097b8cd4e3866d54a4b840b38432c4db69c7783112a8b4f80386b1cacbe12",
       "sidebar.update.howOther": "c8c6f89ce0b420107b0bf3e98ccc99ddb4677820437a6e5c87d1e6fea870dcf2",
       "sidebar.update.howOtherRestart": "3f3c7744d5366d82720d7dafab9fd13a940da36431e8f2dbed06acd2b73c18f7",
-      "computer.simple.usingNow": "87b34b405a8495e0f1656dd1a47919e55271849e0ad97a682e14ac256fca3eb6"
+      "computer.simple.usingNow": "87b34b405a8495e0f1656dd1a47919e55271849e0ad97a682e14ac256fca3eb6",
+      "engineSetup.usingAppCopy": "0fff299deba161a0cc53b4c4a58b1b14e719c560d3dcdb71fb5e7ca23c179470",
+      "engineSetup.usingAppCopyDismiss": "48845bff334a50a59aaecf499f28a7a24c3b4b891b8b18a9f1169ad8e8a6b261",
+      "engineSetup.appCopy.title": "aa3c05b81a41d7c17aa0b5e56ae5161bc4fcb9ed60d6d22a4edf0ab798061023",
+      "engineSetup.appCopy.description": "c7b7cb1a27d4a3ac004ce4b6c36d68f17c0fae9c1ad3ed035a23c44f9aa7b691",
+      "engineSetup.appCopy.remote": "b91e40795bd325656536ce5ca60385ffccd6f49d27a2ca12e099b1e8a00f85cc",
+      "engineSetup.standaloneDownloadNote": "052fd2ac1cfe94a49c17a5c771b38338045862b684e7fa6e3ea7b282c7ffb0dc"
     },
     "hi": {
       "highlevel.unavailable": "87b8ac7f7610e6dd69f520bc59058fd92f307b9f4bcf804075f25d08bcaa7533",
@@ -12410,7 +12428,13 @@
       "sidebar.update.upToDateOther": "fdb097b8cd4e3866d54a4b840b38432c4db69c7783112a8b4f80386b1cacbe12",
       "sidebar.update.howOther": "c8c6f89ce0b420107b0bf3e98ccc99ddb4677820437a6e5c87d1e6fea870dcf2",
       "sidebar.update.howOtherRestart": "3f3c7744d5366d82720d7dafab9fd13a940da36431e8f2dbed06acd2b73c18f7",
-      "computer.simple.usingNow": "87b34b405a8495e0f1656dd1a47919e55271849e0ad97a682e14ac256fca3eb6"
+      "computer.simple.usingNow": "87b34b405a8495e0f1656dd1a47919e55271849e0ad97a682e14ac256fca3eb6",
+      "engineSetup.usingAppCopy": "0fff299deba161a0cc53b4c4a58b1b14e719c560d3dcdb71fb5e7ca23c179470",
+      "engineSetup.usingAppCopyDismiss": "48845bff334a50a59aaecf499f28a7a24c3b4b891b8b18a9f1169ad8e8a6b261",
+      "engineSetup.appCopy.title": "aa3c05b81a41d7c17aa0b5e56ae5161bc4fcb9ed60d6d22a4edf0ab798061023",
+      "engineSetup.appCopy.description": "c7b7cb1a27d4a3ac004ce4b6c36d68f17c0fae9c1ad3ed035a23c44f9aa7b691",
+      "engineSetup.appCopy.remote": "b91e40795bd325656536ce5ca60385ffccd6f49d27a2ca12e099b1e8a00f85cc",
+      "engineSetup.standaloneDownloadNote": "052fd2ac1cfe94a49c17a5c771b38338045862b684e7fa6e3ea7b282c7ffb0dc"
     },
     "ja": {
       "whop.description": "1a07cf04ef17029448d3781415cbac16d54e66b821907a40d94e0e6349710e70",
@@ -15160,7 +15184,7 @@
       "browser.control.yoursHint": "885d6f765308ca994113676f2aa2ff4f3322781640ed412ad19bf972bbd8e9df",
       "browser.control.waiting": "6a7a34d4c108e13007baba82886fc89a838e7eca096edca1920eda685ee73144",
       "browser.control.stale": "a92ba78900569151aef980e6cb493c1ca4bdff6effb0e697388c9241e6d0cc8c",
-      "browser.control.keptHint": "c83eca152b6fb88c4319059708dae1da3537bbe65908250fd9ed18ff58b59a9f",
+      "browser.control.keptHint": "107e9e7abb6ef2ced1ef41437b678f93e5de088cb79d293b2208f25bfdec2d76",
       "browser.control.take": "fbf728c3c3bbd9166ea4557fb267479b842217ac50573a3d11ed1b2ce6b354cb",
       "browser.control.handBack": "b8f8c1ec2f9aa8078a62a4e3be7af090edf6ed18fca3b49a97693ee7e7e33876",
       "browser.typeSecret": "ebfdd1ea18ca82cf67b0a62d7db735a40f88055814337786d728879abf9dd766",
@@ -18751,7 +18775,13 @@
       "sidebar.update.upToDateOther": "fdb097b8cd4e3866d54a4b840b38432c4db69c7783112a8b4f80386b1cacbe12",
       "sidebar.update.howOther": "c8c6f89ce0b420107b0bf3e98ccc99ddb4677820437a6e5c87d1e6fea870dcf2",
       "sidebar.update.howOtherRestart": "3f3c7744d5366d82720d7dafab9fd13a940da36431e8f2dbed06acd2b73c18f7",
-      "computer.simple.usingNow": "87b34b405a8495e0f1656dd1a47919e55271849e0ad97a682e14ac256fca3eb6"
+      "computer.simple.usingNow": "87b34b405a8495e0f1656dd1a47919e55271849e0ad97a682e14ac256fca3eb6",
+      "engineSetup.usingAppCopy": "0fff299deba161a0cc53b4c4a58b1b14e719c560d3dcdb71fb5e7ca23c179470",
+      "engineSetup.usingAppCopyDismiss": "48845bff334a50a59aaecf499f28a7a24c3b4b891b8b18a9f1169ad8e8a6b261",
+      "engineSetup.appCopy.title": "aa3c05b81a41d7c17aa0b5e56ae5161bc4fcb9ed60d6d22a4edf0ab798061023",
+      "engineSetup.appCopy.description": "c7b7cb1a27d4a3ac004ce4b6c36d68f17c0fae9c1ad3ed035a23c44f9aa7b691",
+      "engineSetup.appCopy.remote": "b91e40795bd325656536ce5ca60385ffccd6f49d27a2ca12e099b1e8a00f85cc",
+      "engineSetup.standaloneDownloadNote": "052fd2ac1cfe94a49c17a5c771b38338045862b684e7fa6e3ea7b282c7ffb0dc"
     },
     "pt-br": {
       "whop.description": "1a07cf04ef17029448d3781415cbac16d54e66b821907a40d94e0e6349710e70",
@@ -21359,7 +21389,7 @@
       "browser.control.yoursHint": "885d6f765308ca994113676f2aa2ff4f3322781640ed412ad19bf972bbd8e9df",
       "browser.control.waiting": "6a7a34d4c108e13007baba82886fc89a838e7eca096edca1920eda685ee73144",
       "browser.control.stale": "a92ba78900569151aef980e6cb493c1ca4bdff6effb0e697388c9241e6d0cc8c",
-      "browser.control.keptHint": "c83eca152b6fb88c4319059708dae1da3537bbe65908250fd9ed18ff58b59a9f",
+      "browser.control.keptHint": "107e9e7abb6ef2ced1ef41437b678f93e5de088cb79d293b2208f25bfdec2d76",
       "browser.control.take": "fbf728c3c3bbd9166ea4557fb267479b842217ac50573a3d11ed1b2ce6b354cb",
       "browser.control.handBack": "b8f8c1ec2f9aa8078a62a4e3be7af090edf6ed18fca3b49a97693ee7e7e33876",
       "browser.typeSecret": "ebfdd1ea18ca82cf67b0a62d7db735a40f88055814337786d728879abf9dd766",
@@ -24927,7 +24957,13 @@
       "sidebar.update.upToDateOther": "fdb097b8cd4e3866d54a4b840b38432c4db69c7783112a8b4f80386b1cacbe12",
       "sidebar.update.howOther": "c8c6f89ce0b420107b0bf3e98ccc99ddb4677820437a6e5c87d1e6fea870dcf2",
       "sidebar.update.howOtherRestart": "3f3c7744d5366d82720d7dafab9fd13a940da36431e8f2dbed06acd2b73c18f7",
-      "computer.simple.usingNow": "87b34b405a8495e0f1656dd1a47919e55271849e0ad97a682e14ac256fca3eb6"
+      "computer.simple.usingNow": "87b34b405a8495e0f1656dd1a47919e55271849e0ad97a682e14ac256fca3eb6",
+      "engineSetup.usingAppCopy": "0fff299deba161a0cc53b4c4a58b1b14e719c560d3dcdb71fb5e7ca23c179470",
+      "engineSetup.usingAppCopyDismiss": "48845bff334a50a59aaecf499f28a7a24c3b4b891b8b18a9f1169ad8e8a6b261",
+      "engineSetup.appCopy.title": "aa3c05b81a41d7c17aa0b5e56ae5161bc4fcb9ed60d6d22a4edf0ab798061023",
+      "engineSetup.appCopy.description": "c7b7cb1a27d4a3ac004ce4b6c36d68f17c0fae9c1ad3ed035a23c44f9aa7b691",
+      "engineSetup.appCopy.remote": "b91e40795bd325656536ce5ca60385ffccd6f49d27a2ca12e099b1e8a00f85cc",
+      "engineSetup.standaloneDownloadNote": "052fd2ac1cfe94a49c17a5c771b38338045862b684e7fa6e3ea7b282c7ffb0dc"
     },
     "zh": {
       "highlevel.unavailable": "87b8ac7f7610e6dd69f520bc59058fd92f307b9f4bcf804075f25d08bcaa7533",
@@ -28146,7 +28182,13 @@
       "sidebar.update.upToDateOther": "fdb097b8cd4e3866d54a4b840b38432c4db69c7783112a8b4f80386b1cacbe12",
       "sidebar.update.howOther": "c8c6f89ce0b420107b0bf3e98ccc99ddb4677820437a6e5c87d1e6fea870dcf2",
       "sidebar.update.howOtherRestart": "3f3c7744d5366d82720d7dafab9fd13a940da36431e8f2dbed06acd2b73c18f7",
-      "computer.simple.usingNow": "87b34b405a8495e0f1656dd1a47919e55271849e0ad97a682e14ac256fca3eb6"
+      "computer.simple.usingNow": "87b34b405a8495e0f1656dd1a47919e55271849e0ad97a682e14ac256fca3eb6",
+      "engineSetup.usingAppCopy": "0fff299deba161a0cc53b4c4a58b1b14e719c560d3dcdb71fb5e7ca23c179470",
+      "engineSetup.usingAppCopyDismiss": "48845bff334a50a59aaecf499f28a7a24c3b4b891b8b18a9f1169ad8e8a6b261",
+      "engineSetup.appCopy.title": "aa3c05b81a41d7c17aa0b5e56ae5161bc4fcb9ed60d6d22a4edf0ab798061023",
+      "engineSetup.appCopy.description": "c7b7cb1a27d4a3ac004ce4b6c36d68f17c0fae9c1ad3ed035a23c44f9aa7b691",
+      "engineSetup.appCopy.remote": "b91e40795bd325656536ce5ca60385ffccd6f49d27a2ca12e099b1e8a00f85cc",
+      "engineSetup.standaloneDownloadNote": "052fd2ac1cfe94a49c17a5c771b38338045862b684e7fa6e3ea7b282c7ffb0dc"
     },
     "zh-tw": {
       "whop.description": "1a07cf04ef17029448d3781415cbac16d54e66b821907a40d94e0e6349710e70",
@@ -32385,7 +32427,13 @@
       "sidebar.update.upToDateOther": "fdb097b8cd4e3866d54a4b840b38432c4db69c7783112a8b4f80386b1cacbe12",
       "sidebar.update.howOther": "c8c6f89ce0b420107b0bf3e98ccc99ddb4677820437a6e5c87d1e6fea870dcf2",
       "sidebar.update.howOtherRestart": "3f3c7744d5366d82720d7dafab9fd13a940da36431e8f2dbed06acd2b73c18f7",
-      "computer.simple.usingNow": "87b34b405a8495e0f1656dd1a47919e55271849e0ad97a682e14ac256fca3eb6"
+      "computer.simple.usingNow": "87b34b405a8495e0f1656dd1a47919e55271849e0ad97a682e14ac256fca3eb6",
+      "engineSetup.usingAppCopy": "0fff299deba161a0cc53b4c4a58b1b14e719c560d3dcdb71fb5e7ca23c179470",
+      "engineSetup.usingAppCopyDismiss": "48845bff334a50a59aaecf499f28a7a24c3b4b891b8b18a9f1169ad8e8a6b261",
+      "engineSetup.appCopy.title": "aa3c05b81a41d7c17aa0b5e56ae5161bc4fcb9ed60d6d22a4edf0ab798061023",
+      "engineSetup.appCopy.description": "c7b7cb1a27d4a3ac004ce4b6c36d68f17c0fae9c1ad3ed035a23c44f9aa7b691",
+      "engineSetup.appCopy.remote": "b91e40795bd325656536ce5ca60385ffccd6f49d27a2ca12e099b1e8a00f85cc",
+      "engineSetup.standaloneDownloadNote": "052fd2ac1cfe94a49c17a5c771b38338045862b684e7fa6e3ea7b282c7ffb0dc"
     },
     "uk": {
       "highlevel.unavailable": "87b8ac7f7610e6dd69f520bc59058fd92f307b9f4bcf804075f25d08bcaa7533",
@@ -35202,7 +35250,13 @@
       "sidebar.update.upToDateOther": "fdb097b8cd4e3866d54a4b840b38432c4db69c7783112a8b4f80386b1cacbe12",
       "sidebar.update.howOther": "c8c6f89ce0b420107b0bf3e98ccc99ddb4677820437a6e5c87d1e6fea870dcf2",
       "sidebar.update.howOtherRestart": "3f3c7744d5366d82720d7dafab9fd13a940da36431e8f2dbed06acd2b73c18f7",
-      "computer.simple.usingNow": "87b34b405a8495e0f1656dd1a47919e55271849e0ad97a682e14ac256fca3eb6"
+      "computer.simple.usingNow": "87b34b405a8495e0f1656dd1a47919e55271849e0ad97a682e14ac256fca3eb6",
+      "engineSetup.usingAppCopy": "0fff299deba161a0cc53b4c4a58b1b14e719c560d3dcdb71fb5e7ca23c179470",
+      "engineSetup.usingAppCopyDismiss": "48845bff334a50a59aaecf499f28a7a24c3b4b891b8b18a9f1169ad8e8a6b261",
+      "engineSetup.appCopy.title": "aa3c05b81a41d7c17aa0b5e56ae5161bc4fcb9ed60d6d22a4edf0ab798061023",
+      "engineSetup.appCopy.description": "c7b7cb1a27d4a3ac004ce4b6c36d68f17c0fae9c1ad3ed035a23c44f9aa7b691",
+      "engineSetup.appCopy.remote": "b91e40795bd325656536ce5ca60385ffccd6f49d27a2ca12e099b1e8a00f85cc",
+      "engineSetup.standaloneDownloadNote": "052fd2ac1cfe94a49c17a5c771b38338045862b684e7fa6e3ea7b282c7ffb0dc"
     },
     "vi": {
       "whop.description": "1a07cf04ef17029448d3781415cbac16d54e66b821907a40d94e0e6349710e70",
@@ -37387,7 +37441,7 @@
       "browser.control.yoursHint": "885d6f765308ca994113676f2aa2ff4f3322781640ed412ad19bf972bbd8e9df",
       "browser.control.waiting": "6a7a34d4c108e13007baba82886fc89a838e7eca096edca1920eda685ee73144",
       "browser.control.stale": "a92ba78900569151aef980e6cb493c1ca4bdff6effb0e697388c9241e6d0cc8c",
-      "browser.control.keptHint": "c83eca152b6fb88c4319059708dae1da3537bbe65908250fd9ed18ff58b59a9f",
+      "browser.control.keptHint": "107e9e7abb6ef2ced1ef41437b678f93e5de088cb79d293b2208f25bfdec2d76",
       "browser.control.take": "fbf728c3c3bbd9166ea4557fb267479b842217ac50573a3d11ed1b2ce6b354cb",
       "browser.control.handBack": "b8f8c1ec2f9aa8078a62a4e3be7af090edf6ed18fca3b49a97693ee7e7e33876",
       "browser.typeSecret": "ebfdd1ea18ca82cf67b0a62d7db735a40f88055814337786d728879abf9dd766",
@@ -40057,7 +40111,13 @@
       "sidebar.update.upToDateOther": "fdb097b8cd4e3866d54a4b840b38432c4db69c7783112a8b4f80386b1cacbe12",
       "sidebar.update.howOther": "c8c6f89ce0b420107b0bf3e98ccc99ddb4677820437a6e5c87d1e6fea870dcf2",
       "sidebar.update.howOtherRestart": "3f3c7744d5366d82720d7dafab9fd13a940da36431e8f2dbed06acd2b73c18f7",
-      "computer.simple.usingNow": "87b34b405a8495e0f1656dd1a47919e55271849e0ad97a682e14ac256fca3eb6"
+      "computer.simple.usingNow": "87b34b405a8495e0f1656dd1a47919e55271849e0ad97a682e14ac256fca3eb6",
+      "engineSetup.usingAppCopy": "0fff299deba161a0cc53b4c4a58b1b14e719c560d3dcdb71fb5e7ca23c179470",
+      "engineSetup.usingAppCopyDismiss": "48845bff334a50a59aaecf499f28a7a24c3b4b891b8b18a9f1169ad8e8a6b261",
+      "engineSetup.appCopy.title": "aa3c05b81a41d7c17aa0b5e56ae5161bc4fcb9ed60d6d22a4edf0ab798061023",
+      "engineSetup.appCopy.description": "c7b7cb1a27d4a3ac004ce4b6c36d68f17c0fae9c1ad3ed035a23c44f9aa7b691",
+      "engineSetup.appCopy.remote": "b91e40795bd325656536ce5ca60385ffccd6f49d27a2ca12e099b1e8a00f85cc",
+      "engineSetup.standaloneDownloadNote": "052fd2ac1cfe94a49c17a5c771b38338045862b684e7fa6e3ea7b282c7ffb0dc"
     },
     "tr": {
       "whop.description": "1a07cf04ef17029448d3781415cbac16d54e66b821907a40d94e0e6349710e70",
@@ -42242,7 +42302,7 @@
       "browser.control.yoursHint": "885d6f765308ca994113676f2aa2ff4f3322781640ed412ad19bf972bbd8e9df",
       "browser.control.waiting": "6a7a34d4c108e13007baba82886fc89a838e7eca096edca1920eda685ee73144",
       "browser.control.stale": "a92ba78900569151aef980e6cb493c1ca4bdff6effb0e697388c9241e6d0cc8c",
-      "browser.control.keptHint": "c83eca152b6fb88c4319059708dae1da3537bbe65908250fd9ed18ff58b59a9f",
+      "browser.control.keptHint": "107e9e7abb6ef2ced1ef41437b678f93e5de088cb79d293b2208f25bfdec2d76",
       "browser.control.take": "fbf728c3c3bbd9166ea4557fb267479b842217ac50573a3d11ed1b2ce6b354cb",
       "browser.control.handBack": "b8f8c1ec2f9aa8078a62a4e3be7af090edf6ed18fca3b49a97693ee7e7e33876",
       "browser.typeSecret": "ebfdd1ea18ca82cf67b0a62d7db735a40f88055814337786d728879abf9dd766",
@@ -44912,7 +44972,13 @@
       "sidebar.update.upToDateOther": "fdb097b8cd4e3866d54a4b840b38432c4db69c7783112a8b4f80386b1cacbe12",
       "sidebar.update.howOther": "c8c6f89ce0b420107b0bf3e98ccc99ddb4677820437a6e5c87d1e6fea870dcf2",
       "sidebar.update.howOtherRestart": "3f3c7744d5366d82720d7dafab9fd13a940da36431e8f2dbed06acd2b73c18f7",
-      "computer.simple.usingNow": "87b34b405a8495e0f1656dd1a47919e55271849e0ad97a682e14ac256fca3eb6"
+      "computer.simple.usingNow": "87b34b405a8495e0f1656dd1a47919e55271849e0ad97a682e14ac256fca3eb6",
+      "engineSetup.usingAppCopy": "0fff299deba161a0cc53b4c4a58b1b14e719c560d3dcdb71fb5e7ca23c179470",
+      "engineSetup.usingAppCopyDismiss": "48845bff334a50a59aaecf499f28a7a24c3b4b891b8b18a9f1169ad8e8a6b261",
+      "engineSetup.appCopy.title": "aa3c05b81a41d7c17aa0b5e56ae5161bc4fcb9ed60d6d22a4edf0ab798061023",
+      "engineSetup.appCopy.description": "c7b7cb1a27d4a3ac004ce4b6c36d68f17c0fae9c1ad3ed035a23c44f9aa7b691",
+      "engineSetup.appCopy.remote": "b91e40795bd325656536ce5ca60385ffccd6f49d27a2ca12e099b1e8a00f85cc",
+      "engineSetup.standaloneDownloadNote": "052fd2ac1cfe94a49c17a5c771b38338045862b684e7fa6e3ea7b282c7ffb0dc"
     },
     "pl": {
       "whop.description": "1a07cf04ef17029448d3781415cbac16d54e66b821907a40d94e0e6349710e70",
@@ -47619,7 +47685,7 @@
       "browser.control.yoursHint": "885d6f765308ca994113676f2aa2ff4f3322781640ed412ad19bf972bbd8e9df",
       "browser.control.waiting": "6a7a34d4c108e13007baba82886fc89a838e7eca096edca1920eda685ee73144",
       "browser.control.stale": "a92ba78900569151aef980e6cb493c1ca4bdff6effb0e697388c9241e6d0cc8c",
-      "browser.control.keptHint": "c83eca152b6fb88c4319059708dae1da3537bbe65908250fd9ed18ff58b59a9f",
+      "browser.control.keptHint": "107e9e7abb6ef2ced1ef41437b678f93e5de088cb79d293b2208f25bfdec2d76",
       "browser.control.take": "fbf728c3c3bbd9166ea4557fb267479b842217ac50573a3d11ed1b2ce6b354cb",
       "browser.control.handBack": "b8f8c1ec2f9aa8078a62a4e3be7af090edf6ed18fca3b49a97693ee7e7e33876",
       "browser.typeSecret": "ebfdd1ea18ca82cf67b0a62d7db735a40f88055814337786d728879abf9dd766",
@@ -51149,7 +51215,13 @@
       "sidebar.update.howOtherRestart": "3f3c7744d5366d82720d7dafab9fd13a940da36431e8f2dbed06acd2b73c18f7",
       "lending.internetOn": "276a0b9054df48563806588757e8ec4acaf527e6a06eb74a4a86046aef65b4ec",
       "lending.internetConnecting": "45aa390b6f6d31d62dc1496d2a2d0cdb679edd42dfdf6da6781edb24daedc807",
-      "computer.simple.usingNow": "87b34b405a8495e0f1656dd1a47919e55271849e0ad97a682e14ac256fca3eb6"
+      "computer.simple.usingNow": "87b34b405a8495e0f1656dd1a47919e55271849e0ad97a682e14ac256fca3eb6",
+      "engineSetup.usingAppCopy": "0fff299deba161a0cc53b4c4a58b1b14e719c560d3dcdb71fb5e7ca23c179470",
+      "engineSetup.usingAppCopyDismiss": "48845bff334a50a59aaecf499f28a7a24c3b4b891b8b18a9f1169ad8e8a6b261",
+      "engineSetup.appCopy.title": "aa3c05b81a41d7c17aa0b5e56ae5161bc4fcb9ed60d6d22a4edf0ab798061023",
+      "engineSetup.appCopy.description": "c7b7cb1a27d4a3ac004ce4b6c36d68f17c0fae9c1ad3ed035a23c44f9aa7b691",
+      "engineSetup.appCopy.remote": "b91e40795bd325656536ce5ca60385ffccd6f49d27a2ca12e099b1e8a00f85cc",
+      "engineSetup.standaloneDownloadNote": "052fd2ac1cfe94a49c17a5c771b38338045862b684e7fa6e3ea7b282c7ffb0dc"
     },
     "ru": {
       "whop.description": "1a07cf04ef17029448d3781415cbac16d54e66b821907a40d94e0e6349710e70",
@@ -53888,7 +53960,7 @@
       "browser.control.yoursHint": "885d6f765308ca994113676f2aa2ff4f3322781640ed412ad19bf972bbd8e9df",
       "browser.control.waiting": "6a7a34d4c108e13007baba82886fc89a838e7eca096edca1920eda685ee73144",
       "browser.control.stale": "a92ba78900569151aef980e6cb493c1ca4bdff6effb0e697388c9241e6d0cc8c",
-      "browser.control.keptHint": "c83eca152b6fb88c4319059708dae1da3537bbe65908250fd9ed18ff58b59a9f",
+      "browser.control.keptHint": "107e9e7abb6ef2ced1ef41437b678f93e5de088cb79d293b2208f25bfdec2d76",
       "browser.control.take": "fbf728c3c3bbd9166ea4557fb267479b842217ac50573a3d11ed1b2ce6b354cb",
       "browser.control.handBack": "b8f8c1ec2f9aa8078a62a4e3be7af090edf6ed18fca3b49a97693ee7e7e33876",
       "browser.typeSecret": "ebfdd1ea18ca82cf67b0a62d7db735a40f88055814337786d728879abf9dd766",
@@ -57462,7 +57534,13 @@
       "sidebar.update.availableOther": "50ce0e6df74d25b1ce8721fa2fc6c7ea2990e1afdfddc95bb909e27cfd15bb16",
       "sidebar.update.upToDateOther": "fdb097b8cd4e3866d54a4b840b38432c4db69c7783112a8b4f80386b1cacbe12",
       "sidebar.update.howOther": "c8c6f89ce0b420107b0bf3e98ccc99ddb4677820437a6e5c87d1e6fea870dcf2",
-      "sidebar.update.howOtherRestart": "3f3c7744d5366d82720d7dafab9fd13a940da36431e8f2dbed06acd2b73c18f7"
+      "sidebar.update.howOtherRestart": "3f3c7744d5366d82720d7dafab9fd13a940da36431e8f2dbed06acd2b73c18f7",
+      "engineSetup.usingAppCopy": "0fff299deba161a0cc53b4c4a58b1b14e719c560d3dcdb71fb5e7ca23c179470",
+      "engineSetup.usingAppCopyDismiss": "48845bff334a50a59aaecf499f28a7a24c3b4b891b8b18a9f1169ad8e8a6b261",
+      "engineSetup.appCopy.title": "aa3c05b81a41d7c17aa0b5e56ae5161bc4fcb9ed60d6d22a4edf0ab798061023",
+      "engineSetup.appCopy.description": "c7b7cb1a27d4a3ac004ce4b6c36d68f17c0fae9c1ad3ed035a23c44f9aa7b691",
+      "engineSetup.appCopy.remote": "b91e40795bd325656536ce5ca60385ffccd6f49d27a2ca12e099b1e8a00f85cc",
+      "engineSetup.standaloneDownloadNote": "052fd2ac1cfe94a49c17a5c771b38338045862b684e7fa6e3ea7b282c7ffb0dc"
     },
     "it": {
       "whop.description": "1a07cf04ef17029448d3781415cbac16d54e66b821907a40d94e0e6349710e70",
@@ -60135,7 +60213,7 @@
       "browser.control.yoursHint": "885d6f765308ca994113676f2aa2ff4f3322781640ed412ad19bf972bbd8e9df",
       "browser.control.waiting": "6a7a34d4c108e13007baba82886fc89a838e7eca096edca1920eda685ee73144",
       "browser.control.stale": "a92ba78900569151aef980e6cb493c1ca4bdff6effb0e697388c9241e6d0cc8c",
-      "browser.control.keptHint": "c83eca152b6fb88c4319059708dae1da3537bbe65908250fd9ed18ff58b59a9f",
+      "browser.control.keptHint": "107e9e7abb6ef2ced1ef41437b678f93e5de088cb79d293b2208f25bfdec2d76",
       "browser.control.take": "fbf728c3c3bbd9166ea4557fb267479b842217ac50573a3d11ed1b2ce6b354cb",
       "browser.control.handBack": "b8f8c1ec2f9aa8078a62a4e3be7af090edf6ed18fca3b49a97693ee7e7e33876",
       "browser.typeSecret": "ebfdd1ea18ca82cf67b0a62d7db735a40f88055814337786d728879abf9dd766",
@@ -63618,7 +63696,13 @@
       "usageMeter.err.unavailable": "595b6d5ee610c3a384520e944fcd5449f8442ea75e081ac8a2700b1518ed50c2",
       "usageMeter.err.priceChanged": "4737b834de90a637e588ba53c167bab6a77257e82af3088f1edfb689d0a5520f",
       "usageMeter.err.rateLimited": "7c60904ddf11a211571c25c7869e52723733c20a064857d1daa8984c8a967cc0",
-      "usageMeter.err.failed": "e527568cff20cf21d1ecd40fc5a81641838f452d940fe891384ec8fc45cbb040"
+      "usageMeter.err.failed": "e527568cff20cf21d1ecd40fc5a81641838f452d940fe891384ec8fc45cbb040",
+      "engineSetup.usingAppCopy": "0fff299deba161a0cc53b4c4a58b1b14e719c560d3dcdb71fb5e7ca23c179470",
+      "engineSetup.usingAppCopyDismiss": "48845bff334a50a59aaecf499f28a7a24c3b4b891b8b18a9f1169ad8e8a6b261",
+      "engineSetup.appCopy.title": "aa3c05b81a41d7c17aa0b5e56ae5161bc4fcb9ed60d6d22a4edf0ab798061023",
+      "engineSetup.appCopy.description": "c7b7cb1a27d4a3ac004ce4b6c36d68f17c0fae9c1ad3ed035a23c44f9aa7b691",
+      "engineSetup.appCopy.remote": "b91e40795bd325656536ce5ca60385ffccd6f49d27a2ca12e099b1e8a00f85cc",
+      "engineSetup.standaloneDownloadNote": "052fd2ac1cfe94a49c17a5c771b38338045862b684e7fa6e3ea7b282c7ffb0dc"
     }
   }
 }
