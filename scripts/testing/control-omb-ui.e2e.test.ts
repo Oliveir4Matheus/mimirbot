@@ -102,12 +102,6 @@ const refsNamed = (snapshot: Record<string, any>, name: string, role?: string) =
     .filter(([, element]) => element.name === name && (!role || element.role === role))
     .map(([id]) => `@${id}`);
 
-/** A picker row's accessible name may carry a "· <engine>" suffix, and a
- * prefix match would confuse "Claude Sonnet 5" with "Claude Sonnet 5.5". */
-const modelRow = (snapshot: Record<string, any>, label: string) =>
-  Object.entries(snapshot.refs as Record<string, { name: string; role: string }>)
-    .find(([, value]) => value.role === "button" && (value.name === label || value.name.startsWith(`${label} ·`)));
-
 describe("control-omb ui drives the real renderer", () => {
   let launched: Launched | undefined;
 
@@ -269,27 +263,76 @@ describe("control-omb ui drives the real renderer", () => {
     const options = models.instances.find((instance: any) => instance.instanceId === originalBot.modelSelection.instanceId).models.options;
     const originalLabel = options.find((option: any) => option.id === originalModel).label;
     const nextModel = options.find((option: any) => option.id !== originalModel);
-    const clickModel = async (label: string) => {
-      const row = modelRow(await ui("snapshot", info.ui, "--interactive"), label);
-      expect(row).toBeDefined();
-      await ui("click", info.ui, "--ref", `@${row![0]}`);
+    // The composer chip and the picker row both name the model, and the row
+    // appends its badges ("Default", the context size). Click by text and
+    // refuse a version continuation, which would otherwise pick
+    // "Claude Sonnet 5.5" when the label asked for is "Claude Sonnet 5".
+    const evaluate = async (js: string) => (await ui("eval", info.ui, "--js", js)).result;
+    // The trigger renders the model id when the renderer has no catalog entry
+    // for it, and wraps the name in the account and provider otherwise, so try
+    // every name the model has. A version continuation is still refused: the
+    // names for "Claude Sonnet 5" must not pick "Claude Sonnet 5.5" / -5-5.
+    // The open panel also offers "Use <bot>'s model · <engine> · <model>", whose
+    // text ends with a model name: matching on "contains" clicked it, and the
+    // thread was left following the bot instead of choosing that model. A row
+    // starts with its name, and only the panel that is open is searched, so the
+    // trigger's own chip is never taken for a row of the panel below it.
+    const clickModel = async (...names: string[]) => {
+      // The renderer loads the model catalog after the first paint, so the chip
+      // and the rows it opens can be missing or still unnamed when the test
+      // gets there; retry the way `ui click --name` waits for its target.
+      const deadline = Date.now() + 15_000;
+      let result: { clicked?: boolean; names?: string[] } = {};
+      do {
+        result = await evaluate(`(() => {
+          const wants = ${JSON.stringify(names)}.filter((want) => typeof want === "string" && want);
+          if (!wants.length) return { clicked: false, names: ["this model has no label or id"] };
+          const fits = (text) => wants.some((want) => {
+            if (!text.startsWith(want)) return false;
+            const rest = text.slice(want.length);
+            return rest === "" || !/^[.\\d-]/.test(rest);
+          });
+          const nameOf = (node) => (node.getAttribute("aria-label") || node.textContent || "").trim();
+          const scope = document.querySelector('[data-model-picker-content]') ?? document;
+          const nodes = [...scope.querySelectorAll('button,[role="button"],[role="menuitem"],[role="option"]')];
+          const match = nodes.find((node) => fits(nameOf(node)));
+          if (!match) return { clicked: false, names: nodes.map(nameOf).filter(Boolean).slice(0, 60) };
+          match.click();
+          return { clicked: true };
+        })()`);
+        if (result.clicked) return;
+        await new Promise((resolve) => setTimeout(resolve, 300));
+      } while (Date.now() < deadline);
+      expect(result.clicked, JSON.stringify(result)).toBe(true);
     };
-    await clickModel(originalLabel);
+    // A pick closes the panel, and its rows stay in the document until the exit
+    // animation ends: reopening before that would click a row of the panel that
+    // is leaving instead of the chip that opens the next one.
+    const waitForPanelClosed = async () => {
+      const deadline = Date.now() + 5_000;
+      while (Date.now() < deadline) {
+        if (!(await evaluate("Boolean(document.querySelector('[data-model-picker-content]'))"))) return;
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+    };
+    await clickModel(originalLabel, originalModel);
     expect(await ui("eval", info.ui, "--js", "[...document.querySelectorAll('[aria-label=\"Apply model changes to\"] button')].find(b => b.textContent === 'Only this thread').getAttribute('aria-pressed')"))
       .toMatchObject({ result: "true" });
     await ui("click", info.ui, "--name", "Thread + bot default");
+    // The pick reads the scope from React state: wait until the button says it
+    // took, or a fast pick still applies to the thread alone.
+    await expect.poll(async () => evaluate("[...document.querySelectorAll('[aria-label=\"Apply model changes to\"] button')].find(b => b.textContent === 'Thread + bot default')?.getAttribute('aria-pressed')"), { timeout: 5_000 }).toBe("true");
     const scopeShot = join(evidenceDir, "model-scope.png");
     mkdirSync(evidenceDir, { recursive: true });
     await ui("screenshot", info.ui, "--out", scopeShot);
-    await clickModel(nextModel.label);
+    await clickModel(nextModel.label, nextModel.id);
     await expect.poll(async () => (await savedBot()).modelSelection.model, { timeout: 10_000 }).toBe(nextModel.id);
     expect((await savedBot()).tasks.find((task: any) => task.threadId === originalBot.threadId).modelSelection.model).toBe(nextModel.id);
-    await clickModel(nextModel.label);
+    await waitForPanelClosed();
+    await clickModel(nextModel.label, nextModel.id);
     await ui("click", info.ui, "--name", "Only this thread");
-    const modelSnapshot = await ui("snapshot", info.ui, "--interactive");
-    const originalRow = modelRow(modelSnapshot, originalLabel);
-    expect(originalRow).toBeDefined();
-    await ui("click", info.ui, "--ref", `@${originalRow![0]}`);
+    await expect.poll(async () => evaluate("[...document.querySelectorAll('[aria-label=\"Apply model changes to\"] button')].find(b => b.textContent === 'Only this thread')?.getAttribute('aria-pressed')"), { timeout: 5_000 }).toBe("true");
+    await clickModel(originalLabel, originalModel);
     await expect.poll(async () => (await savedBot()).tasks.find((task: any) => task.threadId === originalBot.threadId).modelSelection.model,
       { timeout: 10_000 }).toBe(originalModel);
     expect((await savedBot()).modelSelection.model).toBe(nextModel.id);
