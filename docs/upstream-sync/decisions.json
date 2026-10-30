@@ -4178,6 +4178,77 @@
       "decidedAt": "2026-10-29",
       "ourCommit": "0e8184c102d842211bea5442a9c1bcb0562774a7",
       "note": "Applied cleanly, hunk offset aside (our acp.test.ts is one line shorter). grok.ts now picks the first auth method the CLI actually offers, cached_token before grok.com, instead of demanding cached_token and giving up; acp.test.ts covers the fallback."
+    },
+    {
+      "sha": "00f2725c4c0cc350422c73d57331127ee612933e",
+      "subject": "fix(phones): recheck job grants and ownership",
+      "status": "applied",
+      "reason": "Phones: a job rechecks the grants and ownership before it runs, so a phone that lost access stops answering.",
+      "decidedAt": "2026-10-30",
+      "ourCommit": "dc2b50574da52bac2ee728eb796c2d0d56c23eb4"
+    },
+    {
+      "sha": "035101e08c0cc872415ae2e22cfe1eefa1fe94e2",
+      "subject": "fix(phones): end access when a session is revoked",
+      "status": "applied",
+      "reason": "Phones: revoking a session drops its phones and its waiting jobs at once, instead of leaving them until they time out.",
+      "decidedAt": "2026-10-30",
+      "ourCommit": "af4fdbeaa548b59021d73b7d8b67130460d16934"
+    },
+    {
+      "sha": "c9ca773a13a900db1dc1a798f55a306acb7fe9c3",
+      "subject": "fix(phones): report failed removal persistence",
+      "status": "applied",
+      "reason": "Phones: a removal that cannot be written to disk fails loudly instead of reporting success and coming back after a restart.",
+      "decidedAt": "2026-10-30",
+      "ourCommit": "16b692e6a195a9d76ba9dc9e77b9444f8d10653d"
+    },
+    {
+      "sha": "f6268a1ecd289a620bc699f377abd0a2173a9c1d",
+      "subject": "fix(tts): settle preparation failures on the owning stream",
+      "status": "applied",
+      "reason": "TTS: a failed preparation aborts its own request and still publishes the error to the request that owns it, so read-aloud returns to idle instead of leaving the spinner up. Adapted: our Speaker speaks a whole reply rather than a stream, so the ownership check is the request's own token.",
+      "decidedAt": "2026-10-30",
+      "ourCommit": "d276d9756d08a2af8acd67bf82f01fb55d0cc7df"
+    },
+    {
+      "sha": "0a98081dbb92daa7455d37c73d9252f202636fa2",
+      "subject": "fix(tts): stop failed stream audio before publishing idle",
+      "status": "deferred",
+      "reason": "Fixes SpeechStream.fail(), which our Speaker does not have: we speak a whole reply sequentially, and play() already tears its audio down when it settles, so no clip can still be talking at the idle snapshot. Take it with the streaming speech feature (b2d0e846d), still pending.",
+      "decidedAt": "2026-10-30"
+    },
+    {
+      "sha": "b075d6be489b6b0bcb4a27b22624c1753ec7c939",
+      "subject": "fix(highlevel): stop waiting calls before sending another request",
+      "status": "applied",
+      "reason": "HighLevel: a new request stops the calls still waiting for an answer, so a slow tool call cannot pile up behind another one.",
+      "decidedAt": "2026-10-30",
+      "ourCommit": "be10b1be20af9ee69bb82a66073d0c2080f71675"
+    },
+    {
+      "sha": "746a718f4010a4e889ca6eb21729c5a82efc3e6f",
+      "subject": "fix(highlevel): check Stop before starting OAuth refresh",
+      "status": "applied",
+      "reason": "HighLevel: an OAuth refresh checks Stop first, so a stopped turn does not open a new connection behind the person's back.",
+      "decidedAt": "2026-10-30",
+      "ourCommit": "d8c31da08291fee54140f9b41efe445cf5efd709"
+    },
+    {
+      "sha": "dae71a150b1074ac886572e101cd8c48c4a481cd",
+      "subject": "fix(apps): a bot's connected apps answer by the same names on every engine (#3755)",
+      "status": "applied",
+      "reason": "Connected apps: an app the bot's Apps switch turns on gets its tools, and Gmail and Google Calendar get plain tools with the same names on every engine. Adapted: no withAuthConfigParameter, which our proxy does not have; our own auth_config_id check is unchanged.",
+      "decidedAt": "2026-10-30",
+      "ourCommit": "e5e0a254e4f7c69bbae443240618e8d5a63feed6"
+    },
+    {
+      "sha": "168ebfe8bd45af2019f3bd1ce1e0db9663704a66",
+      "subject": "ci: main runs Linux and one macOS job; Windows and macOS suites run nightly, by hand and in the release lane (#3824)",
+      "status": "applied",
+      "reason": "CI: a push to main and a merge group run the suite on Linux only; the nightly run, a manual run and the release lane run every platform, and the release gate counts only a full run as proof. Adapted to our ci-scope, which has no areas model or merge-queue pass check.",
+      "decidedAt": "2026-10-30",
+      "ourCommit": "d730cb733aa68c8a562ac9e4c0d8d4404d53f90e"
     }
   ]
 }

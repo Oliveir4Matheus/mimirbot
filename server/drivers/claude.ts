@@ -2063,7 +2063,7 @@ export const ClaudeDriver: ProviderDriver<ClaudeConfig> = {
           agentsMcp: true,
         customMcp: true,
           computerMcp: true,
-          composioMcp: true,
+          composioMcp: true, mcpToolsFoundByName: true,
           phoneMcp: true,
           browserMcp: true,
           dataMcp: true, highlevelMcp: true, deviceMcp: true,

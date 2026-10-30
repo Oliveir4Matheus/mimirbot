@@ -49,10 +49,20 @@ export function selectPushScope(files, show) {
 
 // macOS runners are the scarce ones (five at a time for the whole account),
 // and only a couple of test blocks are macOS-only, so a PR runs the suite on
-// Linux and Windows. Main pushes, merge groups and manual runs add macOS, and
-// every PR still runs the macOS smokes.
-const ALL_OS = ["macos-latest", "ubuntu-latest", "windows-latest"];
-const PR_OS = ["ubuntu-latest", "windows-latest"];
+// Linux and Windows, and a push to main or a merge group on Linux. The full lane
+// adds macOS. A PR that can affect the macOS smokes still runs them.
+export const ALL_OS = ["macos-latest", "ubuntu-latest", "windows-latest"];const PR_OS = ["ubuntu-latest", "windows-latest"];
+const MAIN_OS = ["ubuntu-latest"];
+
+/** Events whose runs test every platform: the nightly run, manual runs and the release lane (a manual run). */
+export const FULL_LANE_EVENTS = ["schedule", "workflow_dispatch"];
+
+/** Which lane an event's run is: a pull request's own areas, main's, or every check on every platform. */
+export function laneOf(event) {
+  if (event === "pull_request") return "pr";
+  if (event === "push" || event === "merge_group") return "main";
+  return "full";
+}
 
 // A shard runs its files one at a time, so the slowest shard sets the run's length. Windows and macOS run only the e2e
 // files that depend on their OS, so their shards stay as short as Linux's, and macOS keeps four: the account runs five
@@ -78,27 +88,36 @@ function changedFiles(range) {
   return diff.slice(0, -1).split("\0");
 }
 
-/** Did the commit before this push get a green CI run of its own? Main keeps
- * one run going and one waiting, and a push replaces the waiting run: if the
- * previous commit's run was replaced, its changes were never tested, so this
- * push must run everything even when its own diff is docs or a version. */
-async function previousCommitGreen(sha) {
+async function github(path) {
   const { GH_TOKEN, GITHUB_REPOSITORY, GITHUB_API_URL = "https://api.github.com" } = process.env;
-  if (!GH_TOKEN || !GITHUB_REPOSITORY) throw new Error("GH_TOKEN and GITHUB_REPOSITORY are needed to read the previous commit's CI");
-  const response = await fetch(`${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/actions/workflows/ci.yml/runs?head_sha=${sha}&per_page=100`, {
+  if (!GH_TOKEN || !GITHUB_REPOSITORY) throw new Error("GH_TOKEN and GITHUB_REPOSITORY are needed to read CI runs");
+  const response = await fetch(`${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}${path}`, {
     headers: { authorization: `Bearer ${GH_TOKEN}`, accept: "application/vnd.github+json", "x-github-api-version": "2022-11-28" },
     signal: AbortSignal.timeout(30_000),
   });
-  if (!response.ok) throw new Error(`HTTP ${response.status} reading CI runs`);
-  const { workflow_runs: runs } = await response.json();
-  return runs.some((run) => ["push", "merge_group", "workflow_dispatch"].includes(run.event)
+  if (!response.ok) throw new Error(`HTTP ${response.status} reading ${path.split("?")[0]}`);
+  return response.json();
+}
+
+const ciRuns = async (sha) => (await github(`/actions/workflows/ci.yml/runs?head_sha=${sha}&per_page=100`)).workflow_runs;
+
+/** Did the commit before this push get a green CI run of its own? Main keeps
+ * one run going and one waiting, and a push replaces the waiting run: if the
+ * previous commit's run was replaced, its changes were never tested, so this
+ * push must run main's checks even when its own diff is docs or a version. */
+async function previousCommitGreen(sha) {
+  return (await ciRuns(sha)).some((run) => ["push", "merge_group", ...FULL_LANE_EVENTS].includes(run.event)
     && run.status === "completed" && run.conclusion === "success");
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  // A PR runs its own areas on Linux and Windows; a push or merge group on main
+  // runs Linux and leaves the Windows and macOS suites to the full lane.
+  const lane = laneOf(process.env.GITHUB_EVENT_NAME);
   let scope = { runtime: true };
-  let vitestOs = ALL_OS;
-  if (process.env.GITHUB_EVENT_NAME === "pull_request") {
+  // A PR falls back to every platform when its diff cannot be read.
+  let vitestOs = lane === "main" ? MAIN_OS : ALL_OS;
+  if (lane === "pr") {
     try {
       const { pull_request: pr } = JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH, "utf8"));
       const base = pr?.base?.sha;
@@ -112,8 +131,8 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
       console.warn(`CI scope: using all checks because the pull request diff is unavailable: ${error.message}`);
     }
   } else if (process.env.GITHUB_EVENT_NAME === "push") {
-    // A push to main is scoped by its own commits; the release gate never
-    // counts a run that skipped the runtime jobs as tested.
+    // A push to main is scoped by its own commits; the release gate counts only
+    // a run of every platform's shards as tested.
     try {
       const { before, after } = JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH, "utf8"));
       if (![before, after].every((sha) => typeof sha === "string" && SHA.test(sha)) || /^0+$/.test(before)) {
@@ -127,11 +146,13 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
         scope = selected;
       }
     } catch (error) {
-      console.warn(`CI scope: using all checks because the push diff is unavailable: ${error.message}`);
+      console.warn(`CI scope: using all checks because the push diff or its CI is unavailable: ${error.message}`);
     }
   }
+  // The macOS packaged server smoke runs inside electron-smokes, so its job takes every platform but macOS.
+  const packagedServerOs = vitestOs.filter((os) => os !== "macos-latest");
   appendFileSync(
     process.env.GITHUB_OUTPUT,
-    `runtime=${scope.runtime}\nvitest_os=${JSON.stringify(vitestOs)}\nvitest_matrix=${JSON.stringify(vitestMatrix(vitestOs))}\n`,
+    `runtime=${scope.runtime}\nvitest_os=${JSON.stringify(vitestOs)}\nvitest_matrix=${JSON.stringify(vitestMatrix(vitestOs))}\npackaged_server_os=${JSON.stringify(packagedServerOs)}\n`,
   );
 }
