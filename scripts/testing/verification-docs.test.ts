@@ -10,7 +10,15 @@ import { HELP } from "../control-omb.ts";
 
 const ROOT = fileURLToPath(new URL("../..", import.meta.url));
 const DOCS = join(ROOT, "docs", "verification");
-const recipes = readdirSync(DOCS).filter((name) => name.endsWith(".md")).sort();
+// This fork ships without the enterprise tree, so the recipes that describe it
+// cite files this build does not contain. They are checked where it is present.
+const ENTERPRISE_ACCESS = join(ROOT, "enterprise", "server", "workspace-access.ts");
+const hasEnterprise = existsSync(ENTERPRISE_ACCESS);
+const ENTERPRISE_RECIPES = new Set(["enterprise-license.md", "hosted-workspaces.md"]);
+const recipes = readdirSync(DOCS)
+  .filter((name) => name.endsWith(".md"))
+  .filter((name) => hasEnterprise || !ENTERPRISE_RECIPES.has(name))
+  .sort();
 const text = (recipe: string) => readFileSync(join(DOCS, recipe), "utf8");
 // Paths inside external links belong to other repositories.
 const withoutUrls = (markdown: string) => markdown.replace(/https?:\/\/\S+/g, " ");
@@ -38,7 +46,7 @@ const featureRouteModules = ["data/routes.ts", "workspace-backup-http.ts", "clou
 const serverSource = [join(ROOT, "server", "index.ts"), ...routeModules, ...featureRouteModules]
   .map((file) => readFileSync(file, "utf8")).join("\n");
 const hooksSource = readFileSync(join(ROOT, "server", "webhook-ingress.ts"), "utf8");
-const hostedSource = readFileSync(join(ROOT, "enterprise", "server", "workspace-access.ts"), "utf8");
+const hostedSource = hasEnterprise ? readFileSync(ENTERPRISE_ACCESS, "utf8") : "";
 // Only constants named in the public handler's accepted-path guard are routes.
 // Outbound post("/api/handoff/...") calls belong to the identity service, not us.
 const hostedConstants = new Map([...hostedSource.matchAll(/const ([A-Z_]+) = "(\/api\/[^"\n]+)";/g)].map(match => [match[1]!, match[2]!]));
@@ -91,7 +99,7 @@ describe("docs/verification recipes cite things that exist", () => {
     expect([...new Set(refs.filter((hit) => !registered(target(hit))))]).toEqual([]);
   });
 
-  it("distinguishes delegated public routes from external identity backchannels", () => {
+  it.skipIf(!hasEnterprise)("distinguishes delegated public routes from external identity backchannels", () => {
     expect([...hostedPublicRoutes]).toEqual(["/api/auth/hosted/start", "/api/auth/hosted/callback"]);
     expect(hostedPublicRoutes.has("/api/handoff/consume")).toBe(false);
     expect(hostedPublicRoutes.has("/api/handoff/check")).toBe(false);
