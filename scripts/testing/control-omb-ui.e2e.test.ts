@@ -102,15 +102,6 @@ const refsNamed = (snapshot: Record<string, any>, name: string, role?: string) =
     .filter(([, element]) => element.name === name && (!role || element.role === role))
     .map(([id]) => `@${id}`);
 
-/** A picker row's accessible name is its label plus any badges ("Default",
- * the context size), so match the label and then anything that is not a
- * version continuation — a bare prefix would confuse "Claude Sonnet 5" with
- * "Claude Sonnet 5.5". */
-const modelRow = (snapshot: Record<string, any>, label: string) =>
-  Object.entries(snapshot.refs as Record<string, { name: string; role: string }>)
-    .find(([, value]) => value.role === "button"
-      && (value.name === label || (value.name.startsWith(label) && !/^[.\d]/.test(value.name.slice(label.length)))));
-
 describe("control-omb ui drives the real renderer", () => {
   let launched: Launched | undefined;
 
@@ -272,10 +263,25 @@ describe("control-omb ui drives the real renderer", () => {
     const options = models.instances.find((instance: any) => instance.instanceId === originalBot.modelSelection.instanceId).models.options;
     const originalLabel = options.find((option: any) => option.id === originalModel).label;
     const nextModel = options.find((option: any) => option.id !== originalModel);
+    // The composer chip and the picker row both name the model, and the row
+    // appends its badges ("Default", the context size). Click by text and
+    // refuse a version continuation, which would otherwise pick
+    // "Claude Sonnet 5.5" when the label asked for is "Claude Sonnet 5".
     const clickModel = async (label: string) => {
-      const row = modelRow(await ui("snapshot", info.ui, "--interactive"), label);
-      expect(row).toBeDefined();
-      await ui("click", info.ui, "--ref", `@${row![0]}`);
+      const result = await evaluate(`(() => {
+        const want = ${JSON.stringify(label)};
+        const buttons = [...document.querySelectorAll("button")];
+        const match = buttons.find((button) => {
+          const text = button.textContent.trim();
+          if (!text.startsWith(want)) return false;
+          const rest = text.slice(want.length);
+          return rest === "" || !/^[.\\d]/.test(rest);
+        });
+        if (!match) return { clicked: false, names: buttons.map((button) => button.textContent.trim()).filter(Boolean).slice(0, 40) };
+        match.click();
+        return { clicked: true };
+      })()`);
+      expect(result).toMatchObject({ clicked: true });
     };
     await clickModel(originalLabel);
     expect(await ui("eval", info.ui, "--js", "[...document.querySelectorAll('[aria-label=\"Apply model changes to\"] button')].find(b => b.textContent === 'Only this thread').getAttribute('aria-pressed')"))
@@ -289,10 +295,7 @@ describe("control-omb ui drives the real renderer", () => {
     expect((await savedBot()).tasks.find((task: any) => task.threadId === originalBot.threadId).modelSelection.model).toBe(nextModel.id);
     await clickModel(nextModel.label);
     await ui("click", info.ui, "--name", "Only this thread");
-    const modelSnapshot = await ui("snapshot", info.ui, "--interactive");
-    const originalRow = modelRow(modelSnapshot, originalLabel);
-    expect(originalRow).toBeDefined();
-    await ui("click", info.ui, "--ref", `@${originalRow![0]}`);
+    await clickModel(originalLabel);
     await expect.poll(async () => (await savedBot()).tasks.find((task: any) => task.threadId === originalBot.threadId).modelSelection.model,
       { timeout: 10_000 }).toBe(originalModel);
     expect((await savedBot()).modelSelection.model).toBe(nextModel.id);
