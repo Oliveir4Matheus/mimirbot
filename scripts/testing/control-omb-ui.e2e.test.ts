@@ -273,22 +273,31 @@ describe("control-omb ui drives the real renderer", () => {
     // every name the model has. A version continuation is still refused: the
     // names for "Claude Sonnet 5" must not pick "Claude Sonnet 5.5" / -5-5.
     const clickModel = async (...names: string[]) => {
-      const result = await evaluate(`(() => {
-        const wants = ${JSON.stringify(names)}.filter((want) => typeof want === "string" && want);
-        if (!wants.length) return { clicked: false, names: ["this model has no label or id"] };
-        const fits = (text) => wants.some((want) => {
-          const at = text.indexOf(want);
-          if (at < 0) return false;
-          const rest = text.slice(at + want.length);
-          return rest === "" || !/^[.\\d-]/.test(rest);
-        });
-        const nameOf = (node) => (node.getAttribute("aria-label") || node.textContent || "").trim();
-        const nodes = [...document.querySelectorAll('button,[role="button"],[role="menuitem"],[role="option"]')];
-        const match = nodes.find((node) => fits(nameOf(node)));
-        if (!match) return { clicked: false, names: nodes.map(nameOf).filter(Boolean).slice(0, 60) };
-        match.click();
-        return { clicked: true };
-      })()`);
+      // The renderer loads the model catalog after the first paint, so the chip
+      // and the rows it opens can be missing or still unnamed when the test
+      // gets there; retry the way `ui click --name` waits for its target.
+      const deadline = Date.now() + 15_000;
+      let result: { clicked?: boolean; names?: string[] } = {};
+      do {
+        result = await evaluate(`(() => {
+          const wants = ${JSON.stringify(names)}.filter((want) => typeof want === "string" && want);
+          if (!wants.length) return { clicked: false, names: ["this model has no label or id"] };
+          const fits = (text) => wants.some((want) => {
+            const at = text.indexOf(want);
+            if (at < 0) return false;
+            const rest = text.slice(at + want.length);
+            return rest === "" || !/^[.\\d-]/.test(rest);
+          });
+          const nameOf = (node) => (node.getAttribute("aria-label") || node.textContent || "").trim();
+          const nodes = [...document.querySelectorAll('button,[role="button"],[role="menuitem"],[role="option"]')];
+          const match = nodes.find((node) => fits(nameOf(node)));
+          if (!match) return { clicked: false, names: nodes.map(nameOf).filter(Boolean).slice(0, 60) };
+          match.click();
+          return { clicked: true };
+        })()`);
+        if (result.clicked) return;
+        await new Promise((resolve) => setTimeout(resolve, 300));
+      } while (Date.now() < deadline);
       expect(result.clicked, JSON.stringify(result)).toBe(true);
     };
     await clickModel(originalLabel, originalModel);
