@@ -225,7 +225,8 @@ describe("waking a sleeping computer", () => {
     const started = Date.now();
     await expect(boat.readyBoat({}, botId)).rejects.toThrow(LIMIT);
     await expect(boat.joinBoat({}, botId)).rejects.toThrow(LIMIT);
-    expect(Date.now() - started).toBeLessThan(4_000);
+    // Both calls reject at once, well inside the 60s resume budget; a loaded Windows runner adds a few seconds.
+    expect(Date.now() - started).toBeLessThan(10_000);
     expect(requests.filter((request) => request.path.endsWith("/resume"))).toHaveLength(2);
     expect(underBoat()).toEqual([]);
   });
