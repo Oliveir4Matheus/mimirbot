@@ -9,8 +9,8 @@ import type { LocaleKey } from "@/locales";
 import { SECTION_PROVIDER, type KeyResult, type KeyVia } from "@/lib/analytics-allowlist";
 import { keyRemoved, keySaved, keySaveFailure, keyTestResult, savedKeyResult } from "@/lib/product-events";
 
-export type ConfigSection = "composio" | "box" | "opencodeGo" | "anthropic" | "openai" | "openrouter" | "openaiCompat" | "xai" | "mistral" | "cerebras" | "groq" | "meta" | "treg" | "deepseek";
-export type TestableProvider = "anthropic" | "openai" | "openrouter" | "openaiCompat" | "xai" | "mistral" | "cerebras" | "groq" | "meta" | "treg";
+export type ConfigSection = "composio" | "box" | "opencodeGo" | "anthropic" | "openai" | "openrouter" | "openaiCompat" | "xai" | "mistral" | "cerebras" | "groq" | "greenference" | "meta" | "treg" | "deepseek";
+export type TestableProvider = "anthropic" | "openai" | "openrouter" | "openaiCompat" | "xai" | "mistral" | "cerebras" | "groq" | "greenference" | "meta" | "treg";
 
 const SECTIONS: Record<
   ConfigSection,
@@ -41,6 +41,7 @@ const SECTIONS: Record<
   mistral: { body: (v) => ({ mistral: { key: v } }), flag: (c) => c.mistral?.configured ?? false },
   cerebras: { body: (v) => ({ cerebras: { key: v } }), flag: (c) => c.cerebras?.configured ?? false },
   groq: { body: (v) => ({ groq: { key: v } }), flag: (c) => c.groq?.configured ?? false },
+  greenference: { body: (v) => ({ greenference: { key: v } }), flag: (c) => c.greenference?.configured ?? false },
   meta: { body: (v) => ({ meta: { key: v } }), flag: (c) => c.meta?.configured ?? false },
   deepseek: { body: (v) => ({ deepseek: { key: v } }), flag: (c) => c.deepseek?.configured ?? false },
   xai: { body: (v) => ({ xai: { key: v } }), flag: (c) => c.xai?.configured ?? false },
@@ -166,6 +167,14 @@ const CREDENTIALS: Record<
     descriptionKey: "keys.groq.desc",
     href: "https://console.groq.com/docs/overview",
     linkLabelKey: "keys.groq.link",
+    optional: true,
+  },
+  greenference: {
+    labelKey: "keys.greenference.label",
+    placeholderKey: "keys.greenference.placeholder",
+    descriptionKey: "keys.greenference.desc",
+    href: "https://greenference.com/docs/models",
+    linkLabelKey: "keys.greenference.link",
     optional: true,
   },
   meta: {
