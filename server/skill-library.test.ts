@@ -109,6 +109,34 @@ describe("bundled verification skill", () => {
   });
 });
 
+describe("bundled create-bot skill", () => {
+  const skills = loadBundledSkills(join(process.cwd(), "skills"));
+  const instructions = skills.find((skill) => skill.manifest.id === "create-bot")?.instructions ?? "";
+
+  it("ships the interview, the four parts and the creation call, in this app's words", () => {
+    expect(instructions).toContain("Ask at most four questions");
+    expect(instructions).toContain("SOUL.md");
+    expect(instructions).toContain("create_bot");
+    expect(instructions).toContain("Description");
+    expect(instructions).not.toContain("instructions.md");
+    expect(instructions).not.toContain("agent");
+  });
+
+  it("mounts when the person asks for a bot, and never for the bots they already have", () => {
+    for (const text of [
+      "set up a bot for my inbox",
+      "criar um bot para minha caixa de entrada",
+      "I need a new specialist",
+      "montar um time para o comercial",
+    ]) {
+      expect(selectBundledSkills(text, [], skills).map((skill) => skill.manifest.id)).toContain("create-bot");
+    }
+    for (const text of ["what are my bots up to?", "how do I rename a bot", "how do I connect my email?"]) {
+      expect(selectBundledSkills(text, [], skills).map((skill) => skill.manifest.id)).not.toContain("create-bot");
+    }
+  });
+});
+
 describe("bundled data-dashboards skill", () => {
   const skills = loadBundledSkills(join(process.cwd(), "skills"));
   const guide = skills.find((skill) => skill.manifest.id === "data-dashboards")?.instructions ?? "";

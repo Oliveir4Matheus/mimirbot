@@ -1,0 +1,28 @@
+{
+  "id": "create-bot",
+  "name": "Create a Bot",
+  "version": "1.0.0",
+  "description": "Design a bot with the person before it exists: interview, then name, role, description and standing instructions, and create it.",
+  "defaultEnabled": true,
+  "triggerTerms": [
+    "create a bot",
+    "create bot",
+    "make a bot",
+    "add a bot",
+    "new bot",
+    "set up a bot",
+    "build a bot",
+    "create an agent",
+    "new agent",
+    "new specialist",
+    "team of bots",
+    "criar um bot",
+    "criar bot",
+    "novo bot",
+    "adicionar um bot",
+    "montar um time",
+    "criar um agente",
+    "novo agente"
+  ],
+  "requiredCapabilities": []
+}
