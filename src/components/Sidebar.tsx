@@ -957,7 +957,7 @@ export const BotListItem = memo(function BotListItem(props: BotRowProps) {
   useEffect(() => { if (iconOnly) setRenaming(false); }, [iconOnly]);
   const simpleRow = !advanced && !showThreads && density === "comfortable";
   const railTile = iconOnly && !advanced;
-  const avatarSize = iconOnly ? (railTile ? 36 : 44) : density === "compact" ? (showThreads ? 26 : 36) : (showThreads ? 32 : simpleRow ? 54 : 44);
+  const avatarSize = iconOnly ? (railTile ? 36 : 44) : density === "compact" ? (showThreads ? 26 : 36) : (showThreads ? 32 : simpleRow ? 36 : 44);
   const hasModelBadge = Boolean(botModel(bot, instances));
   const visible = useVisibleMessages(bot);
   const last = lastNonReceipt(visible);
@@ -1021,7 +1021,7 @@ export const BotListItem = memo(function BotListItem(props: BotRowProps) {
       </span>
       <div className={cn("min-w-0 flex-1", iconOnly && "hidden")}>
         <div className="flex items-baseline justify-between gap-2">
-          <span className={cn("flex min-w-0 grow items-center gap-1.5 truncate text-ink", simpleRow ? "text-[18px] font-[630] leading-[1.37] tracking-[-0.33px] max-[390px]:text-[16px]" : "text-[15px] font-semibold leading-5")}>
+          <span className={cn("flex min-w-0 grow items-center gap-1.5 truncate text-ink", simpleRow ? "text-[14px] font-normal leading-[18px]" : "text-[15px] font-semibold leading-5")}>
             {bot.pinned && <Pin size={12} className="shrink-0 text-ink-secondary" />}
             <RenameTitle
               key={iconOnly ? "icons" : "expanded"}
@@ -1037,7 +1037,7 @@ export const BotListItem = memo(function BotListItem(props: BotRowProps) {
               }}
               onEditingChange={setRenaming}
               className="truncate"
-              inputClassName={cn("w-full rounded bg-inset px-1 py-0.5", simpleRow ? "text-[18px] font-[630]" : "text-[15px] font-semibold")}
+              inputClassName={cn("w-full rounded bg-inset px-1 py-0.5", simpleRow ? "text-[14px] font-normal" : "text-[15px] font-semibold")}
             />
             {bot.chiefOfStaff && !renaming && (
               <Crown size={13} strokeWidth={2.25} className="shrink-0 text-accent" role="img" aria-label={t("sidebar.bot.chiefOfStaff")} data-testid="chief-crown">
@@ -1073,7 +1073,7 @@ export const BotListItem = memo(function BotListItem(props: BotRowProps) {
             <span className={cn(
               "flex min-w-0 items-center gap-1.5 truncate",
               simpleRow
-                ? cn("text-[16px] leading-[1.35] tracking-[-0.11px] max-[390px]:text-[14px]", waiting ? "font-semibold text-warning" : unread ? "font-[570] text-ink" : "text-ink-secondary")
+                ? cn("text-[13px] leading-4", waiting ? "font-semibold text-warning" : unread ? "font-[570] text-ink" : "text-ink-secondary")
                 : cn("text-[13px] leading-[18px]", waiting ? "font-semibold text-warning" : "text-ink-secondary"),
             )}>
               {working && !simpleRow ? (

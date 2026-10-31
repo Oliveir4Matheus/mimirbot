@@ -30,10 +30,16 @@ export function SidebarEdgeToggle({ collapsed, onToggle, style, anchorRef }: {
   useEffect(() => {
     const anchor = anchorRef?.current;
     if (!anchor) return;
+    const parent = anchor.parentElement;
+    // The rail beside the sidebar changes width while it retracts; the sidebar moves but
+    // keeps its size, so observing only the sidebar leaves the bump at its old edge.
+    const rail = parent?.querySelector<HTMLElement>("[data-mimir-rail]") ?? null;
     const measure = () => { const rect = anchor.getBoundingClientRect(); setEdge({ left: Math.round(rect.right), top: Math.round(rect.top) }); };
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(anchor);
+    if (parent) observer.observe(parent);
+    if (rail) observer.observe(rail);
     window.addEventListener("resize", measure);
     return () => {
       observer.disconnect();

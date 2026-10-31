@@ -81,11 +81,11 @@ describe("bot-first sidebar", () => {
   });
 
   it.each([
-    { advanced: true, enabled: true, density: "comfortable", size: 32, spacing: ["gap-2", "py-2", "pl-6"] },
+    { advanced: true, enabled: true, density: "comfortable", size: 32, spacing: ["min-h-[69px]", "gap-2", "py-2", "pl-6"] },
     { advanced: true, enabled: true, density: "compact", size: 26, spacing: ["gap-1.5", "py-1", "pl-6"] },
     { advanced: true, enabled: true, density: "icons", size: 44, spacing: ["justify-center", "px-1", "py-1.5"] },
-    { advanced: true, enabled: false, density: "comfortable", size: 44, spacing: ["gap-3", "py-2", "pl-2.5", "pr-9"] },
-    { advanced: false, enabled: false, density: "comfortable", size: 54, spacing: ["min-h-[116px]", "gap-[18px]", "py-[21px]", "pl-[21px]", "pr-3", "group-hover:pr-9"] },
+    { advanced: true, enabled: false, density: "comfortable", size: 44, spacing: ["min-h-[69px]", "gap-3", "py-2", "pl-2.5", "pr-9"] },
+    { advanced: false, enabled: false, density: "comfortable", size: 36, spacing: ["min-h-[69px]", "gap-2.5", "py-0", "pl-2", "pr-3", "group-hover:pr-9"] },
     { advanced: false, enabled: false, density: "compact", size: 36, spacing: ["gap-2.5", "py-1.5", "pl-2", "pr-9"] },
     { advanced: false, enabled: false, density: "icons", size: 36, spacing: ["h-[52px]", "justify-center"] },
   ] as const)("sizes bot portraits and row spacing in $density density with threads $enabled (advanced $advanced)", ({ advanced, enabled, density, size, spacing }) => {
@@ -123,17 +123,13 @@ describe("bot-first sidebar", () => {
     });
   }
 
-  it.each([false, true])("uses the prototype's 18px name and 16px preview in Simple comfortable rows and keeps 15px/13px otherwise (advanced %s)", (advanced) => {
+  it.each([false, true])("keeps the original 14px regular names and 13px previews in Simple comfortable rows (advanced %s)", (advanced) => {
     fixture.advanced = advanced;
     fixture.showThreads = false;
     const markup = renderToStaticMarkup(createElement(BotListItem, rowProps("comfortable", { ...bot, tasks: [], projects: [] })));
     const name = markup.match(/<span class="flex min-w-0 grow items-center gap-1\.5 truncate text-ink ([^"]*)"/)?.[1];
-    expect(name).toBe(advanced
-      ? "text-[15px] font-semibold leading-5"
-      : "text-[18px] font-[630] leading-[1.37] tracking-[-0.33px] max-[390px]:text-[16px]");
-    expect(markup).toContain(advanced
-      ? "truncate text-[13px] leading-[18px]"
-      : "truncate text-[16px] leading-[1.35] tracking-[-0.11px] max-[390px]:text-[14px]");
+    expect(name).toBe(advanced ? "text-[15px] font-semibold leading-5" : "text-[14px] font-normal leading-[18px]");
+    expect(markup).toContain(advanced ? "truncate text-[13px] leading-[18px]" : "truncate text-[13px] leading-4");
   });
 
   it.each([
@@ -471,13 +467,15 @@ describe("the agent container's five states", () => {
   it("draws a selected bot as the raised card the prototype calls for", () => {
     const markup = draw({}, true);
     expect(markup).toContain('aria-current="page"');
-    expect(markup).toContain("border-hairline bg-app shadow-");
+    expect(markup).toContain("bg-app shadow-");
+    expect(markup).toContain("ring-1 ring-hairline");
   });
 
   it("keeps selection and work independent: selected and working shows the card and the ring", () => {
     const markup = draw({ busy: true }, true);
     expect(markup).toContain('aria-current="page"');
-    expect(markup).toContain("border-hairline bg-app shadow-");
+    expect(markup).toContain("bg-app shadow-");
+    expect(markup).toContain("ring-1 ring-hairline");
     expect(markup).toContain("agent-provider-ring");
   });
 });
