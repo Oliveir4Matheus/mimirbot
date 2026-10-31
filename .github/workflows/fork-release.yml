@@ -113,3 +113,16 @@ jobs:
             gh release create "$tag" "${files[@]}" "${args[@]}"
           fi
           gh release view "$tag" --json url,isDraft --jq '"release \(.url) — draft: \(.isDraft)"'
+
+  # Same commit, same version: the release is the join point. Without this the
+  # tag carries no `latest.yml`, and every Windows install reports "up to date"
+  # against a feed that describes an older build.
+  windows:
+    name: Windows x64 installer
+    needs: linux
+    permissions:
+      contents: write
+    uses: ./.github/workflows/package-win.yml
+    with:
+      ref: ${{ github.sha }}
+      publish: true

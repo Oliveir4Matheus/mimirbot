@@ -1,15 +1,14 @@
-# Windows installer, built on a real Windows runner and published as a
-# workflow artifact.
+# Windows installer, built on a real Windows runner.
 #
-# Why this exists: releases are cut by hand from a Mac, which cannot build
-# an NSIS installer (electron-builder needs wine, and a cross-built exe
-# that never ran on Windows is exactly the artifact that looks fine and
-# breaks in the field). So every release so far shipped Windows behind the
-# mac build — different trees under one version number. Run this from the
-# same commit as the mac build and attach the artifact to the release.
+# Why this exists: the fork's release workflow builds Linux on Ubuntu and
+# cannot build an NSIS installer (electron-builder needs wine, and a
+# cross-built exe that never ran on Windows is exactly the artifact that
+# looks fine and breaks in the field). `fork-release.yml` calls this
+# workflow with `publish: true` so one version ships both platforms from the
+# same commit; a bare dispatch only leaves the installer as an artifact.
 #
-# Deliberately artifact-only: the full release workflow is the one place
-# allowed to create a GitHub release.
+# Without `latest.yml` on the release every Windows install 404s on check and
+# stays on its version forever, so the publish path uploads it with the exe.
 name: Package Windows
 
 on:
@@ -19,12 +18,30 @@ on:
         description: "Commit/tag/branch to build (defaults to the branch this is run from)"
         required: false
         type: string
+      publish:
+        description: "Attach the installer to the release for this version (it must already exist)"
+        required: false
+        type: boolean
+        default: false
+  workflow_call:
+    inputs:
+      ref:
+        description: "Commit/tag/branch to build (defaults to the caller's commit)"
+        required: false
+        type: string
+      publish:
+        description: "Attach the installer to the release for this version (it must already exist)"
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   package:
     name: NSIS installer
     runs-on: windows-latest
     timeout-minutes: 30
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -136,3 +153,24 @@ jobs:
             release/latest.yml
           if-no-files-found: error
           retention-days: 14
+
+      # Both exe names are needed: `latest.yml` references the versioned one by
+      # name and sha512, and the README's /latest/download/ button needs the
+      # stable one. They must be the same bytes, so the copy happens here.
+      - name: Attach the installer to the release
+        if: inputs.publish
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          v=$(node -p "require('./package.json').version")
+          tag="v$v"
+          test -f "release/MimirBot-$v-setup.exe" || { echo "::error::no installer for $v"; exit 1; }
+          test -f release/latest.yml || { echo "::error::no latest.yml — Windows would 404 on check"; exit 1; }
+          cp "release/MimirBot-$v-setup.exe" release/MimirBot-setup.exe
+          gh release upload "$tag" \
+            "release/MimirBot-$v-setup.exe" \
+            release/MimirBot-setup.exe \
+            "release/MimirBot-$v-setup.exe.blockmap" \
+            release/latest.yml --clobber
+          gh release view "$tag" --json url,isDraft --jq '"release \(.url) — draft: \(.isDraft)"'

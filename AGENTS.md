@@ -51,7 +51,12 @@ installed apps get it from the update button without rebuilding:
    `git checkout v<version> && pnpm install && pnpm package:<win|mac|linux>`.
    Check with `git ls-remote --tags origin`; never release from unpushed code.
 
-Windows (`latest.yml` + NSIS `.exe`) and macOS (`latest-mac.yml` + `.zip`,
-signed and notarized) need their own builds on those systems. This flow
-covers Linux only. Do not use `.github/workflows/release.yml`: it needs the
-upstream project's Apple signing secrets.
+Windows (`latest.yml` + NSIS `.exe`) needs its own build on Windows:
+`.github/workflows/package-win.yml` builds it on `windows-latest`, and
+`fork-release.yml` calls it with `publish: true` after the Linux job, so one
+tag ships both platforms from the same commit. Without `latest.yml` on the
+release every Windows install reports "up to date" against a feed that
+describes an older build. macOS (`latest-mac.yml` + `.zip`, signed and
+notarized) still needs its own build on a Mac. Do not use
+`.github/workflows/release.yml`: it needs the upstream project's Apple signing
+secrets.
