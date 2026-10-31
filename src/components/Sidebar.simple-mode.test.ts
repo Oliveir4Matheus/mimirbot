@@ -1,7 +1,7 @@
 import { Children, createElement, isValidElement, type KeyboardEvent, type MemoExoticComponent, type MouseEvent, type ReactElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { initialState, type AppState, type Bot, type Group } from "@/state/store";
+import { initialState, type AppState, type Bot, type Group, type InstanceInfo } from "@/state/store";
 import type { SidebarDensity } from "@/lib/sidebar-preferences";
 
 const fixture = vi.hoisted(() => ({ advanced: false, showThreads: true, state: {} as Partial<AppState>, dispatch: vi.fn() }));
@@ -85,7 +85,7 @@ describe("bot-first sidebar", () => {
     { advanced: true, enabled: true, density: "compact", size: 26, spacing: ["gap-1.5", "py-1", "pl-6"] },
     { advanced: true, enabled: true, density: "icons", size: 44, spacing: ["justify-center", "px-1", "py-1.5"] },
     { advanced: true, enabled: false, density: "comfortable", size: 44, spacing: ["gap-3", "py-2", "pl-2.5", "pr-9"] },
-    { advanced: false, enabled: false, density: "comfortable", size: 36, spacing: ["gap-2.5", "py-2", "pl-2", "pr-3", "group-hover:pr-9"] },
+    { advanced: false, enabled: false, density: "comfortable", size: 54, spacing: ["min-h-[116px]", "gap-[18px]", "py-[21px]", "pl-[21px]", "pr-3", "group-hover:pr-9"] },
     { advanced: false, enabled: false, density: "compact", size: 36, spacing: ["gap-2.5", "py-1.5", "pl-2", "pr-9"] },
     { advanced: false, enabled: false, density: "icons", size: 36, spacing: ["h-[52px]", "justify-center"] },
   ] as const)("sizes bot portraits and row spacing in $density density with threads $enabled (advanced $advanced)", ({ advanced, enabled, density, size, spacing }) => {
@@ -123,13 +123,17 @@ describe("bot-first sidebar", () => {
     });
   }
 
-  it.each([false, true])("uses 14px regular names in Simple comfortable rows and keeps 15px semibold otherwise (advanced %s)", (advanced) => {
+  it.each([false, true])("uses the prototype's 18px name and 16px preview in Simple comfortable rows and keeps 15px/13px otherwise (advanced %s)", (advanced) => {
     fixture.advanced = advanced;
     fixture.showThreads = false;
     const markup = renderToStaticMarkup(createElement(BotListItem, rowProps("comfortable", { ...bot, tasks: [], projects: [] })));
     const name = markup.match(/<span class="flex min-w-0 grow items-center gap-1\.5 truncate text-ink ([^"]*)"/)?.[1];
-    expect(name).toBe(advanced ? "text-[15px] font-semibold leading-5" : "text-[14px] font-normal leading-[19px]");
-    expect(markup).toContain("truncate text-[13px] leading-[18px]");
+    expect(name).toBe(advanced
+      ? "text-[15px] font-semibold leading-5"
+      : "text-[18px] font-[630] leading-[1.37] tracking-[-0.33px] max-[390px]:text-[16px]");
+    expect(markup).toContain(advanced
+      ? "truncate text-[13px] leading-[18px]"
+      : "truncate text-[16px] leading-[1.35] tracking-[-0.11px] max-[390px]:text-[14px]");
   });
 
   it.each([
@@ -418,5 +422,62 @@ describe("activity-only escape hatch", () => {
     fixture.showThreads = true;
     fixture.state.selectedId = "other-bot";
     expect(rows()).toEqual(["main-chat"]);
+  });
+});
+
+describe("the agent container's five states", () => {
+  const instance = {
+    instanceId: "fake", driverKind: "claudeAgent", displayName: "Fake engine",
+    snapshot: { state: "available" },
+    models: { default: "test", options: [{ id: "test", label: "Test model" }] },
+  } as InstanceInfo;
+  const draw = (overrides: Partial<Bot>, selected = false) => {
+    fixture.advanced = false;
+    fixture.showThreads = false;
+    fixture.state = {
+      ...fixture.state,
+      bots: [bot],
+      instances: [instance],
+      selectedId: selected ? bot.id : "other-bot",
+      activeView: "chat",
+    };
+    return renderToStaticMarkup(createElement(BotListItem, rowProps("comfortable", {
+      ...bot, unread: false, busy: false, tasks: [], projects: [], messages: [], ...overrides,
+    })));
+  };
+
+  it("draws a read bot as a quiet row with no marker", () => {
+    const markup = draw({});
+    expect(markup).not.toContain('aria-label="Unread threads"');
+    expect(markup).not.toContain("agent-provider-ring");
+    expect(markup).toContain("text-ink-secondary");
+  });
+
+  it("makes an unread bot's preview louder and gives it the 8px dot", () => {
+    const markup = draw({ unread: true });
+    expect(markup).toContain('aria-label="Unread threads"');
+    expect(markup).toContain("font-[570] text-ink");
+    expect(markup).toContain("size-2 shrink-0 rounded-full bg-accent ring-2 ring-accent/10");
+  });
+
+  it("marks a working bot with the ring around its provider, not a dot on the avatar", () => {
+    const markup = draw({ busy: true });
+    expect(markup).toContain("agent-provider-ring");
+    expect(markup).toContain('data-provider-working="true"');
+    expect(markup).toContain("Working…");
+    expect(markup).not.toContain('data-testid="working-dot"');
+  });
+
+  it("draws a selected bot as the raised card the prototype calls for", () => {
+    const markup = draw({}, true);
+    expect(markup).toContain('aria-current="page"');
+    expect(markup).toContain("border-hairline bg-app shadow-");
+  });
+
+  it("keeps selection and work independent: selected and working shows the card and the ring", () => {
+    const markup = draw({ busy: true }, true);
+    expect(markup).toContain('aria-current="page"');
+    expect(markup).toContain("border-hairline bg-app shadow-");
+    expect(markup).toContain("agent-provider-ring");
   });
 });
