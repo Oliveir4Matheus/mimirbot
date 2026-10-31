@@ -2,6 +2,7 @@
   "version": 1,
   "locales": {
     "de": {
+      "signIn.answeredInChat": "77883f86ed4b5a0b328c72376ebdb53cd30508f75674b57c6c62e3643ee0e004",
       "highlevel.unavailable": "87b8ac7f7610e6dd69f520bc59058fd92f307b9f4bcf804075f25d08bcaa7533",
       "pro.fromPrice": "c35081eb8e7e1aec7c5712b43e16f7747a63f2469ed6225575a67e11f758e023",
       "pro.seePlans": "30d9abfd7c7af513814bdfadcafe7ec4a90bc6bcee519086dc513f63f2cd7384",
@@ -2366,6 +2367,7 @@
       "engineSetup.standaloneDownloadNote": "052fd2ac1cfe94a49c17a5c771b38338045862b684e7fa6e3ea7b282c7ffb0dc"
     },
     "es": {
+      "signIn.answeredInChat": "77883f86ed4b5a0b328c72376ebdb53cd30508f75674b57c6c62e3643ee0e004",
       "whop.description": "1a07cf04ef17029448d3781415cbac16d54e66b821907a40d94e0e6349710e70",
       "whop.otherAppsSetup": "954f6c559920754aec13a4ffa8718b9df18715a49e9a583c87d2b615fe4563b4",
       "whop.connect": "29e15066fae2fc952318f2a39cdcb32ec68067916eb92c8ba5d4a9fce569055f",
@@ -7745,6 +7747,7 @@
       "engineSetup.standaloneDownloadNote": "052fd2ac1cfe94a49c17a5c771b38338045862b684e7fa6e3ea7b282c7ffb0dc"
     },
     "fr": {
+      "signIn.answeredInChat": "77883f86ed4b5a0b328c72376ebdb53cd30508f75674b57c6c62e3643ee0e004",
       "highlevel.unavailable": "87b8ac7f7610e6dd69f520bc59058fd92f307b9f4bcf804075f25d08bcaa7533",
       "pro.fromPrice": "c35081eb8e7e1aec7c5712b43e16f7747a63f2469ed6225575a67e11f758e023",
       "pro.seePlans": "30d9abfd7c7af513814bdfadcafe7ec4a90bc6bcee519086dc513f63f2cd7384",
@@ -10091,6 +10094,7 @@
       "engineSetup.standaloneDownloadNote": "052fd2ac1cfe94a49c17a5c771b38338045862b684e7fa6e3ea7b282c7ffb0dc"
     },
     "hi": {
+      "signIn.answeredInChat": "77883f86ed4b5a0b328c72376ebdb53cd30508f75674b57c6c62e3643ee0e004",
       "highlevel.unavailable": "87b8ac7f7610e6dd69f520bc59058fd92f307b9f4bcf804075f25d08bcaa7533",
       "pro.fromPrice": "c35081eb8e7e1aec7c5712b43e16f7747a63f2469ed6225575a67e11f758e023",
       "pro.seePlans": "30d9abfd7c7af513814bdfadcafe7ec4a90bc6bcee519086dc513f63f2cd7384",
@@ -12437,6 +12441,7 @@
       "engineSetup.standaloneDownloadNote": "052fd2ac1cfe94a49c17a5c771b38338045862b684e7fa6e3ea7b282c7ffb0dc"
     },
     "ja": {
+      "signIn.answeredInChat": "77883f86ed4b5a0b328c72376ebdb53cd30508f75674b57c6c62e3643ee0e004",
       "whop.description": "1a07cf04ef17029448d3781415cbac16d54e66b821907a40d94e0e6349710e70",
       "whop.otherAppsSetup": "954f6c559920754aec13a4ffa8718b9df18715a49e9a583c87d2b615fe4563b4",
       "whop.connect": "29e15066fae2fc952318f2a39cdcb32ec68067916eb92c8ba5d4a9fce569055f",
@@ -18784,6 +18789,7 @@
       "engineSetup.standaloneDownloadNote": "052fd2ac1cfe94a49c17a5c771b38338045862b684e7fa6e3ea7b282c7ffb0dc"
     },
     "pt-br": {
+      "signIn.answeredInChat": "77883f86ed4b5a0b328c72376ebdb53cd30508f75674b57c6c62e3643ee0e004",
       "whop.description": "1a07cf04ef17029448d3781415cbac16d54e66b821907a40d94e0e6349710e70",
       "whop.otherAppsSetup": "954f6c559920754aec13a4ffa8718b9df18715a49e9a583c87d2b615fe4563b4",
       "whop.connect": "29e15066fae2fc952318f2a39cdcb32ec68067916eb92c8ba5d4a9fce569055f",
@@ -24966,6 +24972,7 @@
       "engineSetup.standaloneDownloadNote": "052fd2ac1cfe94a49c17a5c771b38338045862b684e7fa6e3ea7b282c7ffb0dc"
     },
     "zh": {
+      "signIn.answeredInChat": "77883f86ed4b5a0b328c72376ebdb53cd30508f75674b57c6c62e3643ee0e004",
       "highlevel.unavailable": "87b8ac7f7610e6dd69f520bc59058fd92f307b9f4bcf804075f25d08bcaa7533",
       "pro.fromPrice": "c35081eb8e7e1aec7c5712b43e16f7747a63f2469ed6225575a67e11f758e023",
       "pro.seePlans": "30d9abfd7c7af513814bdfadcafe7ec4a90bc6bcee519086dc513f63f2cd7384",
@@ -28191,6 +28198,7 @@
       "engineSetup.standaloneDownloadNote": "052fd2ac1cfe94a49c17a5c771b38338045862b684e7fa6e3ea7b282c7ffb0dc"
     },
     "zh-tw": {
+      "signIn.answeredInChat": "77883f86ed4b5a0b328c72376ebdb53cd30508f75674b57c6c62e3643ee0e004",
       "whop.description": "1a07cf04ef17029448d3781415cbac16d54e66b821907a40d94e0e6349710e70",
       "whop.otherAppsSetup": "954f6c559920754aec13a4ffa8718b9df18715a49e9a583c87d2b615fe4563b4",
       "whop.connect": "29e15066fae2fc952318f2a39cdcb32ec68067916eb92c8ba5d4a9fce569055f",
@@ -32436,6 +32444,7 @@
       "engineSetup.standaloneDownloadNote": "052fd2ac1cfe94a49c17a5c771b38338045862b684e7fa6e3ea7b282c7ffb0dc"
     },
     "uk": {
+      "signIn.answeredInChat": "77883f86ed4b5a0b328c72376ebdb53cd30508f75674b57c6c62e3643ee0e004",
       "highlevel.unavailable": "87b8ac7f7610e6dd69f520bc59058fd92f307b9f4bcf804075f25d08bcaa7533",
       "pro.fromPrice": "c35081eb8e7e1aec7c5712b43e16f7747a63f2469ed6225575a67e11f758e023",
       "pro.seePlans": "30d9abfd7c7af513814bdfadcafe7ec4a90bc6bcee519086dc513f63f2cd7384",
@@ -35259,6 +35268,7 @@
       "engineSetup.standaloneDownloadNote": "052fd2ac1cfe94a49c17a5c771b38338045862b684e7fa6e3ea7b282c7ffb0dc"
     },
     "vi": {
+      "signIn.answeredInChat": "77883f86ed4b5a0b328c72376ebdb53cd30508f75674b57c6c62e3643ee0e004",
       "whop.description": "1a07cf04ef17029448d3781415cbac16d54e66b821907a40d94e0e6349710e70",
       "whop.otherAppsSetup": "954f6c559920754aec13a4ffa8718b9df18715a49e9a583c87d2b615fe4563b4",
       "whop.connect": "29e15066fae2fc952318f2a39cdcb32ec68067916eb92c8ba5d4a9fce569055f",
@@ -40120,6 +40130,7 @@
       "engineSetup.standaloneDownloadNote": "052fd2ac1cfe94a49c17a5c771b38338045862b684e7fa6e3ea7b282c7ffb0dc"
     },
     "tr": {
+      "signIn.answeredInChat": "77883f86ed4b5a0b328c72376ebdb53cd30508f75674b57c6c62e3643ee0e004",
       "whop.description": "1a07cf04ef17029448d3781415cbac16d54e66b821907a40d94e0e6349710e70",
       "whop.otherAppsSetup": "954f6c559920754aec13a4ffa8718b9df18715a49e9a583c87d2b615fe4563b4",
       "whop.connect": "29e15066fae2fc952318f2a39cdcb32ec68067916eb92c8ba5d4a9fce569055f",
@@ -44981,6 +44992,7 @@
       "engineSetup.standaloneDownloadNote": "052fd2ac1cfe94a49c17a5c771b38338045862b684e7fa6e3ea7b282c7ffb0dc"
     },
     "pl": {
+      "signIn.answeredInChat": "77883f86ed4b5a0b328c72376ebdb53cd30508f75674b57c6c62e3643ee0e004",
       "whop.description": "1a07cf04ef17029448d3781415cbac16d54e66b821907a40d94e0e6349710e70",
       "whop.otherAppsSetup": "954f6c559920754aec13a4ffa8718b9df18715a49e9a583c87d2b615fe4563b4",
       "whop.connect": "29e15066fae2fc952318f2a39cdcb32ec68067916eb92c8ba5d4a9fce569055f",
@@ -51224,6 +51236,7 @@
       "engineSetup.standaloneDownloadNote": "052fd2ac1cfe94a49c17a5c771b38338045862b684e7fa6e3ea7b282c7ffb0dc"
     },
     "ru": {
+      "signIn.answeredInChat": "77883f86ed4b5a0b328c72376ebdb53cd30508f75674b57c6c62e3643ee0e004",
       "whop.description": "1a07cf04ef17029448d3781415cbac16d54e66b821907a40d94e0e6349710e70",
       "whop.otherAppsSetup": "954f6c559920754aec13a4ffa8718b9df18715a49e9a583c87d2b615fe4563b4",
       "whop.connect": "29e15066fae2fc952318f2a39cdcb32ec68067916eb92c8ba5d4a9fce569055f",
@@ -57543,6 +57556,7 @@
       "engineSetup.standaloneDownloadNote": "052fd2ac1cfe94a49c17a5c771b38338045862b684e7fa6e3ea7b282c7ffb0dc"
     },
     "it": {
+      "signIn.answeredInChat": "77883f86ed4b5a0b328c72376ebdb53cd30508f75674b57c6c62e3643ee0e004",
       "whop.description": "1a07cf04ef17029448d3781415cbac16d54e66b821907a40d94e0e6349710e70",
       "whop.otherAppsSetup": "954f6c559920754aec13a4ffa8718b9df18715a49e9a583c87d2b615fe4563b4",
       "whop.connect": "29e15066fae2fc952318f2a39cdcb32ec68067916eb92c8ba5d4a9fce569055f",
