@@ -25,8 +25,10 @@ afterEach(() => {
 
 function Harness({ onToggle }: { onToggle: () => void }) {
   const aside = useRef<HTMLElement>(null);
-  return createElement("aside", { ref: aside, "data-sidebar": "" },
-    createElement(SidebarEdgeToggle, { collapsed: false, onToggle, anchorRef: aside, style: { WebkitAppRegion: "no-drag" } as never }));
+  return createElement("div", null,
+    createElement("div", { "data-mimir-rail": "" }),
+    createElement("aside", { ref: aside, "data-sidebar": "" },
+      createElement(SidebarEdgeToggle, { collapsed: false, onToggle, anchorRef: aside, style: { WebkitAppRegion: "no-drag" } as never })));
 }
 
 it("moves the bump to the end of <body>, pinned to the sidebar's right edge, after mounting", async () => {
@@ -53,15 +55,27 @@ it("sits level with the sidebar's top, below a strip shown above the app, at any
     return { left: 0, top: sidebar ? top : 0, width: sidebar ? right : 0, height: 900, right: sidebar ? right : 0, bottom: 900, x: 0, y: sidebar ? top : 0, toJSON() {} } as DOMRect;
   });
   let resized: (() => void) | null = null;
-  vi.stubGlobal("ResizeObserver", class { constructor(callback: () => void) { resized = callback; } observe() {} disconnect() {} });
+  const observed: Element[] = [];
+  vi.stubGlobal("ResizeObserver", class {
+    constructor(callback: () => void) { resized = callback; }
+    observe(target: Element) { observed.push(target); }
+    disconnect() {}
+  });
   flushSync(() => root.render(createElement(Harness, { onToggle: vi.fn() })));
   await new Promise((resolve) => setTimeout(resolve, 0));
   const bump = document.querySelector<HTMLButtonElement>("[data-sidebar-edge-toggle]")!;
+  const rail = container.querySelector("[data-mimir-rail]")!;
+  expect(observed).toContain(rail);
+  expect(observed).toContain(rail.parentElement);
   expect(bump.style.top).toBe("7px");
   // My Cloud's two-line strip pushes the sidebar 58px down, and the sidebar is at its narrowest.
   top = 58; right = 240;
   flushSync(() => resized!());
   expect(bump.style.top).toBe("65px");
   expect(bump.style.left).toBe("240px");
+  // The rail retracts by 66px; the sidebar moves left with it, and the bump follows.
+  right = 174;
+  flushSync(() => resized!());
+  expect(bump.style.left).toBe("174px");
 });
 
