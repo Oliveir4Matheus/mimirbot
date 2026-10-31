@@ -5814,6 +5814,7 @@
   "webPanels.page.openInBrowser": "Open in browser",
   "webPanels.page.cantEmbed": "This page can't be shown inside the app",
   "webPanels.page.cantEmbedBody": "Some sites refuse to be embedded. Open it in your browser instead.",
+  "webPanels.page.refusedBody": "{site} doesn't allow other apps to show it. Open it in your browser instead.",
   "botAccess.tools.title": "Tool selection",
   "botAccess.tools.description": "Advanced: narrow the tools offered to this bot. Existing approvals still apply.",
   "botAccess.tools.corrupt": "Invalid saved selection. This bot cannot start until it is repaired.",
