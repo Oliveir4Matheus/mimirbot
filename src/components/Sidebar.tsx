@@ -39,7 +39,7 @@ import { useVisibleMessages } from "@/lib/use-visible-messages";
 import { llmThreadTitlesEnabled } from "@/lib/feature-flags";
 
 import { BotAvatar } from "./Avatar";
-import { BotModelBadge } from "./BotModelBadge"; import { SidebarBotRole } from "./BotRole";
+import { BotModelBadge, botModel } from "./BotModelBadge"; import { SidebarBotRole } from "./BotRole"; import { botRowClass } from "./sidebar-bot-row";
 import { stateForBot } from "@/lib/mascot";
 import { cn } from "@/lib/cn";
 import { searchMatchesThreads, useSearchDisclosure } from "@/lib/search-disclosure";
@@ -957,22 +957,13 @@ export const BotListItem = memo(function BotListItem(props: BotRowProps) {
   useEffect(() => { if (iconOnly) setRenaming(false); }, [iconOnly]);
   const simpleRow = !advanced && !showThreads && density === "comfortable";
   const railTile = iconOnly && !advanced;
-  const avatarSize = iconOnly ? (railTile ? 36 : 44) : density === "compact" ? (showThreads ? 26 : 36) : (showThreads ? 32 : simpleRow ? 36 : 44);
+  const avatarSize = iconOnly ? (railTile ? 36 : 44) : density === "compact" ? (showThreads ? 26 : 36) : (showThreads ? 32 : simpleRow ? 54 : 44);
+  const hasModelBadge = Boolean(botModel(bot, instances));
   const visible = useVisibleMessages(bot);
   const last = lastNonReceipt(visible);
   const title = bot.title.trim();
   const details = [title, bot.chiefOfStaff ? t("sidebar.bot.chiefOfStaff") : ""].filter(Boolean);
-  const rowClass = cn(
-    "flex w-full items-center rounded-xl text-left outline-none transition-colors duration-150 focus-visible:ring-1 focus-visible:ring-accent/60",
-    iconOnly
-      ? railTile ? "h-[52px] justify-center" : "justify-center px-1 py-1.5"
-      : density === "compact"
-        ? cn(showThreads ? "gap-1.5 py-1" : "gap-2.5 py-1.5", showThreads ? "pl-6 pr-9 group-hover:pr-[5.75rem] group-focus-within:pr-[5.75rem] max-md:pr-9 touch:pr-[5.75rem]" : "pl-2 pr-9")
-        : simpleRow ? cn("gap-2.5 py-2 pl-2", selected ? "pr-9" : "pr-3 group-hover:pr-9 group-focus-within:pr-9 max-md:pr-9 touch:pr-9")
-        : cn(showThreads ? "gap-2 py-2" : "gap-3 py-2", showThreads ? "pl-6 pr-9 group-hover:pr-[5.75rem] group-focus-within:pr-[5.75rem] max-md:pr-9 touch:pr-[5.75rem]" : "pl-2.5 pr-9"),
-    !iconOnly && "max-md:rounded-2xl max-md:py-2.5",
-    selected ? "bg-raised shadow-[0_1px_2px_rgb(0_0_0/0.10)]" : "hover:bg-raised/50",
-  );
+  const rowClass = botRowClass({ density, iconOnly, railTile, simpleRow, showThreads, selected });
   const activityTasks = sidebarBotActivityTasks(bot, pendingQueued);
   const waiting = bot.activity === "waiting-on-you" || activityTasks.some((task) => task.activity === "waiting-on-you");
   const working = !waiting && (Boolean(bot.busy) || activityTasks.some((task) => task.busy || task.activity === "working"));
@@ -992,23 +983,27 @@ export const BotListItem = memo(function BotListItem(props: BotRowProps) {
           motionKey={mascotMotion?.nonce ?? 0}
           animated={working || unread || (mascotMotion?.kind ?? "none") !== "none"}
         />
-        {/* Bottom-left, clear of the status dots on the right and of the row's hover actions. */}
-        <BotModelBadge bot={bot} instances={instances} avatarSize={avatarSize} />
-        {working && (
+        {/* Bottom-left, clear of the status dots on the right and of the row's hover actions. The
+            prototype's taller Simple row keeps the provider at its bottom-right and spins a ring
+            around it while the bot works, so the dots move to the top-right there. */}
+        <BotModelBadge bot={bot} instances={instances} avatarSize={avatarSize}
+          placement={simpleRow ? "right" : "left"} working={simpleRow && working} />
+        {working && (!simpleRow || !hasModelBadge) && (
           <span
             data-testid="working-dot"
             className={cn(
-              "absolute -right-0.5 -bottom-0.5 rounded-full border-2 border-panel bg-success",
+              "absolute rounded-full border-2 border-panel bg-success",
+              simpleRow ? "-right-1 -top-1" : "-right-0.5 -bottom-0.5",
               iconOnly ? "size-3" : "size-2.5",
             )}
           />
         )}
         {waiting && <span data-testid="waiting-dot" role="status" aria-label={t("sidebar.preview.waiting")} title={t("sidebar.preview.waiting")}
-          className={cn("absolute -right-0.5 -bottom-0.5 flex items-center justify-center overflow-hidden rounded-full border-2 border-panel bg-warning font-black text-panel", iconOnly ? "size-5 text-[14px]" : "size-4 text-[12px]")}><span aria-hidden="true">!</span></span>}
+          className={cn("absolute flex items-center justify-center overflow-hidden rounded-full border-2 border-panel bg-warning font-black text-panel", simpleRow ? "-right-1 -top-1" : "-right-0.5 -bottom-0.5", iconOnly ? "size-5 text-[14px]" : "size-4 text-[12px]")}><span aria-hidden="true">!</span></span>}
         {teammateWait && <span data-testid="teammate-wait-dot" role="status" aria-label={t("sidebar.preview.waitingOnTeammate")} title={t("sidebar.preview.waitingOnTeammate")}
-          className={cn("absolute -right-0.5 -bottom-0.5 rounded-full border-2 border-panel bg-accent", iconOnly ? "size-3" : "size-2.5")} />}
+          className={cn("absolute rounded-full border-2 border-panel bg-accent", simpleRow ? "-right-1 -top-1" : "-right-0.5 -bottom-0.5", iconOnly ? "size-3" : "size-2.5")} />}
         {!teammateWait && !waiting && !working && queued && <span data-testid="queued-dot" role="status" aria-label={t("task.queued")} title={t("task.queued")}
-          className={cn("absolute -right-0.5 -bottom-0.5 rounded-full border-2 border-panel bg-ink-secondary", iconOnly ? "size-3" : "size-2.5")} />}
+          className={cn("absolute rounded-full border-2 border-panel bg-ink-secondary", simpleRow ? "-right-1 -top-1" : "-right-0.5 -bottom-0.5", iconOnly ? "size-3" : "size-2.5")} />}
         {bot.chiefOfStaff && iconOnly && (
           <span className="absolute -left-1 -top-1 flex rounded-full bg-raised p-[3px]">
             <Crown size={11} strokeWidth={2.25} className="shrink-0 text-accent" role="img" aria-label={t("sidebar.bot.chiefOfStaff")} data-testid="chief-crown">
@@ -1026,7 +1021,7 @@ export const BotListItem = memo(function BotListItem(props: BotRowProps) {
       </span>
       <div className={cn("min-w-0 flex-1", iconOnly && "hidden")}>
         <div className="flex items-baseline justify-between gap-2">
-          <span className={cn("flex min-w-0 grow items-center gap-1.5 truncate text-ink", simpleRow ? "text-[14px] font-normal leading-[19px]" : "text-[15px] font-semibold leading-5")}>
+          <span className={cn("flex min-w-0 grow items-center gap-1.5 truncate text-ink", simpleRow ? "text-[18px] font-[630] leading-[1.37] tracking-[-0.33px] max-[390px]:text-[16px]" : "text-[15px] font-semibold leading-5")}>
             {bot.pinned && <Pin size={12} className="shrink-0 text-ink-secondary" />}
             <RenameTitle
               key={iconOnly ? "icons" : "expanded"}
@@ -1042,7 +1037,7 @@ export const BotListItem = memo(function BotListItem(props: BotRowProps) {
               }}
               onEditingChange={setRenaming}
               className="truncate"
-              inputClassName={cn("w-full rounded bg-inset px-1 py-0.5", simpleRow ? "text-[14px] font-normal" : "text-[15px] font-semibold")}
+              inputClassName={cn("w-full rounded bg-inset px-1 py-0.5", simpleRow ? "text-[18px] font-[630]" : "text-[15px] font-semibold")}
             />
             {bot.chiefOfStaff && !renaming && (
               <Crown size={13} strokeWidth={2.25} className="shrink-0 text-accent" role="img" aria-label={t("sidebar.bot.chiefOfStaff")} data-testid="chief-crown">
@@ -1075,8 +1070,13 @@ export const BotListItem = memo(function BotListItem(props: BotRowProps) {
               {t("sidebar.bot.deletingRow")}
             </span>
           ) : (
-            <span className={cn("flex min-w-0 items-center gap-1.5 truncate text-[13px] leading-[18px]", waiting ? "font-semibold text-warning" : "text-ink-secondary")}>
-              {working ? (
+            <span className={cn(
+              "flex min-w-0 items-center gap-1.5 truncate",
+              simpleRow
+                ? cn("text-[16px] leading-[1.35] tracking-[-0.11px] max-[390px]:text-[14px]", waiting ? "font-semibold text-warning" : unread ? "font-[570] text-ink" : "text-ink-secondary")
+                : cn("text-[13px] leading-[18px]", waiting ? "font-semibold text-warning" : "text-ink-secondary"),
+            )}>
+              {working && !simpleRow ? (
                 <span className="flex h-[1.5em] items-center" role="status">
                   <WorkingDots size={3.5} />
                   <span className="sr-only">{t("sidebar.preview.working")}</span>
@@ -1086,7 +1086,7 @@ export const BotListItem = memo(function BotListItem(props: BotRowProps) {
               )}
             </span>
           )}
-          {unread && <span className="size-2 shrink-0 rounded-full bg-accent" aria-label={t("task.unreadMany")} />}
+          {unread && <span className={cn("size-2 shrink-0 rounded-full bg-accent", simpleRow && "ring-2 ring-accent/10")} aria-label={t("task.unreadMany")} />}
         </div>}
       </div>
     </>

@@ -44,7 +44,6 @@ export function BotSettingsPanel({ bot, overlay }: { bot: Bot; overlay: boolean 
         overlay
           ? "md:absolute md:inset-y-0 md:right-0 md:z-40"
           : "md:relative md:z-40 md:h-full md:shrink-0",
-        "md:transition-[width] md:duration-300 md:ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:md:duration-0",
         open ? "md:w-[min(420px,42vw)]" : "md:w-0",
       )}
     >

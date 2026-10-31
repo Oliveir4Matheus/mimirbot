@@ -293,7 +293,8 @@ function Shell({ viewer }: { viewer: WelcomeViewer | null }) {
       <HomeLine />
       <AppNotices quiet={paletteOpen || drawerOpen || Boolean(localVmWorkspaceBotId)} viewer={viewer} />
       <WhatsNewDialog />
-      <div className="relative flex min-h-0 flex-1">
+      {/* Clips the retracting right panel while it is out of the window; a slide-over that kept its box would widen the page. */}
+      <div className="relative flex min-h-0 flex-1 overflow-clip">
       {!calendarFocus && <button
         type="button"
         ref={menuButtonRef}
