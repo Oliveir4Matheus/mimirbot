@@ -48,7 +48,7 @@ import {
   isCredentialTargetId,
   type CredentialTargetId,
 } from "../shared/credential-request.ts";
-import { isPendingSignInRequest, normalizeSignInSite, signInFallbackText, signInOutcome, signInResumePrompt, signInWaits } from "../shared/sign-in-request.ts";
+import { isPendingSignInRequest, normalizeSignInSite, signInFallbackText, signInOutcome, signInResumePrompt } from "../shared/sign-in-request.ts";
 
 import { createRoomTurnLevels } from "./room-turn-level.ts";
 import { RoomMemberLock } from "./room-member-lock.ts";
@@ -218,7 +218,7 @@ import { RETRY_MAX_ATTEMPTS } from "./drivers/retry.ts";
 import { recoveryCapabilityError, startupBackups } from "./automatic-recovery.ts";
 import { createQuotaSwitchHost } from "./host/quota-switch.ts"; import { quotaSwitchEnabled } from "./quota-switch.ts";
 import { decodeGeneratedImage } from "./generated-image.ts";
-import { createMcpServersHost } from "./host/mcp-servers-host.ts"; import { createLimitTakeover, signedOutStop } from "./host/limit-takeover.ts";
+import { createMcpServersHost } from "./host/mcp-servers-host.ts"; import { createLimitTakeover, signedOutStop } from "./host/limit-takeover.ts"; import { createSignInInChat } from "./host/sign-in-in-chat.ts";
 import {
   isRemoteMcpServer,
   listMcpServers,
@@ -7577,7 +7577,7 @@ async function acceptDirectSend(
           });
           store.setTaskAskedAt(botId, threadId, message.at);
           handoffs.steered(threadId, steerTarget, instance?.instanceId, message.id);
-          answerSignInsInChat(botId, threadId);
+          signInCards.answer(botId, threadId);
           return { ok: true as const, steered: true as const, threadId, message };
         }
         if (!current.busy) {
@@ -7944,7 +7944,7 @@ async function startTurn(
     queueMicrotask(drainQueuedSends);
     return userMessage;
   }
-  if (personLine) answerSignInsInChat(bot.id, threadId);
+  if (personLine) signInCards.answer(bot.id, threadId);
   if (route.quickModel && !opts?.cardContinuation && userMessage.quickModel !== route.quickModel) userMessage = store.patchMessage(threadId, userMessage.id, { quickModel: route.quickModel }) ?? userMessage;
   const recoveryUserMessageId = opts?.coordination
     ? store.activePath(threadId).findLast(m => m.role === "user" && m.kind === "text")?.id
@@ -11981,19 +11981,10 @@ function requestSignIn(from: BotRecord, threadId: string, rawSite: unknown, rawR
   return { messageId: message.id, site: target.site, place };
 }
 
-/** In a room, only the asking bot's own card. */
-function signInMessage(botId: string, threadId: string, messageId: string): Message | null {
-  const owner = connectorThread(botId, threadId);
-  if (!owner) return null;
-  const message = store.activePath(threadId).find((candidate) => candidate.id === messageId);
-  if (owner.group && message?.from?.botId !== botId) return null;
-  return message?.kind === "signin" && message.signIn ? message : null;
-}
-
 function settleSignIn(botId: string, threadId: string, messageId: string, outcome: "done" | "cancelled", saved?: { site: string }):
   { status: number; body: Record<string, unknown> } {
   const bot = store.bot(botId);
-  const message = signInMessage(botId, threadId, messageId);
+  const message = signInCards.message(botId, threadId, messageId);
   if (!bot || !message?.signIn) return { status: 404, body: { error: "no such sign-in request" } };
   const card = message.signIn;
   if (card.superseded) return { status: 409, body: { error: "this sign-in request was superseded by a newer one" } };
@@ -12003,7 +11994,7 @@ function settleSignIn(botId: string, threadId: string, messageId: string, outcom
     return { status: 409, body: { error: `this sign-in request was already ${settled === "done" ? "marked done" : "cancelled"}` } };
   }
   if (settled && card.resumed) return { status: 200, body: { [outcome]: true, resumed: true } };
-  if (!settled) handSignInPlaceBack(bot, threadId, message.id, card.place);
+  if (!settled) signInCards.handPlaceBack(bot, threadId, message.id, card.place);
   const savedLogin = saved?.site ?? card.savedLogin;
   const resumed = answerCardNode(threadId, message.id, savedLogin ? savedLoginResumePrompt(savedLogin) : signInResumePrompt(card.site, outcome));
   store.patchMessage(threadId, message.id, {
@@ -12012,36 +12003,12 @@ function settleSignIn(botId: string, threadId: string, messageId: string, outcom
   return { status: 200, body: { [outcome]: true, resumed, ...(savedLogin ? { saved: true, site: savedLogin } : {}) } };
 }
 
-/** The person is through with the place the card lent them: its plea goes, and the browser or computer goes back to the bot. */
-function handSignInPlaceBack(bot: BotRecord, threadId: string, messageId: string, place: Surface): void {
-  const pleaded = computerControl.settleHelp(messageId);
-  if (place === "browser") browserLive.handBack(currentBrowserSession(bot.id, bot.browserProfile, teamHost.browserAudience(threadId)));
-  else for (const key of pleaded.length ? pleaded : [botComputerControlKey(bot)]) computerControl.release(key);
-}
-
-/** The person's own line answers every sign-in request still open in their conversation, as Done would, and ends the
- * work parked on those cards: the turn the line starts goes on with the conversation, so nothing resumes it twice. */
-function answerSignInsInChat(botId: string, threadId: string): void {
-  const bot = store.bot(botId);
-  if (!bot) return;
-  const answered: string[] = [];
-  for (const message of store.activePath(threadId)) {
-    const card = message.signIn;
-    if (message.kind !== "signin" || !card || card.stopped || !signInWaits(card)) continue;
-    handSignInPlaceBack(bot, threadId, message.id, card.place);
-    store.patchMessage(threadId, message.id, { signIn: { ...card, answeredInChat: true, error: undefined } });
-    answered.push(message.id);
-  }
-  const parked = coordinator.parkedDirect(threadId);
-  const card = parked?.cards?.find((id) => answered.includes(id));
-  if (!parked || !card || resumableCards(threadId, parked.startedAt ?? parked.createdAt).some((open) => parked.cards!.includes(open.id))) return;
-  releaseCardNode(threadId, card, "The person answered in the chat");
-}
+const signInCards = createSignInInChat({ bot: (botId) => store.bot(botId), path: (threadId) => store.activePath(threadId), connectorThread: (botId, threadId) => connectorThread(botId, threadId), patchCard: (threadId, messageId, signIn) => { store.patchMessage(threadId, messageId, { signIn }); }, settleHelp: (messageId) => computerControl.settleHelp(messageId), handBrowserBack: (bot, threadId) => browserLive.handBack(currentBrowserSession(bot.id, bot.browserProfile, teamHost.browserAudience(threadId))), releaseComputer: (key) => computerControl.release(key), computerKey: (bot) => botComputerControlKey(bot), parked: (threadId) => coordinator.parkedDirect(threadId), openCards: (threadId, since) => resumableCards(threadId, since), release: (threadId, cardId, why) => releaseCardNode(threadId, cardId, why) });
 
 /** The open sign-in card the person is answering, and the page its bot's browser shows (null when none a login could fill). */
 async function signInCardPage(botId: string, threadId: string, messageId: string):
   Promise<{ card: SignInRequestCardData; cardHost: string; observed: ObservedPage | null } | { status: number; body: Record<string, unknown> }> {
-  const message = signInMessage(botId, threadId, messageId);
+  const message = signInCards.message(botId, threadId, messageId);
   const bot = store.bot(botId);
   if (!bot || !message?.signIn) return { status: 404, body: { error: "no such sign-in request" } };
   const card = message.signIn;
@@ -12071,7 +12038,7 @@ async function saveLoginFromCard(botId: string, threadId: string, messageId: str
   if (!totp.ok) return { status: 400, body: { error: totp.error } };
   const page = await signInCardPage(botId, threadId, messageId);
   if ("status" in page) return page;
-  const current = signInMessage(botId, threadId, messageId)?.signIn;
+  const current = signInCards.message(botId, threadId, messageId)?.signIn;
   if (!current || current.superseded || signInOutcome(current)) return { status: 409, body: { error: "this sign-in request was answered or replaced while the login was being saved" } };
   const place = cardLoginPlace(page.cardHost, page.observed, body.signInHost);
   logins.create({ ...place, username: fields.value.username ?? "", password: fields.value.password!, totp: totp.value ?? null, source: "card", bots: [botId] });

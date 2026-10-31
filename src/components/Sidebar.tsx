@@ -32,9 +32,10 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { api, useStore, formatTime, visibleMessages, currentTaskBot, botOpensTo, openBot, openThread, type Action, type AppState, type Bot, type BotProject, type Group, type InstanceInfo, type Message } from "@/state/store";
+import { api, useStore, formatTime, visibleMessages, currentTaskBot, botOpensTo, openBot, openThread, type Action, type AppState, type Bot, type BotProject, type Group, type InstanceInfo } from "@/state/store";
 import { approvalModeFor } from "../../shared/approval-mode";
 import { liveActivityLabel } from "@/lib/live-activity";
+import { useVisibleMessages } from "@/lib/use-visible-messages";
 import { llmThreadTitlesEnabled } from "@/lib/feature-flags";
 
 import { BotAvatar } from "./Avatar";
@@ -938,11 +939,6 @@ export function botRowProps(
     generatedTitles: llmThreadTitlesEnabled(state.config),
     dispatch,
   };
-}
-
-export function useVisibleMessages(bot: Bot): Message[] {
-  const { messages, activeLeafId } = bot;
-  return useMemo(() => visibleMessages({ messages, activeLeafId }), [messages, activeLeafId]);
 }
 
 export const BotListItem = memo(function BotListItem(props: BotRowProps) {

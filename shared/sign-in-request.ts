@@ -3,7 +3,7 @@
  * bot works. MimirBot never receives a website password: the person types it
  * into the page, and the bot uses the session the page keeps.
  */
-import type { Surface } from "./wire.ts";
+import type { SignInRequestCardData, Surface } from "./wire.ts";
 
 /** Where the login has to happen: the place the asking turn worked in.
  * The built-in browser keeps its own sign-ins, apart from any computer's
@@ -57,6 +57,14 @@ export function isPendingSignInRequest(
 /** Whether the card still waits on the person: not done, cancelled, superseded or answered in the chat. */
 export function signInWaits(card: { done?: unknown; cancelled?: unknown; superseded?: unknown; answeredInChat?: unknown }): boolean {
   return card.done !== true && card.cancelled !== true && card.superseded !== true && card.answeredInChat !== true;
+}
+
+/** The card as an outside agent sees it: what answers its question, and nothing
+ * of the server's own bookkeeping. Listed once so a new flag on the card cannot
+ * be forgotten in one reader and remembered in another. */
+export function signInView(card: Partial<SignInRequestCardData>): Record<string, unknown> {
+  const { site, url, place, reason, done, cancelled, superseded, answeredInChat, resumed } = card;
+  return { site, url, place, reason, done, cancelled, superseded, answeredInChat, resumed };
 }
 
 /** How a card ended, or null while it is open. */
