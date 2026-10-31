@@ -24,8 +24,10 @@ describe("roomActivityVisible", () => {
     expect(roomActivityVisible(chip({ tool: { name: "recovery: Automatic recovery: trying a backup once.", ok: true } }), false)).toBe(true);
   });
 
-  it("always shows a failure", () => {
-    expect(roomActivityVisible(chip({ tool: { name: "Ran a command", ok: false } }), false)).toBe(true);
+  it("hides a failed step like a 1:1 chat, and always shows a failed turn", () => {
+    const failedStep = chip({ tool: { name: "Ran a command", ok: false } });
+    expect(roomActivityVisible(failedStep, false)).toBe(false);
+    expect(roomActivityVisible(failedStep, true)).toBe(true);
     expect(roomActivityVisible(chip({ tool: { name: "error: engine missing" } }), false)).toBe(true);
   });
 
