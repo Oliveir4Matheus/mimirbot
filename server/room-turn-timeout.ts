@@ -6,7 +6,7 @@ import type { RuntimeEvent } from "./contracts.ts";
 
 /** What the engine sends while it works. Retries, session news and cards are not progress. */
 export const ROOM_TURN_PROGRESS = new Set<RuntimeEvent["type"]>([
-  "content.delta", "item.started", "item.updated", "item.completed", "item.output", "turn.progress",
+  "content.delta", "item.started", "item.updated", "item.completed", "turn.progress",
 ]);
 
 export function roomTurnTimeoutMs(minutes: number): number {

@@ -51,7 +51,7 @@ describe("room turn timeout", () => {
   });
 
   it("counts the engine's work as progress, and not retries, session news or cards", () => {
-    for (const type of ["content.delta", "item.started", "item.updated", "item.completed", "item.output", "turn.progress"] as const) {
+    for (const type of ["content.delta", "item.started", "item.updated", "item.completed", "turn.progress"] as const) {
       expect(ROOM_TURN_PROGRESS.has(type)).toBe(true);
     }
     for (const type of ["turn.retrying", "cap.exhausted", "session.started", "session.model-variants", "runtime.notice", "request.opened", "turn.wait_started"] as const) {
