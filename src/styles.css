@@ -2721,3 +2721,30 @@ button:disabled.bg-danger {
 .trace-step-box { background: color-mix(in srgb, #8b7cf6 14%, var(--color-card)); border-color: color-mix(in srgb, #8b7cf6 30%, var(--color-card)); }
 .trace-step-ink { color: color-mix(in srgb, #7c6cf0 85%, var(--color-ink)); }
 .trace-tool-ink { color: color-mix(in srgb, #1f9a8c 80%, var(--color-ink)); }
+
+/* The provider badge on a Simple-mode bot row: a thin ring turns around the mark
+   while the bot works, and the avatar itself stays still. */
+.agent-provider-ring::before {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 9999px;
+  pointer-events: none;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    color-mix(in srgb, var(--color-accent) 5%, transparent) 46deg,
+    var(--color-accent) 112deg,
+    color-mix(in srgb, var(--color-accent) 75%, var(--color-ink)) 190deg,
+    var(--color-accent) 267deg,
+    color-mix(in srgb, var(--color-accent) 60%, white) 318deg,
+    transparent 360deg
+  );
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2.5px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2.5px));
+  animation: agent-provider-spin 1.1s linear infinite;
+}
+@keyframes agent-provider-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .agent-provider-ring::before { animation: none; }
+}
