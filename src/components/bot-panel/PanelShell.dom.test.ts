@@ -179,7 +179,7 @@ describe("the chat header's conversation title", () => {
     try {
       flushSync(() => headerRoot.render(createElement(ChatHeadConversation, { bot: withTasks })));
       const title = header.querySelector("[data-chathead-conversation]")!;
-      expect(header.textContent).toBe("/Plan the launch");
+      expect(header.textContent).toBe("Plan the launch");
       expect(title.getAttribute("title")).toBe("Show Scout's conversations");
       expect(title.querySelector('[role="img"]')!.getAttribute("aria-label")).toBe("Other activity (1)");
       click(title);

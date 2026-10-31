@@ -131,9 +131,8 @@ describe("header conversation title", () => {
     const busyElsewhere: Bot = { ...bot, mainThreadId: "other", tasks: [...bot.tasks!, { threadId: "other", title: "Other", createdAt: 0, busy: true, activity: "working" }] };
     fixture.advanced = false;
     const simple = renderToStaticMarkup(createElement(ChatView, { bot: busyElsewhere }));
-    const identity = simple.slice(simple.indexOf("data-chathead-identity"), simple.indexOf("data-chathead-controls"));
-    expect(identity.indexOf("data-chathead-conversation")).toBeGreaterThan(identity.indexOf("data-chathead-pill"));
-    expect(identity).toMatch(/data-chathead-conversation[^>]*><span dir="auto" class="truncate">Selected<\/span>/);
+    expect(simple.indexOf("data-chathead-conversation")).toBeGreaterThan(simple.indexOf("data-chathead-pill"));
+    expect(simple).toMatch(/data-chathead-conversation[^>]*><span dir="auto" class="truncate">Selected<\/span>/);
     expect(simple).not.toContain("data-background-activity");
     expect(simple).not.toContain("data-chathead-back");
     window.ogb = { remoteClient: { active: true } } as NonNullable<Window["ogb"]>;
@@ -532,11 +531,10 @@ describe("thread control placement", () => {
     expect(controls[1].split(" ")).toEqual(expect.arrayContaining(["shrink-0", "@max-[30rem]/chathead:ml-auto", "@max-[30rem]/chathead:flex-wrap"]));
   });
 
-  it("keeps the Chief of Staff badge on one line instead of stacking a word per line", () => {
+  it("marks the Chief of Staff with the crown on the avatar, which cannot wrap", () => {
     const markup = renderToStaticMarkup(createElement(ChatView, { bot: { ...bot, busy: false, chiefOfStaff: true } }));
-    const badge = /<span title="Chief of Staff" class="([^"]*)"><svg[^>]*lucide-crown[^]*?<\/svg> <span class="([^"]*)">Chief of Staff<\/span>/.exec(markup)!;
-    expect(badge[1].split(" ")).toEqual(expect.arrayContaining(["shrink-0", "whitespace-nowrap"]));
-    expect(badge[2].split(" ")).toContain("@max-4xl/chathead:sr-only");
+    const crown = /<span title="Chief of Staff" role="img" aria-label="Chief of Staff" class="([^"]*)"><svg[^>]*lucide-crown/.exec(markup)!;
+    expect(crown[1].split(" ")).toEqual(expect.arrayContaining(["absolute", "pointer-events-none", "size-[15px]"]));
   });
 
   it("keeps the selected thread's model in the header and permissions inside the composer pill", () => {

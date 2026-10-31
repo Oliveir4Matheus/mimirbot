@@ -1346,6 +1346,90 @@ body {
   }
 }
 
+/* The chat header's conversation tray. It hangs below the header's bottom
+   border and draws that border as its own line: the fill reaches a few pixels
+   up to mask the segment it crosses, and the stroke leaves the header
+   tangentially, so the tray and the header read as one continuous edge. */
+.conversation-submenu {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  width: 298px;
+  max-width: 100%;
+  height: 41px;
+  /* The stroke's top edge lands on the header's bottom border, so the two read as one line. */
+  margin-top: -1px;
+  padding: 4px 32px 2px;
+  white-space: nowrap;
+  isolation: isolate;
+}
+.conversation-submenu-outline {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  overflow: visible;
+  pointer-events: none;
+}
+.conversation-submenu-surface {
+  fill: var(--color-panel);
+}
+.conversation-submenu-stroke {
+  fill: none;
+  stroke: var(--color-hairline);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.conversation-submenu-icon {
+  width: 13px;
+  height: 13px;
+  flex: none;
+  color: var(--color-ink-tertiary);
+}
+.conversation-submenu-title {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-ink-secondary);
+  font-size: 12px;
+  font-weight: 550;
+  letter-spacing: 0.02px;
+  line-height: 1.4;
+  cursor: pointer;
+}
+.conversation-submenu-title:hover {
+  color: var(--color-ink);
+}
+.conversation-submenu-dot {
+  width: 5px;
+  height: 5px;
+  margin: 0 0 2px 6px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--color-accent);
+}
+@container chathead (max-width: 730px) {
+  .conversation-submenu {
+    width: 260px;
+    height: 39px;
+    padding: 3px 25px 1px;
+  }
+}
+@container chathead (max-width: 490px) {
+  .conversation-submenu {
+    width: 210px;
+    height: 36px;
+    padding: 3px 18px 1px;
+  }
+}
+
 /* Keep focus visible after components clear the browser outline. These
    unlayered rules outrank Tailwind utilities without needing !important. */
 :focus-visible {

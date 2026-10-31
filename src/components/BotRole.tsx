@@ -23,11 +23,17 @@ export function ChatHeadRole({ bot }: { bot: Pick<Bot, "title" | "chiefOfStaff">
   );
 }
 
-export function chiefOfStaffBadge(bot: Bot) {
-  if (!bot.chiefOfStaff) return null;
+/** The chief-of-staff crown, worn on the chat header's avatar rather than in a pill beside the name. */
+export function ChatHeadCrown() {
+  const label = t("chat.chiefOfStaff");
   return (
-    <span title={t("chat.chiefOfStaff")} className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-accent/12 px-2 py-0.5 text-[11px] font-medium text-accent @max-4xl/chathead:px-1.5">
-      <Crown size={11} aria-hidden="true" /> <span className="@max-4xl/chathead:sr-only">{t("chat.chiefOfStaff")}</span>
+    <span
+      title={label}
+      role="img"
+      aria-label={label}
+      className="pointer-events-none absolute -right-1.5 -top-1.5 grid size-[15px] place-items-center text-[#b98b38] drop-shadow-[0_1px_1px_var(--color-panel)] drop-shadow-[0_0_2px_var(--color-panel)]"
+    >
+      <Crown size={15} strokeWidth={2.15} aria-hidden="true" />
     </span>
   );
 }

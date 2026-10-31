@@ -19,6 +19,9 @@ const useNoDrag = () => (useCaptionChrome().draggable ? NO_DRAG : undefined);
 
 export const TOP_ICON_BUTTON = "grid size-[33px] shrink-0 place-items-center rounded-[7px] text-ink-tertiary transition-colors hover:bg-raised hover:text-ink disabled:pointer-events-none disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus";
 
+/** A navigation arrow or the new-conversation button: 32px in a 10px-radius tray. */
+const NAV_ICON_BUTTON = "grid size-8 shrink-0 place-items-center rounded-lg text-ink-tertiary transition-[background-color,color,box-shadow] duration-150 hover:bg-raised hover:text-ink hover:shadow-[0_1px_3px_#15223812] disabled:pointer-events-none disabled:opacity-[0.38] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus";
+
 function DoubleChevron() {
   return (
     <svg viewBox="0 0 12 18" aria-hidden="true" className="h-[18px] w-3 shrink-0 text-ink-tertiary" fill="none" stroke="currentColor" strokeWidth={1.25} strokeLinecap="round" strokeLinejoin="round">
@@ -113,15 +116,15 @@ const ARROW = { back: "M19 12H5M11 6l-6 6 6 6", forward: "M5 12h14m-6-6 6 6-6 6"
 function TopIcon({ label, onClick, disabled = false, children }: { label: string; onClick: () => void; disabled?: boolean; children: ReactNode }) {
   const noDrag = useNoDrag();
   return (
-    <button type="button" aria-label={label} title={label} onClick={onClick} disabled={disabled} style={noDrag} className={TOP_ICON_BUTTON}>
-      <svg viewBox="0 0 24 24" aria-hidden="true" className="size-[18px]" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+    <button type="button" aria-label={label} title={label} onClick={onClick} disabled={disabled} style={noDrag} className={NAV_ICON_BUTTON}>
+      <svg viewBox="0 0 24 24" aria-hidden="true" className="size-[17px]" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
         {children}
       </svg>
     </button>
   );
 }
 
-/** Back, Forward and a new conversation with this bot, ahead of the conversation's name. */
+/** Back and Forward share a tray; New sits beside it, ahead of the conversation's name. */
 export function MimirChatNav({ bot }: { bot: Pick<Bot, "id" | "threadId"> }) {
   const { state, dispatch } = useStore();
   const showThreads = useShowThreads();
@@ -135,11 +138,12 @@ export function MimirChatNav({ bot }: { bot: Pick<Bot, "id" | "threadId"> }) {
     openThread(dispatch, target, state, showThreads);
   };
   return (
-    <nav aria-label={t("sidebar.aria")} className="flex shrink-0 items-center">
-      <TopIcon label={t("browser.panel.back")} disabled={!canBack} onClick={() => go(-1)}><path d={ARROW.back} /></TopIcon>
-      <TopIcon label={t("browser.panel.forward")} disabled={!canForward} onClick={() => go(1)}><path d={ARROW.forward} /></TopIcon>
-      <TopIcon label={t("task.newShort")} onClick={() => dispatch({ type: "newTask", botId: bot.id })}><path d="M12 4v16M4 12h16" strokeWidth={1.6} /></TopIcon>
-      <span aria-hidden="true" className="ml-1 mr-3 h-6 w-px shrink-0 bg-hairline" />
+    <nav aria-label={t("sidebar.aria")} className="flex shrink-0 items-center gap-2.5">
+      <div className="flex items-center gap-0.5 rounded-[10px] bg-inset p-0.5">
+        <TopIcon label={t("browser.panel.back")} disabled={!canBack} onClick={() => go(-1)}><path d={ARROW.back} /></TopIcon>
+        <TopIcon label={t("browser.panel.forward")} disabled={!canForward} onClick={() => go(1)}><path d={ARROW.forward} /></TopIcon>
+      </div>
+      <TopIcon label={t("task.newShort")} onClick={() => dispatch({ type: "newTask", botId: bot.id })}><path d="M12 5v14M5 12h14" strokeWidth={1.85} /></TopIcon>
     </nav>
   );
 }
