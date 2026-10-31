@@ -125,9 +125,8 @@ describe("bundled create-bot skill", () => {
   it("mounts when the person asks for a bot, and never for the bots they already have", () => {
     for (const text of [
       "set up a bot for my inbox",
-      "criar um bot para minha caixa de entrada",
       "I need a new specialist",
-      "montar um time para o comercial",
+      "add a bot that watches my calendar",
     ]) {
       expect(selectBundledSkills(text, [], skills).map((skill) => skill.manifest.id)).toContain("create-bot");
     }

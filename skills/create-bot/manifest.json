@@ -15,14 +15,7 @@
     "create an agent",
     "new agent",
     "new specialist",
-    "team of bots",
-    "criar um bot",
-    "criar bot",
-    "novo bot",
-    "adicionar um bot",
-    "montar um time",
-    "criar um agente",
-    "novo agente"
+    "team of bots"
   ],
   "requiredCapabilities": []
 }
