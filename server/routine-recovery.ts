@@ -57,10 +57,11 @@ const OWNER_ACTION: Record<Exclude<RoutineOwnerCause, "setup">, string> = {
 const TRIAL_ACTION = "The trial Claude credit can't run this. Sign in with your own Claude or ChatGPT account, or add an API key.";
 const RETRY_WHY: Record<Exclude<RoutineRetryCause, "usage_limit">, string> = {
   stalled: "the AI stalled", restarted: "MimirBot restarted while it ran", rate_limited: "a rate limit", provider: "a temporary error",
+  failed: "a failure",
 };
 const FIRST_START: Record<RoutineRetryCause, string> = {
   stalled: "stopped when its AI stalled", restarted: "was cut off when MimirBot restarted", rate_limited: "was stopped by a rate limit",
-  provider: "failed on a temporary AI error", usage_limit: "was refused by the AI's usage limit",
+  provider: "failed on a temporary AI error", usage_limit: "was refused by the AI's usage limit", failed: "failed",
 };
 
 export function classifyRoutineFailure(failure: string, facts: RoutineFailureFacts = {}): RoutineFailureClass {
