@@ -2,6 +2,7 @@
 // Model Context Protocol (MCP) server for MimirBot over JSON-RPC 2.0 stdio,
 // for external agents (Hermes, Claude Desktop, Cursor, etc.).
 import readline from "node:readline";
+import { signInView } from "../shared/sign-in-request.ts";
 
 export function validateBaseUrl(url: string): string {
   const trimmed = url.replace(/\/+$/, "");
@@ -685,16 +686,7 @@ function projectMessage(message: Record<string, any>) {
       }
     : undefined;
   const signIn = isRecord(message.signIn)
-    ? {
-        site: message.signIn.site,
-        url: message.signIn.url,
-        place: message.signIn.place,
-        reason: message.signIn.reason,
-        done: message.signIn.done,
-        cancelled: message.signIn.cancelled,
-        superseded: message.signIn.superseded,
-        resumed: message.signIn.resumed,
-      }
+    ? signInView(message.signIn)
     : undefined;
   return {
     id: message.id,
@@ -731,7 +723,7 @@ function messageNeedsInput(message: Record<string, any>): boolean {
     !message.connector.resumed &&
     message.connector.status !== "connected";
   const secret = isRecord(message.secret) && !message.secret.provided && !message.secret.dismissed && !message.secret.superseded;
-  const signIn = isRecord(message.signIn) && !message.signIn.done && !message.signIn.cancelled && !message.signIn.superseded;
+  const signIn = isRecord(message.signIn) && !message.signIn.done && !message.signIn.cancelled && !message.signIn.superseded && !message.signIn.answeredInChat;
   return Boolean(card || connector || secret || signIn);
 }
 

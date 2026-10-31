@@ -3866,9 +3866,10 @@
     {
       "sha": "baa8425f30a58cdc9a1dbb9c1545cb80e6f9e30b",
       "subject": "fix(team): an inbox item stays listed only while it really waits, and its count shows on the inbox (#3724)",
-      "status": "deferred",
+      "status": "observation",
       "decidedAt": "2026-10-29",
-      "note": "Batch 11 inbox item/count fix. Depends on the Team Cloud inbox base the fork never adopted (upstream 32e46312a ignored, 62c809ec2 pending): server/host/person-inbox.ts, team-messages.ts, representative.ts, shared/inbox.ts and the inbox UI. Importing that is a 100+ file product change (removes team-briefs.ts, rewires notifications), not a safe adaptation; revisit only if the fork adopts the inbox base."
+      "note": "Batch 11 inbox item/count fix. Depends on the Team Cloud inbox base the fork never adopted (upstream 32e46312a ignored, 62c809ec2 pending): server/host/person-inbox.ts, team-messages.ts, representative.ts, shared/inbox.ts and the inbox UI. Importing that is a 100+ file product change (removes team-briefs.ts, rewires notifications), not a safe adaptation; revisit only if the fork adopts the inbox base.",
+      "reason": "The Team Cloud person inbox this fixes (server/host/person-inbox.ts, server/host/team-messages.ts, src/components/SidebarPeople.tsx) does not exist in this fork; ours is PeopleSection.tsx with server/host/inbox-triage.ts. On watch: if we ever adopt that inbox, this fix comes with it."
     },
     {
       "sha": "adacab69a9197aa74238bd7aefb8b887a2203e6e",
@@ -4240,7 +4241,8 @@
       "status": "applied",
       "reason": "Connected apps: an app the bot's Apps switch turns on gets its tools, and Gmail and Google Calendar get plain tools with the same names on every engine. Adapted: no withAuthConfigParameter, which our proxy does not have; our own auth_config_id check is unchanged.",
       "decidedAt": "2026-10-30",
-      "ourCommit": "e5e0a254e4f7c69bbae443240618e8d5a63feed6"
+      "ourCommit": "e5e0a254e4f7c69bbae443240618e8d5a63feed6",
+      "note": "Re-verified 2026-10-30: cherry-picking it onto mimirbot leaves an empty diff. withAuthConfigParameter comes from a later upstream commit we do not have."
     },
     {
       "sha": "168ebfe8bd45af2019f3bd1ce1e0db9663704a66",
@@ -4249,6 +4251,118 @@
       "reason": "CI: a push to main and a merge group run the suite on Linux only; the nightly run, a manual run and the release lane run every platform, and the release gate counts only a full run as proof. Adapted to our ci-scope, which has no areas model or merge-queue pass check.",
       "decidedAt": "2026-10-30",
       "ourCommit": "d730cb733aa68c8a562ac9e4c0d8d4404d53f90e"
+    },
+    {
+      "sha": "fcdc5d29b66d84e6038bd938c8b7b8b2c47b8848",
+      "subject": "fix(auth): allow clients to list and read their notification feed",
+      "status": "adopted",
+      "decidedAt": "2026-10-30",
+      "ourCommit": "be8ee0be33c7c764d2aa73c89c1283bb779c3631",
+      "plan": "feat/upstream-fix-lote-30"
+    },
+    {
+      "sha": "9af85471eb5601c67c4da8f19cd452843ec726f9",
+      "subject": "fix(notifications): keep workspace spend alerts admin-only",
+      "status": "adopted",
+      "decidedAt": "2026-10-30",
+      "ourCommit": "3116eff6a3265162c83ebc6e8d067514b32af19c",
+      "plan": "feat/upstream-fix-lote-30"
+    },
+    {
+      "sha": "1a06d8473426c2d40d4034d1f24575d6720ad93b",
+      "subject": "fix(notifications): preserve spend alerts during non-admin thread reads",
+      "status": "adopted",
+      "decidedAt": "2026-10-30",
+      "ourCommit": "674a15da8ea23d31fae774c2a9a47655c6a078dc",
+      "plan": "feat/upstream-fix-lote-30"
+    },
+    {
+      "sha": "1d917caaf09aae586965d40ea3e9af465bdd5ac5",
+      "subject": "fix(state): preserve navigation during reconnect hydration",
+      "status": "adopted",
+      "decidedAt": "2026-10-30",
+      "ourCommit": "6ac3b8a01995afaad838d91824b2ef0b45ca81e7",
+      "plan": "feat/upstream-fix-lote-30"
+    },
+    {
+      "sha": "3c4fd10158ffb5d1117099c88b0badf04553fc82",
+      "subject": "fix(state): retain newly created tasks during reconnect hydration",
+      "status": "adopted",
+      "decidedAt": "2026-10-30",
+      "ourCommit": "94cc3e5b9f36a13020e899223244945b40558e3f",
+      "plan": "feat/upstream-fix-lote-30"
+    },
+    {
+      "sha": "35c261e1505927713d6a328fc998abd36c582732",
+      "subject": "fix(sidebar): the model's mark sits on the mascot again, clear of the hover actions (#3809)",
+      "status": "applied",
+      "decidedAt": "2026-10-30",
+      "ourCommit": "97777ab36412aff75e0263deb40143ef914f61da",
+      "plan": "feat/upstream-fix-lote-33",
+      "note": "Sidebar: kept our BotModelBadge placement and the BotRole line; upstream's BotModelMark rows were dropped."
+    },
+    {
+      "sha": "b38eb30d81e9c800bc107ac2711502a1a5a24df1",
+      "subject": "fix(sidebar): an open folder whose threads are past the short list offers Show all (#3816) (#3829)",
+      "status": "applied",
+      "decidedAt": "2026-10-30",
+      "ourCommit": "3a8ceb2bb27b7b0700901a2f65029ef8086b3f4c",
+      "plan": "feat/upstream-fix-lote-33",
+      "note": "Sidebar: resolved against our fold state, keeping the pinned and working-folder rows we added."
+    },
+    {
+      "sha": "723bc6563dff13ed0076184c1f111fcaa6910f0a",
+      "subject": "fix(sign-in): a sign-in request answered in the chat settles, and stops waiting under Needs you (#3757)",
+      "status": "applied",
+      "decidedAt": "2026-10-30",
+      "ourCommit": "9cec1f423537bc4d67864d2246f1c5aaeb74f052",
+      "plan": "feat/upstream-fix-lote-34b",
+      "note": "Sign-in: kept our chat-answer path; added the source-hashes acceptance for signIn.answeredInChat in 14 locales."
+    },
+    {
+      "sha": "8537559a98a385c82aafa4d7c8a6d91ec2964940",
+      "subject": "fix(claude): a bot's question reaches the person from inside the bot box (#3913)",
+      "status": "applied",
+      "decidedAt": "2026-10-30",
+      "ourCommit": "0647579ec84e57edcf55df4de11851b13b2bf1db",
+      "plan": "feat/upstream-fix-lote-34b",
+      "note": "Claude driver: rebranded the unreachable note to MimirBot and kept our reconnect handling in server/permission-proxy.ts."
+    },
+    {
+      "sha": "2f604bb86e93607e11fdb2a1d56cb627059c8b18",
+      "subject": "fix: expose Antigravity effort levels",
+      "status": "applied",
+      "decidedAt": "2026-10-30",
+      "ourCommit": "3ce63c40a55f839c96990a064f312cfa3116b5ee",
+      "plan": "feat/upstream-fix-lote-34c",
+      "note": "Antigravity: kept this fork's selectModel {configId, familyVariants} picker and took only the catalog variants."
+    },
+    {
+      "sha": "949905bb5222707354d8fbdb5492787fd90ca249",
+      "subject": "fix(rooms): a room turn stops when the bot makes no progress, not after a fixed time (#3939)",
+      "status": "applied",
+      "decidedAt": "2026-10-30",
+      "ourCommit": "0cdc695c086e667752610e5c537fe877f25c7499",
+      "plan": "feat/upstream-fix-lote-29",
+      "note": "Rooms: our runtime never emits item.output, so it is left out of ROOM_TURN_PROGRESS."
+    },
+    {
+      "sha": "b3eefc4f2a55bc678c12a36a80cf972b0b18616b",
+      "subject": "fix(limits): a bot carries on with another AI at its usage limit by itself, and an engine waiting a limit out ends its turn (#3789)",
+      "status": "applied",
+      "decidedAt": "2026-10-30",
+      "ourCommit": "1b84ef344e70a45823b7ed1c9aca288ac876c3c4",
+      "plan": "feat/upstream-fix-lote-25",
+      "note": "Limits: added startupBackups to server/automatic-recovery.ts, and kept our chief-notices reportIncident signature (no teammate retry here)."
+    },
+    {
+      "sha": "e9ab49fbe22c9421c4bbe7d6a85c224fba3edc66",
+      "subject": "fix(limits): a limited or signed-out AI stays skipped for every new turn and thread, and is said once (#3907)",
+      "status": "applied",
+      "decidedAt": "2026-10-30",
+      "ourCommit": "c7903397924220dbcb31d6ac0ef5013eeb90e495",
+      "plan": "feat/upstream-fix-lote-25",
+      "note": "Limits: no saved-step replay in this fork, so the runtime event and the turn go through quickFallback directly; RoutineRetryCause gained \"failed\" with its English string."
     }
   ]
 }

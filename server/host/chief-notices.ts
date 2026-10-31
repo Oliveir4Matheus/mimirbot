@@ -122,7 +122,8 @@ export function createChiefNotices(deps: ChiefNoticeDeps) {
     return "chief";
   }
 
-  function reportIncident(input: { kind: IncidentKind; bot: BotRecord; threadId: string; detail: string }): void {
+  /** `notified`: the person already heard of it another way (a usage limit's own notice), so only the Chief is told. */
+  function reportIncident(input: { kind: IncidentKind; bot: BotRecord; threadId: string; detail: string; notified?: boolean }): void {
     const { bot, threadId } = input;
     if (deps.quietThread?.(bot.id, threadId)) return;
     const task = store.taskByThread(bot.id, threadId);
@@ -142,7 +143,7 @@ export function createChiefNotices(deps: ChiefNoticeDeps) {
     deliver({
       chief: chiefForBot(store.bots, bot), title: INCIDENTS_THREAD_TITLE, bot, threadId,
       chip: incidentChip(incident), text: incidentText(incident, count),
-      alreadyNotified: input.kind === "could-not-start" || input.kind === "routine-failed",
+      alreadyNotified: input.notified === true || input.kind === "could-not-start" || input.kind === "routine-failed",
     });
   }
 
