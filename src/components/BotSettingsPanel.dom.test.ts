@@ -11,6 +11,7 @@ const fixture = vi.hoisted(() => {
   const listeners = new Set<() => void>();
   return {
     settingsOpen: true,
+    computerOpen: false,
     dispatch: vi.fn(),
     subscribe: (listener: () => void) => {
       listeners.add(listener);
@@ -23,6 +24,7 @@ const fixture = vi.hoisted(() => {
     reset: () => {
       listeners.clear();
       fixture.settingsOpen = true;
+      fixture.computerOpen = false;
       fixture.dispatch.mockReset();
     },
   };
@@ -35,7 +37,7 @@ vi.mock("@/state/store", async (importOriginal) => {
     ...original,
     useStore: () => {
       const settingsOpen = useSyncExternalStore(fixture.subscribe, () => fixture.settingsOpen);
-      return { state: { ...original.initialState, settingsOpen }, dispatch: fixture.dispatch, flushBotPatches: () => Promise.resolve(null) };
+      return { state: { ...original.initialState, settingsOpen, computerOpen: fixture.computerOpen }, dispatch: fixture.dispatch, flushBotPatches: () => Promise.resolve(null) };
     },
   };
 });
@@ -113,6 +115,32 @@ describe("the retracting right panel", () => {
 
     flushSync(() => handle.click());
     expect(fixture.dispatch).toHaveBeenLastCalledWith({ type: "toggleSettings", open: true });
+  });
+
+  it("stops painting the parked drawer, so the panel beside it is not covered, and keeps the handle in reach", () => {
+    const { drawer, handle } = mount();
+    expect(drawer.className).not.toContain("invisible");
+
+    fixture.setOpen(false);
+    flushSync(() => root.render(createElement(BotSettingsPanel, { bot, overlay: false })));
+
+    // Parked, the drawer lands over the panel beside it; hidden, it cannot be painted over it.
+    expect(drawer.className).toContain("invisible");
+    // The handle is the way back in, so it opts back into being painted inside the hidden drawer.
+    expect(handle.className).toContain("visible");
+  });
+
+  it("leaves without the slide when a panel beside it is open, so the menu never sweeps across it", () => {
+    const { drawer } = mount();
+    expect(drawer.className).toContain("transition-[translate,visibility]");
+
+    fixture.computerOpen = true;
+    fixture.setOpen(false);
+    flushSync(() => root.render(createElement(BotSettingsPanel, { bot, overlay: false })));
+
+    expect(drawer.className).toContain("invisible");
+    expect(drawer.className).toContain("transition-none");
+    expect(drawer.className).not.toContain("transition-[translate,visibility]");
   });
 
   it("keeps the panel's content mounted while it is away, so reopening lands where it was left", () => {

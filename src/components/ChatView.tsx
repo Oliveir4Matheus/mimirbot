@@ -1024,17 +1024,18 @@ export function ChatView({ bot: profile }: { bot: Bot }) {
         {...headerDragProps}
         className={cn(
           // A container query never matches the container itself, so the row that wraps is the child below.
-          "@container/chathead px-5 pt-3",
-          "max-md:pl-14 max-md:pr-3 md:py-0 md:pl-[18px] md:pr-[25px]",
+          "@container/chathead pt-3",
+          "md:py-0",
         )}
       >
         <div
           data-chathead-row
           className={cn(
-            "w-full border-b border-hairline bg-panel max-md:pb-3",
+            // Edge to edge: the row's bottom line is the tray's line, so it runs to both sides of the chat.
+            "w-full border-b border-hairline bg-panel",
             phone
-              ? "flex items-center justify-between gap-2"
-              : "grid grid-cols-[minmax(120px,1fr)_minmax(0,max-content)_minmax(220px,1fr)] items-center gap-3 md:h-[58px]",
+              ? "flex items-center justify-between gap-2 px-3 pb-3 pl-14"
+              : "grid grid-cols-[minmax(120px,1fr)_minmax(0,max-content)_minmax(220px,1fr)] items-center gap-3 md:h-[58px] md:pl-[26px] md:pr-[25px]",
           )}
         >
         {!phone && <div className="flex justify-self-start"><MimirChatNav bot={bot} /></div>}<div data-chathead-identity className={cn("flex min-w-0 items-center gap-2.5", phone ? "flex-1" : "justify-center")} style={headerNoDragStyle}>

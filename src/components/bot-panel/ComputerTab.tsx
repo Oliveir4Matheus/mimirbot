@@ -26,9 +26,10 @@ const EXTRA_PLACE_LABEL: Record<Exclude<PlaceChoice, "auto" | "local" | "cloud" 
 
 export function useOpenComputer(bot: Pick<Bot, "id">) {
   const { dispatch } = useStore();
+  // One dispatch: `toggleComputer` already closes the settings panel, and two renders would let the
+  // drawer start a slide it then has to abandon half way.
   return (view: ComputerPanelView = "computer") => {
     writeComputerPanelView(bot.id, view);
-    dispatch({ type: "toggleSettings", open: false });
     dispatch({ type: "toggleComputer", open: true });
   };
 }

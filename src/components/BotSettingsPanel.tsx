@@ -34,6 +34,9 @@ export function BotSettingsPanel({ bot, overlay }: { bot: Bot; overlay: boolean 
   }, [open]);
 
   const label = t(open ? "botPanel.collapse" : "botPanel.expand");
+  // A panel beside it leaves the drawer nowhere to slide to, and sliding across that panel
+  // would read as the menu being drawn over it, so it leaves in the frame it was closed.
+  const noRoom = !open && (state.computerOpen || state.inspectorOpen);
 
   return (
     <div
@@ -52,9 +55,12 @@ export function BotSettingsPanel({ bot, overlay }: { bot: Bot; overlay: boolean 
         id={BOT_PANEL_ID}
         data-bot-settings-drawer=""
         className={cn(
-          "absolute inset-0 transition-transform md:inset-y-0 md:left-auto md:right-0 md:w-[min(420px,42vw)]",
+          "absolute inset-0 md:inset-y-0 md:left-auto md:right-0 md:w-[min(420px,42vw)]",
+          // Parked, the drawer sits over the panel beside it, so it is hidden once it has slid
+          // out; `visibility` keeps it painted for the slide and flips after it.
+          noRoom ? "transition-none" : "transition-[translate,visibility]",
           SLIDE,
-          open ? "translate-x-0" : "pointer-events-none translate-x-full",
+          open ? "translate-x-0" : "pointer-events-none invisible translate-x-full",
         )}
       >
         {opened && <BotSettingsDialog bot={bot} overlay={overlay} open={open} />}
@@ -68,7 +74,8 @@ export function BotSettingsPanel({ bot, overlay }: { bot: Bot; overlay: boolean 
           title={label}
           onClick={() => dispatch({ type: "toggleSettings", open: !open })}
           className={cn(
-            "pointer-events-auto absolute right-full top-1/2 z-50 flex h-[62px] w-[16px] -translate-y-1/2 items-center justify-center rounded-l-[10px] border border-r-0 shadow-[-2px_2px_12px_rgb(0_0_0/0.06)] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
+            // `visible`: the handle is the way back in, so it stays painted while the drawer is hidden.
+            "pointer-events-auto visible absolute right-full top-1/2 z-50 flex h-[62px] w-[16px] -translate-y-1/2 items-center justify-center rounded-l-[10px] border border-r-0 shadow-[-2px_2px_12px_rgb(0_0_0/0.06)] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
             open
               ? "border-hairline/60 bg-panel text-ink-tertiary hover:bg-raised hover:text-ink"
               : "border-hairline bg-accent/10 text-ink-secondary hover:bg-accent/20 hover:text-ink",

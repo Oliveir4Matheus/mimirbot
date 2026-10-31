@@ -801,8 +801,7 @@ describe("the Computer tab", () => {
     vi.stubGlobal("localStorage", { getItem: () => null, setItem });
     click(find(rendered, "data-panel-action", "open-computer"));
     expect(setItem).toHaveBeenLastCalledWith("omb-computer-panel-view:scout", "computer");
-    expect((fixture.dispatch as ReturnType<typeof vi.fn>).mock.calls.slice(-2)).toEqual([
-      [{ type: "toggleSettings", open: false }],
+    expect((fixture.dispatch as ReturnType<typeof vi.fn>).mock.calls.slice(-1)).toEqual([
       [{ type: "toggleComputer", open: true }],
     ]);
     vi.stubGlobal("localStorage", { getItem: () => null, setItem: () => {} });
