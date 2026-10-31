@@ -3458,6 +3458,8 @@
   "botSettings.simple.loginsOff": "{name}'s browser is off. Turn it on in the Screen panel to sign in to sites.",
   "botPanel.addLabel": "Add a label",
   "botPanel.rename": "Rename",
+  "botPanel.collapse": "Collapse the bot panel",
+  "botPanel.expand": "Expand the bot panel",
   "botPanel.conversations.title": "Conversations",
   "botPanel.conversations.search": "Search conversations",
   "botPanel.conversations.searchPlaceholder": "Search {name}'s conversations",
