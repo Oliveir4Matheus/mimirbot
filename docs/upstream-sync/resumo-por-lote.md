@@ -30,3 +30,27 @@ tamanho e ajustes de teste).
 | `97ee8c731`, `7c43dbfba`, `d693dcf4b`, `059b0e769`, `fde016edc` | Sem a base (server lines, routine holds, empréstimo de terminal, coreano) ou rename para MausBot. |
 
 Cada um está registrado em `decisions.json` com `status: "ignored"` e o motivo.
+
+## Merge com o fork (0.1.158)
+
+O trabalho foi feito sobre `0.1.151`; o `mimirbot` já estava em **0.1.158**
+(58 commits, 174 arquivos). O merge traz os dois lados: 6 arquivos conflitaram
+e foram resolvidos mantendo o que o 0.1.158 construiu e somando o nosso:
+
+| Arquivo | Resolução |
+|---|---|
+| `src/components/Sidebar.tsx` | `simpleRow` e `useVisibleMessages` deles; linha advanced ocupada mostra o passo (`SidebarWorkingStep`) |
+| `server/drivers/acp/quiet-status.ts` | `ProcReader`/`sampleLinuxProc` deles + `systemTool`/`startedSince` nossos |
+| `server/index.ts` | `limitTakeover`/`startupBackups` deles + `savedSteps.dispatch` nosso |
+| `server/drivers/acp/core.ts`, `quiet-status.test.ts` | união de imports |
+| `scripts/testing/file-size-ratchet.test.ts` | maior pin dos dois lados |
+
+## Falha conhecida
+
+`server/connected-app-tools.e2e.test.ts` falha a partir do commit do "Now card"
+(`35be290cc`): passa em `cd15d5520`, falha em `35be290cc`, e **passa no
+`upstream/main`** com o mesmo teste e o mesmo fake. O servidor que responde ao
+bridge tem zero capabilities internas, então o token do connector volta 401.
+Não é crash nem estado local (reproduz em worktree limpo). Fica como pendência
+do próximo sync.
+
