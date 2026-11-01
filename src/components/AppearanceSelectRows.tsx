@@ -3,6 +3,8 @@ import { t } from "@/lib/i18n";
 import { CHAT_WIDTH_IDS, applyChatWidth, readChatWidth, type ChatWidthId } from "@/lib/chat-width";
 import { FONT_IDS, applyFont, readFont, type FontId } from "@/lib/fonts";
 import { parseSidebarToolsLayout, setSidebarToolsLayout, SIDEBAR_TOOLS_LAYOUTS, useSidebarToolsLayout } from "@/lib/sidebar-preferences";
+import { alternateSendLabel, parseFollowUpDefault, setFollowUpDefault, useFollowUpDefault } from "@/lib/follow-up";
+import { useSendKey } from "@/lib/send-key";
 import { SettingRow } from "./SettingsPrimitives";
 import { Select } from "./Select";
 
@@ -62,6 +64,24 @@ export function SidebarToolsLayoutRow() {
         {SIDEBAR_TOOLS_LAYOUTS.map((option) => (
           <option key={option} value={option}>{t(`sidebar.toolsLayout.${option}`)}</option>
         ))}
+      </Select>
+    </SettingRow>
+  );
+}
+
+/** What Enter does with a message sent while a bot works. A setting, not a smart default: both are right, for different people. */
+export function FollowUpRow() {
+  const followUp = useFollowUpDefault();
+  const key = alternateSendLabel(useSendKey());
+  return (
+    <SettingRow title={t("settings.followUp.title")} subtitle={t("settings.followUp.subtitle", { key })}>
+      <Select size="sm" className="w-full max-w-[240px]"
+        value={followUp}
+        aria-label={t("settings.followUp.title")}
+        onChange={(event) => setFollowUpDefault(parseFollowUpDefault(event.target.value))}
+      >
+        <option value="steer">{t("settings.followUp.steer")}</option>
+        <option value="queue">{t("settings.followUp.queue")}</option>
       </Select>
     </SettingRow>
   );

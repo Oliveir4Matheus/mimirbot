@@ -770,21 +770,11 @@ export function loadConfig(): AppConfig {
     }
   }
   // Env wins over the file for every credential: the desktop shell injects them as env at spawn.
-  cfg.mistral = { ...cfg.mistral };
-  if (process.env.MISTRAL_API_KEY !== undefined) cfg.mistral.key = process.env.MISTRAL_API_KEY;
-  cfg.cerebras = { ...cfg.cerebras };
-  if (process.env.CEREBRAS_API_KEY !== undefined) cfg.cerebras.key = process.env.CEREBRAS_API_KEY;
+  for (const [name, env] of [["mistral", "MISTRAL_API_KEY"], ["cerebras", "CEREBRAS_API_KEY"], ["greenference", "OMB_GREENFERENCE_API_KEY"],
+    ["groq", "OMB_GROQ_API_KEY"], ["meta", "OMB_META_API_KEY"], ["deepseek", "OMB_DEEPSEEK_API_KEY"], ["xai", "XAI_API_KEY"]] as const) {
+    cfg[name] = { ...cfg[name], ...(process.env[env] !== undefined ? { key: process.env[env] } : {}) };
+  }
   if (process.env.OMB_TREG_KEY !== undefined) cfg.treg = { ...cfg.treg, key: process.env.OMB_TREG_KEY };
-  cfg.greenference = { ...cfg.greenference };
-  if (process.env.OMB_GREENFERENCE_API_KEY !== undefined) cfg.greenference.key = process.env.OMB_GREENFERENCE_API_KEY;
-  cfg.groq = { ...cfg.groq };
-  if (process.env.OMB_GROQ_API_KEY !== undefined) cfg.groq.key = process.env.OMB_GROQ_API_KEY;
-  cfg.meta = { ...cfg.meta };
-  if (process.env.OMB_META_API_KEY !== undefined) cfg.meta.key = process.env.OMB_META_API_KEY;
-  cfg.deepseek = { ...cfg.deepseek };
-  if (process.env.OMB_DEEPSEEK_API_KEY !== undefined) cfg.deepseek.key = process.env.OMB_DEEPSEEK_API_KEY;
-  cfg.xai = { ...cfg.xai };
-  if (process.env.XAI_API_KEY !== undefined) cfg.xai.key = process.env.XAI_API_KEY;
   // Never ANTHROPIC_API_KEY: an operator's stray variable must not move every Claude bot onto API billing.
   cfg.anthropic = { ...cfg.anthropic };
   if (process.env.OMB_ANTHROPIC_API_KEY !== undefined) cfg.anthropic.key = process.env.OMB_ANTHROPIC_API_KEY;
