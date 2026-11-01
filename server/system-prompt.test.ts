@@ -430,5 +430,7 @@ describe("reply style", () => {
     expect(CONVERSATIONAL_STYLE_PROMPT).toMatch(/blank line/);
     expect(CONVERSATIONAL_STYLE_PROMPT).toMatch(/code block/);
     expect(CONVERSATIONAL_STYLE_PROMPT).toMatch(/language/);
+    // A German person once read "Now the edits." between a bot's German lines: every line they see is in their language.
+    expect(CONVERSATIONAL_STYLE_PROMPT).toContain("in every line they can see, including a short note between steps and a message you pass on for them");
   });
 });
