@@ -125,6 +125,16 @@ describe("steer-queue module", () => {
     expect(queuedThreadPosition("other-bot", "thread-slot")).toBeNull();
   });
 
+  it("puts a restarting message ahead of a teammate's queued work, never ahead of the person's own earlier ones", () => {
+    const botId = "bot-restart-first";
+    const threadId = "thread-restart-first";
+    const own = queueSteeredMessage(botId, threadId, "own earlier", { queuedAt: Date.now() - 1_000 });
+    const peer = queueSteeredMessage(botId, threadId, "teammate's note", { peerAsk: { botId: "chief", name: "Chief" } });
+    const restart = queueSteeredMessage(botId, threadId, "restart with this", { first: true });
+    expect(queuedSteerSnapshot((owner) => owner === botId)[threadId].map((item) => item.queueId))
+      .toEqual([own.id, restart.id, peer.id]);
+  });
+
   it("preserves self-opened request provenance through persistence and a capacity wait", () => {
     const bot = fakeBot("bot-self-provenance", "thread-self-provenance", true);
     const store = fakeStore([bot]);

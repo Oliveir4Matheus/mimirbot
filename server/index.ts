@@ -7575,6 +7575,7 @@ async function acceptDirectSend(
           trigger,
           via,
           callId,
+          first: chose === "restart",
         });
         if (chose === "restart") await restartForPerson(botId, threadId, trigger);
         return { ok: true as const, queued: true as const, queueId: queued.id, threadId };
