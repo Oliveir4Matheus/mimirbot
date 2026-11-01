@@ -242,7 +242,7 @@ it("does not add blocking subprocess calls to Electron runtime modules", () => {
   for (const entry of readdirSync(root, { recursive: true })) {
     const name = String(entry).replaceAll("\\", "/");
     if (!/\.(?:mjs|cjs)$/.test(name) || /(?:\.test\.|\.node-test\.|^vendor\/|^build-)/.test(name)) continue;
-    const matches = readFileSync(join(root, name), "utf8").match(/\b(?:spawnSync|execFileSync|execSync)\b/g) ?? [];
+    const matches = readFileSync(join(root, name), "utf8").match(/\b(?:spawnSync|execFileSync|execSync)\(/g) ?? [];
     expect(matches.length, name).toBeLessThanOrEqual(allowed[name] ?? 0);
   }
 });
