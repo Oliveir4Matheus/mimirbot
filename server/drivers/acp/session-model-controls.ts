@@ -9,6 +9,8 @@ export interface AcpModelSelection {
   allowLegacy?: boolean;
   /** The agent reports a model family in `configId` and the variant in its thought-level option; the model id saved for the bot is `<family>-<variant>`. */
   familyVariants?: boolean;
+  /** Ids a successful set confirms by leaving `currentValue` unset. Every other id still needs the string. */
+  unsetIds?: readonly string[];
 }
 
 interface ModelControlsInput {
@@ -71,6 +73,13 @@ export class SessionModelControls {
     });
   }
 
+  confirms(model: string | undefined): boolean {
+    if (!model || this.usesAgentDefault()) return true;
+    if (this.selects(model)) return true;
+    const selected = this.modelOf(this.input.state());
+    return selected === null && this.input.selection?.unsetIds?.includes(model) === true;
+  }
+
   variant(value: string | undefined): NonNullable<ReturnType<typeof acpVariantOption>> {
     if (!this.input.variants) throw new Error(`${this.input.displayName} does not support model variants`);
     const option = acpVariantOption(this.input.state());
@@ -103,9 +112,9 @@ export class SessionModelControls {
         (response) => this.receive(response));
     }
     selected = this.modelOf(this.input.state());
-    if (!this.selects(wanted)) {
+    if (!this.confirms(wanted)) {
       throw new Error(`${this.input.displayName} did not switch to ${wanted} (still ${selected ?? "unknown"})`);
     }
-    return selected;
+    return selected ?? wanted ?? null;
   }
 }
