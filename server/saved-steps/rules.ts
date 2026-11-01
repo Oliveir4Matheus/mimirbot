@@ -121,7 +121,7 @@ export function personTextRequest(message: Message): boolean {
   if (!text.trim() || text.includes("<attached-image") || text.includes("<attached-file")) return false;
   if (message.attachments?.length) return false;
   return !(message.replyToId || message.reaction || message.fromApp || message.pointed || message.dataContext || message.peerAsk
-    || message.via || message.relayed || message.setupRequest || message.steered || message.aside);
+    || message.via || message.relayed || message.steered || message.aside);
 }
 
 const HARMLESS_TOOLS: ReadonlySet<string> = new Set([

@@ -368,7 +368,7 @@ describe("recipeFitsRequest", () => {
 describe("personTextRequest", () => {
   it.each<[Record<string, unknown>, boolean]>([
     [{}, true], [{ via: "call" }, false], [{ relayed: true }, false], [{ replyToId: "m0" }, false], [{ dataContext: { cardId: "c" } }, false],
-    [{ fromApp: {} }, false], [{ pointed: [] }, false], [{ peerAsk: {} }, false], [{ setupRequest: true }, false], [{ steered: true }, false],
+    [{ fromApp: {} }, false], [{ pointed: [] }, false], [{ peerAsk: {} }, false], [{ steered: true }, false],
     [{ aside: true }, false], [{ reaction: "x" }, false], [{ text: "  " }, false],
     [{ attachments: [{ kind: "file", path: "/a", mime: "text/plain", name: "a" }] }, false], [{ text: 'see <attached-image path="/a.png" />' }, false],
   ])("person text request %#", (extra, expected) =>

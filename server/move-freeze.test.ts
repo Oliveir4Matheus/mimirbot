@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { createMoveFreeze, ENDED_REFUSAL, HOME_SCREEN, MOVED_REFUSAL, RAIL_PAGE, switchAutomationsOff, type MoveAutomations } from "./move-freeze.ts";
+import { createMoveFreeze, ENDED_REFUSAL, HOME_SCREEN, MOVED_REFUSAL, switchAutomationsOff, type MoveAutomations } from "./move-freeze.ts";
 import type { MoveWait } from "./move-waits.ts";
 import { createMoveFreezeRoutes } from "./routes/move-freeze.ts";
 import { PASS } from "./routes/table.ts";
