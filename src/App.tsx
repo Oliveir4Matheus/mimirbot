@@ -17,10 +17,11 @@ import { Sidebar } from "@/components/Sidebar";
 import { MimirRail } from "@/mimir/MimirRail";
 import { ChatView } from "@/components/ChatView";
 import { GroupView } from "@/components/GroupView";
+import { BotSettingsPanel } from "@/components/BotSettingsPanel";
 import { SIDEBAR_AND_PANEL_FIT, SIDEBAR_INLINE, TWO_SIDE_PANELS_FIT, useMediaQuery } from "@/lib/use-media-query";
 import { PluginsPanel, preloadConnectedApps } from "@/components/PluginsPanel";
 import {
-  ActivityPanel, BotSettingsDialog, ComputerPanel, FilesView, InspectorPanel, KeyboardShortcutsModal, LocalVmWorkspace, NewBotDialog,
+  ActivityPanel, ComputerPanel, FilesView, InspectorPanel, KeyboardShortcutsModal, LocalVmWorkspace, NewBotDialog,
   preloadScreens, RemoteAgentSettingsPanel, RemoteDesktopPanel, SettingsModal, TeamMapPage, TriggersPage, UsagePage,
 } from "@/components/lazy-screens";
 import { WorkspaceBackupRecovery } from "@/components/WorkspaceBackupSettings";
@@ -292,7 +293,8 @@ function Shell({ viewer }: { viewer: WelcomeViewer | null }) {
       <HomeLine />
       <AppNotices quiet={paletteOpen || drawerOpen || Boolean(localVmWorkspaceBotId)} viewer={viewer} />
       <WhatsNewDialog />
-      <div className="relative flex min-h-0 flex-1">
+      {/* Clips the retracting right panel while it is out of the window; a slide-over that kept its box would widen the page. */}
+      <div className="relative flex min-h-0 flex-1 overflow-clip">
       {!calendarFocus && <button
         type="button"
         ref={menuButtonRef}
@@ -320,52 +322,62 @@ function Shell({ viewer }: { viewer: WelcomeViewer | null }) {
           menuButtonRef.current?.focus();
         }}
       />}
-      {state.activeView === "team-map" ? (
-        <TeamMapPage />
-      ) : state.activeView === "usage" ? (
-        <UsagePage />
-      ) : state.activeView === "files" ? (
-        <FilesView />
-      ) : state.activeView === "routines" ? (
-        <TriggersPage onBack={closeCalendar} onOpenRoom={openCalendarRoom} />
-      ) : !remoteClient && localVmWorkspaceBotId ? (
-        <LocalVmWorkspace
-          primaryBotId={localVmWorkspaceBotId}
-          overlayOpen={nativeViewOverlayOpen}
-          onClose={() => setLocalVmWorkspaceBotId(null)}
-          onOpenComputer={openComputerFromWorkspace}
-        />
-      ) : firstRun === "welcome" ? (
-        <CloudWelcome />
-      ) : firstRun === "intent" ? (
-        <CloudIntent />
-      ) : firstRun === "sign-in" ? (
-        <CloudEngineSignIn />
-      ) : noEngines ? (
-        <NoEngines />
-      ) : group ? (
-        <GroupView key={group.id} group={group} />
-      ) : bot ? (
-        <ChatView bot={bot} />
-      ) : (
-        <main data-app-loading={loading.text} className="relative flex h-full min-w-0 flex-1 flex-col items-center justify-center gap-3 bg-app text-ink-secondary">
-          <WindowDragStrip />
-          <div className="w-full max-w-md"><ChatNotice notice={state.notice} /></div>
-          {loading.busy && <Loader2 size={20} className="animate-spin" />}
-          <div className="text-[14px]">{t(loading.text)}</div>
-          {loading.command && (
-            <div className="text-[12px]">
-            {t("app.loading.startServer")} <code className="rounded bg-raised px-1.5 py-0.5">pnpm dev:server</code>
-            </div>
-          )}
-        </main>
-      )}
-      {/* Sibling panels need distinct keys: two keyed `bot.id` collide in React's keyed reconciliation. */}
-      {state.settingsOpen && bot && (
-        remoteClient
-          ? <RemoteAgentSettingsPanel bot={bot} overlay={state.computerOpen && !twoSidePanelsFit} />
-          : <BotSettingsDialog key={`settings:${bot.id}`} bot={bot} overlay={(state.inspectorOpen || state.computerOpen || (notificationFeed && state.notificationsOpen)) && !twoSidePanelsFit} />
-      )}
+      {/* The chat and the panels that open over it share this column, so a floating
+          panel covers the conversation and never the computer or inspector panel
+          beside it. */}
+      <div className="relative flex min-w-0 flex-1">
+        {state.activeView === "team-map" ? (
+          <TeamMapPage />
+        ) : state.activeView === "usage" ? (
+          <UsagePage />
+        ) : state.activeView === "files" ? (
+          <FilesView />
+        ) : state.activeView === "routines" ? (
+          <TriggersPage onBack={closeCalendar} onOpenRoom={openCalendarRoom} />
+        ) : !remoteClient && localVmWorkspaceBotId ? (
+          <LocalVmWorkspace
+            primaryBotId={localVmWorkspaceBotId}
+            overlayOpen={nativeViewOverlayOpen}
+            onClose={() => setLocalVmWorkspaceBotId(null)}
+            onOpenComputer={openComputerFromWorkspace}
+          />
+        ) : firstRun === "welcome" ? (
+          <CloudWelcome />
+        ) : firstRun === "intent" ? (
+          <CloudIntent />
+        ) : firstRun === "sign-in" ? (
+          <CloudEngineSignIn />
+        ) : noEngines ? (
+          <NoEngines />
+        ) : group ? (
+          <GroupView key={group.id} group={group} />
+        ) : bot ? (
+          <ChatView bot={bot} />
+        ) : (
+          <main data-app-loading={loading.text} className="relative flex h-full min-w-0 flex-1 flex-col items-center justify-center gap-3 bg-app text-ink-secondary">
+            <WindowDragStrip />
+            <div className="w-full max-w-md"><ChatNotice notice={state.notice} /></div>
+            {loading.busy && <Loader2 size={20} className="animate-spin" />}
+            <div className="text-[14px]">{t(loading.text)}</div>
+            {loading.command && (
+              <div className="text-[12px]">
+              {t("app.loading.startServer")} <code className="rounded bg-raised px-1.5 py-0.5">pnpm dev:server</code>
+              </div>
+            )}
+          </main>
+        )}
+        {/* Sibling panels need distinct keys: two keyed `bot.id` collide in React's keyed reconciliation. */}
+        {bot && !remoteClient && (
+          <BotSettingsPanel
+            key={`settings:${bot.id}`}
+            bot={bot}
+            overlay={(state.inspectorOpen || state.computerOpen || (notificationFeed && state.notificationsOpen)) && !twoSidePanelsFit}
+          />
+        )}
+        {state.settingsOpen && bot && remoteClient && (
+          <RemoteAgentSettingsPanel bot={bot} overlay={state.computerOpen && !twoSidePanelsFit} />
+        )}
+      </div>
       {state.computerOpen && bot && (
         remoteClient ? (
           <RemoteDesktopPanel key={`computer:${bot.id}`} bot={bot} />

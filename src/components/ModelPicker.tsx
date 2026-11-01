@@ -773,13 +773,13 @@ export function ModelPicker({
       aria-expanded={open && !bot.busy}
       aria-haspopup="dialog"
       className={cn(
-        "flex h-[35px] items-center gap-2 rounded-lg pl-[3px] pr-2.5 text-[14px] text-ink hover:bg-raised disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent",
-        contained ? "min-w-0 max-w-[58%]" : "shrink-0",
+        "flex items-center text-ink disabled:cursor-not-allowed disabled:opacity-50",
+        contained ? "min-w-0 max-w-[58%] h-[35px] gap-2 rounded-lg pl-[3px] pr-2.5 text-[14px] hover:bg-raised disabled:hover:bg-transparent" : "shrink-0 min-h-[34px] gap-[9px] rounded-lg py-[6px] pl-[9px] pr-[5px] text-[12.4px] font-[510] hover:bg-raised/60 disabled:hover:bg-transparent",
         !contained && active && !showActiveAccount && COMPACT_SQUARE,
       )}
       title={bot.busy ? `${summary}${followLine}\n${t(threadId ? "model.threadBusy" : "model.busy")}` : `${summary}${followLine}`}
     >
-      {active && <InstanceProviderMark instance={active} size={14} />}
+      {active && <InstanceProviderMark instance={active} size={contained ? 14 : 16} />}
       {!contained && active && showActiveAccount && (
         <span data-model-account-compact className="hidden max-w-20 truncate @max-4xl/chathead:inline">{active.displayName}</span>
       )}
@@ -788,7 +788,7 @@ export function ModelPicker({
         <ModelTriggerLevel variant={selectedVariantLabel} effort={selection.effort} />
       </span>
       <ChevronDown
-        size={14}
+        size={contained ? 14 : 13}
         className={cn(
           "text-ink-secondary transition-transform",
           open && "rotate-180",

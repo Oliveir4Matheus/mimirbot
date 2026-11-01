@@ -61,6 +61,8 @@ describe("bot setup and tools in the real renderer", () => {
         .find(([, entry]) => entry.role === "button" && /Open .+ profile/.test(entry.name));
       expect(profile).toBeDefined();
       await ui("click", "--ref", `@${profile![0]}`);
+      // The panel slides in from the window edge; wait for it before clicking inside it.
+      await expect.poll(() => evaluate("getComputedStyle(document.querySelector('[data-bot-settings-drawer]')).translate"), { timeout: 5_000 }).toBe("0px");
       const accessExpanded = () => evaluate("[...document.querySelectorAll('[role=dialog] button')].find(b => b.textContent.trim() === 'Access')?.getAttribute('aria-expanded')");
       await expect.poll(accessExpanded, { timeout: 10_000 }).toMatch(/^(?:true|false)$/);
       if ((await accessExpanded()) !== "true") await click("Access");

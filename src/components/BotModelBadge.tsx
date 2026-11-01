@@ -10,33 +10,23 @@ export function botModel(bot: Pick<Bot, "modelSelection">, instances: InstanceIn
   return { instance, label: label || instance.displayName };
 }
 
-export function BotModelBadge({ bot, instances, avatarSize }: {
+export function BotModelBadge({ bot, instances, avatarSize, placement = "left", working = false }: {
   bot: Pick<Bot, "modelSelection">;
   instances: InstanceInfo[];
   avatarSize: number;
+  placement?: "left" | "right";
+  working?: boolean;
 }) {
   const model = botModel(bot, instances);
   if (!model) return null;
-  const size = Math.max(14, Math.round(avatarSize * 0.4));
+  const size = Math.max(14, Math.round(avatarSize * (placement === "right" ? 0.5 : 0.4)));
   const description = t("sidebar.bot.modelBadge", { model: model.label, engine: model.instance.displayName });
   return (
     <span data-testid="model-badge" role="img" aria-label={description} title={model.label}
-      className="absolute -bottom-0.5 -left-0.5 flex items-center justify-center rounded-full border-2 border-panel bg-panel"
+      data-provider-working={working ? "true" : undefined}
+      className={`absolute flex items-center justify-center rounded-full border-2 border-panel bg-panel ${placement === "right" ? "-bottom-1 -right-1" : "-bottom-0.5 -left-0.5"}${working ? " agent-provider-ring" : ""}`}
       style={{ width: size, height: size }}>
       <InstanceProviderMark instance={model.instance} size={size - 4} />
-    </span>
-  );
-}
-
-/** The engine's mark at the right end of a sidebar row's text; hovering it names the model. */
-export function BotModelMark({ bot, instances }: { bot: Pick<Bot, "modelSelection">; instances: InstanceInfo[] }) {
-  const model = botModel(bot, instances);
-  if (!model) return null;
-  const description = t("sidebar.bot.modelBadge", { model: model.label, engine: model.instance.displayName });
-  return (
-    <span data-testid="model-badge" role="img" aria-label={description} title={model.label}
-      className="ml-auto flex shrink-0 items-center self-center text-ink-secondary">
-      <InstanceProviderMark instance={model.instance} size={14} />
     </span>
   );
 }

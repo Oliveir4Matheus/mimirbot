@@ -17,7 +17,7 @@ vi.mock("@/state/store", async (importOriginal) => {
   return { ...original, useStore: () => ({ state: { ...original.initialState, ...fixture.state }, dispatch: vi.fn() }) };
 });
 
-import { BotModelBadge, BotModelMark, botModel } from "./BotModelBadge";
+import { BotModelBadge, botModel } from "./BotModelBadge";
 import { BotListItem, botRowProps, type BotRowProps } from "./Sidebar";
 
 const claude = {
@@ -61,19 +61,6 @@ describe("BotModelBadge", () => {
   });
 });
 
-describe("BotModelMark", () => {
-  it("draws the engine mark, names only the model on hover and the engine too for screen readers", () => {
-    const markup = renderToStaticMarkup(createElement(BotModelMark, { bot: bot("claude", "opus"), instances: [claude] }));
-    expect(markup).toContain('aria-label="Model: Opus 4.1 (Claude)"');
-    expect(markup).toContain('title="Opus 4.1"');
-    expect(markup).toContain("<svg");
-  });
-
-  it("draws nothing for an engine that is not installed", () => {
-    expect(renderToStaticMarkup(createElement(BotModelMark, { bot: bot("gone", "opus"), instances: [claude] }))).toBe("");
-  });
-});
-
 describe("sidebar bot row", () => {
   const botRow = (BotListItem as MemoExoticComponent<(props: BotRowProps) => ReactNode>).type;
   const render = (candidate: Bot, density: SidebarDensity) => renderToStaticMarkup(createElement(botRow,
@@ -89,14 +76,15 @@ describe("sidebar bot row", () => {
   });
   afterEach(() => { vi.unstubAllGlobals(); });
 
-  // Comfortable and compact put the mark at the end of the row's text, clear of the avatar's status dots;
-  // icons-only has no row text, so the badge stays on the avatar.
-  it.each<[SidebarDensity, string]>([["comfortable", "ml-auto"], ["compact", "ml-auto"], ["icons", "absolute -bottom-0.5 -left-0.5"]])(
-    "shows the model once in a %s row", (density, placement) => {
+  // Advanced and compact rows keep the badge on the avatar's bottom-left: the status dots own the
+  // bottom-right. Simple mode's taller row is the prototype's container and puts the provider
+  // bottom-right, with the working ring around it.
+  it.each<SidebarDensity>(["comfortable", "compact", "icons"])(
+    "shows the model once in an advanced %s row, on the bottom-left", (density) => {
       const found = badges(render(bot("claude", "opus"), density));
       expect(found).toHaveLength(1);
       expect(found[0]).toContain('aria-label="Model: Opus 4.1 (Claude)"');
-      expect(found[0]).toContain(placement);
+      expect(found[0]).toContain("-bottom-0.5 -left-0.5");
     });
 
   // Simple mode shows the mark too (the owner's ask, 2026-10-22): a person sees which provider each bot runs on at a glance.
@@ -105,6 +93,16 @@ describe("sidebar bot row", () => {
     const found = badges(render(bot("claude", "opus"), density));
     expect(found).toHaveLength(1);
     expect(found[0]).toContain('aria-label="Model: Opus 4.1 (Claude)"');
+  });
+
+  it("puts Simple mode's provider at the bottom-right and spins a ring around it while the bot works", () => {
+    fixture.advanced = false;
+    const found = badges(render({ ...bot("claude", "opus"), busy: true }, "comfortable"));
+    expect(found).toHaveLength(1);
+    expect(found[0]).toContain("-bottom-1 -right-1");
+    expect(found[0]).toContain("agent-provider-ring");
+    expect(found[0]).toContain('data-provider-working="true"');
+    expect(render({ ...bot("claude", "opus"), busy: true }, "comfortable")).not.toContain('data-testid="working-dot"');
   });
 
   it("shows no badge while the bot's engine is missing", () => {

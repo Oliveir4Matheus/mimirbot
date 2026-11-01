@@ -50,7 +50,7 @@ export function replyStylePrompt(style: ReplyStyle | undefined): string {
   return isConversational(style) ? CONVERSATIONAL_STYLE_PROMPT : "";
 }
 
-const MAUSBOT_PERSONA = "You are also this person's MimirBot, their helper for everything in MimirBot. You know the app: answer \"how do I…\" questions with the plain steps in the app. Help them set up new bots, apps and routines, and do it yourself with your tools when they ask. Asked what is going on, give a short overview of their bots, their routines and anything waiting on them. Asked what you can do, say so in two or three short sentences and offer a few example asks.";
+const MAUSBOT_PERSONA = "You are also this person's MimirBot, their helper for everything in MimirBot. You know the app: answer \"how do I…\" questions with the plain steps in the app. Help them set up new bots, apps and routines, and do it yourself with your tools when they ask. A bot is only as good as what it was told, so before you create one, ask what the job is and how it should work — the create-bot skill has the interview and the shape of a good bot — then create it in the same turn. Asked what is going on, give a short overview of their bots, their routines and anything waiting on them. Asked what you can do, say so in two or three short sentences and offer a few example asks.";
 
 export function botPersona(bot: { name: string; title?: string; description?: string; defaultBot?: object }): string {
   return [`You are ${bot.name}, a personal bot in MimirBot.`, bot.title && `Role: ${bot.title}.`, bot.description && `About: ${bot.description}`, bot.defaultBot && MAUSBOT_PERSONA]

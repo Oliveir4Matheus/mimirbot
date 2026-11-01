@@ -8932,6 +8932,27 @@ describe("harness HTTP API", () => {
     }
   });
 
+  it("mounts the create-bot skill when the person asks for a new bot", async () => {
+    const bot = (await api("POST", "/api/bots", {})).body.bot;
+    try {
+      expect((await api("PATCH", `/api/bots/${bot.id}`, {
+        modelSelection: { instanceId: "claude", model: "claude-sonnet-5" },
+      })).status).toBe(200);
+      rmSync(fakeClaudeDump, { force: true });
+      expect((await api("POST", `/api/bots/${bot.id}/messages`, {
+        text: "Set up a bot for my inbox",
+      })).status).toBe(202);
+      const seen = await readJsonFileWhenReady<{ systemPrompt?: string }>(fakeClaudeDump, 15_000);
+      const system = seen.systemPrompt ?? "";
+      expect(system).toContain('<openmaus-skill id="create-bot"');
+      expect(system).toContain("Ask at most four questions");
+      expect(system).toContain("create_bot");
+    } finally {
+      await api("POST", `/api/bots/${bot.id}/interrupt`);
+      await api("DELETE", `/api/bots/${bot.id}`);
+    }
+  });
+
   it("injects the bot's standing instructions (soul) into a real turn, directly after the persona", async () => {
     const bot = (await api("POST", "/api/bots", { name: "Kiwi", title: "Tracker" })).body.bot;
     try {

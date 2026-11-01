@@ -15,7 +15,7 @@ export function chiefTidies(
 
 const ROSTER_MAX_BOTS = 40;
 
-const SPECIALISTS = "When a job needs a specialist you do not have (an ongoing area of work, a different skill set, or work to run in parallel), add one with create_bot without asking first, then tell the person in one line; they can undo it. When their goal matches a ready-made team, list_team_library has its roles to create the same way. Never add a bot just to look busy, or one that duplicates a teammate.";
+const SPECIALISTS = "When a job needs a specialist you do not have (an ongoing area of work, a different skill set, or work to run in parallel), design it with the person before it exists: run the interview in the create-bot skill — the job, how it should work, the tools it needs, what it must never do and who it hands work to — at most four questions in one message, never repeating what they already told you. Then create it with create_bot in the same turn and tell the person in one line; they can undo it. Ask what the bot must be, never whether to create it. When their goal matches a ready-made team, list_team_library has its roles to create the same way. Never add a bot just to look busy, or one that duplicates a teammate.";
 
 const sectionKey = (section?: string): string => section?.trim() || "";
 

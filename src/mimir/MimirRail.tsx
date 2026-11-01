@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 
 import { LimitWarnings } from "@/components/automations/LimitWarnings";
 import { useDesktopCapabilities } from "@/components/DesktopCapabilities";
@@ -11,8 +11,9 @@ import { useCloudFilesReady } from "@/lib/cloud-files";
 import { cn } from "@/lib/cn";
 import { t } from "@/lib/i18n";
 import { nearLimitEngines, useEngineLimits } from "@/lib/limit-resets";
-import { useStore } from "@/state/store";
+import { useStore, type Action } from "@/state/store";
 import { planLabel, PlanRingGraphic, useOnePlanPerEngine, type PlanProvider } from "./plan-ring";
+import { RailShell } from "./RailShell";
 
 const ITEM = "group relative flex size-10 shrink-0 items-center justify-center rounded-[13px] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus";
 
@@ -148,57 +149,58 @@ export function MimirRail() {
   // SAFETY: Electron's -webkit-app-region is not in React's CSSProperties type; the renderer accepts it as an inline style.
   const dragStyle = { WebkitAppRegion: "drag" } as CSSProperties;
   const macInset = capabilities.windowChrome === "mac-inset";
-  const openUsage = () => dispatch({ type: "showUsage" });
+  const [open, setOpen] = useState(true);
+  const pick = useCallback((action: Action) => {
+    dispatch(action);
+    setOpen(false);
+  }, [dispatch]);
+  const openUsage = () => pick({ type: "showUsage" });
 
   return (
-    <nav
-      aria-label={t("sidebar.aria")}
-      data-mimir-rail=""
-      className="relative z-30 flex h-full w-[66px] shrink-0 flex-col items-center border-r border-hairline/40 bg-panel pb-[9px] pt-2.5 max-md:hidden"
-    >
+    <RailShell label={t("sidebar.aria")} open={open} onOpenChange={setOpen}>
       {macInset && <div aria-hidden="true" className="h-7 w-full shrink-0" style={dragStyle} />}
       <button
         type="button"
         aria-label={brand().name}
         title={brand().name}
-        onClick={() => dispatch({ type: "showChat" })}
+        onClick={() => pick({ type: "showChat" })}
         className="mb-3.5 grid size-8 shrink-0 place-items-center rounded-[9px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
       >
         <img src="/app-icon.svg" alt="" className="size-7" />
       </button>
 
       <div className="flex w-full flex-col items-center gap-1.5">
-        <RailButton label={t("sidebar.section.bots")} active={state.activeView === "chat" && !overlay} onClick={() => dispatch({ type: "showChat" })}>{ICONS.bots}</RailButton>
+        <RailButton label={t("sidebar.section.bots")} active={state.activeView === "chat" && !overlay} onClick={() => pick({ type: "showChat" })}>{ICONS.bots}</RailButton>
         <RailButton
           label={t("sidebar.nav.automations")}
           active={routines && focus.view !== "calendar" && focus.section !== "logs"}
           attention={automationsNeedYou}
-          onClick={() => dispatch({ type: "showRoutines", view: "list" })}
+          onClick={() => pick({ type: "showRoutines", view: "list" })}
         >
           {ICONS.automations}
         </RailButton>
-        <RailButton label={t("routines.drawer.schedule")} active={routines && focus.view === "calendar"} onClick={() => dispatch({ type: "showRoutines", view: "calendar" })}>{ICONS.schedule}</RailButton>
-        <RailButton label={t("routines.logs")} active={routines && focus.section === "logs"} onClick={() => dispatch({ type: "showRoutines", section: "logs" })}>{ICONS.logs}</RailButton>
-        <RailButton label={t("sidebar.nav.teamMap")} active={state.activeView === "team-map" && !overlay} onClick={() => dispatch({ type: "showTeamMap" })}>{ICONS.teamMap}</RailButton>
-        {filesReady && <RailButton label={t("sidebar.nav.files")} active={state.activeView === "files" && !overlay} onClick={() => dispatch({ type: "showFiles" })}>{ICONS.files}</RailButton>}
+        <RailButton label={t("routines.drawer.schedule")} active={routines && focus.view === "calendar"} onClick={() => pick({ type: "showRoutines", view: "calendar" })}>{ICONS.schedule}</RailButton>
+        <RailButton label={t("routines.logs")} active={routines && focus.section === "logs"} onClick={() => pick({ type: "showRoutines", section: "logs" })}>{ICONS.logs}</RailButton>
+        <RailButton label={t("sidebar.nav.teamMap")} active={state.activeView === "team-map" && !overlay} onClick={() => pick({ type: "showTeamMap" })}>{ICONS.teamMap}</RailButton>
+        {filesReady && <RailButton label={t("sidebar.nav.files")} active={state.activeView === "files" && !overlay} onClick={() => pick({ type: "showFiles" })}>{ICONS.files}</RailButton>}
         <RailButton label={t("settings.section.usage")} active={state.activeView === "usage" && !overlay} onClick={openUsage}>{ICONS.usage}</RailButton>
       </div>
 
       <div className="mt-auto flex w-full flex-col items-center gap-1.5 pt-3">
         <NotificationsButton />
         {rings.map((provider) => <PlanRing key={provider.driver} provider={provider} onOpen={openUsage} />)}
-        <RailButton label={t("sidebar.nav.apps")} active={state.pluginsOpen} onClick={() => dispatch({ type: "togglePlugins", open: true })}>{ICONS.apps}</RailButton>
-        <RailButton label={t("sidebar.menu.help")} onClick={() => void openExternalLink(HELP_CENTER_URL)}>{ICONS.help}</RailButton>
+        <RailButton label={t("sidebar.nav.apps")} active={state.pluginsOpen} onClick={() => pick({ type: "togglePlugins", open: true })}>{ICONS.apps}</RailButton>
+        <RailButton label={t("sidebar.menu.help")} onClick={() => { void openExternalLink(HELP_CENTER_URL); setOpen(false); }}>{ICONS.help}</RailButton>
         <RailButton
           label={t("sidebar.menu.settings")}
           active={state.appSettingsOpen}
-          onClick={() => dispatch({ type: "toggleAppSettings", open: true })}
+          onClick={() => pick({ type: "toggleAppSettings", open: true })}
         >
           {ICONS.settings}
         </RailButton>
         <UpdateIndicator className="size-10" />
         <SidebarProfileMenu iconOnly rail />
       </div>
-    </nav>
+    </RailShell>
   );
 }

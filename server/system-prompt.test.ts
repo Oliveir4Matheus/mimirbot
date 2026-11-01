@@ -5,6 +5,7 @@ import { BUILT_IN_BROWSER_SYSTEM_PROMPT } from "./browser-engine.ts";
 import {
   longCommandsPrompt,
   buildSystemPrompt,
+  botPersona,
   CONVERSATIONAL_STYLE_PROMPT,
   CLOUD_HOME_PLACE,
   cloudHomePrompt,
@@ -60,6 +61,23 @@ describe("computerPrompt", () => {
     }
     expect(new Set(Object.keys(paragraphs).map((kind) => computerPrompt(kind as ComputerPromptKind))).size)
       .toBe(Object.keys(paragraphs).length);
+  });
+});
+
+describe("botPersona", () => {
+  it("gives MimirBot the app's own identity, and the interview before it creates a bot", () => {
+    const persona = botPersona({ name: "MimirBot", defaultBot: {} });
+
+    expect(persona.startsWith("You are MimirBot, a personal bot in MimirBot.")).toBe(true);
+    expect(persona).toContain("A bot is only as good as what it was told");
+    expect(persona).toContain("the create-bot skill has the interview");
+    expect(persona).toContain("then create it in the same turn");
+  });
+
+  it("keeps every other bot's persona to who it is", () => {
+    const persona = botPersona({ name: "Kiwi", title: "Tracker", description: "Files bugs." });
+
+    expect(persona).toBe("You are Kiwi, a personal bot in MimirBot. Role: Tracker. About: Files bugs.");
   });
 });
 

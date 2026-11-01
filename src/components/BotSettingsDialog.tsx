@@ -34,9 +34,10 @@ function sectionMatches(entry: (typeof BOT_SECTIONS)[number], query: string): bo
   return [entry.label, sectionLabel(entry), ...entry.keywords].some((part) => part.toLowerCase().includes(query));
 }
 
-export function BotSettingsDialog({ bot, overlay = false }: {
+export function BotSettingsDialog({ bot, overlay = false, open = true }: {
   bot: Bot;
   overlay?: boolean;
+  open?: boolean;
 }) {
   const { state, dispatch } = useStore();
   const section = state.botSettingsSection;
@@ -69,8 +70,22 @@ export function BotSettingsDialog({ bot, overlay = false }: {
       ?.scrollIntoView({ block: "nearest" });
   }, [collapsed, section, q]);
 
+  const openRef = useRef(open);
   useEffect(() => {
+    openRef.current = open;
+  }, [open]);
+  useEffect(() => {
+    // Only a panel that is still open when it goes away (another bot, another
+    // screen) hands focus back to whatever opened it; a collapsed one leaves it
+    // on the handle that brings it back.
     const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    return () => {
+      if (openRef.current) previousFocus?.focus();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
     const dialog = dialogRef.current;
     dialog?.focus();
 
@@ -87,11 +102,8 @@ export function BotSettingsDialog({ bot, overlay = false }: {
     };
 
     window.addEventListener("keydown", onKey);
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      previousFocus?.focus();
-    };
-  }, [dispatch]);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [dispatch, open]);
 
   const renderSectionBody = (id: (typeof BOT_SECTIONS)[number]["id"]) => {
     switch (id) {
@@ -163,14 +175,15 @@ export function BotSettingsDialog({ bot, overlay = false }: {
     <>
       <aside
         ref={dialogRef}
-        role="dialog"
+        role={open ? "dialog" : undefined}
         aria-labelledby="bot-settings-title"
+        aria-hidden={!open}
+        inert={!open}
         tabIndex={-1}
         className={cn(
-          "animate-sheet-in md:animate-panel-in absolute inset-0 z-40 flex h-full min-w-0 flex-col border-l border-hairline/40 bg-panel outline-none focus-visible:outline-none",
-          overlay
-            ? "md:inset-auto md:right-0 md:top-0 md:bottom-0 md:w-[min(420px,42vw)] md:shadow-2xl"
-            : "md:static md:z-auto md:w-[min(420px,42vw)] md:shrink-0",
+          "flex h-full w-full min-w-0 flex-col border-l border-hairline/40 bg-panel outline-none focus-visible:outline-none",
+          overlay && "md:shadow-2xl",
+          !open && "pointer-events-none",
         )}
       >
         {simpleView ? (

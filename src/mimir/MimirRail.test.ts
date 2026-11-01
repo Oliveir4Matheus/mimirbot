@@ -73,6 +73,15 @@ describe("the icon rail", () => {
   it("hides on the phone layout, where the sidebar is the full-screen bot list", () => {
     expect(render(MimirRail)).toMatch(/data-mimir-rail=""[^>]*max-md:hidden/);
   });
+
+  it("opens expanded, with the handle that retracts it beside the places", () => {
+    const html = render(MimirRail);
+    expect(html).toMatch(/data-mimir-rail=""/);
+    expect(html).toContain('data-mimir-rail-open="true"');
+    expect(html).toContain('id="mimir-rail-content"');
+    expect(html).toMatch(/data-mimir-rail-handle=""[^>]*aria-controls="mimir-rail-content"[^>]*aria-expanded="true"/);
+    expect(html).toContain('aria-label="Collapse Bots and navigation"');
+  });
 });
 
 describe("the sidebar beside the rail", () => {

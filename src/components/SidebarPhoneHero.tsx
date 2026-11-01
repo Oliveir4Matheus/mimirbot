@@ -3,7 +3,8 @@ import { t } from "@/lib/i18n";
 import { stateForBot } from "@/lib/mascot";
 import type { Bot } from "@/state/store";
 import { BotAvatar } from "./Avatar";
-import { openBotContextMenu, useVisibleMessages, type MenuState } from "./Sidebar";
+import { useVisibleMessages } from "@/lib/use-visible-messages";
+import { openBotContextMenu, type MenuState } from "./Sidebar";
 
 /** The phone's home leads with the chief of staff, large and centred, instead of a row. */
 export function PhoneHero({ bot, selected, onOpen, onMenu }: { bot: Bot; selected: boolean; onOpen: () => void; onMenu: (menu: MenuState) => void }) {

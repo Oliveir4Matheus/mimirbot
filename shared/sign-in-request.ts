@@ -3,7 +3,7 @@
  * bot works. MimirBot never receives a website password: the person types it
  * into the page, and the bot uses the session the page keeps.
  */
-import type { Surface } from "./wire.ts";
+import type { SignInRequestCardData, Surface } from "./wire.ts";
 
 /** Where the login has to happen: the place the asking turn worked in.
  * The built-in browser keeps its own sign-ins, apart from any computer's
@@ -33,12 +33,13 @@ export function normalizeSignInSite(raw: unknown): { url: string; site: string }
 }
 
 /** A still-open sign-in card for this site — the set a newer request
- * supersedes. Done, cancelled and already-superseded cards keep their
- * settled state. In a room only the asking bot's own cards count. */
+ * supersedes. Done, cancelled, already-superseded and answered-in-chat
+ * cards keep their settled state. In a room only the asking bot's own
+ * cards count. */
 export function isPendingSignInRequest(
   message: {
     kind?: unknown;
-    signIn?: { site?: unknown; done?: unknown; cancelled?: unknown; superseded?: unknown };
+    signIn?: { site?: unknown; done?: unknown; cancelled?: unknown; superseded?: unknown; answeredInChat?: unknown };
     from?: { botId?: unknown };
   },
   site: string,
@@ -48,11 +49,22 @@ export function isPendingSignInRequest(
   return (
     message.kind === "signin" &&
     message.signIn?.site === site &&
-    message.signIn.done !== true &&
-    message.signIn.cancelled !== true &&
-    message.signIn.superseded !== true &&
+    signInWaits(message.signIn) &&
     (!roomThread || message.from?.botId === requestingBotId)
   );
+}
+
+/** Whether the card still waits on the person: not done, cancelled, superseded or answered in the chat. */
+export function signInWaits(card: { done?: unknown; cancelled?: unknown; superseded?: unknown; answeredInChat?: unknown }): boolean {
+  return card.done !== true && card.cancelled !== true && card.superseded !== true && card.answeredInChat !== true;
+}
+
+/** The card as an outside agent sees it: what answers its question, and nothing
+ * of the server's own bookkeeping. Listed once so a new flag on the card cannot
+ * be forgotten in one reader and remembered in another. */
+export function signInView(card: Partial<SignInRequestCardData>): Record<string, unknown> {
+  const { site, url, place, reason, done, cancelled, superseded, answeredInChat, resumed } = card;
+  return { site, url, place, reason, done, cancelled, superseded, answeredInChat, resumed };
 }
 
 /** How a card ended, or null while it is open. */

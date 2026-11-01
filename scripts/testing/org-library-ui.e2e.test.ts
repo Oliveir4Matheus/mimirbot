@@ -131,6 +131,8 @@ describe("the organization library in the real renderer", () => {
       .find(([, entry]) => entry.role === "button" && /Open .+ profile/.test(entry.name));
     expect(profile).toBeDefined();
     await ui("click", "--ref", `@${profile![0]}`);
+    // The panel slides in from the window edge; wait for it before clicking inside it.
+    await expect.poll(() => ui("eval", "--js", "getComputedStyle(document.querySelector('[data-bot-settings-drawer]')).translate"), { timeout: 5_000 }).toMatchObject({ result: "0px" });
     await click("Identity");
     await expect.poll(snapshot, { timeout: 10_000 }).toContain("From Sales desk 1.3.0 · Acme Partners");
     await click("Skills");

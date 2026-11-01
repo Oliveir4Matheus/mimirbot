@@ -93,12 +93,30 @@ describe("official Antigravity catalog", () => {
         { value: "account-high", name: "Account High" },
         { group: "More", options: [{ value: "account-low", name: "Account Low" }] },
       ],
+    }, {
+      id: "thinking_level",
+      category: "thought_level",
+      type: "select",
+      currentValue: "high",
+      options: [
+        { value: "low", name: "Low" },
+        { value: "medium", name: "Medium" },
+        { value: "high", name: "High" },
+      ],
     }];
     expect(catalogFromAntigravityConfigOptions(options, "missing")).toEqual({
       default: "account-low",
       options: [
         { id: "account-high", label: "Account High" },
-        { id: "account-low", label: "Account Low" },
+        {
+          id: "account-low",
+          label: "Account Low",
+          variants: [
+            { id: "low", label: "Low" },
+            { id: "medium", label: "Medium" },
+            { id: "high", label: "High" },
+          ],
+        },
       ],
     });
   });
