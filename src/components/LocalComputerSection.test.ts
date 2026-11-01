@@ -297,6 +297,8 @@ describe("cloud computer inventory UI", () => {
     const disconnected = renderCard({ configured: false });
     expect(disconnected).toContain("Boat is not connected");
     expect(disconnected).not.toContain("No cloud desktops found");
+    expect(disconnected.match(/Boat is not connected/g)).toHaveLength(1);
+    expect(disconnected).not.toContain("aria-busy");
 
     const unavailable = renderCard({ unavailableReason: "boat.dev is unavailable" });
     expect(unavailable).toContain("boat.dev is unavailable");
