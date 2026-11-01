@@ -52,6 +52,8 @@ import {
   composerShouldRefocus,
   composerTakesFocusOnOpen,
   imageAttachmentFromFile,
+  imageSlotsLeft,
+  imagesThatFit,
   replyTargetTakesFocus,
   intakeFiles,
   isLongPaste,
@@ -516,6 +518,7 @@ export function Composer({
         allowImages: engineSupportsImages,
         getPath: pathForFile,
         uploadImage,
+        imageSlots: imageSlotsLeft(attachments),
       });
       if (added.length) addAttachments(added);
       if (notice) setAttachmentNotice(notice);
@@ -639,25 +642,24 @@ export function Composer({
         dispatch({ type: "error", message: t("composer.error.clipboardImage") });
         return;
       }
-      if (imageFiles.length > 0) {
-        changeDraftAttachmentPending(draftId, true);
-        void (async () => {
-          try {
-            const results = await Promise.allSettled(imageFiles.map(uploadImage));
-            for (const result of results) {
-              if (result.status === "rejected") {
-                dispatch({
-                  type: "error",
-                  message: result.reason instanceof Error ? result.reason.message : "image upload failed",
-                });
-              }
+      const kept = imagesThatFit(imageFiles, imageSlotsLeft(attachments), setAttachmentNotice);
+      changeDraftAttachmentPending(draftId, true);
+      void (async () => {
+        try {
+          const results = await Promise.allSettled(kept.map(uploadImage));
+          for (const result of results) {
+            if (result.status === "rejected") {
+              dispatch({
+                type: "error",
+                message: result.reason instanceof Error ? result.reason.message : "image upload failed",
+              });
             }
-          } finally {
-            changeDraftAttachmentPending(draftId, false);
           }
-        })();
-        return;
-      }
+        } finally {
+          changeDraftAttachmentPending(draftId, false);
+        }
+      })();
+      return;
     }
     const pasted = e.clipboardData.getData("text/plain");
     const reference = threadTokenFromPaste(pasted, threads, currentBotId);
