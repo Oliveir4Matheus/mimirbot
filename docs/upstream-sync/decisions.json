@@ -4363,6 +4363,404 @@
       "ourCommit": "c7903397924220dbcb31d6ac0ef5013eeb90e495",
       "plan": "feat/upstream-fix-lote-25",
       "note": "Limits: no saved-step replay in this fork, so the runtime event and the turn go through quickFallback directly; RoutineRetryCause gained \"failed\" with its English string."
+    },
+    {
+      "sha": "3a5af94862549608ec69ebee38d2b7d0dd385af3",
+      "subject": "fix(redact): mask GitLab personal, deploy and runner tokens (#3926)",
+      "status": "applied",
+      "decidedAt": "2026-11-01",
+      "ourCommit": "d2ce242562eb0c2f215f463e93a833ecdb1130a8",
+      "plan": "feat/upstream-lote-ci-seguranca"
+    },
+    {
+      "sha": "b879e18787aa91e501e1ae25eae6c637386ea259",
+      "subject": "fix(redact): mask Basic credentials in an Authorization header (#3985)",
+      "status": "applied",
+      "decidedAt": "2026-11-01",
+      "ourCommit": "ec35b156c459f3ce4648dd786f18a73a3020e5cf",
+      "plan": "feat/upstream-lote-ci-seguranca"
+    },
+    {
+      "sha": "0fdb32dfba94adb90d099d177ef2669dc30702c1",
+      "subject": "fix(redact): mask Slack app-level tokens (xapp-) (#4065)",
+      "status": "applied",
+      "decidedAt": "2026-11-01",
+      "ourCommit": "aef269c3bee501099e4cb03c46715248ff268d94",
+      "plan": "feat/upstream-lote-ci-seguranca"
+    },
+    {
+      "sha": "3d10238f882d347de545ce380c16323cdeb447e9",
+      "subject": "test(chat-tools): the overlapping-prefix redaction test uses a credential no random id can contain (#3877)",
+      "status": "applied",
+      "decidedAt": "2026-11-01",
+      "ourCommit": "0bdd3f2091c540645a9a6e77ddcb97ae73c4ff4f",
+      "plan": "feat/upstream-lote-ci-seguranca"
+    },
+    {
+      "sha": "7918c401ebf882502e529d46cfb637785ac5a060",
+      "subject": "fix(mcp): open a sign-in page on this machine (http://127.0.0.1) instead of cancelling it (#4013)",
+      "status": "applied",
+      "decidedAt": "2026-11-01",
+      "ourCommit": "ebbcc7ebac4700c719bacfd8506cb75db95ed04b",
+      "plan": "feat/upstream-lote-ci-seguranca"
+    },
+    {
+      "sha": "095804cb817c6dc4b20e8ddb73bec6bb45f4cb45",
+      "subject": "Security: better-auth 1.7.7 and happy-dom 21.0.4 (#4010)",
+      "status": "applied",
+      "decidedAt": "2026-11-01",
+      "ourCommit": "33374a6429ead7a622aab2c5d2f9e5fce3636399",
+      "plan": "feat/upstream-lote-ci-seguranca",
+      "note": "happy-dom 21.0.4 na raiz, better-auth 1.7.7 no control-plane; o lockfile do commit ja estava consistente."
+    },
+    {
+      "sha": "a5b54625665fc6b8d6dafdd5f0ca7613e2f7f7d1",
+      "subject": "test: six flaky tests wait on what they check, not on a clock or a lucky port (#3822)",
+      "status": "applied",
+      "decidedAt": "2026-11-01",
+      "ourCommit": "3219d490bb37ecb1f5aae0f15cff153e57b87627",
+      "plan": "feat/upstream-lote-ci-seguranca"
+    },
+    {
+      "sha": "74295ad664c9d43335cc71d220a2b4ae3a5efd5c",
+      "subject": "test(config): chmod a tick after the settled write, so its ctime moves",
+      "status": "applied",
+      "decidedAt": "2026-11-01",
+      "ourCommit": "5859fb4904e966c32dc0b1e4ea8b777222c2ff3f",
+      "plan": "feat/upstream-lote-ci-seguranca"
+    },
+    {
+      "sha": "0e4dbc0e5a77e50db94ea045dd699bfa0425125a",
+      "subject": "test(smoke): the peer Ask check waits for its decision row instead of reading it once (#3874)",
+      "status": "applied",
+      "decidedAt": "2026-11-01",
+      "ourCommit": "d683d59c03eda6092688e75014b8d2d793ae9b0f",
+      "plan": "feat/upstream-lote-ci-seguranca",
+      "note": "O smoke precisa do app rodando: verificado so que o cherry-pick aplica limpo."
+    },
+    {
+      "sha": "81ac1c45c4605a7e3fc0d9a4509cbc6b01ca3a0a",
+      "subject": "test(lending): wait up to two minutes for a lent computer's first command on a fresh Windows runner (#4046)",
+      "status": "applied",
+      "decidedAt": "2026-11-01",
+      "ourCommit": "fe9f9be979389489bc7191c6c31fe5e0b6bf5b38",
+      "plan": "feat/upstream-lote-ci-seguranca"
+    },
+    {
+      "sha": "1b1131d71377389b116eba2f431ce36cf8613e05",
+      "subject": "fix(server): contain body checks and iterate request-sized thread references",
+      "status": "applied",
+      "decidedAt": "2026-11-01",
+      "ourCommit": "69a68b11627b18eda310df9b201f5ec8cc099360",
+      "plan": "feat/upstream-lote-ci-seguranca",
+      "note": "So o codigo e os testes unitarios: server/body-thread-guards.e2e.test.ts ficou com a versao do fork, mais nova (ec834e08e)."
+    },
+    {
+      "sha": "88d54eb17a3655b968470cbbf3b5097de225a8b5",
+      "subject": "Release: build the Mac app on macos-15; GitHub retires macos-14 on November 2 (#4042)",
+      "status": "applied",
+      "decidedAt": "2026-11-01",
+      "ourCommit": "e12a92726076b3e39215e7825a08ecea6be31c60",
+      "plan": "feat/upstream-lote-ci-seguranca",
+      "note": "Lane .github/workflows/release.yml, que o fork nao usa (precisa dos segredos Apple do upstream); mantida em dia para o macos-14 aposentar."
+    },
+    {
+      "sha": "43d3a84d188d27c8ad95cdd5557e7eeb2ddce3ee",
+      "subject": "Release: staple up to six times before failing the Mac build (#4043)",
+      "status": "applied",
+      "decidedAt": "2026-11-01",
+      "ourCommit": "58237a88ac3cef59f562f02848526682a3aaac39",
+      "plan": "feat/upstream-lote-ci-seguranca",
+      "note": "Mesma lane do release.yml; sem efeito no pipeline do fork."
+    },
+    {
+      "sha": "242a8396e86cea9c78a4b7cfe504df96581c3938",
+      "subject": "ci: the static job fetches history without file contents",
+      "status": "applied",
+      "decidedAt": "2026-11-01",
+      "ourCommit": "751a08950e81b4d429a43dc8162a1d86ecd5cb0e",
+      "plan": "feat/upstream-lote-ci-seguranca",
+      "note": "Hunk do ci.yml aplicado a mao: o contexto do job static no upstream vem dos runners Boat, que o fork nao usa. A parte de docs/ci.md ficou de fora."
+    },
+    {
+      "sha": "9230dc9b71a22375a9d3b296172b5664c2ae3201",
+      "subject": "fix(antigravity): skip mode config option when unadvertised by ACP server (#3958)",
+      "status": "applied",
+      "decidedAt": "2026-11-01",
+      "ourCommit": "af502864298e46f9674a1574b3fe82b1d2fd73e6",
+      "plan": "feat/upstream-lote-ci-seguranca"
+    },
+    {
+      "sha": "9338b7410fc09a31ab1455c5847de7d1b4750ef9",
+      "subject": "feat(engines): an OpenAI-compatible server shows its provider's mark (#4067)",
+      "status": "applied",
+      "decidedAt": "2026-11-01",
+      "ourCommit": "9eb29000f27acb347717c145127cf59266cfb080",
+      "plan": "feat/upstream-lote-ci-seguranca"
+    },
+    {
+      "sha": "80012e69dd8ba2708fd63dff7ec8b78c480f1b4d",
+      "subject": "fix(cursor): the picker lists every model the ACP session offers (#4027)",
+      "status": "applied",
+      "decidedAt": "2026-11-01",
+      "ourCommit": "63bec12e1394a2b532b5b5320e1d595807272844",
+      "plan": "feat/upstream-lote-ci-seguranca"
+    },
+    {
+      "sha": "57ca302400662e5a0af1c963f1bb4a6b22494634",
+      "subject": "fix(browser): compare fnm's PATH link by the Node version it names (#4036)",
+      "status": "applied",
+      "decidedAt": "2026-11-01",
+      "ourCommit": "b773a58d9bc83672e4c37e6f168fefaa1ac6d3d6",
+      "plan": "feat/upstream-lote-ci-seguranca"
+    },
+    {
+      "sha": "af125b41d2934f7b408aa976f85d05a225553011",
+      "subject": "fix(browser): offer the install in the panel the person is already on (#4066)",
+      "status": "applied",
+      "decidedAt": "2026-11-01",
+      "ourCommit": "8e655eaef7fee94567c13effa869daa8048ad1d7",
+      "plan": "feat/upstream-lote-ci-seguranca"
+    },
+    {
+      "sha": "ab59ba866e0bea7b5fdb65c651a23c7a6065a2ac",
+      "subject": "fix(browser): opt browser panel out of window drag and handle restore clicks (#3995) (#3996)",
+      "status": "applied",
+      "decidedAt": "2026-11-01",
+      "ourCommit": "c3b7cbba498a613e5a55c25a4ac2ebd6ed3868a1",
+      "plan": "feat/upstream-lote-ci-seguranca"
+    },
+    {
+      "sha": "a5be3e504a1fd90071bcc32477f6ba17af8781e3",
+      "subject": "Windows: a reused pid no longer holds the data-directory lease when wmic is missing (#4071)",
+      "status": "applied",
+      "decidedAt": "2026-11-01",
+      "ourCommit": "29ba7e6d98292af2e96adaae1c7d6ba84e196937",
+      "plan": "feat/upstream-lote-ci-seguranca"
+    },
+    {
+      "sha": "9d68a0aa4874d4d2adef46d3edf052bd9bf3d0f5",
+      "subject": "fix(lending): a lent terminal's commands get the person's shell PATH (#3652)",
+      "status": "applied",
+      "decidedAt": "2026-11-01",
+      "ourCommit": "769c88a96c71f791313a27a77fac52714b8877d3",
+      "plan": "feat/upstream-lote-ci-seguranca"
+    },
+    {
+      "sha": "aaedba14277c65e87bc4d8983da9b5865de3cd11",
+      "subject": "fix(cloud power): a lent computer's open asks poll never counts as work in progress (#4055)",
+      "status": "applied",
+      "decidedAt": "2026-11-01",
+      "ourCommit": "12b6f38f799203a913f0c64273818150ec58b56b",
+      "plan": "feat/upstream-lote-ci-seguranca"
+    },
+    {
+      "sha": "7eaaac9c7e62319d22bd58fefb3ad020b0462562",
+      "subject": "One-on-one goal: a turn that keeps losing its slot ends blocked at the wait cap (#3967)",
+      "status": "applied",
+      "decidedAt": "2026-11-01",
+      "ourCommit": "eaacd06f25dddbcdde5f28fdedaac9fd4200e4b9",
+      "plan": "feat/upstream-lote-ci-seguranca"
+    },
+    {
+      "sha": "3f2a56786328939aa8f1989aa7f26c2ead41d714",
+      "subject": "Calendar: a room goal whose room is gone cannot be saved, and a run keeps its own group",
+      "status": "applied",
+      "decidedAt": "2026-11-01",
+      "ourCommit": "5eb33094ebd3522ac3cce0815b44b1132193da86",
+      "plan": "feat/upstream-lote-ci-seguranca"
+    },
+    {
+      "sha": "4551c7c66222835ed0a4961f6a026c7834d6061f",
+      "subject": "fix(linux): skip the optional AppArmor 4 policy only on unrestricted hosts (#3876)",
+      "status": "applied",
+      "decidedAt": "2026-11-01",
+      "ourCommit": "aedbcfb7b40732c4b7d061a95e60f3444d792ab9",
+      "plan": "feat/upstream-lote-ci-seguranca"
+    },
+    {
+      "sha": "bbe4daa65670842462c560869f53a5b3dd0d9574",
+      "subject": "main: the room delete wording moves out of Sidebar.tsx (#3881)",
+      "status": "applied",
+      "decidedAt": "2026-11-01",
+      "ourCommit": "ec4ca7944fadbf147ed3682a4370383651af1bce",
+      "plan": "feat/upstream-lote-ci-seguranca"
+    },
+    {
+      "sha": "a55540c3fa55c1e2f30380d140e177b6774f9ce7",
+      "subject": "Accept Copilot Auto when the session leaves the model currentValue unset. (#4044)",
+      "status": "applied",
+      "decidedAt": "2026-11-01",
+      "ourCommit": "7e7c11676e88596ec540b9f723079f365bbe0825",
+      "plan": "feat/upstream-lote-ci-seguranca"
+    },
+    {
+      "sha": "fc77d3b3db9f84138ea7c5a0b2705b5cd35e78c4",
+      "subject": "fix(kimi): install and sign in to Kimi from Settings, on a Cloud with no terminal (#4026)",
+      "status": "applied",
+      "decidedAt": "2026-11-01",
+      "ourCommit": "764cb3611f723ddfcbf00ddb6d489c7c4a0b71eb",
+      "plan": "feat/upstream-lote-ci-seguranca"
+    },
+    {
+      "sha": "c88df7052235a669bdb03e6d3a147609012d53ca",
+      "subject": "feat(greenference): Greenference as an AI provider, with its own logo",
+      "status": "applied",
+      "decidedAt": "2026-11-01",
+      "ourCommit": "b73fa2b44192f62c4cee2cec0377ab3a34881b6b",
+      "plan": "feat/upstream-lote-ci-seguranca"
+    },
+    {
+      "sha": "6d32b86b285b016afc444f86b052cd09ade16654",
+      "subject": "Composer: steer, queue or restart a message sent while a bot works (#4069)",
+      "status": "applied",
+      "decidedAt": "2026-11-01",
+      "ourCommit": "1e99543c7d1bb87e42454c1541a15591abc0a8fe",
+      "plan": "feat/upstream-lote-ci-seguranca"
+    },
+    {
+      "sha": "1f1e8f452aefc6e3c499a697de7fde10f05e3621",
+      "subject": "Composer: stop at 4 images and say which ones weren't attached (#4032)",
+      "status": "applied",
+      "decidedAt": "2026-11-01",
+      "ourCommit": "6a24f4eaf753ea472f077e7c27d5a13fbea683c9",
+      "plan": "feat/upstream-lote-ci-seguranca"
+    },
+    {
+      "sha": "3f24359e866c18776ccc20ec527f4eccbc7ad39b",
+      "subject": "Advanced composer: a message past one line gets the full width above the buttons (#3919)",
+      "status": "applied",
+      "decidedAt": "2026-11-01",
+      "ourCommit": "5e96b4ef23d5c42660f238135485bd50ef94781d",
+      "plan": "feat/upstream-lote-ci-seguranca"
+    },
+    {
+      "sha": "97ee8c73197ec1686249dc76f978be4b11cd2165",
+      "subject": "Server lines in the person's language: the way in, a guard, and bug report lines (#3931)",
+      "status": "ignored",
+      "decidedAt": "2026-11-01",
+      "note": "Base ausente: o fork nao tem server-lines.ts, server-line-packs.ts, person-languages.ts nem devs-reports.ts."
+    },
+    {
+      "sha": "7c43dbfba602d79082e980afa63dd42c7f5733bf",
+      "subject": "Say \"MCP server\" in the routine pause note, as everyday screens do",
+      "status": "ignored",
+      "decidedAt": "2026-11-01",
+      "note": "Base ausente: o fork nao tem routine-holds* nem as chaves routines.heldFor.*."
+    },
+    {
+      "sha": "d693dcf4b5a75bb9fa8c598f654a63fa0b442ce9",
+      "subject": "fix(wording): \"the Cloud\", not \"your Cloud\", in the terminal-lending refusal",
+      "status": "ignored",
+      "decidedAt": "2026-11-01",
+      "note": "Base ausente: o emprestimo de terminal mora em electron/cloud-lending-ipc.mjs e nao exige conta na Cloud."
+    },
+    {
+      "sha": "059b0e7698d115071ef49e7c0eab61d47bb956e5",
+      "subject": "feat(i18n): add Korean locale (#3852)",
+      "status": "ignored",
+      "decidedAt": "2026-11-01",
+      "note": "Sem catalogo ko.json nem pipeline coreano no fork; exigiria hashes sobre ~6.000 strings proprias."
+    },
+    {
+      "sha": "fde016edc0de0ae6b1b0267ce7277cae5fcedc55",
+      "subject": "Plain words: MausBot everywhere, no em dashes, no VM, engine or ctx, and errors that say what to do (#3865)",
+      "status": "ignored",
+      "decidedAt": "2026-11-01",
+      "note": "Rename massivo para MausBot e limpeza de jargao do texto upstream; o fork ja e MimirBot e usa emendas de proposito."
+    },
+    {
+      "sha": "5f01634c63d13ee8fafe6c8b3038f0b263706b2f",
+      "subject": "Bots write every line the person sees in the person's language (#3956)",
+      "status": "applied",
+      "decidedAt": "2026-11-01",
+      "ourCommit": "5d461932f9f8d066667019cc9ffb1e19ae0e6ff3",
+      "plan": "feat/upstream-lote-ci-seguranca"
+    },
+    {
+      "sha": "3544e51731ed3c350a48c97b0c5947aa6dbd6ecb",
+      "subject": "Credit Boat, our sponsor, for the cloud desktops in the app (#3758)",
+      "status": "applied",
+      "decidedAt": "2026-11-01",
+      "ourCommit": "bd78d220e186a45bed4f59d36acb011e9634ba70",
+      "plan": "feat/upstream-lote-ci-seguranca"
+    },
+    {
+      "sha": "72905754ae12272fd390caba265409dc45a639b5",
+      "subject": "Boat's $50 credit offer: a one-time card for everyone, and a lasting copy on the Boat card in Settings",
+      "status": "applied",
+      "decidedAt": "2026-11-01",
+      "ourCommit": "6d106cc98cd97917b551894a82eafdebff806ce5",
+      "plan": "feat/upstream-lote-ci-seguranca"
+    },
+    {
+      "sha": "1b0547911468a2305dd4ad1ce87f522f022b52cb",
+      "subject": "Agents tools: delete_trigger on its own, memory_log back, and merged tools name what they were (#3786)",
+      "status": "applied",
+      "decidedAt": "2026-11-01",
+      "ourCommit": "11de653e23d369545e1adfd79afb22bf08cfc9e9",
+      "plan": "feat/upstream-lote-ci-seguranca"
+    },
+    {
+      "sha": "18d549510c3d4733306e71b1d4ac207258d98577",
+      "subject": "Agents tools: every turn of a conversation is listed the same tools (#3871)",
+      "status": "applied",
+      "decidedAt": "2026-11-01",
+      "ourCommit": "35bc5b6860a706d281732102b5f6b0b4c05c751a",
+      "plan": "feat/upstream-lote-ci-seguranca"
+    },
+    {
+      "sha": "a96950e01f83ad37a9af20c3d8b73bb1dabc068c",
+      "subject": "Smaller agents tool list: compact schemas, action tools, fewer tools where a turn can't use them (#3773)",
+      "status": "applied",
+      "decidedAt": "2026-11-01",
+      "ourCommit": "6354db129e46911abb0b621f12850c5a0144657a",
+      "plan": "feat/upstream-lote-ci-seguranca"
+    },
+    {
+      "sha": "671cf72d1a1b2dfe411449ebb252cdd9b2398a6a",
+      "subject": "feat(saved-steps): a bot repeats a computer task it has done before, with no AI (#3762)",
+      "status": "applied",
+      "decidedAt": "2026-11-01",
+      "ourCommit": "cd15d5520ae353670aef60e87906e11061a14fe1",
+      "plan": "feat/upstream-lote-ci-seguranca"
+    },
+    {
+      "sha": "f71928c15d2043cd8562877d350e189b859767ba",
+      "subject": "feat(waits): \"tell me when…\" with no AI running while a bot waits (#3763)",
+      "status": "applied",
+      "decidedAt": "2026-11-01",
+      "ourCommit": "58957faf06d87019aa18dac968bbc6efce3c6290",
+      "plan": "feat/upstream-lote-ci-seguranca"
+    },
+    {
+      "sha": "8eb759455a6360e24a4c792d71a16de572051fb4",
+      "subject": "See what a bot is doing right now: the step, how it is going, and a Now card (#3736)",
+      "status": "applied",
+      "decidedAt": "2026-11-01",
+      "ourCommit": "35be290cc0dcc8466212d6f0c71452963a71af81",
+      "plan": "feat/upstream-lote-ci-seguranca"
+    },
+    {
+      "sha": "405846c9b8eb7217f0f9496376e033c1775db392",
+      "subject": "Room to grow: memory never takes the workspace down, says why in one line, retries, and offers the plan that fixes it",
+      "status": "ignored",
+      "decidedAt": "2026-11-01",
+      "note": "Base ausente: o fork nao tem o retry automatico de chief-notices, first-hour.ts, value-ledger.ts, AccountMove na sidebar nem o refactor browser-page-size.ts (15 arquivos)."
+    },
+    {
+      "sha": "097e8f5276b304c835d8b9f624b5697542daeb14",
+      "subject": "Postiz in Apps: a Social category, so bots can draft, schedule and publish social posts (#3785)",
+      "status": "ignored",
+      "decidedAt": "2026-11-01",
+      "note": "Base ausente: o fork ainda tem ApiKeys.tsx plano, sem keys/key-catalog.ts, key-save.ts ou SavedKey; o PostizCard nao compila sem isso."
+    },
+    {
+      "sha": "25e79dd60892f2cda4280853a27954583f9dc1d4",
+      "subject": "feat(talk): hold ⌃⌥Space in any app to talk to MausBot (#3764)",
+      "status": "ignored",
+      "decidedAt": "2026-11-01",
+      "note": "Base ausente: sem SettingsSimplePages.tsx (Simple mode), update-when-quiet.mjs e o rail/own-Cloud de electron/main.mjs."
     }
   ]
 }
