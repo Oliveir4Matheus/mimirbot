@@ -42,7 +42,7 @@ describe("the widget tools in the catalog", () => {
       },
       required: ["widget"],
     });
-    expect(show.description).toMatch(/^Show an interactive widget in this chat\. Reach for it yourself/);
+    expect(show.description).toMatch(/^Show an interactive widget in this chat: one question answered with a tap instead of typing/);
     expect(show.description).toMatch(/Never ask for passwords here\. Not available in rooms\.$/);
     expect(show.description).toContain("To replace a widget in place (a progress bar moving, a status changing), call this again with the widget_id it returned (was update_widget); one the person already answered cannot be replaced, so show a new one.");
     for (const name of ["attach_file", "show_widget"]) expect(tools.get(name), name).not.toHaveProperty("annotations");
