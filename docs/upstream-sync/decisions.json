@@ -333,7 +333,8 @@
       "subject": "fix(onboarding): the launch flags hold where browser storage is blocked",
       "status": "ignored",
       "reason": "Upstream onboarding and welcome flow; MimirBot keeps its own onboarding, so none of these are taken.",
-      "decidedAt": "2026-10-26"
+      "decidedAt": "2026-11-01",
+      "note": "Base ausente: launch-dialogs.ts não tem nenhum consumidor no fork, e markWelcomeFinished/WelcomeFlow.tsx não existem aqui."
     },
     {
       "sha": "f3755db3621682a9c8fe9bcb7856edb527fac410",
@@ -3159,9 +3160,12 @@
     {
       "sha": "49088dc76b80f2039e4becd676e39f59378abc6c",
       "subject": "fix(browser): the bot's live page fills its panel on both engines, at a desktop's width (#3691)",
-      "status": "pending",
-      "reason": "Live browser page fills its panel on both engines; touches the browser code we adapted.",
-      "decidedAt": "2026-10-28"
+      "status": "applied",
+      "reason": "A página ao vivo do bot passa a preencher o painel nos dois engines; mexe no browser que o fork adaptou.",
+      "decidedAt": "2026-11-01",
+      "ourCommit": "d2f4561e46304edc46a62bbcc0369aca4354e7ea",
+      "plan": "feat/upstream-lote-12",
+      "note": "Adaptado: no fork heldBy() devolve a pessoa, não o id da view, então o resize compara com viewer.person; o fixture de browser-viewers passou a gravar options.size; convive com o holdLimits do fork."
     },
     {
       "sha": "14067581e48a7abfd63e61575c4a47765f2b690f",
@@ -4931,6 +4935,24 @@
       "status": "ignored",
       "decidedAt": "2026-11-01",
       "note": "Já presente: o hook do fork já usa limitMs; o cherry-pick veio vazio."
+    },
+    {
+      "sha": "23a71697e7b57386378a0433021e614285f35a26",
+      "subject": "feat(sidebar): pinned web panels, a dashboard one click away (#3806)",
+      "status": "applied",
+      "decidedAt": "2026-11-01",
+      "ourCommit": "5e72ccc4776fc45d01e05355cbfeeb2443f1aae6",
+      "plan": "feat/upstream-lote-12",
+      "note": "Adaptado: o fork já tinha as views usage e files na App.tsx, no store e no SettingsModal; os conflitos somam as duas (web-panel entra depois de files) e o reducer mantém showUsage/showFiles."
+    },
+    {
+      "sha": "165f6fd96b8efe9eb1b6b54d1bdf9c1d8062d0a0",
+      "subject": "fix(panels): a pinned page that refuses to be framed says so, with Open in browser (#4030)",
+      "status": "applied",
+      "decidedAt": "2026-11-01",
+      "ourCommit": "3feaae7ad2b9e3c0a37e81393d6e0cab71a76e0a",
+      "plan": "feat/upstream-lote-12",
+      "note": "Entrou limpo sobre o commit dos painéis fixados."
     }
   ]
 }

@@ -17,8 +17,9 @@ testado contra o estado que o anterior deixou.
 | 6 — Engines e composer | 10 | Composer passa a steerar, enfileirar ou reiniciar com o bot trabalhando; Copilot Auto, Kimi pela Settings, Greenference, limite de 4 imagens e textos no idioma da pessoa. |
 | 10 — Features | 11 | Crédito do Boat, lista de ferramentas dos agents enxuta, esperas sem IA, passos salvos reutilizáveis e um cartão "Now" com o que o bot está fazendo. |
 | 11 — Correções que caem no fork | 15 | Sala não morre esperando tool longa; dois colegas pedindo o mesmo ao bot recebem uma resposta; Simple mode mostra as threads que esperam você; a página sobrevive a um erro. |
+| 12 — Painéis e página ao vivo | 3 | Páginas fixadas na sidebar abrem como painel, com aviso e "Open in browser" quando o site recusa iframe; a página ao vivo do bot preenche o painel nos dois engines. |
 
-Total: **58 commits do upstream aplicados**, mais 5 commits de casa (ratchet de
+Total: **61 commits do upstream aplicados**, mais 5 commits de casa (ratchet de
 tamanho e ajustes de teste).
 
 ## Descartados neste sync
@@ -57,6 +58,25 @@ Quatro ficaram de fora, com motivo em `decisions.json`:
 | `95661138d` | A página de uso do fork é `UsageRank`/`RankList`; não existe `GroupBars` |
 | `8c663d2b7` | Não existe `--rail-beside` no CSS do fork |
 | `03065106b` | O fork ainda tem o IPC `desktop-notices:shown` em `electron/desktop-prefs.mjs`, testado: nada quebra |
+
+## Lote 12: painéis fixados e a página do bot no tamanho do painel
+
+Três commits entram, todos na sidebar e no browser que o fork já adaptou:
+
+| Commit | Ajuste |
+|---|---|
+| `23a71697e` | O fork já tinha as views `usage` e `files` na `App.tsx`, no `store` e no `SettingsModal`; os conflitos somam as duas (`web-panel` entra depois de `files`) e o reducer mantém `showUsage`/`showFiles` |
+| `165f6fd96` | Entrou limpo sobre o commit dos painéis fixados: o aviso de página que recusa iframe, com "Open in browser" |
+| `49088dc76` | `heldBy()` no fork devolve a pessoa, não o id da view: o `resize` compara com `viewer.person`; o fixture de `browser-viewers` grava `options.size`; convive com o `holdLimits` do fork |
+
+Um ficou de fora, com motivo em `decisions.json`:
+
+| Commit | Por quê |
+|---|---|
+| `90a13092e` | Base ausente: `launch-dialogs.ts` não tem nenhum consumidor no fork, e `markWelcomeFinished`/`WelcomeFlow.tsx` não existem aqui |
+
+Depois do lote: `typecheck`, `lint`, `i18n:check` e `check:electron` verdes, e
+`vitest run browser` com 76 arquivos / 1182 testes passando.
 
 ## Merge com o fork (0.1.158)
 
