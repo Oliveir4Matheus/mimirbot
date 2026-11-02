@@ -15,7 +15,7 @@ export function acpModelCatalog(input: {
   instanceId: string;
   fixed: ModelCatalog;
   startFromSaved: boolean;
-  resolve?: () => ModelCatalog | Promise<ModelCatalog>;
+  resolve?: (fresh: boolean) => ModelCatalog | Promise<ModelCatalog>;
 }): AcpModelCatalog {
   const { instanceId, resolve } = input;
   const saved = resolve && input.startFromSaved ? readStartupModelCache(instanceId) : null;
@@ -24,10 +24,10 @@ export function acpModelCatalog(input: {
   let accountModels: ReadonlySet<string> | null = null;
   let current: { fresh: boolean; done: Promise<void> } | null = null;
 
-  const read = async () => {
+  const read = async (fresh: boolean) => {
     if (!resolve) return;
     try {
-      const resolved = await resolve();
+      const resolved = await resolve(fresh);
       if (resolved.options.length) {
         models = resolved;
         readFromEngine = true;
@@ -45,7 +45,7 @@ export function acpModelCatalog(input: {
     get unconfirmed() { return Boolean(resolve) && !readFromEngine; },
     refresh(fresh = false) {
       if (current && (current.fresh || !fresh)) return current.done;
-      const next = { fresh, done: (current?.done ?? Promise.resolve()).then(read) };
+      const next = { fresh, done: (current?.done ?? Promise.resolve()).then(() => read(fresh)) };
       current = next;
       void next.done.finally(() => { if (current === next) current = null; });
       return next.done;
