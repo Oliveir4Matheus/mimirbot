@@ -2,9 +2,11 @@
 // stops with the server, and a killed daemon leaves its Chrome running, re-parented to init. Every process is recorded with
 // its start time, so a pid the system has since given to another program is never signalled.
 import { execFile } from "node:child_process";
-import { readdirSync, readFileSync, readlinkSync, realpathSync, rmSync, unlinkSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, readlinkSync, realpathSync, rmSync, unlinkSync } from "node:fs";
 import { hostname } from "node:os";
 import { basename, isAbsolute, join, sep } from "node:path";
+
+import { isBrowserProcess, userDataDirOf } from "./browser/chrome/processes.ts";
 
 /** `started` tells a process from a later one that reused its pid; a zombie has exited and counts as gone. */
 type ListedProcess = { ppid: number; pgid: number; zombie: boolean; started: string; args?: string };
@@ -32,9 +34,9 @@ function temporaryProfile(args: string | undefined): string | null {
 const PS = process.platform === "darwin" ? "/bin/ps" : "ps";
 
 /** The C locale keeps `ps` start times in one fixed five-word form. */
-function execText(file: string, args: string[]): Promise<string | null> {
+function execText(file: string, args: string[], timeout = 5_000): Promise<string | null> {
   return new Promise((done) => {
-    execFile(file, args, { encoding: "utf8", timeout: 5_000, windowsHide: true, maxBuffer: 16 * 1024 * 1024, env: { ...process.env, LC_ALL: "C" } }, (error, stdout) => done(error ? null : stdout));
+    execFile(file, args, { encoding: "utf8", timeout, windowsHide: true, maxBuffer: 16 * 1024 * 1024, env: { ...process.env, LC_ALL: "C" } }, (error, stdout) => done(error ? null : stdout));
   });
 }
 
@@ -194,7 +196,8 @@ async function daemonOf(pid: number, table: Map<number, ListedProcess>): Promise
  * A Chrome whose daemon was killed keeps running, re-parented, and would take every later launch, so it is stopped; then the
  * lock goes. A daemon's own Chrome keeps it. The profile's contents are never touched. */
 export async function releaseBrowserProfile(dir: string | undefined): Promise<void> {
-  if (!dir || process.platform === "win32") return;
+  if (!dir) return;
+  if (process.platform === "win32") { await releaseWindowsProfile(dir); return; }
   let target: string;
   try { target = readlinkSync(join(dir, "SingletonLock")); }
   catch { heldProfiles.delete(dir); return; }
@@ -211,6 +214,55 @@ export async function releaseBrowserProfile(dir: string | undefined): Promise<vo
     if (!await stopBrowserProcesses({ daemon: pid, members: new Map([[pid, entry.started]]), groups: entry.pgid === pid ? [pid] : [] })) return;
   }
   for (const name of ["SingletonLock", "SingletonSocket", "SingletonCookie"]) { try { unlinkSync(join(dir, name)); } catch {} }
+}
+
+interface WindowsProcess { pid: number; ppid: number; name: string; args: string }
+
+/** The Chrome, cmd.exe (the launcher batch file's shell) and agent-browser processes, or null where PowerShell cannot list them. */
+async function windowsProcessTable(): Promise<Map<number, WindowsProcess> | null> {
+  const json = await execText("powershell.exe", [
+    "-NoProfile", "-NonInteractive", "-Command",
+    "Get-CimInstance Win32_Process -Filter \"Name='chrome.exe' OR Name='cmd.exe' OR Name='agent-browser.exe'\" | Select-Object ProcessId,ParentProcessId,Name,CommandLine | ConvertTo-Json -Compress",
+  ], 15_000);
+  if (json === null) return null;
+  if (!json.trim()) return new Map();
+  try {
+    const parsed = JSON.parse(json) as unknown;
+    const rows = (Array.isArray(parsed) ? parsed : [parsed]) as Array<{ ProcessId: number; ParentProcessId: number; Name?: string; CommandLine?: string | null }>;
+    return new Map(rows.map((row) => [row.ProcessId, { pid: row.ProcessId, ppid: row.ParentProcessId, name: (row.Name ?? "").toLowerCase(), args: row.CommandLine ?? "" }]));
+  } catch {
+    return null;
+  }
+}
+
+/** Windows paths ignore case and take either slash. */
+function samePath(a: string, b: string): boolean {
+  const normal = (path: string) => path.replace(/[\\/]+/g, "/").replace(/\/$/, "").toLowerCase();
+  return normal(a) === normal(b);
+}
+
+/** A launcher batch file puts cmd.exe between the daemon and Chrome, so the daemon is a grandparent. */
+function daemonOwns(pid: number, table: Map<number, WindowsProcess>): boolean {
+  for (let parent = table.get(pid)?.ppid ?? 0, depth = 0; parent > 4 && depth < 3; parent = table.get(parent)?.ppid ?? 0, depth++) {
+    if (table.get(parent)?.name === "agent-browser.exe") return true;
+  }
+  return false;
+}
+
+/** Windows Chrome holds a profile with a `lockfile` it keeps open and deletes on exit, and a second Chrome on it exits at
+ * once with code 21 and no DevToolsActivePort, so every launch on a profile whose Chrome outlived its daemon fails. That
+ * Chrome is stopped; one under a running daemon is that daemon's, and the profile's contents are never touched. Without a
+ * lockfile nothing holds the profile, which spares the PowerShell start on every launch. */
+async function releaseWindowsProfile(dir: string): Promise<void> {
+  if (!existsSync(join(dir, "lockfile"))) return;
+  const table = await windowsProcessTable();
+  if (!table) return;
+  for (const entry of table.values()) {
+    if (entry.name !== "chrome.exe" || !isBrowserProcess(entry)) continue;
+    const held = userDataDirOf(entry);
+    if (!held || !samePath(held, dir) || daemonOwns(entry.pid, table)) continue;
+    await stopBrowserProcesses({ daemon: entry.pid, members: new Map([[entry.pid, ""]]), groups: [], image: "chrome.exe" });
+  }
 }
 
 function stillRuns(tree: BrowserProcessTree, table: Map<number, ListedProcess>, pid: number): boolean {

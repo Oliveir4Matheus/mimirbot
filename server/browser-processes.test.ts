@@ -3,7 +3,7 @@
 // hands its Chrome.
 import { execFile, execFileSync, spawn, type ChildProcess } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { hostname, tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -245,5 +245,65 @@ describe("a browser on Windows", () => {
     } finally {
       holder.kill("SIGKILL");
     }
+  });
+
+  it("stops a Chrome that outlived its daemon on a profile, and leaves a running daemon's, another profile's and a helper alone", async () => {
+    const profile = mkdtempSync(join(tmpdir(), "omb-win-profile-"));
+    homes.push(profile);
+    const lockfile = join(profile, "lockfile");
+    writeFileSync(lockfile, "");
+    const chromeExe = "\"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe\"";
+    const chrome = (pid: number, ppid: number, dir: string, extra = "") => ({ ProcessId: pid, ParentProcessId: ppid, Name: "chrome.exe", CommandLine: `${chromeExe} --remote-debugging-port=0 "--user-data-dir=${dir}"${extra}` });
+    const shell = (pid: number, ppid: number) => ({ ProcessId: pid, ParentProcessId: ppid, Name: "cmd.exe", CommandLine: "cmd.exe /e:ON /v:OFF /d /c chrome-launcher.cmd" });
+    const daemon = (pid: number) => ({ ProcessId: pid, ParentProcessId: 1, Name: "agent-browser.exe", CommandLine: null });
+    let rows: unknown = [];
+    let listed = true;
+    const running = new Set<number>();
+    const commands: string[][] = [];
+    vi.mocked(execFile).mockImplementation(((file: string, args: string[], _options: unknown, done: (error: Error | null, stdout: string) => void) => {
+      commands.push([file, ...args]);
+      let out = "";
+      if (file === "powershell.exe") out = JSON.stringify(rows);
+      else if (file === "tasklist") { const pid = Number(args[1]!.replace("PID eq ", "")); out = running.has(pid) ? `"chrome.exe","${pid}","Console","1","12,345 K"\r\n` : "INFO: No tasks are running which match the specified criteria.\r\n"; }
+      else if (file === "taskkill") running.delete(Number(args[1]));
+      queueMicrotask(() => file === "powershell.exe" && !listed ? done(new Error("powershell failed"), "") : done(null, out));
+      return {} as ChildProcess;
+    }) as unknown as typeof execFile);
+    Object.defineProperty(process, "platform", { value: "win32", configurable: true });
+    const killed = () => commands.filter(([file]) => file === "taskkill");
+
+    // Its daemon is gone: the launcher's cmd.exe lost its parent, and Chrome kept the profile.
+    rows = [shell(90, 80), chrome(100, 90, profile.replaceAll("\\", "/").toUpperCase()), chrome(101, 100, profile, " --type=renderer")];
+    running.add(100);
+    await releaseBrowserProfile(profile);
+    expect(killed()).toEqual([["taskkill", "/PID", "100", "/T", "/F"]]);
+
+    // A running daemon's own Chrome, through the launcher's cmd.exe, keeps its profile.
+    commands.length = 0;
+    rows = [daemon(280), shell(290, 280), chrome(300, 290, profile)];
+    running.add(300);
+    await releaseBrowserProfile(profile);
+    expect(killed()).toEqual([]);
+
+    // Another profile's Chrome, and the person's own, are not this profile's.
+    rows = [chrome(400, 80, `${profile}-other`), chrome(401, 80, "C:\\Users\\a\\AppData\\Local\\Google\\Chrome\\User Data")];
+    running.add(400);
+    running.add(401);
+    await releaseBrowserProfile(profile);
+    expect(killed()).toEqual([]);
+
+    // PowerShell could not list the processes: nothing is stopped.
+    rows = [chrome(500, 80, profile)];
+    running.add(500);
+    listed = false;
+    await releaseBrowserProfile(profile);
+    expect(killed()).toEqual([]);
+
+    // No lockfile, no Chrome on the profile: the processes are not even listed.
+    listed = true;
+    rmSync(lockfile);
+    commands.length = 0;
+    await releaseBrowserProfile(profile);
+    expect(commands).toEqual([]);
   });
 });
