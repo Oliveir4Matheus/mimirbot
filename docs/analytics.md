@@ -170,10 +170,7 @@ use their own Boat key, and how many bots run on cloud computers, without sendin
 | `cloud_welcome_step` | A step of a new Cloud's welcome is shown | `step`: `bring`, `engine`, `files`, `done` |
 | `cloud_welcome_ended` | A new Cloud's welcome ends | `reason`: `done`, `skipped`; `at`: the step it ended on |
 | `product_hunt_card` | You act on the Product Hunt card | `action`: `upvote`, `not_now`, `close` |
-<<<<<<< HEAD
-=======
 | `boat_offer` | Boat's credit offer: its one-time card is shown or you act on it, or you act on it on the Boat card in Settings → API keys | `action`: `shown` (the card only), `get_boat`, `claim` (the drafted email to Boat opened), `not_now`, `close`; `place`: `card`, `settings` |
->>>>>>> 72905754a (Boat's $50 credit offer: a one-time card for everyone, and a lasting copy on the Boat card in Settings)
 
 `api_key_saved` reports `ok` for a key the server checks with its provider before saving it (Boat, Composio,
 ElevenLabs, Fish Audio), and for a model provider key whose test passed right after saving. A key nothing checks before
