@@ -4761,6 +4761,176 @@
       "status": "ignored",
       "decidedAt": "2026-11-01",
       "note": "Base ausente: sem SettingsSimplePages.tsx (Simple mode), update-when-quiet.mjs e o rail/own-Cloud de electron/main.mjs."
+    },
+    {
+      "sha": "6fe142640a30fec416063e3ebd48054dfb2560dd",
+      "subject": "fix(rooms): a room turn waits for a running tool instead of stopping at its limit (#4023)",
+      "status": "applied",
+      "decidedAt": "2026-11-01",
+      "ourCommit": "e32d4fbc842172cd592ea1beaeed321452de1e51",
+      "plan": "feat/upstream-lote-11",
+      "note": "Servidor e teste do deadline de sala, que existem no fork."
+    },
+    {
+      "sha": "3b1088f2d67f925189be950de2f9c47797de3f24",
+      "subject": "fix(desktop): let the active remote server's page enable notifications",
+      "status": "applied",
+      "decidedAt": "2026-11-01",
+      "ourCommit": "f04aeffdf4a2f9e5f15b12b485131a06cbf5435c",
+      "plan": "feat/upstream-lote-11",
+      "note": "electron/app-permissions.mjs e seus testes, presentes no fork."
+    },
+    {
+      "sha": "6b479913cd8a7249961aed07273e1de701e4b22e",
+      "subject": "Don't flag Cursor's MCP calls as one repeated call",
+      "status": "applied",
+      "decidedAt": "2026-11-01",
+      "ourCommit": "83ef61d4c11f3da4bc803c9fc2639c6b2334a051",
+      "plan": "feat/upstream-lote-11",
+      "note": "server/repeat-detector.ts e testes, presentes no fork."
+    },
+    {
+      "sha": "267ddcd81ffa69191a13fa5f33bfd1b6633f96db",
+      "subject": "fix(lease): both Windows creation-time probes share one call, back within the blocking-call allowance",
+      "status": "applied",
+      "decidedAt": "2026-11-01",
+      "ourCommit": "952f6f9340b242962ba0b658e8b4e1035d2c3d5c",
+      "plan": "feat/upstream-lote-11",
+      "note": "electron/data-dir-lease.mjs, presente no fork."
+    },
+    {
+      "sha": "7b9dd52c43f1297e91925d5bf0b0fcf701d3cc43",
+      "subject": "fix(lending): build the usual install folders with POSIX joins (#3899)",
+      "status": "applied",
+      "decidedAt": "2026-11-01",
+      "ourCommit": "f71ebebd9cb7fc8b49df14b40f8ec6a97269b104",
+      "plan": "feat/upstream-lote-11",
+      "note": "electron/shell-path.mjs, presente no fork."
+    },
+    {
+      "sha": "32bec83b149eac6360fe94c40b1629728656697c",
+      "subject": "test(store): the reconnect-snapshot tests bring their own localStorage",
+      "status": "applied",
+      "decidedAt": "2026-11-01",
+      "ourCommit": "60785454e9742379cb236eb012af08b0d983ecec",
+      "plan": "feat/upstream-lote-11",
+      "note": "src/state/snapshot-navigation.test.ts, presente no fork."
+    },
+    {
+      "sha": "f2f222fc68fd1c306fc97cf392048ae40f939436",
+      "subject": "bench(desktop): one repeatable desktop baseline that prints JSON (#4068)",
+      "status": "applied",
+      "decidedAt": "2026-11-01",
+      "ourCommit": "fc851407869237496c15d3df0ddd909230c90b5b",
+      "plan": "feat/upstream-lote-11",
+      "note": "Só acrescenta scripts/bench-desktop*; não depende de base ausente."
+    },
+    {
+      "sha": "9519c4ccdc3b81267b6e100fda1af069b0b6fd60",
+      "subject": "Updater: count a failed check once, and keep the failure notice up during quiet checks (#3966)",
+      "status": "applied",
+      "decidedAt": "2026-11-01",
+      "ourCommit": "4390d35bb3e13bfe4aeb5ce6817b1d990a39edfd",
+      "plan": "feat/upstream-lote-11",
+      "note": "electron/updater-coordinator.mjs; o teste novo entrou inteiro."
+    },
+    {
+      "sha": "62f1c02645df6e739cc31943be7fcf7e51b9d8e6",
+      "subject": "fix(rooms): with tool calls off, a room hides a failed step like a 1:1 chat (#3846)",
+      "status": "applied",
+      "decidedAt": "2026-11-01",
+      "ourCommit": "3faf8c90035ecca61208f89d376285a53f039e1b",
+      "plan": "feat/upstream-lote-11",
+      "note": "Adaptado: o fork não tem quietRow nem Message.relay; aplicada só a regra de visibilidade e o teste sem quietRow."
+    },
+    {
+      "sha": "9368f25b81b9e6ca2a291974d5ed383422b0a3c9",
+      "subject": "fix(coordination): two teammates asking a bot the same thing get one answer (#3957)",
+      "status": "applied",
+      "decidedAt": "2026-11-01",
+      "ourCommit": "556feb75eb531a1a6cd4146e9d76de7b71a796d6",
+      "plan": "feat/upstream-lote-11",
+      "note": "Adaptado: runtime-coordinator e share-answer entraram; no index.ts só o import novo. O e2e cloud-team-one-answer foi removido: o fixture não passa do primeiro pedido delegado (Bolt fica com uma task idle), então a junção nunca é exercitada; os unitários seguem verdes."
+    },
+    {
+      "sha": "1f35a3449721f083f75152388813b438b61a0a10",
+      "subject": "fix(sidebar): in Simple mode, show threads that wait on the person under their bot",
+      "status": "applied",
+      "decidedAt": "2026-11-01",
+      "ourCommit": "07b33506986b0fefc73679284175b2785f63a5ff",
+      "plan": "feat/upstream-lote-11",
+      "note": "Adaptado: teste mantém o marcador de não-lido do fork (aria-label Unread threads) em vez de data-testid unread-dot."
+    },
+    {
+      "sha": "ee7d52ce66b6c852aaf6df8c1015c668e3b2c8d0",
+      "subject": "fix(page): keep the page up, with a reload, when a part of it throws (#4057)",
+      "status": "applied",
+      "decidedAt": "2026-11-01",
+      "ourCommit": "b161dfc95d551ed42c8a8b8862a81a21984c7edb",
+      "plan": "feat/upstream-lote-11",
+      "note": "Adaptado: só o import de PageBoundary (o fork não tem lib/session-ended)."
+    },
+    {
+      "sha": "604f5575f6e26098c5ca943a4799a6139855dd23",
+      "subject": "fix(desktop): the app menu's Settings opens on a remote server's page (#4029)",
+      "status": "applied",
+      "decidedAt": "2026-11-01",
+      "ourCommit": "61d4df68446e11cabd05b008b4edffc7ba74c3eb",
+      "plan": "feat/upstream-lote-11",
+      "note": "Adaptado: onOpenAppSettings passou de HOME_PAGE para REMOTE_SAFE; o bloco de rail-beside do upstream não existe aqui."
+    },
+    {
+      "sha": "c91b820015f6aeae469229e59cc8164199c022e8",
+      "subject": "Desktop: retry the phone companion when its launch start fails, and log why (#4072)",
+      "status": "applied",
+      "decidedAt": "2026-11-01",
+      "ourCommit": "f832d6c84c255cf65f5045bef892178f69ab7385",
+      "plan": "feat/upstream-lote-11",
+      "note": "Adaptado: sem ownHome no fork; retry e log entram iguais."
+    },
+    {
+      "sha": "ca3478ec60c9832470f5b2ca0dbe36118ef00046",
+      "subject": "fix(settings): say the computer setup hint once (#4033)",
+      "status": "applied",
+      "decidedAt": "2026-11-01",
+      "ourCommit": "7b95f3907114ba9f951691ae3af4351f1f789037",
+      "plan": "feat/upstream-lote-11",
+      "note": "Adaptado: teste do VPS fica com os textos do fork e sem a asserção de connectBoatHint, que o card não renderiza."
+    },
+    {
+      "sha": "ec6fd25e9b4175cc394bb11e9ffd288e55c08a55",
+      "subject": "fix(rail): say the remove question in everyday words",
+      "status": "ignored",
+      "decidedAt": "2026-11-01",
+      "note": "Base ausente: o fork não tem nenhuma chave rail.* no en.json; o rail dele é src/mimir/RailShell.tsx."
+    },
+    {
+      "sha": "95661138d64779b18ad1ad100c8995a2c2b54fd3",
+      "subject": "fix(usage): ChatGPT and other unpriced models show in \"Where it went\" (#3845)",
+      "status": "ignored",
+      "decidedAt": "2026-11-01",
+      "note": "Base ausente: o fork reescreveu a página de uso (UsageRank/RankList); não existe GroupBars."
+    },
+    {
+      "sha": "8c663d2b7647dcea04a2278dd0f794f591ae95e0",
+      "subject": "Bottom-left cards make room for the desktop rail instead of sliding under it",
+      "status": "ignored",
+      "decidedAt": "2026-11-01",
+      "note": "Base ausente: não existe --rail-beside nem o rail do upstream no CSS do fork."
+    },
+    {
+      "sha": "03065106b520ee556e6926942502047981b3a735",
+      "subject": "Desktop: keep desktopNotices.shown so a Cloud page on 0.1.135 doesn't go blank (#4053)",
+      "status": "ignored",
+      "decidedAt": "2026-11-01",
+      "note": "O fork ainda tem o IPC desktop-notices:shown em electron/desktop-prefs.mjs, testado; nada quebra."
+    },
+    {
+      "sha": "4867c2dd62977dd2b92936c287aa2d20788bf73e",
+      "subject": "test(local vm): the room turn deadline's limit is limitMs now",
+      "status": "ignored",
+      "decidedAt": "2026-11-01",
+      "note": "Já presente: o hook do fork já usa limitMs; o cherry-pick veio vazio."
     }
   ]
 }

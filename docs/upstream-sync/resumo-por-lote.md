@@ -16,8 +16,9 @@ testado contra o estado que o anterior deixou.
 | 5 — Correções de plataforma | 13 | Agente ACP sem modo, ícone de provider, modelos do Cursor, PATH do fnm, painel do browser, lease de pid no Windows, PATH emprestado, meta 1:1 e AppArmor. |
 | 6 — Engines e composer | 10 | Composer passa a steerar, enfileirar ou reiniciar com o bot trabalhando; Copilot Auto, Kimi pela Settings, Greenference, limite de 4 imagens e textos no idioma da pessoa. |
 | 10 — Features | 11 | Crédito do Boat, lista de ferramentas dos agents enxuta, esperas sem IA, passos salvos reutilizáveis e um cartão "Now" com o que o bot está fazendo. |
+| 11 — Correções que caem no fork | 15 | Sala não morre esperando tool longa; dois colegas pedindo o mesmo ao bot recebem uma resposta; Simple mode mostra as threads que esperam você; a página sobrevive a um erro. |
 
-Total: **43 commits do upstream aplicados**, mais 5 commits de casa (ratchet de
+Total: **58 commits do upstream aplicados**, mais 5 commits de casa (ratchet de
 tamanho e ajustes de teste).
 
 ## Descartados neste sync
@@ -30,6 +31,32 @@ tamanho e ajustes de teste).
 | `97ee8c731`, `7c43dbfba`, `d693dcf4b`, `059b0e769`, `fde016edc` | Sem a base (server lines, routine holds, empréstimo de terminal, coreano) ou rename para MausBot. |
 
 Cada um está registrado em `decisions.json` com `status: "ignored"` e o motivo.
+
+## Lote 11: o que foi adaptado
+
+Os 15 commits deste lote mexem em código que o fork tem. Sete entraram sem
+conflito; oito precisaram de ajuste, porque o upstream mudou junto com features
+que o fork não tem:
+
+| Commit | Ajuste |
+|---|---|
+| `62f1c0264` | Sem `quietRow`/`Message.relay`: entra só a regra de visibilidade, e o teste perde a comparação com o 1:1 |
+| `9368f25b8` | `runtime-coordinator` e `share-answer` inteiros; no `index.ts` só o import novo, porque o bloco de imports dele é de features ausentes |
+| `1f35a3449` | Teste mantém o marcador de não-lido do fork (`aria-label="Unread threads"`) no lugar do `data-testid` deles |
+| `ee7d52ce6` | Só o import do `PageBoundary`: o fork não tem `lib/session-ended` |
+| `604f5575f` | `onOpenAppSettings` passa de `HOME_PAGE` para `REMOTE_SAFE`; o bloco de `rail-beside` não existe aqui |
+| `c91b82001` | Sem `ownHome`: o retry e o log do companion entram iguais |
+| `ca3478ec6` | Teste do VPS fica com os textos do fork, sem a asserção de `connectBoatHint` |
+| `f2f222fc6` | Só acrescenta `scripts/bench-desktop*` |
+
+Quatro ficaram de fora, com motivo em `decisions.json`:
+
+| Commit | Por quê |
+|---|---|
+| `ec6fd25e9` | O fork não tem nenhuma chave `rail.*`; o rail dele é `src/mimir/RailShell.tsx` |
+| `95661138d` | A página de uso do fork é `UsageRank`/`RankList`; não existe `GroupBars` |
+| `8c663d2b7` | Não existe `--rail-beside` no CSS do fork |
+| `03065106b` | O fork ainda tem o IPC `desktop-notices:shown` em `electron/desktop-prefs.mjs`, testado: nada quebra |
 
 ## Merge com o fork (0.1.158)
 
