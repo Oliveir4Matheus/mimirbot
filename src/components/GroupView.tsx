@@ -208,7 +208,7 @@ function RoomTextMessage({
             !user && emerging && "turn-answer",
             !user && !m.text?.trim() && !m.replyToId && m.attachments?.length
               ? "text-ink"
-              : cn(user ? "chat-text whitespace-pre-wrap bg-bubble-user px-4 py-2.5 text-ink" : "bg-card px-4 py-2.5 text-ink", simple && SIMPLE_BUBBLE),
+              : cn(user ? "chat-text whitespace-pre-wrap [overflow-wrap:anywhere] bg-bubble-user px-4 py-2.5 text-ink" : "bg-card px-4 py-2.5 text-ink", simple && SIMPLE_BUBBLE),
           )}
           title={new Date(m.at).toLocaleString()}
         >

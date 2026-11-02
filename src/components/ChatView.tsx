@@ -486,7 +486,7 @@ const Bubble = memo(function Bubble({
               : attachmentsOnly || split
                 ? "text-ink"
                 : user
-                  ? cn("bg-bubble-user px-4 py-2.5 whitespace-pre-wrap text-ink", bubbleStyle && "user-bubble-colored", simple && cn(SIMPLE_BUBBLE, bubbleStyle && "antialiased"))
+                  ? cn("bg-bubble-user px-4 py-2.5 whitespace-pre-wrap [overflow-wrap:anywhere] text-ink", bubbleStyle && "user-bubble-colored", simple && cn(SIMPLE_BUBBLE, bubbleStyle && "antialiased"))
                   : cn("bg-card px-4 py-2.5 text-ink", simple && SIMPLE_BUBBLE),
           )}
           style={user && !webhookView && !attachmentsOnly ? bubbleStyle : undefined}
