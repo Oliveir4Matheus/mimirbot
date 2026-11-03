@@ -200,7 +200,9 @@ const gfmParseData: {
   micromarkExtensions?: MarkdownParseOptions["extensions"];
   fromMarkdownExtensions?: MarkdownParseOptions["mdastExtensions"];
 } = {};
-remarkGfm.call({ data: () => gfmParseData });
+// A spoiler is "~~text~~" only: a lone "~" in a range such as "77~82" must not hide what follows it.
+const GFM_OPTIONS = { singleTilde: false };
+remarkGfm.call({ data: () => gfmParseData }, GFM_OPTIONS);
 const normalizationParseOptions: MarkdownParseOptions = {
   extensions: gfmParseData.micromarkExtensions,
   mdastExtensions: [...(gfmParseData.fromMarkdownExtensions ?? []), windowsPathDestinations],
@@ -954,7 +956,7 @@ function ChatMarkdownComponent({ text, message, mentionPeers = NO_MENTION_PEERS,
     <MessageScopeContext.Provider value={{ message, imageOffsets, threads, currentBotId, delivered }}>
       <div className="chat-md min-w-0 [&>*+*]:mt-2">
         <Markdown
-          remarkPlugins={[remarkGfm, remarkMath, remarkWindowsPathDestinations, unwrapLinkedImages, remarkGithubRefs, [remarkMentions, { peers: mentionPeers, everyone, person: mentionPerson }], remarkThreadRefs(threads, currentBotId)]}
+          remarkPlugins={[[remarkGfm, GFM_OPTIONS], remarkMath, remarkWindowsPathDestinations, unwrapLinkedImages, remarkGithubRefs, [remarkMentions, { peers: mentionPeers, everyone, person: mentionPerson }], remarkThreadRefs(threads, currentBotId)]}
           rehypePlugins={mathPlugin ? [mathPlugin] : []}
           urlTransform={chatUrlTransform}
           components={MARKDOWN_COMPONENTS}
