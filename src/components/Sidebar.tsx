@@ -1540,6 +1540,7 @@ export function Sidebar({ open, onClose, collapseToIcons = false }: {
   return (
     <aside
       ref={sidebarRef}
+      data-sidebar-root=""
       tabIndex={-1}
       aria-label={t("sidebar.aria")}
       data-native-view-overlay
