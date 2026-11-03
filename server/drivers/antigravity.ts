@@ -8,6 +8,7 @@ import type {
   ProviderDriver,
   ProviderInstance,
   ProviderSnapshot,
+  SendTurnInput,
 } from "../contracts.ts";
 import { createAcpDriver, type AcpConfig, type AcpSupport } from "./acp/core.ts";
 import {
@@ -74,7 +75,9 @@ const support: AcpSupport = {
   },
   images: true,
   spawnArgs: () => [],
-  selectModel: { configId: "model", familyVariants: true },
+  selectModel: { configId: "model" },
+  modelVariants: true,
+  normalizeSessionSelection: normalizeAntigravityTurn,
   // Google's server reads its new-session default from this variable (agy_acp_server 1.4.3
   // model_selection.get_default_model_id); a later switch re-fetches the model list (1.3-1.8 s).
   sessionModelEnv: "AGY_ACP_DEFAULT_MODEL",
@@ -82,7 +85,6 @@ const support: AcpSupport = {
   resumeMethod: "resume",
   clientFileSystem: true,
   sanitizeToolPayload: true,
-  resolveModelsOnCreate: false,
 
   resolveCommand: async (env, config, instanceId) => {
     const runtime = await resolveAntigravityRuntime(config.cli, env);
@@ -198,7 +200,7 @@ export const AntigravityDriver: ProviderDriver<AcpConfig> = {
     const base = await AcpAntigravityDriver.create(input);
     scheduleAntigravityTempSweep(input.instanceId);
     scheduleAntigravityTempSweep(VERIFICATION_TEMP_KEY);
-    const auth = new AntigravityAuthController();
+    const auth = new AntigravityAuthController(() => void base.refreshModels?.());
     let installFailure: string | undefined;
     void installMissingRuntime({
       instanceId: input.instanceId,
@@ -222,6 +224,9 @@ export const AntigravityDriver: ProviderDriver<AcpConfig> = {
       ...base,
       get models() {
         return base.models;
+      },
+      get modelsUnconfirmed() {
+        return base.modelsUnconfirmed;
       },
       snapshot: async () => {
         const snapshot = await base.snapshot();

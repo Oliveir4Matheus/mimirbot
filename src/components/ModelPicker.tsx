@@ -4,9 +4,9 @@ import { useStore, currentTaskBot, type Bot, type InstanceInfo, type ModelSelect
 import type { EffortLevel } from "../../shared/wire";
 import type { ModelVariantOption } from "../../shared/runtime-events";
 import { filterCustomModels, partitionCustomModels, preferredModels, suggestedModels } from "@/lib/custom-models";
-import { configuredModelInstances, isClaudeAccount, isCustomOnly, SIGN_IN_FAMILY_LABEL, signInFamily, splitEngineRail, type SignInFamily } from "@/lib/engine-rail";
+import { configuredModelInstances, isClaudeAccount, isCustomOnly, modelsAwaitEngine, SIGN_IN_FAMILY_LABEL, signInFamily, splitEngineRail, type SignInFamily } from "@/lib/engine-rail";
 import { InstanceProviderMark } from "./ProviderIcons";
-import { EngineSetup, EngineUpdateNotice, hasSavedApiKey, needsCli, needsSignIn } from "./EngineSetup";
+import { EngineSetup, EngineUpdateNotice, hasSavedApiKey, InstanceAccountNotes, needsCli, needsSignIn } from "./EngineSetup";
 import { EngineGroupLabel } from "./EngineGroupLabel";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { ChatGptPlanStatus } from "./ChatGptPlanStatus";
@@ -548,9 +548,9 @@ export function ModelPicker({
       });
   }, [displayedInstanceId, refreshInstanceModels, refreshInstances]);
 
-  // An engine with no models listed yet is asked for them, so the picker can say it is loading them, then show them.
+  // An engine with no models listed yet, or only a list it never confirmed, is asked for them, then they are shown.
   useEffect(() => {
-    if (open) (hasOfficialModels || customOnly ? refreshLocalInstances : refreshModels)();
+    if (open) ((hasOfficialModels || customOnly) && !modelsAwaitEngine(railInstance) ? refreshLocalInstances : refreshModels)();
   }, [open, refreshLocalInstances]);
 
   useEffect(() => { if (bot.busy) setOpen(false); }, [bot.busy]);
@@ -942,11 +942,7 @@ export function ModelPicker({
                   {signInFamily(railInstance) === "openai" && openaiAccounts.length > 1 && (
                     <ClaudeAccountSelect accounts={openaiAccounts} selectedId={railInstance.instanceId} onSelect={selectRail} />
                   )}
-                  {railInstance.snapshot.authenticated && railInstance.snapshot.account && (
-                    <p className="mt-1 truncate text-[11px] text-ink-secondary" title={[railInstance.snapshot.account.email, railInstance.snapshot.account.organization].filter(Boolean).join(" · ")}>
-                      {[railInstance.snapshot.account.email, railInstance.snapshot.account.organization].filter(Boolean).join(" · ")}
-                    </p>
-                  )}
+                  <InstanceAccountNotes instance={railInstance} listsModels={pane === "main"} />
                   {railInstance.snapshot.chatgptPlan && railInstance.snapshot.authenticated && (
                     <ChatGptPlanStatus key={railInstance.instanceId} instanceId={railInstance.instanceId} />
                   )}
