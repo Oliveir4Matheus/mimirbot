@@ -11,7 +11,7 @@ import { hostedWorkspaceConfigured } from "../../enterprise.ts";
 import { decodeInjectId, hostApiKey, localHost, mergeLocalInject } from "../local-inject.ts";
 import { applyStandaloneSpawnEnv } from "../../engine-install.ts";
 import { createAcpDriver, type AccountErrorCode, type AcpConfig, type AcpSupport } from "./core.ts";
-import { acpModelOption, acpVariantOption, offeredModels } from "./config-options.ts";
+import { offeredModels, surveyModelVariants } from "./config-options.ts";
 import { OPENCODE_STANDALONE } from "./opencode-release.ts";
 import { parseOpenCodeLogLine } from "./quiet-status.ts";
 import type { ModelCatalog, ModelVariantOption, ProviderDriver, ProviderErrorCode } from "../../contracts.ts";
@@ -262,18 +262,6 @@ function discoveryDirectory(): Promise<string> {
   return discoveryFolder;
 }
 
-const UNANSWERED = Symbol("unanswered");
-
-function answerWithin(answer: Promise<unknown>, ms: number): Promise<unknown> {
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  return Promise.race([
-    answer.catch(() => null),
-    new Promise((resolve) => {
-      timer = setTimeout(() => resolve(UNANSWERED), ms);
-    }),
-  ]).finally(() => clearTimeout(timer));
-}
-
 export interface OpenCodeSessionProbe {
   session: unknown;
   /** Each surveyed model's ACP effort choices; an empty list means it has none. */
@@ -282,27 +270,12 @@ export interface OpenCodeSessionProbe {
 
 /** OpenCode (1.18.27, 1.19.4, 2.1.4) names a model's efforts only in the session's `effort` option once that
  * model is selected, and OpenCode 2.1.4 answers overlapping selections with another model's options. */
-export async function surveyOpenCodeEfforts(
+export function surveyOpenCodeEfforts(
   request: (method: string, params: unknown) => Promise<unknown>,
   session: unknown,
   budgetMs = EFFORT_SURVEY_MS,
 ): Promise<Map<string, ModelVariantOption[]>> {
-  const efforts = new Map<string, ModelVariantOption[]>();
-  const sessionId = (session as { sessionId?: unknown } | null)?.sessionId;
-  if (typeof sessionId !== "string") return efforts;
-  const deadline = Date.now() + budgetMs;
-  for (const id of new Set(offeredModels(session, "model"))) {
-    const remaining = deadline - Date.now();
-    if (remaining <= 0) break;
-    const selected = await answerWithin(
-      request("session/set_config_option", { sessionId, configId: "model", value: id }),
-      remaining,
-    );
-    if (selected === UNANSWERED) break;
-    if (acpModelOption(selected, "model")?.currentValue !== id) continue;
-    efforts.set(id, acpVariantOption(selected)?.options ?? []);
-  }
-  return efforts;
+  return surveyModelVariants(request, session, budgetMs);
 }
 
 export async function probeOpenCodeSession(
