@@ -16,6 +16,7 @@ import {
   antigravityTokenPath,
   prepareAntigravityProfile,
   probeAntigravityModels,
+  removeAntigravitySignIn,
   validateAntigravityRuntime,
   type AntigravityProfile,
 } from "./antigravity-acp.ts";
@@ -238,6 +239,10 @@ export const AntigravityDriver: ProviderDriver<AcpConfig> = {
       },
       completeAuthentication: async (flowId, callbackUrl) => auth.complete(flowId, callbackUrl),
       cancelAuthentication: async () => auth.cancel(),
+      signOut: async () => {
+        auth.cancel();
+        await removeAntigravitySignIn(input.instanceId);
+      },
       dispose: async () => {
         auth.cancel();
         await base.dispose();
