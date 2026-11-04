@@ -38,7 +38,12 @@ const LINES: Record<string, number> = {
   "server/vps-computer.ts": 1369,
   "scripts/mcp-server.ts": 1479,
   "server/boat.ts": 1258,
+<<<<<<< HEAD
   "server/drivers/pi.ts": 1047,
+=======
+  "server/drivers/pi.ts": 1036,
+  "server/plan-usage.ts": 1050,
+>>>>>>> e7f61b0a6 (Plan usage reads OpenCode Go's allowance)
   "server/container-computer.ts": 1225,
   "src/components/Composer.tsx": 1058,
   "src/components/ModelPicker.tsx": 1178,
