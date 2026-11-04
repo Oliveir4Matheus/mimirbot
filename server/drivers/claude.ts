@@ -43,6 +43,7 @@ import { claudeApiErrorMessage, claudeLimitFacts, claudeLimitRefusal, claudeUsag
 import { TEAM_TOOLS_FAILED, failedCustomMcp, teamToolsFailed } from "./team-tools.ts";
 import { engineIdleMs, sessionIdlePolicy } from "./session-idle.ts";
 import { promptHalves, withVolatileNote } from "./prompt-split.ts";
+import { CLAUDE_OWN_MEMORY_OFF } from "./claude-own-memory.ts";
 import { parseVersionTriple, versionAtLeast } from "./acp/version-probe.ts";
 import {
   applyClaudeInject,
@@ -1194,7 +1195,7 @@ export const ClaudeDriver: ProviderDriver<ClaudeConfig> = {
       }
       const cwd = turn.cwd ?? homedir();
       const toolSearch = claudeToolSearchSetting(cwd, env);
-      const settings: Record<string, unknown> = { ...authSettings, env: { ...authSettings.env, ENABLE_TOOL_SEARCH: toolSearch } };
+      const settings: Record<string, unknown> = { ...authSettings, env: { ...authSettings.env, ENABLE_TOOL_SEARCH: toolSearch, ...(isolated ? CLAUDE_OWN_MEMORY_OFF : {}) } };
       // Project-only settings still find the personal memory via ancestors when the bot lives under HOME.
       if (isolated) settings.claudeMdExcludes = [join(homedir(), ".claude", "CLAUDE.md")];
       if (hooks) settings.hooks = claudeHookSettings(HOOK_HELPER_PATH);
