@@ -774,12 +774,8 @@ function readAntigravityCredential(account: PlanAccount, readText: (path: string
   return refreshToken ? { token: refreshToken, accountId: null, expired: false } : missingCredential();
 }
 
-/** The key saved in Settings, or the login `opencode auth login` keeps in the CLI's data folder. */
-function readOpenCodeCredential(
-  env: NodeJS.ProcessEnv,
-  readText: (path: string) => string | null,
-  now: number,
-): PlanCredential {
+/** The key saved in Settings, or the login `opencode auth login` keeps. `auth.json` is where OpenCode v1 wrote one; v2 keeps credentials in its own database, so this path covers installs migrated from v1 (the saved key covers v2). */
+function readOpenCodeCredential(env: NodeJS.ProcessEnv, readText: (path: string) => string | null, now: number): PlanCredential {
   const key = secretString(env.OPENCODE_API_KEY);
   if (key) return { token: key, accountId: null, expired: false };
   const raw = env.OPENCODE_AUTH_CONTENT ?? openCodeAuthText(env, readText);
@@ -802,10 +798,7 @@ function openCodeAuthText(env: NodeJS.ProcessEnv, readText: (path: string) => st
     process.platform === "darwin" ? join(home, "Library", "Application Support") : "",
     process.platform === "win32" ? env.LOCALAPPDATA || join(home, "AppData", "Local") : "",
   ].filter(Boolean);
-  for (const root of roots) {
-    const text = readText(join(root, "opencode", "auth.json"));
-    if (text) return text;
-  }
+  for (const root of roots) { const text = readText(join(root, "opencode", "auth.json")); if (text) return text; }
   return null;
 }
 function errorRow(account: PlanAccount, error: string): PlanProviderRow {
@@ -974,15 +967,12 @@ async function fetchAntigravity(account: PlanAccount, deps: PlanUsageDeps): Prom
 
 /** Go's allowance, read with the account's own key or login. A key without a Go subscription answers 403. */
 async function fetchOpenCode(account: PlanAccount, token: string, deps: PlanUsageDeps): Promise<PlanProviderRow> {
-  const result = await fetchJson(deps.fetch, OPENCODE_GO_USAGE_URL, {
-    Authorization: `Bearer ${token}`,
-    Accept: "application/json",
-  }, deps.timeoutMs ?? PROVIDER_TIMEOUT_MS);
+  const result = await fetchJson(deps.fetch, OPENCODE_GO_USAGE_URL, { Authorization: `Bearer ${token}`, Accept: "application/json" }, deps.timeoutMs ?? PROVIDER_TIMEOUT_MS);
   // 403 is Go's own answer for a key without a Go subscription: the account works and has no allowance to report.
   if (result.status === 403) return okRow(account, { plan: null, fiveHour: closedWindow(), weekly: closedWindow(), extra: [], models: [] });
   if (authRejected(result.status)) return errorRow(account, "OpenCode refused the saved credentials");
-  if (!result.ok || result.body === null || typeof result.body !== "object") {
-    return errorRow(account, result.status === 0 || result.status >= 500 ? couldNotReach("opencode") : unexpectedUsage("opencode"));
-  }
-  return okRow(account, parseOpenCodeUsage(result.body));
+  if (!result.ok || result.body === null || typeof result.body !== "object") return errorRow(account, result.status === 0 || result.status >= 500 ? couldNotReach("opencode") : unexpectedUsage("opencode"));
+  const windows = parseOpenCodeUsage(result.body);
+  // A 200 with no meter at all is not an allowance: it is an answer this row cannot read.
+  return windows.plan ? okRow(account, windows) : errorRow(account, unexpectedUsage("opencode"));
 }
