@@ -4953,6 +4953,214 @@
       "ourCommit": "3feaae7ad2b9e3c0a37e81393d6e0cab71a76e0a",
       "plan": "feat/upstream-lote-12",
       "note": "Entrou limpo sobre o commit dos painéis fixados."
+    },
+    {
+      "sha": "30af9c93ba973a94063d744878e1c0c5b57820a3",
+      "subject": "fix(acp): say why an engine exited, with its last output masked",
+      "status": "applied",
+      "decidedAt": "2026-11-06",
+      "ourCommit": "681b4b19c465643380ac9dc3157230bb51d55b31",
+      "reason": "Segurança: mascara a última saída de um engine ACP que morreu e explica o código de saída."
+    },
+    {
+      "sha": "c831e5d3fbd304f776aed82f5723d1df6c065b04",
+      "subject": "pair --ttl keeps a code open up to a day; token create makes CI tokens",
+      "status": "applied",
+      "decidedAt": "2026-11-06",
+      "ourCommit": "0957a8a726539959473aafaa1bb6b20240aa2d7e",
+      "reason": "Segurança/relay: pair --ttl e tokens de acesso para CI, com escopo, validade e revogação."
+    },
+    {
+      "sha": "37793e3eba8b5a29d55538c1f4c7ccb135bb0f26",
+      "subject": "control plane: MausBot Relay host tokens",
+      "status": "applied",
+      "decidedAt": "2026-11-06",
+      "ourCommit": "9aa6942a69a6e78971ddba483409dc5c068a1ca7",
+      "reason": "Segurança/relay: tokens de host Ed25519 no control plane, com rollout e contagem de adoção. Teste adaptado para o vetor V8 inline (696a2e306), porque o fork não carrega companion/src/e2e."
+    },
+    {
+      "sha": "51d02410e57d301e85c23f040f7e5f8604382619",
+      "subject": "relay: wire parsing, token verify, per-IP limits, config, logs and metrics",
+      "status": "applied",
+      "decidedAt": "2026-11-06",
+      "ourCommit": "ed69cdb2a5b06f3c965de6b8174afa018f0e9fec",
+      "reason": "Segurança/relay: parsing do wire, verificação de token, limites por IP, config, logs e métricas."
+    },
+    {
+      "sha": "b012c9b7d945cd66297b9dfcc67543151ab84916",
+      "subject": "fix(redact): mask PyPI API tokens (pypi-AgE…)",
+      "status": "applied",
+      "decidedAt": "2026-11-06",
+      "ourCommit": "6684fa4f3116de17e5ecd81017d4731de75a8c97",
+      "reason": "Segurança/redação: mascara tokens PyPI (pypi-…)."
+    },
+    {
+      "sha": "c77651a82034ee828544579437c4cb1c25e3b1c3",
+      "subject": "fix(redact): require PyPI's 85-character minimum for pypi- tokens",
+      "status": "applied",
+      "decidedAt": "2026-11-06",
+      "ourCommit": "299d1cc3ef1eef7955190fc51bbff2b7581add91",
+      "reason": "Segurança/redação: exige o mínimo de 85 caracteres para tokens PyPI."
+    },
+    {
+      "sha": "ae8b92b62b138151310a5d8471ee78c18b85b9e0",
+      "subject": "fix(redact): mask SendGrid API keys (SG.…)",
+      "status": "applied",
+      "decidedAt": "2026-11-06",
+      "ourCommit": "4abc57d31b3e9937df2e7f8ab99b5328be11466c",
+      "reason": "Segurança/redação: mascara chaves SendGrid (SG.…)."
+    },
+    {
+      "sha": "525362a3991d5a6ee6c5f769b5f8e4910c79d883",
+      "subject": "fix(redact): mask temporary AWS access key IDs (ASIA)",
+      "status": "applied",
+      "decidedAt": "2026-11-06",
+      "ourCommit": "ca664e9bc093fba1f4a52a17f506ada91a2a7f14",
+      "reason": "Segurança/redação: mascara access key ids temporários (ASIA)."
+    },
+    {
+      "sha": "ac1360e3d45e8f3fdcfbb17cd4993a96a014f2c4",
+      "subject": "Mask temporary AWS key ids in diagnostics bundles too",
+      "status": "applied",
+      "decidedAt": "2026-11-06",
+      "ourCommit": "b09e1ea44c6492479d29fe01aa1037068b93bc10",
+      "reason": "Segurança/redação: mascara access key ids temporários (ASIA) também nos diagnósticos."
+    },
+    {
+      "sha": "f609bb0a660b75a7badea5295c2afd27fcfd9919",
+      "subject": "fix(logins): mask a held secret in its form-urlencoded spelling",
+      "status": "applied",
+      "decidedAt": "2026-11-06",
+      "ourCommit": "7f446c60d3b69a17c5cb969aefdfefa834868835",
+      "reason": "Segurança/redação: mascara um segredo mantido na forma form-urlencoded."
+    },
+    {
+      "sha": "f198d0241b1d000a63821bf5b3a61d7e716a0a69",
+      "subject": "test(redact): cover the SendGrid trailing lookahead with a 44-char secret",
+      "status": "applied",
+      "decidedAt": "2026-11-06",
+      "ourCommit": "0aff98302460ac4ce9bad37a7bbe43cf06cb94a9",
+      "reason": "Segurança/redação: teste do lookahead final do SendGrid com segredo de 44 caracteres."
+    },
+    {
+      "sha": "1e5d75f06fcffe610bd70597182c8f680785e12d",
+      "subject": "fix(codex): ask Codex about its login again after a turn finds it gone",
+      "status": "applied",
+      "decidedAt": "2026-11-06",
+      "ourCommit": "3802be7bb20cf797d43cdc655fd7cf52c6343065",
+      "reason": "Codex: pergunta de novo sobre o login quando um turno descobre que ele sumiu."
+    },
+    {
+      "sha": "afe1a330aee2ec204469490b9514c6e780f8444d",
+      "subject": "fix(codex): keep a forgotten Codex login forgotten",
+      "status": "applied",
+      "decidedAt": "2026-11-06",
+      "ourCommit": "8296c10f3fe2eb05e0975b9e1621a0fcc58668dd",
+      "reason": "Codex: mantém um login esquecido esquecido."
+    },
+    {
+      "sha": "dc28117774f228e5f3d2c33b732cbd462d80b83a",
+      "subject": "fix(codex): count Codex 0.165's API-key login as signed in",
+      "status": "applied",
+      "decidedAt": "2026-11-06",
+      "ourCommit": "1fea07c7e97f0a02013c8d8422b21e5f35c49068",
+      "reason": "Codex: conta o login por API key do 0.165 como conectado."
+    },
+    {
+      "sha": "7f502fd7a777f21e5bf8a41022f377287df70103",
+      "subject": "fix: end a Codex limit hold once fresh usage shows the window that refused is gone (#4281)",
+      "status": "applied",
+      "decidedAt": "2026-11-06",
+      "ourCommit": "5e4c0fcc02e64f8c3059f841dfc8e641fbb3558a",
+      "reason": "Codex: encerra o limite quando o uso novo mostra que a janela que recusou sumiu."
+    },
+    {
+      "sha": "df4d643ef5fc23e708f6f24299d54021407a1a88",
+      "subject": "refactor(codex): move MCP server mounting out of codex.ts",
+      "status": "applied",
+      "decidedAt": "2026-11-06",
+      "ourCommit": "2dcad445acbbb851fde930e8e4fd58bf7cb2d52d",
+      "reason": "Codex: move a montagem dos servidores MCP para fora de codex.ts."
+    },
+    {
+      "sha": "2b45f48504980a82d6318f132516231fd0f0c92c",
+      "subject": "fix(codex): start a turn only after its MCP servers finish starting",
+      "status": "applied",
+      "decidedAt": "2026-11-06",
+      "ourCommit": "afecbb564ec06c3edb4c891a6cacc88075dedd38",
+      "reason": "Codex: só começa um turno depois que os servidores MCP terminam de subir."
+    },
+    {
+      "sha": "e7a3c1a66acffbd4b9837f0bcd9826c072ffce71",
+      "subject": "test(codex): add a native verifier for MCP servers that start slowly",
+      "status": "applied",
+      "decidedAt": "2026-11-06",
+      "ourCommit": "2045731ba0abacabe43cef5dc355c88299d000d6",
+      "reason": "Codex: verificador nativo para servidores MCP que demoram a subir."
+    },
+    {
+      "sha": "235c745124e678e4b5a8661b9631d9279ffaeb50",
+      "subject": "A reply's long unbroken text wraps inside its bubble",
+      "status": "applied",
+      "decidedAt": "2026-11-06",
+      "ourCommit": "6d763c23ee898970b2ce55a169e74c7bb08ca638",
+      "reason": "Chat: texto longo sem quebra envolve dentro da bolha da resposta."
+    },
+    {
+      "sha": "5d89a72eb3088b5f5fbf67d8983182cb82cf2c63",
+      "subject": "fix(chat): wrap long unbroken text inside the user's own bubble",
+      "status": "applied",
+      "decidedAt": "2026-11-06",
+      "ourCommit": "0a1258ceec9f5068f362c163a48c064d80259c17",
+      "reason": "Chat: texto longo sem quebra envolve dentro da bolha do usuário."
+    },
+    {
+      "sha": "97ae5020cfea78a7d98b4f3d69f77fc1ddeaff40",
+      "subject": "fix(automations): Enter that picks an IME candidate no longer sends the new automation request",
+      "status": "applied",
+      "decidedAt": "2026-11-06",
+      "ourCommit": "2a1451e5e43a02d7d795a454f1321e1de67d05d0",
+      "reason": "IME: Enter que escolhe candidato não envia a nova automação."
+    },
+    {
+      "sha": "7d794aa586b347f204e203177887ec8aecafc869",
+      "subject": "fix(find): Enter or Escape that picks an IME candidate no longer jumps to a match or closes find",
+      "status": "applied",
+      "decidedAt": "2026-11-06",
+      "ourCommit": "7acd97e739a221bb4826e9082c6d0674062e2a85",
+      "reason": "IME: Enter/Escape que escolhe candidato não pula para um resultado nem fecha o find."
+    },
+    {
+      "sha": "0ae23a643b0e3a9b8ec2a88de3d6a7ffac600131",
+      "subject": "fix(palette): Enter or Escape that belongs to an IME candidate no longer opens a match or closes the palette (#4230)",
+      "status": "applied",
+      "decidedAt": "2026-11-06",
+      "ourCommit": "03dbfc277ef8524082caa482d7e5e5d32bd74add",
+      "reason": "IME: Enter/Escape que pertence a candidato não abre resultado nem fecha a paleta."
+    },
+    {
+      "sha": "3e089c668c305a346cc8f06b878a104287f10c62",
+      "subject": "Sidebar: no red dot for a failed run whose automation or bot is gone (#4373)",
+      "status": "applied",
+      "decidedAt": "2026-11-06",
+      "ourCommit": "14943d634fdab37ec2ac735972def317c19e1316",
+      "reason": "Sidebar: sem ponto vermelho para uma execução falha cuja automação ou bot sumiu."
+    },
+    {
+      "sha": "cd1d84aea04ba745a46ddfd1ad9289e8149a9ebb",
+      "subject": "Chat: scrolling up reveals earlier messages when the shown rows are too short to scroll (#4374)",
+      "status": "applied",
+      "decidedAt": "2026-11-06",
+      "ourCommit": "8ee6c8f0fd401db0e123f6315045d9d66aa0a461",
+      "reason": "Chat: rolar para cima revela mensagens anteriores quando as linhas visíveis não preenchem a tela."
+    },
+    {
+      "sha": "8017d860d9b213bbb68fdb1a5069a8f989cc1e3d",
+      "subject": "Chat: only ~~double tilde~~ hides text as a spoiler (#4256)",
+      "status": "applied",
+      "decidedAt": "2026-11-06",
+      "ourCommit": "4f5105f4de3feadc0e3736e79ae09c97599fa48e",
+      "reason": "Chat: só ~~til duplo~~ esconde texto como spoiler; um ~ solto em faixas como 77~82 não esconde o que vem depois. O fork não tinha GFM_OPTIONS; entrou agora."
     }
   ]
 }
