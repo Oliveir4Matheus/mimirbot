@@ -5163,7 +5163,7 @@
       "reason": "Chat: só ~~til duplo~~ esconde texto como spoiler; um ~ solto em faixas como 77~82 não esconde o que vem depois. O fork não tinha GFM_OPTIONS; entrou agora."
     },
     {
-      "sha": "bb99f899f",
+      "sha": "bb99f899f8224a65041a783cd3b6b6bf852452ff",
       "subject": "fix(antigravity): let the first Google account sign out (#4237)",
       "status": "applied",
       "decidedAt": "2026-11-06",
@@ -5171,7 +5171,7 @@
       "note": "Antigravity: a primeira conta Google pode sair; a ação de sign-out passou a funcionar sem outra conta autenticada."
     },
     {
-      "sha": "8371153cb",
+      "sha": "8371153cb97962404f3d9234e8644e94e9556fe7",
       "subject": "fix(antigravity): saved Low/Medium/High picks run on any base model, not only Gemini 3.8 Flash (#4229)",
       "status": "applied",
       "decidedAt": "2026-11-06",
@@ -5179,7 +5179,7 @@
       "note": "Antigravity: picks Low/Medium/High salvos rodam em qualquer modelo base; normalizeAntigravityTurn ligado ao normalizeSessionSelection do core."
     },
     {
-      "sha": "b1b3db58e",
+      "sha": "b1b3db58e1de33bb2bb022c53adcb32ea25834ba",
       "subject": "Antigravity: discover thinking levels for every account model (#4227)",
       "status": "applied",
       "decidedAt": "2026-11-06",
@@ -5187,7 +5187,7 @@
       "note": "Antigravity: descobre thinking levels de todos os modelos da conta; o survey virou surveyModelVariants em acp/config-options.ts."
     },
     {
-      "sha": "551a50778",
+      "sha": "551a507784f69adf47c0517ccd396090f218e793",
       "subject": "fix(bot-box): give the box the machine's CPU list so Antigravity starts on a Cloud",
       "status": "applied",
       "decidedAt": "2026-11-06",
@@ -5195,7 +5195,7 @@
       "note": "bot-box: entrega a lista de CPUs da máquina para o Antigravity subir numa Cloud."
     },
     {
-      "sha": "234e8f11e",
+      "sha": "234e8f11e9457a64a2e1a3bea4aea83ce1c7960c",
       "subject": "Antigravity reads its models when it starts and after a sign-in",
       "status": "applied",
       "decidedAt": "2026-11-06",
@@ -5203,7 +5203,7 @@
       "note": "Antigravity lê os modelos ao iniciar e após o sign-in; catálogo em acp/model-catalog.ts, modelsUnconfirmed e nota no picker. Adaptado: o fork não tem pickSessionModel, o resolveModels não recebe fresh e o model-catalog usa o cache do fork."
     },
     {
-      "sha": "c3093b725",
+      "sha": "c3093b7255433bd03f7562acf9fed72beb823cef",
       "subject": "fix(antigravity): start the new account's Google sign-in after Add Google account",
       "status": "applied",
       "decidedAt": "2026-11-06",
@@ -5211,7 +5211,7 @@
       "note": "Antigravity: inicia o sign-in Google da nova conta depois de Add Google account."
     },
     {
-      "sha": "a46959d49",
+      "sha": "a46959d49293cedb96c8ddabbd679f062f8d8be0",
       "subject": "Treat an unreadable Claude sign-in check as unknown, not signed out",
       "status": "applied",
       "decidedAt": "2026-11-06",
@@ -5219,7 +5219,7 @@
       "note": "Claude: uma checagem de sign-in ilegível vira desconhecida, não desconectada."
     },
     {
-      "sha": "87cc269bc",
+      "sha": "87cc269bc80981985bc60bd2d5b35d20ecfad0fb",
       "subject": "Start Claude's hook helper without a shell on Windows",
       "status": "applied",
       "decidedAt": "2026-11-06",
@@ -5227,7 +5227,7 @@
       "note": "Claude: o helper de hook inicia sem shell no Windows."
     },
     {
-      "sha": "214e2ff5c",
+      "sha": "214e2ff5c8b5b935ef1ecdbe765eb8298e777723",
       "subject": "A Claude bot at its usage limit carries on with any backup that has its tools",
       "status": "applied",
       "decidedAt": "2026-11-06",
@@ -5235,7 +5235,7 @@
       "note": "Claude: no limite de uso, continua com qualquer backup que tenha as ferramentas."
     },
     {
-      "sha": "627f8c94c",
+      "sha": "627f8c94c43af4d870738a3d35a1fcb3d623234d",
       "subject": "fix(claude): leave out four built-in tools no bot can use",
       "status": "applied",
       "decidedAt": "2026-11-06",
@@ -5243,7 +5243,7 @@
       "note": "Claude: deixa de fora Workflow, ScheduleWakeup, ReportFindings e ListAgents. Adaptado: mantidos os imports do fork (sem claude-elicitation/cost-history)."
     },
     {
-      "sha": "bae721bf6",
+      "sha": "bae721bf6fabd96e1b70f38fada614c3925eea26",
       "subject": "fix(claude): turn off Claude Code's own memory in bot turns",
       "status": "applied",
       "decidedAt": "2026-11-06",
@@ -5251,7 +5251,7 @@
       "note": "Claude: desliga a memória própria do Claude Code em turnos isolados. Adaptado ao objeto settings do fork (upstream usa own/withBotSettings)."
     },
     {
-      "sha": "d98b12cde",
+      "sha": "d98b12cde17c5f64613426b31e3a55f4034d943e",
       "subject": "fix(hermes): offer Hermes' own default model when nothing else is listed",
       "status": "applied",
       "decidedAt": "2026-11-06",
@@ -5259,7 +5259,7 @@
       "note": "Hermes: oferece o modelo padrão do próprio Hermes quando nada mais está listado."
     },
     {
-      "sha": "d37739095",
+      "sha": "d377390950f5b16a77aea2f70cdb7c963eb8e2e1",
       "subject": "fix(hermes): offer the default only for a runnable Hermes, and keep Ollama/LM Studio lists when their server is down",
       "status": "applied",
       "decidedAt": "2026-11-06",
@@ -5267,7 +5267,7 @@
       "note": "Hermes: só oferece o padrão para um Hermes executável e mantém listas Ollama/LM Studio quando o servidor está fora."
     },
     {
-      "sha": "44df14ea0",
+      "sha": "44df14ea0c8deb169a430ea7973a6b09801b1c27",
       "subject": "fix(hermes): find Hermes behind a wrapper or later on PATH, and offer the default for an unprobed Ollama/LM Studio base_url",
       "status": "applied",
       "decidedAt": "2026-11-06",
@@ -5275,7 +5275,7 @@
       "note": "Hermes: encontra o binário atrás de wrapper ou mais tarde no PATH e oferece o padrão para base_url não sondada."
     },
     {
-      "sha": "e790470b1",
+      "sha": "e790470b15f281b11ed38ebd805c67374e6cbad9",
       "subject": "fix(hermes): resolve an extensionless Windows path like launch does, and match the probe's protocol",
       "status": "applied",
       "decidedAt": "2026-11-06",
@@ -5283,7 +5283,7 @@
       "note": "Hermes: resolve caminho sem extensão no Windows como o launch e alinha o protocolo da sondagem."
     },
     {
-      "sha": "77df052e0",
+      "sha": "77df052e039aeccb70e2feef08c3779634ead13a",
       "subject": "fix(hermes): don't count IPv6 loopback as probed, and skip a Windows .cmd shim that can't launch",
       "status": "applied",
       "decidedAt": "2026-11-06",
@@ -5291,7 +5291,7 @@
       "note": "Hermes: não conta loopback IPv6 como sondado e ignora shim .cmd que não inicia."
     },
     {
-      "sha": "381d328d8",
+      "sha": "381d328d838dff37ddfe0ec36a82073151194f9f",
       "subject": "Fix portable Hermes launcher on Windows",
       "status": "applied",
       "decidedAt": "2026-11-06",
@@ -5299,7 +5299,7 @@
       "note": "Hermes: launcher portátil no Windows."
     },
     {
-      "sha": "ef2210793",
+      "sha": "ef2210793edbd41698ad8c5734078ab5aeb65d17",
       "subject": "fix(local-vm): start a stopped Podman machine on a Mac instead of failing the turn (#4241)",
       "status": "applied",
       "decidedAt": "2026-11-06",
@@ -5307,7 +5307,7 @@
       "note": "VM local: inicia uma máquina Podman parada no Mac em vez de falhar o turno."
     },
     {
-      "sha": "e0964ccbc",
+      "sha": "e0964ccbcf2c291d3c483d90d9b486eb7dee0dcd",
       "subject": "fix(acp): fail a turn whose whole reply is a provider error body",
       "status": "applied",
       "decidedAt": "2026-11-06",
@@ -5315,7 +5315,7 @@
       "note": "ACP: falha um turno cuja resposta inteira é um corpo de erro do provedor. Adaptado: import de endTurn junto de exitDetail."
     },
     {
-      "sha": "54f960e46",
+      "sha": "54f960e46126c6416bd9b826b56dd9e5bd338b5f",
       "subject": "fix(acp): read a short 429 in an error reply as a rate limit, not a usage limit",
       "status": "applied",
       "decidedAt": "2026-11-06",
@@ -5323,7 +5323,7 @@
       "note": "ACP: 429 curto em resposta de erro é rate limit, não limite de uso. O ratchet de tamanho ficou com os números do fork."
     },
     {
-      "sha": "743566be0",
+      "sha": "743566be065462547a8728f7ebfb75565855f152",
       "subject": "Fix DeepSeek Harness \"session is already active\" when a turn's tools change (#4274)",
       "status": "applied",
       "decidedAt": "2026-11-06",
@@ -5331,7 +5331,7 @@
       "note": "DeepSeek Harness: corrige \"session is already active\" quando as ferramentas do turno mudam."
     },
     {
-      "sha": "83e355afa",
+      "sha": "83e355afabe4494ba3d508de8e07fcf1887e3836",
       "subject": "fix(openai-chat): send Gemini's thought signature back with its tool calls",
       "status": "applied",
       "decidedAt": "2026-11-06",
@@ -5339,7 +5339,7 @@
       "note": "OpenAI-compatible: devolve a thought signature do Gemini junto com as tool calls."
     },
     {
-      "sha": "3f660d1d2",
+      "sha": "3f660d1d29597e9ef630683506a1b315ca472218",
       "subject": "fix(openai-chat): count a repeated thought signature once toward the size limit",
       "status": "applied",
       "decidedAt": "2026-11-06",
@@ -5347,7 +5347,7 @@
       "note": "OpenAI-compatible: conta uma thought signature repetida uma vez no limite de tamanho."
     },
     {
-      "sha": "c97c657d0",
+      "sha": "c97c657d0c190c59d94c21b72c082d38071702d2",
       "subject": "fix(openai-chat): accept a legacy function_call from OpenAI-compatible relays",
       "status": "applied",
       "decidedAt": "2026-11-06",
@@ -5355,7 +5355,7 @@
       "note": "OpenAI-compatible: aceita function_call legado de relays. Adaptado o comentário/import do topo do protocolo."
     },
     {
-      "sha": "e42d30a38",
+      "sha": "e42d30a3898d410b5db708addc26096b2e84f26e",
       "subject": "fix(openai-chat): check a legacy function_call only when it is the reply's call",
       "status": "applied",
       "decidedAt": "2026-11-06",
@@ -5363,7 +5363,7 @@
       "note": "OpenAI-compatible: só considera function_call legado quando é a chamada da resposta."
     },
     {
-      "sha": "4776d25b0",
+      "sha": "4776d25b079881f8118559c08d7dbd8ccd8d9665",
       "subject": "Bots on local models get the short tool list without a setting (#4182)",
       "status": "applied",
       "decidedAt": "2026-11-06",
@@ -5371,7 +5371,7 @@
       "note": "Bots em modelos locais recebem a lista curta de ferramentas sem configuração."
     },
     {
-      "sha": "16071c32b",
+      "sha": "16071c32b4332860f2461b9ab6ec798b8d1dd3af",
       "subject": "fix(copilot): connect automation tools through launcher config",
       "status": "applied",
       "decidedAt": "2026-11-06",
@@ -5379,7 +5379,7 @@
       "note": "Copilot: conecta ferramentas de automação pela config do launcher."
     },
     {
-      "sha": "a1f772737",
+      "sha": "a1f772737f3ad0888d791a5daee06ba990877513",
       "subject": "fix(bot-box): mount Copilot config references",
       "status": "applied",
       "decidedAt": "2026-11-06",
@@ -5387,7 +5387,7 @@
       "note": "bot-box: monta as referências de config do Copilot."
     },
     {
-      "sha": "c184f5ec9",
+      "sha": "c184f5ec9083ed6828f502cc1e17d963cd8aeccd",
       "subject": "Bot settings: say where a new bot's model comes from (#4217)",
       "status": "applied",
       "decidedAt": "2026-11-06",
@@ -5395,7 +5395,7 @@
       "note": "Configurações do bot: diz de onde vem o modelo de um bot novo."
     },
     {
-      "sha": "94844cbf3",
+      "sha": "94844cbf3f80d844c69406b8bd4da07c32f60a48",
       "subject": "Browser-only prompt no longer tells coding engines they have no shell (#4294)",
       "status": "applied",
       "decidedAt": "2026-11-06",
@@ -5403,7 +5403,7 @@
       "note": "Prompt browser-only não diz mais a engines de código que não há shell."
     },
     {
-      "sha": "f883d3533",
+      "sha": "f883d35336bc670bde3bce9a03fe56425f05ab85",
       "subject": "Routines: a bot creation draft ignores a routine model",
       "status": "applied",
       "decidedAt": "2026-11-06",
@@ -5411,7 +5411,7 @@
       "note": "Routines: o rascunho de criação ignora o modelo da rotina. Adaptado: o RoutineInput do fork não tem modelSelection, então a linha foi omitida."
     },
     {
-      "sha": "6d103270c",
+      "sha": "6d103270c28d1c4e826c8136f13c80d3812aa5fd",
       "subject": "Setup wizard: connect Kimi, Gemini and DeepSeek",
       "status": "applied",
       "decidedAt": "2026-11-06",
@@ -5419,7 +5419,7 @@
       "note": "Setup wizard: conecta Kimi (login), Gemini e DeepSeek (API key). Mantido o nome MimirBot e a lista de drivers do fork."
     },
     {
-      "sha": "72f56613e",
+      "sha": "72f56613e1e71db54d6a984343c5e16a080b4d97",
       "subject": "MCP servers API takes \"type\": \"stdio\" on a command server",
       "status": "applied",
       "decidedAt": "2026-11-06",
@@ -5427,7 +5427,7 @@
       "note": "API de MCP aceita type stdio num servidor de comando. O teste de changes/remove ficou de fora (o fork não rastreia changes)."
     },
     {
-      "sha": "6efded829",
+      "sha": "6efded82958684160a3ab50776bc7213ddc38ddc",
       "subject": "fix(opencode): the install descriptor tracks the 2.x package name and a current standalone pin",
       "status": "applied",
       "decidedAt": "2026-11-06",
@@ -5435,7 +5435,7 @@
       "note": "OpenCode: descritor de instalação passa ao pacote 2.x (@opencode/cli) e pin standalone atual; docs com o nome MimirBot."
     },
     {
-      "sha": "e7f61b0a6",
+      "sha": "e7f61b0a634aceb494d46d3c65c9dcaa82959538",
       "subject": "Plan usage reads OpenCode Go's allowance",
       "status": "applied",
       "decidedAt": "2026-11-06",
@@ -5443,7 +5443,7 @@
       "note": "Plan usage: lê a cota do OpenCode Go (rolling/semanal/mensal), com chave ou login do CLI. Unido ao suporte Antigravity do fork; removido o teste de ChatGPT-plan que depende de noUsage."
     },
     {
-      "sha": "772203907",
+      "sha": "7722039078ea5c696cbd0fdb3af8e4dfb2580255",
       "subject": "Document the OpenCode allowance suite",
       "status": "applied",
       "decidedAt": "2026-11-06",
@@ -5451,7 +5451,7 @@
       "note": "Documenta a suíte da cota do OpenCode."
     },
     {
-      "sha": "66582fc2f",
+      "sha": "66582fc2f2ed7ee153721af04466e490cb3e360d",
       "subject": "plan-usage.ts stays within its size: compact the OpenCode helpers",
       "status": "applied",
       "decidedAt": "2026-11-06",
@@ -5459,39 +5459,164 @@
       "note": "Compacta os helpers do OpenCode; o ratchet ficou com os números do fork."
     },
     {
-      "sha": "1277facb3",
+      "sha": "1277facb3fd49fae9defdc87a656099245cc6fd1",
       "subject": "fix(limits): don't hold Claude at a full window while its paid extra usage has room",
       "status": "deferred",
       "decidedAt": "2026-11-06",
       "note": "Precisa do 96002681c (#4174, monthly spend) para ler spend/extra_usage; sem isso, a linha de orçamento não existe no fork. Revisitar junto com o grupo de usage."
     },
     {
-      "sha": "3a2d56359",
+      "sha": "3a2d56359827e421ac804c1d5053c5a4beeea48f",
       "subject": "fix: a later start reads engines as before, and a reloaded engine reads its models (#4183)",
       "status": "ignored",
       "decidedAt": "2026-11-06",
       "note": "Já coberto: o fork nunca adotou o status \"fresco\" no start e sempre relê o catálogo em background; não tem readsOf/reuse nem readStartupModelCacheEntry."
     },
     {
-      "sha": "15f51a588",
+      "sha": "15f51a5885b677cb2e9ff702c76b211aba55a0bd",
       "subject": "Keep custom Claude endpoints out of hosted workspaces",
       "status": "ignored",
       "decidedAt": "2026-11-06",
       "note": "O fork não tem ClaudeEndpoints/SimpleEngines; a feature não existe aqui."
     },
     {
-      "sha": "830d9b3db",
+      "sha": "830d9b3db01553a0e5c8f75c2ef8685af283b94b",
       "subject": "fix(tts): trim geminiKey before verification and saving",
       "status": "ignored",
       "decidedAt": "2026-11-06",
       "note": "O fork não tem TTS Gemini (geminiKey); nada a ajustar."
     },
     {
-      "sha": "146adbef6",
+      "sha": "146adbef6835960b7a5d374b46fc74dd43d9e99b",
       "subject": "Train fixes: size limits, OpenCode usage row, test leftovers",
       "status": "ignored",
       "decidedAt": "2026-11-06",
       "note": "Limpeza/compactação de código que o fork não tem (voiceNoteEveryReply, noUsage, cliVersion) e teste de engine-status ausente; sem efeito aqui."
+    },
+    {
+      "sha": "62e66fee0b8a85067390b2a330efda22104f0dc9",
+      "subject": "OpenCode: Refresh re-reads the provider's models, and a model id can be typed by hand",
+      "status": "applied",
+      "decidedAt": "2026-11-06",
+      "ourCommit": "a6ddbd9f3936c45ef0f58c7aeb7fce93a48527a6",
+      "note": "Pré-requisito de a149c8735. Aplicado o lado servidor (opencode-go, opencode-typed-model, shared/opencode-model-id, fake-acp-cli, testes de refresh); a parte de UI do picker ficou de fora porque o ModelPicker do fork antecede model-choices/simple-model-menu. acpModelCatalog agora passa `fresh` ao resolveModels."
+    },
+    {
+      "sha": "a149c8735be6f40b4db79e4315958495ae5678a8",
+      "subject": "OpenCode: its model list refreshes on its own, on OpenCode 2 too, and from Venice's own list (#4698)",
+      "status": "applied",
+      "decidedAt": "2026-11-06",
+      "ourCommit": "b6d8af7cb3039bf7aba947c47475cd3391347d7d",
+      "note": "OpenCode: a lista de modelos se atualiza sozinha, no 2.x e na lista da Venice; novo opencode-model-refresh.ts."
+    },
+    {
+      "sha": "905a3d2518d79ce5f9de0f810ee10b1c6d97a865",
+      "subject": "OpenRouter and other API-key models work again on Windows: the built-in tools fit the 128-tool limit (#3811)",
+      "status": "applied",
+      "decidedAt": "2026-11-06",
+      "ourCommit": "607df19988de84975f308699b32d9b01839e09b9",
+      "note": "Pré-requisito de ffd126e54/f6af8a06e: computer-tool-list.ts e o orçamento de ferramentas embutidas."
+    },
+    {
+      "sha": "ffd126e540c87bc7908da579b04b05af7b43086f",
+      "subject": "fix(chat-mcp): reach servers past the tool limit through the directory, and show the bot's tool budget",
+      "status": "applied",
+      "decidedAt": "2026-11-06",
+      "ourCommit": "30387d5e868dc7f237e9181127b0bf540c2a9568",
+      "note": "Aplicado o núcleo de servidor (chat-mcp-tools, mcp-schema-validator, tool-count-limit, tool-budgets, shared/tool-budget, mcp-directory). Ficaram de fora o card de orçamento (ToolBudgetLine/McpServersPanel), a rota de orçamento, o probe via broker e os docs: o fork não tem essas telas nem o broker."
+    },
+    {
+      "sha": "f6af8a06e347b5709ddd741fd43994fd7b9f5f6c",
+      "subject": "Chat engine: mount every tool of an MCP server, and use each provider's real tool limit (#4701)",
+      "status": "applied",
+      "decidedAt": "2026-11-06",
+      "ourCommit": "f2f97d3b33a02c31919a3a1144f2b7b5f3f4dbf7",
+      "note": "Aplicado o miolo: servidores com mesmo endereço/login montados uma vez, limite real por provedor, refit, checagem de schema. Omitidos os resultados MCP salvos em arquivo (segurados por decisão) e a UI de orçamento."
+    },
+    {
+      "sha": "469583b47b13ef2c73ed15273d85ca49cc081d7e",
+      "subject": "OpenCode: one thread per folder in a shared process (fixes mid-turn \"capability has expired\") (#4699)",
+      "status": "applied",
+      "decidedAt": "2026-11-06",
+      "ourCommit": "2e91ab21e23a0d28d61a863177d1d280945d820b",
+      "note": "OpenCode: uma thread por pasta no processo compartilhado; corrige \"capability has expired\" no meio do turno."
+    },
+    {
+      "sha": "07b8bc1a69841fbb1c60eb96218cb3873cfe22b1",
+      "subject": "OpenCode 1: discovery no longer leaves the catalog lock held, so a refresh gets past it (#4706)",
+      "status": "applied",
+      "decidedAt": "2026-11-06",
+      "ourCommit": "8c90bd0268d4893546af62404f0582ab7aff2c94",
+      "note": "OpenCode 1: discovery não deixa mais o lock do catálogo preso; o refresh passa."
+    },
+    {
+      "sha": "e39d9b0d70aa15d0db6f9d8b8d8f033b234741c6",
+      "subject": "fix(watchdog): don't count computer sleep as a turn's silence",
+      "status": "applied",
+      "decidedAt": "2026-11-06",
+      "ourCommit": "c8a5f836e3ec9562cbf04c072d3ada3ed874b725",
+      "note": "Watchdog: sono do computador não conta como silêncio do turno."
+    },
+    {
+      "sha": "099a75b3d0d83deb96c39f67043f8a060bdec419",
+      "subject": "fix(acp): mask short code= values, private key lines and an overlong line's rest in the exit tail",
+      "status": "applied",
+      "decidedAt": "2026-11-06",
+      "ourCommit": "c51b3fcd8b059969c3fcacfc1e640bd0cd625a99",
+      "note": "ACP: mascara code= curto, linhas de chave privada e o resto de linha longa no exit tail."
+    },
+    {
+      "sha": "1e8200d540f71078a0730466a43aeb0a6e00aa40",
+      "subject": "fix(codex): hand a person's own stdio connection the bot box's proxy",
+      "status": "applied",
+      "decidedAt": "2026-11-06",
+      "ourCommit": "8c20b9ea145ff241f6c412c05e92bf9a7f8ac6d5",
+      "note": "Codex: conexão stdio própria recebe o proxy do bot box. Mantidos os imports do fork (sem enabledMcpMounts/supportsMcpStartup)."
+    },
+    {
+      "sha": "3879f30d93cea571a0a0a27416d97fd452d8b8f2",
+      "subject": "fix(env-path): find Podman and Docker Desktop on a Mac launched from Finder (#4520)",
+      "status": "applied",
+      "decidedAt": "2026-11-06",
+      "ourCommit": "2ddd2bdada5fd3ce7c039f02eba0ba5f48ac4f59",
+      "note": "env-path: acha Podman e Docker Desktop num Mac aberto pelo Finder."
+    },
+    {
+      "sha": "e69a52ff933aa2401db242f16dc3d84e7c3479b1",
+      "subject": "fix(apps): keep a change an MCP app card made on its row (#4532)",
+      "status": "applied",
+      "decidedAt": "2026-11-06",
+      "ourCommit": "a1068eba0cf0994999d1b7631e5819d0645d619a",
+      "note": "Apps: mudança feita por um card MCP fica na linha; string nova em en.json."
+    },
+    {
+      "sha": "0b2c1270795736b8831c9fbbbf29457c10add817",
+      "subject": "Fix four states the app could get stuck in",
+      "status": "applied",
+      "decidedAt": "2026-11-06",
+      "ourCommit": "430c1076967eafc6f20242359b9edd10e75723cc",
+      "note": "Quatro travamentos: retry da leitura de settings, hold de uso persistido, lease na troca de pasta e switchTask sem bot. Adaptado: sem settle(null) e sem heldUntilShown/pageShown (features ausentes); mantidos retryRequest e o guard switchTaskFailed."
+    },
+    {
+      "sha": "66c1ad385ca9b7850a8bd9de03962ee67d1ecbb0",
+      "subject": "Keep held Cmd/Ctrl+L repeats from reaching the browser once the cite card is open",
+      "status": "ignored",
+      "decidedAt": "2026-11-06",
+      "note": "O fork não tem o atalho Cmd/Ctrl+L de citação (aa77dd3b9 não aplicado); o card usa Tab. Nada a corrigir."
+    },
+    {
+      "sha": "d5395bc13ffd9ecc095f0c1a28160fda1810646e",
+      "subject": "fix(ask): don't send a question's answer on the input method's confirming Enter",
+      "status": "ignored",
+      "decidedAt": "2026-11-06",
+      "note": "O fork não tem AskReply nem a pasta inbox; o AskCard do fork é só apresentação."
+    },
+    {
+      "sha": "0882a75568aa693f54c93083b9c8c75f554b2cd4",
+      "subject": "Mask temporary AWS key ids in diagnostics bundles too",
+      "status": "ignored",
+      "decidedAt": "2026-11-06",
+      "note": "Já coberto: electron/diagnostics.mjs do fork já mascara AKIA e ASIA desde o lote de redação."
     }
   ]
 }
