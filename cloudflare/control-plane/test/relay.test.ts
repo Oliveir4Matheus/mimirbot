@@ -2,11 +2,27 @@ import { env } from "cloudflare:workers";
 import { createExecutionContext, waitOnExecutionContext } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
 
-import vectors from "../../../companion/src/e2e/vectors/v1.json";
 import { createAuth } from "../src/auth";
 import { readConfig } from "../src/config";
 import { createWorker } from "../src/index";
 import { importSigningSeed, mintRelayToken, orderNodes, RELAY_TOKEN_LIMIT, rolloutBucket } from "../src/relay";
+
+// The V8 entry of the E2E wire spec's vectors (companion/src/e2e/README.md, section 9).
+const vectors = {
+  V8: {
+    seed: "5f89c0761a77f003d717ec4a80a114038637bfcc6e6b57376d1a80632946f1fa",
+    publicKeyB64u: "CQJpKHh_f5SFUWziLIXqVrY32usY1obw4cuA5TdH72c",
+    claims: {
+      v: 1,
+      kid: "k1",
+      hid: "lz81isB3BuNV6rHgYgG3Wg",
+      iid: "6f1c2a4e-8b3d-4c5f-9a7e-1d2b3c4d5e6f",
+      iat: 1793836800,
+      exp: 1793880000,
+    },
+    token: "eyJ2IjoxLCJraWQiOiJrMSIsImhpZCI6Imx6ODFpc0IzQnVOVjZySGdZZ0czV2ciLCJpaWQiOiI2ZjFjMmE0ZS04YjNkLTRjNWYtOWE3ZS0xZDJiM2M0ZDVlNmYiLCJpYXQiOjE3OTM4MzY4MDAsImV4cCI6MTc5Mzg4MDAwMH0.yFypCfH-bRL9d7Hxi4jkD2sJElubOKhXgoSf7cA013Z9x6zCMj1V1qtq0vmJnaoaKgR6FfiHCoQN0yyIhLH5Ag",
+  },
+};
 
 const BASE_URL = "https://auth.openmausbot.test";
 const hex = (text: string) => Uint8Array.from(text.match(/../g)!.map((pair) => Number.parseInt(pair, 16)));
