@@ -5617,6 +5617,136 @@
       "status": "ignored",
       "decidedAt": "2026-11-06",
       "note": "Já coberto: electron/diagnostics.mjs do fork já mascara AKIA e ASIA desde o lote de redação."
+    },
+    {
+      "sha": "76c8b525b69f79733a3a158416024d77fef83577",
+      "subject": "A bot's browser waits for its open tabs to have their identity (#4331)",
+      "status": "applied",
+      "decidedAt": "2026-11-06",
+      "ourCommit": "3ff829cc60bef8fa2e87e26cf60e668d907cb0b3",
+      "note": "Navegador: o navegador do bot espera as abas abertas terem identidade (sidecar)."
+    },
+    {
+      "sha": "2dcaf8f63a3daebeeaa7824f68d02b92b02b9053",
+      "subject": "Keep a login kept to some bots out of a browser other bots share",
+      "status": "applied",
+      "decidedAt": "2026-11-06",
+      "ourCommit": "b2cf2c0a64141cc5fe7dddf42986c488ad99b0f8",
+      "note": "Login restrito a alguns bots não vaza para navegador compartilhado. Adaptado: o segundo teste e2e (sign-in no Auto) ficou de fora porque o browserFixture do fork não aceita o record de CUA."
+    },
+    {
+      "sha": "86af78e4aec0dc3e40a5e79304c7df77f4d42ca7",
+      "subject": "fix(browser): let the desktop browser through fake-IP proxies (198.18.0.0/15)",
+      "status": "applied",
+      "decidedAt": "2026-11-06",
+      "ourCommit": "830288682c58f2de34f6e6026e18153b67713860",
+      "note": "Navegador: passa por proxies fake-IP 198.18.0.0/15."
+    },
+    {
+      "sha": "364984853e129c1bfccce36168b2aaca70e42d8d",
+      "subject": "fix(browser): keep OpenMausBot's own ports closed through fake-IP addresses",
+      "status": "applied",
+      "decidedAt": "2026-11-06",
+      "ourCommit": "ee0fbeaace8a79606d9ce99b1c4aa720aa68ad8a",
+      "note": "Navegador: mantém as portas do app fechadas através de endereços fake-IP."
+    },
+    {
+      "sha": "5a449f03acb0b804391b5234455e57c47cf3fd34",
+      "subject": "feat(browser): add a Full HD page size",
+      "status": "applied",
+      "decidedAt": "2026-11-06",
+      "ourCommit": "cf1925dec9fabf59dec37c9ed8886bbb22b2019d",
+      "note": "Navegador: tamanho de página Full HD."
+    },
+    {
+      "sha": "6af51394e98be9cebcb48d2047fb44148ef2f610",
+      "subject": "fix(local-vm): start the driver's Chrome without its own sandbox (#4189)",
+      "status": "applied",
+      "decidedAt": "2026-11-06",
+      "ourCommit": "7d521dd4a6480b9cd752d8ef6f22a116c1f828a0",
+      "note": "VM local: sobe o Chrome do driver sem sandbox próprio."
+    },
+    {
+      "sha": "eea36bdb1cd76f5fda659e68f564f106d177cbc1",
+      "subject": "fix(local-vm): wait longer for Podman after starting its machine, and say so if it is still not answering (#4252)",
+      "status": "applied",
+      "decidedAt": "2026-11-06",
+      "ourCommit": "3912b95dfea903cf3f14133bb7b97c55e2259598",
+      "note": "VM local: espera mais o Podman depois de subir a máquina."
+    },
+    {
+      "sha": "f896225274175a8aed3f0acf2660ff4cc4c0f3d5",
+      "subject": "fix(computer): a failed or cut-off image build no longer leaves stopped containers behind",
+      "status": "applied",
+      "decidedAt": "2026-11-06",
+      "ourCommit": "dd2c8058496955c115fe3ee5c1ae5f53f1c6e164",
+      "note": "Computador: build de imagem falho/cortado não deixa containers parados."
+    },
+    {
+      "sha": "6df8d555172a4490bfd316ec13d7e5da8d3e246c",
+      "subject": "fix(computer): answers the bridge writes itself carry resultType for 2026-07-28 clients (#4282)",
+      "status": "applied",
+      "decidedAt": "2026-11-06",
+      "ourCommit": "6b8dd149ec9f9290d22d4142b8c368bee950fe96",
+      "note": "Computador: respostas do bridge carregam resultType para clientes 2026-07-28."
+    },
+    {
+      "sha": "597e70d7930db632747acfb4ea047ca520bd958c",
+      "subject": "fix(desktop): let clicks reach the full-screen live screen on Mac and Windows (#4311)",
+      "status": "applied",
+      "decidedAt": "2026-11-06",
+      "ourCommit": "b9595186c1ee9fc4bb631c83a99994d8e27182d1",
+      "note": "Desktop: cliques alcançam a tela cheia ao vivo no Mac e Windows."
+    },
+    {
+      "sha": "1d927396a3ec16965db6fec9d930ba4dacfd879b",
+      "subject": "Chat engine: a bot that worked around a failed tool call ends its turn ok, on every model",
+      "status": "applied",
+      "decidedAt": "2026-11-06",
+      "ourCommit": "040a5aca0d8601215ca2ceac2043424bea74c2e0",
+      "note": "Chat engine: bot que contornou tool call falho termina o turno ok em qualquer modelo. Adaptado: o fork não tem failedCalls nem options.localModel."
+    },
+    {
+      "sha": "2d838eda4333ebc223b75fb72fc760fae02b7826",
+      "subject": "fix(handoffs): a reply that only acknowledged takes no turn from its requester",
+      "status": "ignored",
+      "decidedAt": "2026-11-06",
+      "note": "Depende da runtime mais nova (questions, ask-cards, teammate-prompts, status-reply) que o fork não tem; conflito em runtime.ts, runtime-coordinator.ts e index.ts."
+    },
+    {
+      "sha": "709d410ae0abed300f9f14c815900b03163bf8bb",
+      "subject": "fix(handoffs): check a reply only where its requester could skip the turn",
+      "status": "ignored",
+      "decidedAt": "2026-11-06",
+      "note": "Depende de server/runtime/status-reply.ts, criado por 2d838eda4, que não se aplica ao runtime do fork."
+    },
+    {
+      "sha": "73334f8b2ba169707de4e2e8454cde44b3891675",
+      "subject": "fix(handoffs): ask the requester's engine whether a reply needs it, never the teammate's",
+      "status": "ignored",
+      "decidedAt": "2026-11-06",
+      "note": "Depende da mesma runtime nova (requesterDecides/answersSender) ausente no fork."
+    },
+    {
+      "sha": "17b11dfcb1174225e75006c1646e7637f4058914",
+      "subject": "Say why a queued handoff has not started, with its handoff id (#4378)",
+      "status": "ignored",
+      "decidedAt": "2026-11-06",
+      "note": "Depende de createTeammatePrompts/createQueuedReason/questionRouting e do index.ts mais novo; o fork não tem own-home/places-elsewhere."
+    },
+    {
+      "sha": "ba0039a09574a32325b55c2d904d01acd79b17bc",
+      "subject": "Stop means stop: a person's Stop ends the teammates working for that request",
+      "status": "ignored",
+      "decidedAt": "2026-11-06",
+      "note": "Depende do runtime/coordinator mais novos; 15 arquivos, muitos ausentes no fork."
+    },
+    {
+      "sha": "0f4685d337233a3afac6974242d6fffd89d7ff08",
+      "subject": "Stop means stop for the CLI and routines: report teammates the Stop ended",
+      "status": "ignored",
+      "decidedAt": "2026-11-06",
+      "note": "Depende de ba0039a09, que não se aplica."
     }
   ]
 }
