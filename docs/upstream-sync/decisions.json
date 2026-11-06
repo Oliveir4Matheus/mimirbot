@@ -5747,6 +5747,107 @@
       "status": "ignored",
       "decidedAt": "2026-11-06",
       "note": "Depende de ba0039a09, que não se aplica."
+    },
+    {
+      "sha": "9fc8ebbd84763ef3622a65117d278bedd35aae14",
+      "subject": "Notifications: make the tray pin work",
+      "status": "applied",
+      "decidedAt": "2026-11-06",
+      "ourCommit": "d65ccc8a7884c7bec4c53766d1c667e3f7398bba",
+      "note": "Notificações: o pin da bandeja passa a valer e é lembrado no dispositivo."
+    },
+    {
+      "sha": "6d8862fbb",
+      "subject": "fix: keep the tray open when re-opening the shown thread or room thread; close it on a new chat",
+      "status": "applied",
+      "decidedAt": "2026-11-06",
+      "ourCommit": "52788599580cbad6abbf61e601f8061b7bdf6e09",
+      "note": "Bandeja: fica aberta ao reabrir a thread/sala já visível e fecha num chat novo."
+    },
+    {
+      "sha": "86686ae79",
+      "subject": "fix: close an unpinned tray when a newly added bot takes the chat",
+      "status": "applied",
+      "decidedAt": "2026-11-06",
+      "ourCommit": "8329d7fa18626a5368707d51bb6e73b06886ed92",
+      "note": "Bandeja não fixada fecha quando um bot recém-adicionado assume o chat."
+    },
+    {
+      "sha": "794e12853",
+      "subject": "fix(notifications): close an unpinned tray when re-selecting the open chat from another view",
+      "status": "applied",
+      "decidedAt": "2026-11-06",
+      "ourCommit": "39b0c90753a5d3e79a0afc68868651726de8890a",
+      "note": "Bandeja fecha ao re-selecionar o chat aberto vindo de outra view."
+    },
+    {
+      "sha": "20241301e",
+      "subject": "Notifications tray: keep it open for thread switches off screen",
+      "status": "applied",
+      "decidedAt": "2026-11-06",
+      "ourCommit": "1fca9375ce121c31652bd06032edb9054d878e90",
+      "note": "Bandeja permanece aberta em troca de thread fora da tela."
+    },
+    {
+      "sha": "2cb90a8ad",
+      "subject": "Close an unpinned notification tray when a new thread opens in the room on screen",
+      "status": "applied",
+      "decidedAt": "2026-11-06",
+      "ourCommit": "20e2732718e9aa491f57463163cff2f5f4f238a1",
+      "note": "Bandeja fecha quando uma thread nova abre na sala visível."
+    },
+    {
+      "sha": "5ef209682",
+      "subject": "fix(sidebar): pinned bots show the pointer cursor on hover",
+      "status": "applied",
+      "decidedAt": "2026-11-06",
+      "ourCommit": "a9e178c698cae1f2da23fd737f91f67c108fdf6e",
+      "note": "Sidebar: bots fixados mostram cursor de ponteiro. Adaptado: o fork não tem SidebarTiles.tsx."
+    },
+    {
+      "sha": "fda5179d5",
+      "subject": "fix(shortcuts): open bots in sidebar order with Cmd+1..9",
+      "status": "applied",
+      "decidedAt": "2026-11-06",
+      "ourCommit": "e4576abf5b65b26cd4aa28c2677b7a8171c7a0fa",
+      "note": "Atalhos: Cmd+1..9 abre bots na ordem da sidebar."
+    },
+    {
+      "sha": "f74c0c49a",
+      "subject": "fix(shortcuts): step from the list's ends when the open bot is not shown",
+      "status": "applied",
+      "decidedAt": "2026-11-06",
+      "ourCommit": "cd59b86ca50e2643c2f7328281652e9226717f98",
+      "note": "Atalhos: passo parte das pontas quando o bot aberto não está na lista."
+    },
+    {
+      "sha": "c54ce2b3f",
+      "subject": "fix(shortcuts): cycle bots with Ctrl+Shift+] / [ on Windows and Linux",
+      "status": "applied",
+      "decidedAt": "2026-11-06",
+      "ourCommit": "6ad451b5eb8d4363057f978ce2d9529f6548c00b",
+      "note": "Atalhos: Ctrl+Shift+] / [ cicla bots no Windows e Linux. Adaptado para manter nextShortcutBot do fork."
+    },
+    {
+      "sha": "2d7036aec",
+      "subject": "fix(find): Enter or Escape that picks an IME candidate no longer jumps to a match or closes find",
+      "status": "ignored",
+      "decidedAt": "2026-11-06",
+      "note": "Já coberto: o ChatFindBar do fork já usa imeComposing desde o lote de IME."
+    },
+    {
+      "sha": "e915cd94c",
+      "subject": "fix(palette): Enter or Escape that belongs to an IME candidate no longer opens a match or closes the palette (#4230)",
+      "status": "ignored",
+      "decidedAt": "2026-11-06",
+      "note": "Já coberto: a CommandPalette do fork já usa imeComposing."
+    },
+    {
+      "sha": "7dea8644e",
+      "subject": "fix(redact): mask SendGrid API keys (SG.…)",
+      "status": "ignored",
+      "decidedAt": "2026-11-06",
+      "note": "Já coberto por ae8b92b62 e f198d0241 (regex e teste do lookahead já no fork)."
     }
   ]
 }
