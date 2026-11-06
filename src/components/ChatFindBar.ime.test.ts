@@ -19,7 +19,7 @@ import { ChatFindBar } from "./ChatFindBar";
 
 let root: Root;
 let host: HTMLDivElement;
-let onClose: ReturnType<typeof vi.fn>;
+let onClose: ReturnType<typeof vi.fn<() => void>>;
 beforeEach(() => {
   host = document.createElement("div");
   document.body.append(host);

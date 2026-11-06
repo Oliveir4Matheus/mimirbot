@@ -244,7 +244,7 @@ describe("the bottom bar beside the profile", () => {
     expect(fixture.dispatch).toHaveBeenLastCalledWith({ type: "showTeamMap" });
     fixture.state.activeView = "team-map";
     expect(renderBottom().html).toMatch(/data-sidebar-nav="team-map"[^>]*aria-current="page"/);
-    fixture.state.routineRuns = [{ id: "r", status: "failed", scheduledFor: 1 }];
+    fixture.state.routineRuns = [{ id: "r", routineId: "daily", status: "failed", scheduledFor: 1 }];
     const html = renderBottom().html;
     const dot = html.indexOf('data-testid="routines-attention"');
     expect(dot).toBeGreaterThan(html.indexOf('data-sidebar-nav="automations"'));
