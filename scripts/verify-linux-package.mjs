@@ -122,8 +122,8 @@ function verifyCompliance(licenses, label) {
   const html = readFileSync(path.join(licenses, "THIRD_PARTY_LICENSES.html"), "utf8");
   const sbom = JSON.parse(readFileSync(path.join(licenses, "SBOM.cdx.json"), "utf8"));
   const components = sbom.components ?? [];
-  if (components.length !== 339) {
-    fail(`${label} SBOM must contain 330 registry packages, 8 Cua packages, and Inter`);
+  if (components.length !== 391) {
+    fail(`${label} SBOM must contain 381 registry packages, 9 Cua packages, and Inter`);
   }
   const componentRefs = new Set();
   for (const component of components) {
@@ -137,7 +137,7 @@ function verifyCompliance(licenses, label) {
   const registry = components.filter((component) => component.group === "crates.io");
   const trycua = components.filter((component) => component.group === "trycua");
   const fonts = components.filter((component) => component.group === "rsms");
-  if (registry.length !== 330 || trycua.length !== 8 || fonts.length !== 1) {
+  if (registry.length !== 381 || trycua.length !== 9 || fonts.length !== 1) {
     fail(`${label} SBOM component groups do not match the reviewed runtime graph`);
   }
   const trycuaNames = trycua.map((component) => component.name).sort();
@@ -148,6 +148,7 @@ function verifyCompliance(licenses, label) {
       "cua-driver-contract",
       "cua-driver-core",
       "cua-driver-sdk",
+      "cua-telemetry",
       "cursor-overlay",
       "cursor-theme-cli",
       "pip-preview",
@@ -179,8 +180,8 @@ function verifyCompliance(licenses, label) {
   const attributed = new Set(
     [...html.matchAll(/<tr data-package-id="([^"]+)">/g)].map((match) => match[1]),
   );
-  if (attributed.size !== 330) {
-    fail(`${label} license report does not cover the reviewed 330 registry packages`);
+  if (attributed.size !== 381) {
+    fail(`${label} license report does not cover the reviewed 381 registry packages`);
   }
   for (const packageId of attributed) {
     if (!registryIds.has(packageId)) {
@@ -206,7 +207,7 @@ function verifyCompliance(licenses, label) {
     fail(`${label} MPL component set changed`);
   }
   const rootDependency = sbom.dependencies?.find(
-    (dependency) => dependency.ref === "pkg:generic/cua-driver-linux-x64@0.19.3",
+    (dependency) => dependency.ref === "pkg:generic/cua-driver-linux-x64@0.40.6",
   );
   const rootReferences = rootDependency?.dependsOn;
   const uniqueRootReferences = new Set(rootReferences ?? []);
@@ -278,7 +279,7 @@ function verifyCuaResources(resources, label, {
     env: commandEnvironment,
     timeout: 5_000,
   }).trim();
-  if (version !== "cua-driver 0.19.3") fail(`${label} CUA version is ${JSON.stringify(version)}`);
+  if (version !== "cua-driver 0.40.6") fail(`${label} CUA version is ${JSON.stringify(version)}`);
   const manifest = JSON.parse(
     execFileSync(driver, ["manifest"], {
       encoding: "utf8",
@@ -296,7 +297,7 @@ function verifyCuaResources(resources, label, {
   }
   if (
     manifest.schema_version !== "1" ||
-    manifest.binary_version !== "0.19.3" ||
+    manifest.binary_version !== "0.40.6" ||
     invocationPath !== realpathSync(driver) ||
     JSON.stringify(manifest.mcp_invocation?.args) !== JSON.stringify(["mcp"])
   ) {
@@ -311,18 +312,18 @@ function verifyCuaResources(resources, label, {
   const release = JSON.parse(readFileSync(path.join(cuaRoot, "release.json"), "utf8"));
   const expectedRelease = {
     schemaVersion: 1,
-    version: "0.19.3",
+    version: "0.40.6",
     platform: "linux",
     arch: "x64",
     archive: {
-      name: "cua-driver-rs-0.19.3-linux-x86_64-binary.tar.gz",
+      name: "cua-driver-rs-0.40.6-linux-x86_64-binary.tar.gz",
       url:
-        "https://github.com/trycua/cua/releases/download/cua-driver-rs-v0.19.3/" +
-        "cua-driver-rs-0.19.3-linux-x86_64-binary.tar.gz",
-      size: 27_248_614,
-      sha256: "3db9d4257d84bacaf7eb104d225f85613ce67edbb20d6eeb83c1384b6d8a5b10",
+        "https://github.com/trycua/cua/releases/download/cua-driver-rs-v0.40.6/" +
+        "cua-driver-rs-0.40.6-linux-x86_64-binary.tar.gz",
+      size: 38_337_354,
+      sha256: "0b3d4913773a88c46bbceb364809254a6ca636e285e81392b69c0c86d42cb922",
     },
-    sourceCommit: "a1672e7b11951275ecfba3384264d4530185d0db",
+    sourceCommit: "6d840c54da418192fc2f4fd61b7140893da24a2d",
     files: {
       "cua-driver": { sha256: expectedHashes.get(driver), mode: "0755" },
       "cua-cursor-theme": { sha256: expectedHashes.get(cursorTheme), mode: "0755" },

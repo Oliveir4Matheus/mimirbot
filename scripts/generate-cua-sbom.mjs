@@ -27,13 +27,13 @@ if (
   );
 }
 
-const SOURCE_COMMIT = "a1672e7b11951275ecfba3384264d4530185d0db";
+const SOURCE_COMMIT = "6d840c54da418192fc2f4fd61b7140893da24a2d";
 const SOURCE_ROOT = `https://github.com/trycua/cua/tree/${SOURCE_COMMIT}/libs/cua-driver/rust`;
-const RELEASE_VERSION = "0.19.3";
+const RELEASE_VERSION = "0.40.6";
 const ARCHIVE_SHA256 =
-  "3db9d4257d84bacaf7eb104d225f85613ce67edbb20d6eeb83c1384b6d8a5b10";
+  "0b3d4913773a88c46bbceb364809254a6ca636e285e81392b69c0c86d42cb922";
 const CARGO_LOCK_SHA256 =
-  "c1a8df7f4bedd554f6fc90c852c3625c91a89b28d9f2c642d966279e9e372362";
+  "af5def22320e4ad2532d4cd5c64eae0dcff68de6079017d6bd3a86b3de024ffc";
 const INTER_LICENSE_SHA256 =
   "ecfea75d8a36217d19528567070745a516072ffe907c9fffecbab92eb3b6fc59";
 const INTER_FONT_SHA256 =
@@ -43,16 +43,17 @@ const INTER_COMMIT = "66647c0bbbe41a850d79d9c76fb13add3378940f";
 const REGISTRY_SOURCE_PREFIX =
   "registry+https://github.com/rust-lang/crates.io-index";
 
-const EXPECTED_DRIVER_REGISTRY_COUNT = 325;
-const EXPECTED_CURSOR_THEME_REGISTRY_COUNT = 113;
-const EXPECTED_REGISTRY_UNION_COUNT = 330;
+const EXPECTED_DRIVER_REGISTRY_COUNT = 376;
+const EXPECTED_CURSOR_THEME_REGISTRY_COUNT = 239;
+const EXPECTED_REGISTRY_UNION_COUNT = 381;
 const EXPECTED_DRIVER_LOCAL = Object.freeze([
-  "cua-driver@0.19.3",
-  "cursor-overlay@0.19.3",
-  "pip-preview@0.19.3",
-  "platform-linux@0.19.3",
+  "cua-driver@0.40.6",
+  "cua-telemetry@0.11.0",
+  "cursor-overlay@0.40.6",
+  "pip-preview@0.40.6",
+  "platform-linux@0.40.6",
 ]);
-const EXPECTED_CURSOR_THEME_LOCAL = Object.freeze(["cursor-overlay@0.19.3"]);
+const EXPECTED_CURSOR_THEME_LOCAL = Object.freeze(["cursor-overlay@0.40.6"]);
 const EXPECTED_CURSOR_THEME_ONLY = Object.freeze([
   "bumpalo@3.20.2",
   "typed-path@0.12.3",
@@ -70,14 +71,15 @@ const EXPECTED_MPL_COMPONENTS = Object.freeze([
   "uniffi_pipeline@0.31.0",
 ]);
 const TRYCUA_COMPONENTS = Object.freeze([
-  "cua-driver",
-  "cua-driver-contract",
-  "cua-driver-core",
-  "cua-driver-sdk",
-  "cursor-overlay",
-  "cursor-theme-cli",
-  "pip-preview",
-  "platform-linux",
+  { name: "cua-driver", version: RELEASE_VERSION },
+  { name: "cua-driver-contract", version: RELEASE_VERSION },
+  { name: "cua-driver-core", version: RELEASE_VERSION },
+  { name: "cua-driver-sdk", version: RELEASE_VERSION },
+  { name: "cursor-overlay", version: RELEASE_VERSION },
+  { name: "cursor-theme-cli", version: RELEASE_VERSION },
+  { name: "pip-preview", version: RELEASE_VERSION },
+  { name: "platform-linux", version: RELEASE_VERSION },
+  { name: "cua-telemetry", version: "0.11.0", root: "cua" },
 ]);
 
 function sha256(bytes) {
@@ -250,16 +252,19 @@ function registryComponent(pkg, cargoLockPackages) {
   };
 }
 
-function trycuaComponent(name) {
+function trycuaComponent({ name, version, root = "driver" }) {
+  const source = root === "cua"
+    ? `https://github.com/trycua/cua/tree/${SOURCE_COMMIT}/libs/cua/crates/${name}`
+    : `${SOURCE_ROOT}/crates/${name}`;
   return {
     type: "library",
-    "bom-ref": cargoReference(name, RELEASE_VERSION),
+    "bom-ref": cargoReference(name, version),
     group: "trycua",
     name,
-    version: RELEASE_VERSION,
-    purl: cargoReference(name, RELEASE_VERSION),
+    version,
+    purl: cargoReference(name, version),
     licenses: [{ license: { id: "MIT" } }],
-    externalReferences: [{ type: "vcs", url: `${SOURCE_ROOT}/crates/${name}` }],
+    externalReferences: [{ type: "vcs", url: source }],
   };
 }
 
@@ -438,7 +443,7 @@ function renderLicenseHtml(records, registryPackages) {
 </head>
 <body>
   <h1>Cua Driver ${RELEASE_VERSION} third-party licenses</h1>
-  <p>This report covers all ${EXPECTED_REGISTRY_UNION_COUNT} crates.io packages in the root-scoped release build graphs for <code>cua-driver</code> and <code>cua-cursor-theme</code>, plus the embedded Inter font. Cua's eight workspace packages are covered by the accompanying MIT <code>LICENSE.md</code>.</p>
+  <p>This report covers all ${EXPECTED_REGISTRY_UNION_COUNT} crates.io packages in the root-scoped release build graphs for <code>cua-driver</code> and <code>cua-cursor-theme</code>, plus the embedded Inter font. Cua's workspace packages are covered by the accompanying MIT <code>LICENSE.md</code>.</p>
   <p>Source commit: <a href="https://github.com/trycua/cua/commit/${SOURCE_COMMIT}"><code>${SOURCE_COMMIT}</code></a>. Cargo.lock SHA-256: <code>${CARGO_LOCK_SHA256}</code>.</p>
   <h2>License overview</h2>
   <ul>${overviewHtml}</ul>
@@ -460,7 +465,7 @@ const [driverBytes, cursorThemeBytes, cargoLockBytes] = await Promise.all([
 ]);
 if (sha256(cargoLockBytes) !== CARGO_LOCK_SHA256) {
   throw new Error(
-    "Cargo.lock does not match the reviewed Cua 0.19.3 source commit",
+    `Cargo.lock does not match the reviewed Cua ${RELEASE_VERSION} source commit`,
   );
 }
 
@@ -535,7 +540,7 @@ const registryComponents = [...registryPackages.values()].map((pkg) =>
 );
 const components = [
   ...registryComponents,
-  ...TRYCUA_COMPONENTS.map(trycuaComponent),
+  ...TRYCUA_COMPONENTS.map((component) => trycuaComponent(component)),
   interComponent(),
 ].sort(
   (left, right) =>
@@ -553,7 +558,7 @@ if (
   EXPECTED_REGISTRY_UNION_COUNT + TRYCUA_COMPONENTS.length + 1
 ) {
   throw new Error(
-    "SBOM component count is not the reviewed 330 + 8 + 1 inventory",
+    `SBOM component count is not the reviewed ${EXPECTED_REGISTRY_UNION_COUNT} + ${TRYCUA_COMPONENTS.length} + 1 inventory`,
   );
 }
 
@@ -626,7 +631,7 @@ const registryRows = [...registryPackages.values()]
     return `| ${pkg.name.replaceAll("|", "\\|")} | ${pkg.version} | ${normalizeLicense(pkg.license ?? pkg.resolvedLicense, packageKey(pkg)).replaceAll("|", "\\|")} | \`${checksum}\` |`;
   });
 const trycuaRows = TRYCUA_COMPONENTS.map(
-  (name) => `| ${name} | ${RELEASE_VERSION} | MIT |`,
+  ({ name, version }) => `| ${name} | ${version} | MIT |`,
 );
 const mplSourceRows = EXPECTED_MPL_COMPONENTS.map((component) => {
   const separator = component.lastIndexOf("@");
@@ -646,7 +651,7 @@ MimirBot redistributes two executables from the official Cua Driver ${RELEASE_VE
 - Upstream source commit: [\`${SOURCE_COMMIT}\`](https://github.com/trycua/cua/commit/${SOURCE_COMMIT})
 - Upstream \`Cargo.lock\` SHA-256: \`${CARGO_LOCK_SHA256}\`
 - Release archive SHA-256: \`${ARCHIVE_SHA256}\`
-- Cua's eight workspace components remain under the accompanying MIT \`LICENSE.md\`.
+- Cua's workspace components remain under the accompanying MIT \`LICENSE.md\`.
 - The embedded Inter ${INTER_VERSION} font remains under the accompanying SIL OFL 1.1 \`Inter-OFL-1.1.txt\`.
 - Full license texts and attribution for all ${EXPECTED_REGISTRY_UNION_COUNT} crates.io packages and Inter are in \`THIRD_PARTY_LICENSES.html\`.
 - The machine-readable inventory contains ${EXPECTED_REGISTRY_UNION_COUNT} registry packages, ${TRYCUA_COMPONENTS.length} Cua packages, and Inter in \`SBOM.cdx.json\`.

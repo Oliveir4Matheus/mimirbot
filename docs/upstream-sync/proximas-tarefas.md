@@ -37,22 +37,17 @@ Falta:
 - `f63eea855` e `76da3a323` (HTML preview + Open in browser do upstream) são
   melhorias do HTML que já temos; ficam para quando o preview for mexido.
 
-## 3. Auto-update do CUA com interruptor nas configurações
+## 3. CUA acompanha a release do MimirBot
 
-Hoje o driver é fixado no build (Linux 0.19.3, Windows/macOS 0.28.2, VM 0.37.0)
-e o próprio updater do driver é bloqueado (`CUA_DRIVER_RS_UPDATE_CHECK=false`).
-Os releases do `trycua/cua` publicam `checksums.txt` e `.sigstore.json`, então
-dá para verificar o download.
+Decidido em 2026-11-06: sem auto-update em runtime e sem interruptor. O CUA é
+fixado no build e sobe junto com cada release do MimirBot.
 
-Proposta:
+O bump é feito nos scripts de empacotamento:
 
-- Config `cua: { autoUpdate?: boolean }`, **desligado por padrão**, com um
-  interruptor em Settings → Computers e um botão "Verificar agora".
-- Baixar para `dataDir/tools/cua-driver/<versão>`, conferir SHA-256 (e Sigstore
-  quando disponível), rodar `--version` e um smoke, e só então apontar o app
-  para a cópia nova; falhou, volta para o driver embutido.
-- Limitar a versões compatíveis com o SDK/protocolo desta release (o driver é
-  acoplado ao MCP/tool schemas). "Sempre a latest" sem esse limite é risco de
-  quebrar turno.
-- Linux e Windows primeiro; macOS depende de assinatura/notarização do binário
-  baixado. A Local VM continua presa à release do app (imagem versionada).
+- `scripts/cua-linux-release.mjs` (Linux, com o SBOM em `third_party/cua-driver`);
+- `scripts/prepare-cua-win.mjs` (Windows);
+- `scripts/prepare-cua.mjs` (macOS, junto com a dependência `@trycua/cua-driver`);
+- `server/container-computer.ts` (imagem da Local VM, quando houver imagem nova).
+
+O driver continua proibido de se auto-atualizar
+(`CUA_DRIVER_RS_UPDATE_CHECK=false`) e a telemetria segue desligada.
