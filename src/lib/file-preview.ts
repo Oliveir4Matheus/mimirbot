@@ -44,7 +44,7 @@ export function isTextPreviewFormat(format: PreviewFormat | null): boolean {
   return format === "md" || format === "html" || format === "csv" || format === "tsv";
 }
 
-export const TEXT_PREVIEW_MAX_BYTES = 10 * 1024 * 1024;
+export const TEXT_PREVIEW_MAX_BYTES = 50 * 1024 * 1024;
 export const HTML_PREVIEW_MAX_BYTES = 2 * 1024 * 1024;
 
 export function textPreviewLimit(format: PreviewFormat | null): number {

@@ -1,9 +1,9 @@
 import Papa from "papaparse";
 
-export const TABLE_FILE_MAX_BYTES = 10 * 1024 * 1024;
-const MAX_ROWS = 100_000;
-const MAX_COLUMNS = 200;
-const MAX_CELLS = 500_000;
+export const TABLE_FILE_MAX_BYTES = 50 * 1024 * 1024;
+const MAX_ROWS = 250_000;
+const MAX_COLUMNS = 500;
+const MAX_CELLS = 2_000_000;
 
 export interface TextTable { headers: string[]; rows: string[][] }
 export type TableSort = { column: number; descending: boolean } | null;
