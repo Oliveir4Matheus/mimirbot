@@ -33,6 +33,7 @@ import {
 import { cn } from "@/lib/cn";
 import { t } from "@/lib/i18n";
 import { FilePreviewButton } from "./FilePreviewButton";
+import { FileChipSaveButton } from "./FileChipSaveButton";
 
 export interface PreviewImage {
   src: string;
@@ -931,28 +932,7 @@ export function AttachedFileChip({ file, message, linked = false, compact = fals
           <FileText size={14} className="shrink-0" aria-hidden="true" />
           <span className="min-w-0 flex-1 truncate text-ink">{file.name}</span>
         </FilePreviewButton>
-        <button
-          type="button"
-          onClick={() => void save.save()}
-          disabled={save.state === "saving"}
-          aria-label={
-            retryable
-              ? t("attach.retrySaveAria", { name: file.name })
-              : t("attach.saveAria", { name: file.name })
-          }
-          title={t("attach.download")}
-          className="table-action shrink-0 disabled:cursor-wait"
-        >
-          {save.state === "saving" ? (
-            <LoaderCircle size={13} className="shrink-0 animate-spin" />
-          ) : save.state === "saved" ? (
-            <Check size={13} className="shrink-0 text-success" />
-          ) : failed ? (
-            retryable && <RotateCcw size={13} className="shrink-0 text-danger" />
-          ) : (
-            <Download size={13} className="shrink-0" />
-          )}
-        </button>
+        <FileChipSaveButton name={file.name} state={save.state} retryable={retryable} onSave={() => void save.save()} />
       </div>
       {save.state !== "idle" && (
         <div
@@ -1015,24 +995,7 @@ function CompactFileChip({ file, message, linked, save, className }: {
           <FileText size={14} strokeWidth={1.75} className="shrink-0" aria-hidden="true" />
           {name}
         </FilePreviewButton>
-        <button
-          type="button"
-          onClick={() => void save.save()}
-          disabled={save.state === "saving"}
-          aria-label={retryable ? t("attach.retrySaveAria", { name: file.name }) : t("attach.saveAria", { name: file.name })}
-          title={t("attach.download")}
-          className="table-action shrink-0 disabled:cursor-wait"
-        >
-          {save.state === "saving" ? (
-            <LoaderCircle size={13} className="shrink-0 animate-spin" aria-hidden="true" />
-          ) : save.state === "saved" ? (
-            <Check size={13} className="shrink-0 text-success" aria-hidden="true" />
-          ) : failed ? (
-            retryable && <RotateCcw size={13} className="shrink-0 text-danger" aria-hidden="true" />
-          ) : (
-            <Download size={13} strokeWidth={1.75} className="shrink-0" aria-hidden="true" />
-          )}
-        </button>
+        <FileChipSaveButton name={file.name} state={save.state} retryable={retryable} onSave={() => void save.save()} />
       </span>
       {save.state !== "idle" && save.state !== "saved" && (
         <span role={failed ? "alert" : "status"} className={cn("px-2.5 text-[11.5px]", failed ? "text-danger" : "text-ink-secondary")}>

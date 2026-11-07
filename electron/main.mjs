@@ -39,7 +39,7 @@ import { createLendingDialogs } from "./lending-dialogs.mjs";
 let startupScreen = null;
 let desktopTray = null;
 import { collisionFreeDownloadPath, defaultSaveName, openLogsFolder, revealDownloadWhenDone, revealInFolder, withSavableFile } from "./save-file.mjs";
-import { clampCaptureRect } from "./preview-capture.mjs";
+import { installPreviewCaptureIpc } from "./preview-capture-ipc.mjs";
 import { desktopViewerPermissionAllowed } from "./desktop-viewer-permissions.mjs";
 import { appPermissionHandlers, externalLinkUrl } from "./app-permissions.mjs";
 import { appFrameNavigationAllowed } from "./app-frame-guard.mjs";
@@ -535,7 +535,7 @@ import { CREDENTIAL_PATCH, credentialSaveError } from "./credential-patch.mjs";
 const { isLocalSender: senderIsLocal, localOnly, localOnlySync, setLocalOrigin } = localOriginModule;
 /** This computer's page, or My Cloud's own page once it is home (home-window.mjs). */
 const localOrHome = (channel, handler) => (event, ...args) => (homeWindow.homePage(event) ? handler : localOnly(channel, handler))(event, ...args);
-
+installPreviewCaptureIpc({ ipcMain, localOnly, BrowserWindow });
 let companionPowerBlocker = null;
 
 function syncCompanionKeepAwake(companionEnabled, keepAwake) {
@@ -2300,16 +2300,6 @@ ipcMain.handle("screen:frame", localOnly("screen:frame", async () => {
     thumbnailSize: { width: 1280, height: 800 },
   });
   return sources[0]?.thumbnail.toDataURL() ?? null;
-}));
-
-ipcMain.handle("desktop:capture-preview-region", localOnly("desktop:capture-preview-region", async (event, rect) => {
-  const window = BrowserWindow.fromWebContents(event.sender);
-  if (!window || window.isDestroyed()) return null;
-  const [width, height] = window.getContentSize();
-  const clamped = clampCaptureRect(rect, { width, height });
-  if (!clamped) return null;
-  const image = await window.webContents.capturePage(clamped);
-  return image.isEmpty() ? null : image.toDataURL();
 }));
 
 // Renderer-controlled text must never become a process argument: the user reviews and pastes it.
