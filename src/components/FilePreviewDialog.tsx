@@ -38,7 +38,6 @@ import {
 import { composeMessage, imageAttachmentFromFile } from "@/lib/composer-attachments";
 import { copyText } from "@/lib/copy-text";
 import { t } from "@/lib/i18n";
-import { useMediaQuery } from "@/lib/use-media-query";
 import { capturePreviewRegion, isUsableSelection, normalizeSelection, type SelectionRect } from "@/lib/preview-capture";
 import { parseTableFile, tableDelimiter, type TextTable } from "@/lib/table-data";
 import { readXlsxWorkbook, type XlsxWorkbook } from "@/lib/xlsx";
@@ -47,8 +46,6 @@ import { canonicalDownloadFilename, requestMessageFile, type MessageAttachmentCo
 import { PreviewTable } from "./PreviewTable";
 
 export type PreviewPosition = "center" | "right";
-
-let sessionPosition: PreviewPosition = "center";
 
 const FORMAT_STYLE: Record<PreviewFormat, { background: string; color: string; border: string; icon: typeof FileText }> = {
   md: { background: "#2B2935", color: "#C2A1FF", border: "#3B344A", icon: FileText },
@@ -164,17 +161,20 @@ export function FilePreviewDialog({
   path,
   name,
   message,
+  position,
+  onPositionChange,
   onClose,
   returnFocus,
 }: {
   path: string;
   name: string;
   message: MessageAttachmentContext;
+  position: PreviewPosition;
+  onPositionChange: (position: PreviewPosition) => void;
   onClose: () => void;
   returnFocus?: HTMLElement | null;
 }) {
   const format = previewFormat(name) ?? previewFormat(path);
-  const [position, setPosition] = useState<PreviewPosition>(sessionPosition);
   const [attempt, setAttempt] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -199,8 +199,6 @@ export function FilePreviewDialog({
   const contentRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef(onClose);
   const { state, dispatch } = useStore();
-  const narrow = useMediaQuery("(max-width: 760px)");
-  const effectivePosition = position === "right" && narrow ? "center" : position;
 
   useEffect(() => {
     closeRef.current = onClose;
@@ -288,7 +286,7 @@ export function FilePreviewDialog({
         }
         return;
       }
-      if (event.key !== "Tab" || effectivePosition !== "center") return;
+      if (event.key !== "Tab" || position !== "center") return;
       const dialog = dialogRef.current;
       if (!dialog) return;
       const focusable = [...dialog.querySelectorAll<HTMLElement>('button:not([disabled]), [href], input, textarea, [tabindex]:not([tabindex="-1"])')];
@@ -309,7 +307,7 @@ export function FilePreviewDialog({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [annotating, draft, effectivePosition]);
+  }, [annotating, draft, position]);
 
   useEffect(() => {
     if (copyState === "idle") return;
@@ -318,9 +316,7 @@ export function FilePreviewDialog({
   }, [copyState]);
 
   const switchPosition = () => {
-    const next = position === "center" ? "right" : "center";
-    sessionPosition = next;
-    setPosition(next);
+    onPositionChange(position === "center" ? "right" : "center");
   };
 
   const download = useCallback(async () => {
@@ -487,16 +483,16 @@ export function FilePreviewDialog({
   const dialog = (
     <div
       ref={dialogRef}
-      role={effectivePosition === "center" ? "dialog" : "complementary"}
-      aria-modal={effectivePosition === "center" ? true : undefined}
+      role={position === "center" ? "dialog" : "complementary"}
+      aria-modal={position === "center" ? true : undefined}
       aria-label={t("preview.aria", { name })}
       tabIndex={-1}
-      className={`flex min-h-0 flex-col overflow-hidden bg-panel text-ink shadow-[0_35px_120px_#000C] outline-none ${
-        effectivePosition === "center"
-          ? "h-[min(790px,calc(100dvh-44px))] w-[min(1030px,100%)] rounded-[16px] border border-hairline max-[650px]:h-[100dvh] max-[650px]:w-[100vw] max-[650px]:rounded-none max-[650px]:border-0"
-          : "rounded-[16px] border border-hairline"
+      className={`flex min-h-0 flex-col overflow-hidden bg-panel text-ink outline-none ${
+        position === "center"
+          ? "h-[min(790px,calc(100dvh-44px))] w-[min(1030px,100%)] rounded-[16px] border border-hairline shadow-[0_35px_120px_#000C] max-[650px]:h-[100dvh] max-[650px]:w-[100vw] max-[650px]:rounded-none max-[650px]:border-0"
+          : "h-full w-full"
       }`}
-      style={effectivePosition === "center"
+      style={position === "center"
         ? undefined
         : { width: "min(clamp(420px, 43vw, 680px), calc(100vw - 24px))", height: "calc(100dvh - 24px)" }}
     >
@@ -560,8 +556,8 @@ export function FilePreviewDialog({
             <Download size={15} />
             <span className="max-[920px]:hidden">{t("preview.download")}</span>
           </button>
-          <button type="button" onClick={switchPosition} aria-label={effectivePosition === "center" ? t("preview.openSide") : t("preview.center")} title={effectivePosition === "center" ? t("preview.openSide") : t("preview.center")} className="flex size-[29px] items-center justify-center rounded-[7px] border border-hairline bg-raised text-ink hover:bg-raised-hover">
-            {effectivePosition === "center" ? <PanelRight size={15} /> : <Maximize2 size={15} />}
+          <button type="button" onClick={switchPosition} aria-label={position === "center" ? t("preview.openSide") : t("preview.center")} title={position === "center" ? t("preview.openSide") : t("preview.center")} className="flex size-[29px] items-center justify-center rounded-[7px] border border-hairline bg-raised text-ink hover:bg-raised-hover">
+            {position === "center" ? <PanelRight size={15} /> : <Maximize2 size={15} />}
           </button>
           <button
             type="button"
@@ -705,13 +701,23 @@ export function FilePreviewDialog({
     </div>
   );
 
+  if (position === "right") {
+    return (
+      <aside
+        aria-label={t("preview.aria", { name })}
+        className="relative z-40 flex h-full min-w-0 shrink-0 flex-col border-l border-hairline/40 bg-panel max-md:absolute max-md:inset-0 max-md:z-40 md:w-[clamp(420px,43vw,680px)] md:px-[10px]"
+        style={{ contain: "layout paint style" }}
+      >
+        {dialog}
+      </aside>
+    );
+  }
+
   return createPortal(
     <div
-      className={effectivePosition === "right"
-        ? "fixed inset-y-0 right-0 z-[80] flex items-center p-3"
-        : "fixed inset-0 z-[80] flex items-center justify-center bg-[#030407C8] p-[22px] backdrop-blur-[5px] max-[650px]:p-0"}
+      className="fixed inset-0 z-[80] flex items-center justify-center bg-[#030407C8] p-[22px] backdrop-blur-[5px] max-[650px]:p-0"
       onMouseDown={(event) => {
-        if (effectivePosition === "center" && event.target === event.currentTarget) onClose();
+        if (event.target === event.currentTarget) onClose();
       }}
     >
       {dialog}
