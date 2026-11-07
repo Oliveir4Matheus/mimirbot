@@ -260,8 +260,8 @@ function verifyCuaResources(resources, label, {
   requireContained(cuaRoot, driver);
   requireContained(cuaRoot, cursorTheme);
   const expectedHashes = new Map([
-    [driver, "ed5844fadf07b9b72c4a3b3802e1c47233c166d66d6198608d5991f807aab4ac"],
-    [cursorTheme, "e589b2b7521bbfeaf9e2bfce668a38e80ed1b9790b1327b13d374fc331d8312a"],
+    [driver, "a8725010f2a01c9b2fbc9a6a6c256a5e15f1ea9e697ea81467ca6dc6d56ac46c"],
+    [cursorTheme, "ff85cf18817f0dbcbe2f55446a767ba60a9d2717c268579e526d278e9ec18562"],
   ]);
   for (const [file, expected] of expectedHashes) {
     const actual = sha256(file);
