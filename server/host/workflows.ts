@@ -1,0 +1,49 @@
+// The Workflow composition root: one store, one engine, and the two route
+// tables (the person's and a bot's). server/index.ts passes startTurn and the
+// thread creator in; nothing here imports index.ts.
+import { createWorkflowEngine, type WorkflowEngine, type WorkflowTurnOptions } from "../workflows/engine.ts";
+import { pruneWorkflowRuns, type RetentionResult } from "../workflows/retention.ts";
+import { createWorkflowStore } from "../workflows/store.ts";
+import { createWorkflowInternalRoutes, createWorkflowRoutes } from "../routes/workflows.ts";
+
+export interface WorkflowHostDeps {
+  dataDir: string;
+  home?: string;
+  env?: NodeJS.ProcessEnv;
+  now?: () => number;
+  log?: (line: string) => void;
+  /** Creates a thread with cwd = step-N and returns its id, or null when the bot is gone. */
+  createTask(botId: string, title: string, cwd: string): string | null;
+  bot(id: string): { id: string; name: string; section?: string } | undefined;
+  startTurn(botId: string, text: string, options: WorkflowTurnOptions): Promise<unknown>;
+  broadcast(frame: Record<string, unknown>): void;
+  interrupt?(botId: string, threadId: string): void;
+}
+
+export function createWorkflowHost(deps: WorkflowHostDeps) {
+  const store = createWorkflowStore({
+    dataDir: deps.dataDir,
+    home: deps.home,
+    env: deps.env,
+    now: deps.now,
+    log: deps.log,
+  });
+  const engine: WorkflowEngine = createWorkflowEngine({
+    store,
+    startTurn: deps.startTurn,
+    createThread: (input) => deps.createTask(input.botId, input.title, input.cwd),
+    broadcast: deps.broadcast,
+    interrupt: deps.interrupt,
+    now: deps.now,
+    log: deps.log,
+  });
+  const routes = createWorkflowRoutes({ store, engine, bot: deps.bot });
+  const internal = createWorkflowInternalRoutes({ store, engine, bot: deps.bot });
+  return {
+    store,
+    engine,
+    routes,
+    internal,
+    retention: (): RetentionResult => pruneWorkflowRuns({ store, now: deps.now, log: deps.log }),
+  };
+}

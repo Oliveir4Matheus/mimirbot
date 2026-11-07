@@ -64,6 +64,7 @@ import { ChatNotice } from "@/components/ChatErrorBanner";
 import { loadingLine } from "@/lib/app-loading";
 import { useAiSwitchKeeper } from "@/lib/ai-switch";
 import { WebPanelPage } from "@/components/WebPanelPage";
+import { WorkflowConsolePage } from "@/components/WorkflowConsolePage";
 
 function Shell({ viewer }: { viewer: WelcomeViewer | null }) {
   const { state, dispatch } = useStore();
@@ -333,7 +334,9 @@ function Shell({ viewer }: { viewer: WelcomeViewer | null }) {
           panel covers the conversation and never the computer or inspector panel
           beside it. */}
       <div className="relative flex min-w-0 flex-1">
-        {state.activeView === "team-map" ? (
+        {state.activeView === "workflow-console" ? (
+          <WorkflowConsolePage />
+        ) : state.activeView === "team-map" ? (
           <TeamMapPage />
         ) : state.activeView === "usage" ? (
           <UsagePage />

@@ -667,6 +667,10 @@ describe("agents-proxy MCP surface", () => {
       "skills_list",
       "skill_manage",
       "add_mcp_server",
+      "list_workflows",
+      "run_workflow",
+      "workflow_status",
+      "cancel_workflow",
     ]);
     const tool = (name: string) => list.result.tools.find((entry: { name: string }) => entry.name === name);
     const coordinate = tool("coordinate_bots");
@@ -748,6 +752,7 @@ describe("agents-proxy MCP surface", () => {
       "assignment_status", "list_bots", "list_rooms", "list_threads",
       "list_team_setup",
       "session_search", "trigger_info", "list_waits", "skills_list",
+      "list_workflows", "workflow_status",
     ];
     expect(list.result.tools.filter((tool: any) => tool.annotations?.readOnlyHint)
       .map((tool: any) => tool.name)).toEqual(readNames);

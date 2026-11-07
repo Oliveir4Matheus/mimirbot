@@ -120,6 +120,7 @@ const ICONS = {
   ),
   files: <Glyph><path d="M3 7.5V6a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" /><path d="M3 10h18" /></Glyph>,
   usage: <Glyph><path d="M3.5 2.8v18h18" /><path d="M7.5 17.2v-6.1l4 2.6 6-5.2v8.7z" /></Glyph>,
+  console: <Glyph><rect x="3" y="4" width="18" height="16" rx="2.5" /><path d="m7 9.5 3 2.5-3 2.5M12.5 15H17" /></Glyph>,
   apps: <Glyph><path d="M3.2 10.4 5 4.8h14l1.8 5.6c0 1.6-1.2 2.6-2.6 2.6-1 0-1.8-.5-2.3-1.2-.5.7-1.4 1.2-2.4 1.2s-1.8-.5-2.3-1.2c-.5.7-1.4 1.2-2.3 1.2S7.1 12.5 6.6 11.8c-.5.7-1.3 1.2-2.3 1.2-1.5 0-2.4-1.2-1.1-2.6Z" /><path d="M5 13v7h14v-7M9.2 20v-5h5.6v5" /></Glyph>,
   help: <Glyph strokeWidth={2}><circle cx="12" cy="12" r="9.3" /><path d="M9.6 9.3a2.6 2.6 0 0 1 5.1.6c0 1.8-2.6 2.1-2.6 4.1" /><path d="M12 17.5h.01" strokeWidth={3} /></Glyph>,
   notifications: <Glyph><path d="M6 9.5a6 6 0 0 1 12 0c0 4.6 1.8 6.3 2.3 6.8H3.7c.5-.5 2.3-2.2 2.3-6.8Z" /><path d="M10 19.5a2.1 2.1 0 0 0 4 0" /></Glyph>,
@@ -189,6 +190,7 @@ export function MimirRail() {
       <div className="mt-auto flex w-full flex-col items-center gap-1.5 pt-3">
         <NotificationsButton />
         {rings.map((provider) => <PlanRing key={provider.driver} provider={provider} onOpen={openUsage} />)}
+        <RailButton label="Workflow console" active={state.activeView === "workflow-console"} onClick={() => pick({ type: "showWorkflowConsole" })}>{ICONS.console}</RailButton>
         <RailButton label={t("sidebar.nav.apps")} active={state.pluginsOpen} onClick={() => pick({ type: "togglePlugins", open: true })}>{ICONS.apps}</RailButton>
         <RailButton label={t("sidebar.menu.help")} onClick={() => { void openExternalLink(HELP_CENTER_URL); setOpen(false); }}>{ICONS.help}</RailButton>
         <RailButton

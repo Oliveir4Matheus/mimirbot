@@ -1,0 +1,540 @@
+# Workflow: análise da implementação
+
+Data: 2026-11-03 · Revisado em 2026-11-07 (contratos do motor e F1) · Base: `tmp/spec-workflow.md` (D1–D18) · Código: `shared/workflow.ts`, `server/workflows/` (F0: `paths.ts`, `files.ts`; F1: `state.ts`, `brief.ts`, `engine.ts`, `store.ts`, `retention.ts`; 108 testes no motor + 8 nas rotas)
+
+Este documento fecha a linha de raciocínio: o problema de hoje, o impacto, a
+solução, como ela será construída, o que já existe para reaproveitar e como o
+núcleo criado vira a camada de tools que os agentes chamam dentro do Workflow.
+
+## 1. O problema que temos hoje
+
+A ordem de um trabalho entre bots vive no texto. O Chief recebe a demanda,
+escolhe os colegas, escreve um brief para cada um e, a cada turno, decide quem
+chama em seguida. O harness executa ferramentas muito bem; ele não governa a
+sequência.
+
+```mermaid
+flowchart LR
+  P[Pessoa] --> C[Chief of Staff]
+  C -->|brief em texto| A[Especialista A]
+  C -->|brief em texto| B[Especialista B]
+  A -->|resultado em texto| C
+  B -->|resultado em texto| C
+  C -->|o modelo decide o próximo passo| C
+```
+
+O que é verdade hoje, verificado no código e no mapa da delegação:
+
+- O brief e o resultado viajam como texto. A mensagem de `coordinate_bots` tem
+  no máximo 4 000 caracteres; o brief guardado e o resultado têm teto de
+  12 000 (`server/runtime-coordinator.ts`, `server/runtime/runtime.ts`). Não há
+  contrato de entrada/saída nem verificação de entrega.
+- `coordinate_bots` não tem dependência entre atribuições: irmãos rodam em
+  paralelo. A ordem só existe se o Chief encerrar um turno e chamar o próximo.
+- O mesmo brief para o mesmo especialista vira `duplicate`; quem já completou
+  recusa nova tarefa sem `rework=true`.
+- Não há retentativa automática de uma etapa que falhou.
+- `evidence.filesChanged` existe no tipo, mas nenhum código o preenche: "disse
+  que fez" não é verificável. O host preenche `toolCalls`, `okToolCalls`,
+  `errors` e `outward` (quando há ação externa) em `server/turn-outcome.ts`.
+- `cwd` é por bot/thread, mas o turno aceita `cwd` próprio
+  (`SendTurnInput.cwd`); departamento é só um rótulo (`section`), sem pasta.
+- Limites por raiz: 64 requests e 96 execuções (constantes de
+  `server/runtime-coordinator.ts`, acima dos padrões 24/48), 48 wakes,
+  profundidade 4, 5 threads novas por turno. Espera pela pessoa: 30 min,
+  exceto com cartões abertos. `stallMs`: 4 h, e não derruba árvore com
+  `needs_input`.
+
+## 2. Os impactos
+
+- **Ordem imprevisível.** O Chief pode pular etapa, inverter duas ou rodar em
+  paralelo o que deveria ser sequencial — e variar entre execuções.
+- **Entrega não comprovada.** O resultado é prosa; arquivos citados no brief
+  podem não existir, estar vazios ou no lugar errado.
+- **Handoff frágil.** Caminhos viajam como texto; um erro de nome só aparece
+  quando alguém abre a pasta.
+- **Sem auditoria da run.** O runtime guarda assignments, não "etapa 2 de 5",
+  entradas, saídas e aprovações de um workflow.
+- **Falha silenciosa.** Sem retry nem política, depende de o Chief perceber e
+  agir; a pessoa descobre depois.
+- **Aprovação sem contexto.** Os cartões existem, mas não pausam uma run nem
+  mostram em que etapa ela está.
+- **Custo desnecessário.** Cada execução paga tokens por decisões que já eram
+  conhecidas.
+
+## 3. A solução proposta
+
+Duas camadas, uma autoridade:
+
+1. **Workflow (dado):** uma sequência de etapas. Cada etapa declara o bot, a
+   instrução, os arquivos que recebe e os que precisa deixar.
+2. **Motor (código):** executa a sequência, copia entradas, verifica saídas e
+   só então avança. O bot da etapa não escolhe o que roda depois.
+
+O contrato entre as etapas é o **sistema de arquivos**, não a conversa.
+
+```mermaid
+flowchart TD
+  P["Workflow<br/>etapas + entradas/saídas"] --> E[Motor determinístico]
+  T["Gatilho, pessoa ou run_workflow"] --> E
+  E -->|"cria a run e step-N/input"| R[(pasta da run)]
+  E -->|"startTurn com cwd = step-N"| B[Bot da etapa]
+  B -->|"escreve output/"| R
+  R -->|"verifyStepOutputs"| V{Saída confere?}
+  V -- não --> F[Run falha com o motivo]
+  V -- sim --> N{Tem próxima etapa?}
+  N -- sim --> E
+  N -- não --> OK["Run concluída<br/>result.json"]
+```
+
+Invariantes que dão a garantia:
+
+- O motor é o único que decide a ordem e o único que escreve fora de
+  `step-N/output/` (D15).
+- O bot da etapa roda com `cwd` em `step-N` e escreve apenas em `output/`
+  (D14). O `cwd` é convenção, não sandbox: o engine ainda pode ler outros
+  caminhos conforme o modo de permissão (P15).
+- Avançar exige arquivo plano, não vazio e não-link nas saídas obrigatórias;
+  saídas opcionais podem faltar. O `result.json` declarado precisa existir e
+  ser um objeto JSON válido (D2/D3). Quando a etapa declara `require`, os
+  campos desse objeto precisam bater por igualdade; senão a etapa falha.
+- O motor copia para `input/` apenas o que a etapa declarou, e apenas de
+  etapas anteriores (D15).
+- Nenhuma aprovação é pulada: o turno da etapa usa o mesmo gate e os mesmos
+  cartões do fluxo normal.
+
+## 4. Como será implementada
+
+### Fases
+
+| Fase | Entrega | Estado |
+|---|---|---|
+| F0 | Contrato, layout de pastas, verificação de saída e cópia de entrada | **feito** (58 testes) |
+| F1 | Máquina de estados, brief da etapa, executor, store, retenção, rotas e tools | **feito** (108 testes no motor + 8 nas rotas) |
+| F2 | Destino "Workflow" nos gatilhos, aprovação longa, retry, UI simples, etapa de script, condição e repetição, record→promote | depois |
+| F3 | Editor visual, Team Cloud/VM | futuro |
+
+### Lacunas conhecidas
+
+- Aprovação: `onSettled` da etapa retorna uma vez. A resposta do cartão abre um
+  turno de continuação do host (`cardContinuation`) e não chama o `onSettled`
+  da etapa de novo. Falta um sinal para o motor verificar a etapa depois da
+  resposta (P16). Fica para a F2.
+- Histórico de versões: todas as versões ficam em `workflows.json`, sem nota,
+  autor, hash ou retenção do histórico. A F1 já permite escolher a versão de
+  uma nova run; metadados e GC do histórico ficam para a F2.
+- `run.json` guarda o id da etapa, não o nome: depois de apagar o Workflow, a
+  run continua legível por status e arquivos, mas sem os nomes humanos. Um
+  snapshot mínimo do Workflow na run fica para a F2.
+
+### Layout
+
+O Workflow vive em `workflows.json`, no data dir do app (entra no backup); a
+pasta do Workflow guarda só as runs.
+
+```
+~/MimirBot/
+└── Financeiro/
+    └── workflows/
+        └── 8a5b1c2d-.../
+            └── runs/
+                └── 20261103-123456-abcdef/
+                    ├── run.json
+                    ├── step-1/
+                    │   ├── input/
+                    │   └── output/
+                    └── step-2/
+                        ├── input/
+                        └── output/
+```
+
+### Ciclo de vida da run
+
+```mermaid
+stateDiagram-v2
+  [*] --> queued
+  queued --> running
+  running --> waiting_approval
+  waiting_approval --> running
+  running --> succeeded
+  running --> failed
+  queued --> cancelled
+  running --> cancelled
+  waiting_approval --> cancelled
+  succeeded --> [*]
+  failed --> [*]
+  cancelled --> [*]
+```
+
+### Uma etapa, em sequência
+
+```mermaid
+sequenceDiagram
+  participant E as Motor
+  participant S as Store
+  participant B as Bot da etapa
+  participant F as "step-N/"
+  E->>S: step running
+  E->>F: copia entradas declaradas
+  E->>B: startTurn(cwd=step-N, brief)
+  B->>F: escreve output/
+  B-->>E: onSettled(ok/text)
+  E->>F: verifyStepOutputs()
+  alt saída confere e require bate
+    E->>S: step succeeded
+  else falta, vazio, link, result inválido ou require não bate
+    E->>S: run failed (motivo)
+  end
+```
+
+### Contratos do motor
+
+#### Instrução da etapa
+
+O motor não escreve prompt novo. Ele usa o prompt que todo turno já monta em
+`buildSystemPrompt` (`server/system-prompt.ts`):
+
+| Camada | Origem | Muda por etapa? |
+|---|---|---|
+| Identidade | `botPersona` do bot da etapa | não |
+| Instruções permanentes | `SOUL.md` do bot | não |
+| Skills | índice do bot, já no prompt | não |
+| Regras fixas da etapa | parte volátil `workflow-step` (nova) | sim |
+| Tarefa | `instructions`, entradas e saídas na mensagem do usuário | sim |
+
+A parte `workflow-step` entra em `VOLATILE_SECTIONS` e diz só o que vale para
+toda etapa: leia `input/`, escreva apenas em `output/`, não pergunte à pessoa,
+encerre o turno, o motor copia as saídas.
+
+O corpo da tarefa viaja na mensagem do usuário, como o brief de um colega
+delegado (`composeRootTurn`). Motivo: o Claude reusa o primeiro system prompt
+em `--resume` (`server/index.ts:3843`), então uma parte de sistema alterada
+pode não chegar quando a etapa retoma a mesma thread.
+
+O agente recebe a instrução como texto. Skill vem do bot, sem campo novo. Um
+campo de skill por etapa fica para depois, se o dono pedir.
+
+#### Ids
+
+| Id | O que identifica | Formato | Onde vive |
+|---|---|---|---|
+| `WorkflowDefinition.id` | o Workflow | UUID | `workflows.json` |
+| `WorkflowDefinition.version` | a versão do Workflow | inteiro ≥ 1 | `workflows.json` |
+| `WorkflowRun.id` | uma execução | `AAAAMMDD-HHMMSS-hex6` | pasta e `run.json` |
+| `WorkflowRun.workflowId` + `workflowVersion` | qual Workflow e versão | UUID + inteiro | `run.json` |
+| `WorkflowStep.id` | a etapa dentro do Workflow | slug | Workflow e `run.json` |
+| `WorkflowRunStep.assignmentId` + `threadId` | o turno que executou a etapa | ids do runtime | `run.json` |
+
+A etapa aponta para um **bot** (`botId`), não para um agente nem para um
+modelo. O bot já carrega modelo, ferramentas, permissões, SOUL e skills. Um
+campo `model` na etapa furaria o modelo de acesso: o motor escolheria um
+modelo sem as permissões do bot. Um revisor mais barato é um bot revisor.
+
+Agentes interagindo já acontecem dentro do turno da etapa: o bot chama
+`coordinate_bots` e os resultados retomam o turno. O motor vê um turno que
+termina; ele não modela a conversa.
+
+`WorkflowRun.department` é um **retrato** do departamento no momento da
+criação, não uma cópia que precisa acompanhar o Workflow. Ele existe porque o
+caminho da run precisa dele (`workflowRunPaths`) e porque a run deve ser
+legível sem carregar o Workflow. Se o Workflow mudar de departamento, a run
+antiga continua na pasta onde nasceu.
+
+#### Aceite
+
+O aceite do MVP é estrutural, em código (`verifyStepOutputs`):
+
+- saída obrigatória existe, é arquivo comum e não está vazia;
+- saída opcional pode faltar;
+- `result.json` declarado é objeto JSON, até 64 KB.
+
+Isso responde "o arquivo veio", não "a entrega está correta". O motor não lê o
+conteúdo do resultado por conta própria.
+
+Para uma condição determinística sem gastar token, a etapa declara o campo
+`require`:
+
+```json
+{
+  "id": "revisar",
+  "botId": "bot_revisor",
+  "instructions": "Leia input/mensagens.json. Escreva result.json com ok e reason.",
+  "inputs": [{ "as": "mensagens.json", "from": { "step": "cobrar", "output": "mensagens.json" } }],
+  "outputs": [{ "path": "result.json", "required": true }],
+  "result": "result.json",
+  "require": { "ok": true }
+}
+```
+
+O motor compara os campos de `require` com o `result.json` por igualdade. Se
+não bater, a etapa fica `failed`, `error` recebe `result.reason` e a run para.
+Se bater, segue para a próxima etapa na ordem. É declarativo: o motor não
+executa código do Workflow.
+
+Uma etapa só pode consumir uma saída que a origem marcou `required: true`. Se
+a origem disser `required: false` e a etapa seguinte declarar essa saída como
+entrada, o schema recusa o Workflow. Motivo: se a etapa precisa do arquivo, a
+origem tem que garantir o arquivo; o erro aparece ao montar o Workflow, não no
+meio da run. "Arquivo opcional que a próxima etapa usa se existir" fica para a
+F2.
+
+O motor não é uma etapa. Ele orquestra: despacha o turno, espera, verifica,
+copia e avança. Quem julga o conteúdo é uma etapa revisora (um bot) ou, na F2,
+um script.
+
+### Módulos
+
+| Arquivo | Papel | Estado |
+|---|---|---|
+| `shared/workflow.ts` | Contrato, validações e tipos da run | feito |
+| `server/workflows/paths.ts` | Raiz, departamento, run id, `step-N` | feito |
+| `server/workflows/files.ts` | Verificação de saída e cópia de entrada | feito |
+| `server/workflows/state.ts` | Transições puras da run | feito |
+| `server/workflows/brief.ts` | Brief determinístico da etapa | feito |
+| `server/workflows/engine.ts` | Scheduler sobre `startTurn`/`onSettled` | feito |
+| `server/workflows/store.ts` | Workflows e runs, escrita atômica | feito |
+| `server/workflows/retention.ts` | Limpeza por idade, sem tocar pausadas | feito |
+| `server/routes/workflows.ts` | HTTP + SSE | feito |
+| `server/host/workflows.ts` | Factory de composição | feito |
+
+O executor não reimplementa turno: ele **cria a thread com o `cwd` exato**
+(`store.createTask(..., cwd)`), chama `startTurn` com `onSettled` e recebe
+`HostTurnResult`. O estado durável da atribuição pode usar
+`RuntimeCoordinator.beginTurn`/`endTurn` quando quisermos retomada e orçamento
+do runtime; o mínimo é a run persistida pelo motor.
+
+### Falha, retomada e limites
+
+- Falha de etapa: a run para em `failed` com o motivo verificado; a pessoa
+  reexecuta (sem retry automático por padrão — P14).
+- Reinício do app: runs `queued` e runs paradas entre etapas continuam; uma
+  etapa `running` vira `failed` ("the app restarted while this step was
+  running") em vez de repetir e duplicar efeitos externos. Passos `succeeded`
+  não rodam de novo.
+- Aprovação: a run fica `waiting_approval`; o motor não usa os 30 min de
+  `inputWaitMs`, uma run pausada nunca é apagada (D10/P12) e o `stallMs` não
+  derruba árvore com `needs_input`. Falta o sinal de retomada (P16).
+- Limites: um passo por vez por run, sem timer próprio de etapa (quem corta um
+  turno travado é o watchdog do host), máximo de etapas do contrato e admissão
+  normal por bot (3 threads).
+
+### Cancelamento, remoção e versionamento
+
+**Cancelar uma run.** `cancel_workflow` / `POST /api/workflows/runs/:id/cancel`
+grava a run como `cancelled`, marca a etapa corrente como `skipped` com o
+motivo e chama o mesmo caminho do Stop da pessoa (`interruptDirectThread` →
+`adapter.interruptTurn`). O motor não espera um segundo `onSettled`: quando o
+turno assentar, `settle` vê a run fora de `running` e ignora; nenhuma etapa
+seguinte começa. Não há rollback: arquivos já escritos em `output/` e efeitos
+externos permanecem. O interrupt é cooperativo; se o engine ignorar, o turno
+pode terminar, mas a run não avança. Se a run estiver `queued` ou entre etapas,
+não há turno para interromper; a próxima `advance` vê `cancelled` e para.
+
+**Apagar.** `DELETE /api/workflows/:id` responde 409 enquanto houver run
+`queued`, `running` ou `waiting_approval` daquele Workflow, listando os ids; a
+pessoa cancela e tenta de novo. `DELETE /api/workflows/runs/:runId` responde
+409 enquanto a run estiver ativa e só apaga depois de terminal. A retenção
+também só remove runs terminais. Apagar o Workflow não apaga as runs: elas
+continuam no disco, mas `run.json` guarda o id da etapa, não o nome; um
+snapshot mínimo do Workflow na run fica para a F2.
+
+**Versionamento.** Cada save com conteúdo diferente acrescenta um snapshot
+imutável em `workflows.json` (`version = max + 1`); conteúdo idêntico não cria
+versão. A run grava `workflowId` + `workflowVersion` e o motor carrega
+exatamente aquela versão, então uma run antiga não muda quando o Workflow
+evolui. `POST /api/workflows/:id/run` aceita `{ "version": N }` para rodar uma
+versão anterior. Não há commit metadata (autor, nota, hash, parent) nem GC do
+histórico na F1; snapshots completos são baratos porque o Workflow é pequeno.
+
+### F2: script, condição e repetição
+
+Etapa de script, condição e repetição formam uma feature só. Entram juntas na
+F2; o MVP fica com etapas de bot e o portão `require`.
+
+```json
+{
+  "id": "validar",
+  "kind": "script",
+  "name": "Validar entrega",
+  "run": "validar.mjs",
+  "inputs": [{ "as": "mensagens.json", "from": { "step": "cobrar", "output": "mensagens.json" } }],
+  "outputs": [{ "path": "result.json", "required": true }],
+  "result": "result.json",
+  "require": { "ok": true }
+}
+```
+
+O contrato do script é o mesmo da etapa de bot:
+
+- o motor passa o `cwd` da etapa e as variáveis `WORKFLOW_STEP_INPUT` e
+  `WORKFLOW_STEP_OUTPUT`;
+- o script escreve `result.json` em `output/` e termina;
+- o motor valida como qualquer etapa: arquivo, JSON, `require`.
+
+O script pode devolver qualquer coisa, desde que caiba no contrato. O motor
+não interpreta a saída livre; ele lê o `result.json` declarado.
+
+Condição e repetição leem esse resultado:
+
+- condição: `when` escolhe o próximo passo; `onFailure` escolhe o caminho de
+  falha. Sem `onFailure`, a run para como hoje;
+- repetição: `repeat` com limite duro, para o caso de o script pedir outra
+  volta.
+
+Riscos que a F2 precisa fechar antes de rodar:
+
+- o Workflow passa a conter código executável; hoje ele é só dado. Só quem
+  pode editar o Workflow no departamento pode adicionar script;
+- o caminho do script fica dentro da pasta do Workflow, sem `..` e sem link;
+- interpretador permitido (lista fechada), sem shell, com timeout e sem rede
+  por padrão;
+- o script roda com o mesmo usuário do app. Isso não é sandbox; é execução
+  local. Se o dono quiser isolamento, o script roda no computador do bot, não
+  no host.
+
+**Ideia para a F2:** o `require` do MVP compara igualdade. Se o caso pedir, ele
+cresce para um schema pequeno, com os mesmos recursos do contrato de tool
+(`fullInputSchema`/`compileToolSchema`): tipo, obrigatório, faixa, enum.
+Continua declarativo; o motor não executa código do Workflow.
+
+## 5. O que conseguimos reaproveitar
+
+| Recurso | Onde | Uso no Workflow |
+|---|---|---|
+| `store.createTask(..., cwd)` | `server/store.ts` | Cria a thread da etapa já com `cwd = step-N` |
+| `startTurn` + `onSettled` | `server/index.ts` | Executa a etapa e devolve o `HostTurnResult` uma vez. `startTurn` é privado ao módulo; a factory do host do Workflow precisa recebê-lo como dependência |
+| `beginTurn`/`endTurn` | `server/runtime-coordinator.ts` | Estado durável, retomada e orçamento da atribuição; não há histórico de "etapa 2 de 5" |
+| Cartões e `HostTurnResult.cards` | `server/coordinator.ts` | Pausa humana sem inventar aprovação |
+| Gate/capability do turno | `server/mcp-gate.ts` | Nenhuma permissão é contornada |
+| `fullInputSchema` + `compileToolSchema` | `server/drivers/agents-catalog.ts`, `server/mcp-schema-validator.ts` | Valida argumentos de tools e do `run_workflow` |
+| `writeFileAtomic` | `server/atomic.ts` | `run.json`, Workflows e transições |
+| `broadcast` | `server/index.ts` | Frames SSE `workflow.*` |
+| `RoutineTarget` | `server/routines.ts` | Novo destino `"workflow"` ao lado de `"bot"`/`"room-goal"` |
+| `sections` | `server/section-context.ts`, `server/store.ts` | Departamento como rótulo; pasta vem do motor |
+| `sharedProjectFolder` | `server/bot-cwd.ts` | Regra de segurança do `in_my_folder`; `~/MimirBot` fica fora do data dir (D6). O motor do Workflow cria a pasta e passa `cwd` direto, sem chamar `sharedProjectFolder` |
+| `server/routes/` + `RouteHandler` | `server/routes/README.md` | Rotas novas sem crescer `server/index.ts` |
+| `playbooks` do package format | `server/installed-playbooks.ts`, `shared/package-format.ts` | Playbooks são instruções empacotadas; não distribuem Workflow. O formato tem `playbooks`, não `flows` |
+| Saved Steps | `server/saved-steps/` | Inspiração para record→promote; o replay cobre passos de computador, não etapas de Workflow. Não há record→promote hoje |
+| `agents` MCP | `server/drivers/agents-proxy.ts`, `agents-catalog.ts`, `agents-call.ts` | Transporte das tools novas, com capability |
+
+## 6. O que teríamos que fazer do zero
+
+| Item | Por que não existe | Fase |
+|---|---|---|
+| Máquina de estados da run | O runtime não tem "etapa 2 de 5" com entradas/saídas | F1 |
+| Brief determinístico | Hoje o brief é texto do Chief; o motor precisa listar `input/`, saídas e `result.json` | F1 |
+| Ordem e dependência entre etapas | `coordinate_bots` roda irmãos em paralelo | F1 |
+| Store de Workflows + CRUD | Não há modelo de Workflow | F1 |
+| Rotas + SSE do Workflow | Não há contrato para a UI | F1 |
+| Tools `run_workflow`/`list_workflows`/`workflow_status`/`cancel_workflow` | Não existem no catálogo | F1 |
+| Destino "Workflow" no gatilho | `RoutineTarget` só tem `bot` e `room-goal` | F2 |
+| Aprovação longa | Cartões não expiram em 30 min e o `stallMs` ignora `needs_input`; falta o sinal de retomada (P16) | F2 |
+| Política de retry | Não há retentativa automática | F2 |
+| Retenção por Workflow | Não há limpeza por pasta/idade | F1 |
+| Editor/visualização | O canvas não é editor de fluxo | F2 (UI simples) / F3 (editor) |
+| Etapa de script | Toda etapa é um bot; não há executor de script | F2 |
+| Condição e repetição | Só o `result.json` está previsto; não há `when`, `onFailure` nem `repeat` | F2 |
+| Confirmar `cwd` por thread em cada engine | `SendTurnInput.cwd` é por turno e Claude, Codex e Antigravity usam `turn.cwd`; `--add-dir` do Claude é só para skills, e Codex lê `writableRoots` do config | F1 (confirmar, sem acesso extra) |
+
+## 7. Como isso vira as tools que os agentes chamam
+
+O ponto central: **a tool inicia um Workflow; ela não deixa o modelo escolher os
+passos.** Quem decide a ordem é o motor. O bot recebe a etapa já montada.
+
+```mermaid
+flowchart LR
+  P[Pessoa] -->|"run_workflow / aprovar"| API["/api/workflows"]
+  B[Bot] -->|"run_workflow / list_workflows / workflow_status"| MCP[agents MCP]
+  API --> E[Motor]
+  MCP --> E
+  E -->|"startTurn<br/>cwd = step-N"| R[Turno do bot]
+  R -->|"arquivos"| FS[(pasta da run)]
+  FS -->|"verificação"| E
+```
+
+| Tool | Quem chama | O que faz | Módulo nosso por trás |
+|---|---|---|---|
+| `list_workflows` | Bot | Lista Workflows que o bot alcança | `shared/workflow.ts` (parse) |
+| `run_workflow` | Bot, pessoa ou gatilho | Valida a entrada, cria a run e prepara as pastas | `workflow.ts`, `paths.ts`, `files.ts` |
+| `workflow_status` | Bot, pessoa | Mostra etapa atual, saídas verificadas e motivo de falha | `paths.ts`, `files.ts` |
+| `cancel_workflow` | Pessoa; bot só na própria run | Para a run, interrompe o turno corrente e preserva os arquivos | `paths.ts`, `state.ts`, `interruptDirectThread` |
+| aprovar/recusar | **Só pessoa** | Retoma ou encerra uma run pausada | `state.ts` |
+
+O que o bot **não** ganha: tool para marcar etapa como concluída, editar o
+Workflow, aprovar a própria pausa ou rodar um Workflow fora do departamento
+que alcança. A conclusão é sempre a verificação do arquivo.
+
+Por dentro, cada tool só chama o que já existe:
+
+- `run_workflow` valida com o mesmo schema que a UI usa, chama `paths.ts` para
+  o id/pasta, `files.ts` para criar `step-N` com `input/` e `output/` e devolve
+  `runId`.
+- O motor chama `copyStepInputs` antes da etapa e `verifyStepOutputs` depois;
+  `workflow_status` lê o `run.json` e mostra o que foi verificado e o motivo da
+  falha, sem repetir a verificação.
+- O turno da etapa é um turno normal: as tools que o bot já tem continuam
+  valendo, com o gate de sempre. Ele escreve em `output/` com as ferramentas de
+  arquivo/computer que já usa — não precisa de uma tool nova para "entregar".
+
+## 8. Como isso casa com a proposta do Workflow
+
+| Decisão | Onde ela vive na implementação |
+|---|---|
+| D1 motor determinístico | `engine.ts` decide a ordem; o bot só executa a etapa |
+| D2 entradas/saídas verificadas | `files.ts` (`verifyStepOutputs`, `copyStepInputs`) |
+| D3 `result.json` curto | `verifyStepOutputs` valida JSON objeto até 64 KB |
+| D4 arquivos na pasta da run | `paths.ts` |
+| D5/D6 pasta por departamento em `~/MimirBot` | `paths.ts` (`workflowsRoot`, `departmentFolder`) |
+| D8 "General" como departamento | Não é automático: vem do campo `department` do Workflow |
+| D7 acesso por run | `cwd` da thread da etapa; nada de pasta do departamento. Não há confinamento: D7 depende de limpar ou arquivar a pasta ao fim da run |
+| D9 ambiente do bot não muda | turno normal + `cwd` da etapa |
+| D10 retenção por Workflow | `retention.ts`, pausadas protegidas |
+| D11 arquivos sempre em disco | pasta da run (F0) + `run.json` (F1), com a retenção (F1) |
+| D12 ramificação/aprovação | `require` no MVP; condição, repetição e aprovação longa na F2 |
+| D13 individual e equipes | mesma run; alcance por departamento |
+| D14 `step-N` com `input/` e `output/` | `paths.ts` + `store.createTask(cwd)` |
+| D15 só o motor escreve | `files.ts`; o bot só escreve em `output/` |
+
+Implementado no núcleo (F0): D2, D3, D4, D5, D6, D14 e D15. O motor acrescenta
+na F1: D1, D9, D10 e a retenção de D11. D8 não é automático: o Workflow usa o
+campo `department` do Workflow, e "General" só existe se o Workflow disser isso.
+D7 depende do motor limpar ou arquivar a pasta ao fim da run; hoje a pasta
+continua no disco. D12 começa no MVP com `require`; condição, repetição e
+aprovação longa ficam para F2. D13 na nuvem fica para F3.
+
+## 9. O que ainda depende do dono
+
+1. **Exemplo real de Workflow** (seção 1 da spec) — valida o formato da etapa e
+   a tela.
+2. **Aprovação longa** — cartões abertos não expiram em 30 min e o `stallMs`
+   não derruba árvore com `needs_input`, então a run pausada pode esperar.
+   Falta decidir como o motor recebe a resposta e retoma a etapa (P16).
+3. **Histórico de versões** — metadados (nota, autor, hash, parent) e GC das
+   versões que nenhuma run referencia. A F1 guarda todos os snapshots em
+   `workflows.json`.
+4. **Snapshot da run** — guardar o nome do Workflow e das etapas no `run.json`
+   para a run continuar legível depois de apagar o Workflow ou o histórico.
+
+Decidido: o Workflow vive em `workflows.json`, no data dir (entra no backup).
+
+## 10. Decidido nesta revisão
+
+| Ponto | Decisão | Fase |
+|---|---|---|
+| Instrução da etapa | texto em `instructions`; corpo na mensagem do usuário; regras fixas na parte volátil `workflow-step` | F1 |
+| Skills | vêm do bot da etapa, sem campo novo | F1 |
+| Agente e modelo | a etapa aponta só para `botId` | F1 |
+| Id da run | separado do Workflow: `AAAAMMDD-HHMMSS-hex6` | F1 |
+| Departamento na run | retrato do momento da criação; não acompanha o Workflow | F1 |
+| Aceite | estrutural (`verifyStepOutputs`) + `require` por igualdade no `result.json` | F1 |
+| Entrada opcional | uma etapa só consome saída `required: true`; o Workflow é recusado | F1 |
+| Onde guardar o Workflow | `workflows.json` no data dir (entra no backup) | F1 |
+| Versionamento | snapshots imutáveis; a run fixa `workflowVersion`; `POST /run` aceita `{version}` | F1 |
+| Cancelamento | run `cancelled`, etapa `skipped`, interrompe o turno pelo caminho do Stop; sem rollback | F1 |
+| Remoção | `DELETE` do Workflow ou da run recusa com 409 enquanto houver run ativa | F1 |
+| Terminologia | o produto diz "Workflow"; no código ficam `WorkflowDefinition`/`WorkflowRun`, `/api/workflows` e as tools `run_workflow`/`list_workflows` | F1 |
+| Retenção | por idade, no boot; `queued`/`running`/`waiting_approval` nunca são apagadas | F1 |
+| Retry | adiado; sem retry automático, `attempts` registrado | F2 |
+| Script, condição e repetição | uma feature só, com os riscos da seção 4 | F2 |
+| Snapshot da run | `run.json` guarda ids; nome/instruções para auditoria ficam para a F2 | F2 |
+| Correção | `workflowId` UUID vs slug em `workflowRunPaths` | F1 |

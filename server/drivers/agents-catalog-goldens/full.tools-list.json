@@ -1833,6 +1833,85 @@
           "name"
         ]
       }
+    },
+    {
+      "name": "list_workflows",
+      "description": "List the Workflows of your department that you can start. A Workflow is a fixed sequence of steps the engine runs; you start it, the engine decides who runs next.",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "run_workflow",
+      "description": "Start a Workflow from list_workflows. The engine runs its steps in order, each in its own folder with its own bot. This starts the run; it does not run the steps inside this turn.",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "workflow_id": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "The Workflow id from list_workflows."
+          },
+          "version": {
+            "type": "integer",
+            "description": "Optional definition version; omit for the latest."
+          }
+        },
+        "required": [
+          "workflow_id"
+        ]
+      }
+    },
+    {
+      "name": "workflow_status",
+      "description": "Show a Workflow run's current step, each step's status and verified outputs, and why it failed.",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "The run id returned by run_workflow."
+          }
+        },
+        "required": [
+          "run_id"
+        ]
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "cancel_workflow",
+      "description": "Stop a Workflow run you started. Files already written stay on disk; steps that have not started do not start.",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "The run id returned by run_workflow."
+          }
+        },
+        "required": [
+          "run_id"
+        ]
+      }
     }
   ]
 }

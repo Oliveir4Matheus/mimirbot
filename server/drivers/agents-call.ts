@@ -93,6 +93,31 @@ function renderAssignmentStatus(r: Json, id: string): string {
   return lines.join("\n");
 }
 
+const WORKFLOW_RUN_STATUS: Record<string, string> = {
+  queued: "queued, not started yet",
+  running: "running",
+  waiting_approval: "waiting for approval",
+  succeeded: "succeeded",
+  failed: "failed",
+  cancelled: "cancelled",
+};
+
+function renderWorkflowRun(body: Json): string {
+  const run = jsonRecord(body.run) ? body.run : {};
+  const workflow = jsonRecord(body.workflow) ? body.workflow : {};
+  const steps = Array.isArray(run.steps) ? run.steps.filter(jsonRecord) : [];
+  const lines = [`Workflow ${String(workflow.name ?? run.workflowId ?? "?")} · run ${String(run.id ?? "?")}: ${WORKFLOW_RUN_STATUS[String(run.status)] ?? String(run.status ?? "unknown")}`];
+  if (typeof run.error === "string" && run.error.trim()) lines.push(`Why it stopped: ${run.error.trim()}`);
+  if (typeof run.currentStep === "number" && steps.length) lines.push(`Current step: ${Math.min(run.currentStep + 1, steps.length)} of ${steps.length}`);
+  for (const [index, step] of steps.entries()) {
+    const verified = Array.isArray(step.verified) && step.verified.length ? ` — verified: ${step.verified.map(String).join(", ")}` : "";
+    const error = typeof step.error === "string" && step.error.trim() ? ` — ${step.error.trim()}` : "";
+    lines.push(`${index + 1}. ${String(step.id ?? "?")}: ${String(step.status ?? "?")}${verified}${error}`);
+  }
+  if (run.status === "running" || run.status === "queued") lines.push("It is still running; its steps start on their own. Check again later rather than waiting in this turn.");
+  return lines.join("\n");
+}
+
 function handoffIds(r: Json): string[] {
   const receipts = Array.isArray(r.receipts) ? r.receipts.filter(jsonRecord) : [];
   return receipts.map((receipt) => receipt.requestId).filter((id): id is string => typeof id === "string" && id.trim().length > 0);
@@ -193,6 +218,45 @@ export async function callTool(called: string, input: Json, context: ToolCallCon
   if (PAGE_TOOL_NAMES.has(name)) return callPageTool(name, args, context);
   if (TRIGGER_TOOL_NAMES.has(name)) return callTriggerTool(name, args, context);
   if (WAIT_TOOL_NAMES.has(name)) return callWaitTool(name, args, context);
+  if (name === "list_workflows") {
+    const r = await api("/api/internal/workflows");
+    const workflows = Array.isArray(r.workflows) ? r.workflows.filter(jsonRecord) : [];
+    if (!workflows.length) return { text: "No Workflow in your department yet. Only the person can create one." };
+    const lines = workflows.map((entry) => `- ${String(entry.name)} [id: ${String(entry.id)}, version ${Number(entry.version)}, ${Array.isArray(entry.steps) ? entry.steps.length : 0} steps]`);
+    return { text: `Workflows you can start:\n${lines.join("\n")}\n\nStart one with run_workflow. The engine runs its steps; you do not run them in this turn.` };
+  }
+  if (name === "run_workflow") {
+    const id = String(args.workflow_id ?? "").trim();
+    if (!id) return { text: "run_workflow needs workflow_id from list_workflows.", isError: true };
+    const { ok, status, body } = await apiResponse(`/api/internal/workflows/${encodeURIComponent(id)}/run`, {
+      method: "POST",
+      body: JSON.stringify(args.version === undefined ? {} : { version: args.version }),
+    });
+    if (!ok) {
+      return { text: status === 404 ? "No Workflow with that id in your department. Use list_workflows." : String(body.error ?? `HTTP ${status}`), isError: true };
+    }
+    const run = jsonRecord(body.run) ? body.run : {};
+    const total = Array.isArray(run.steps) ? run.steps.length : 0;
+    return { text: `Started Workflow run ${String(run.id ?? "?")}: step 1 of ${total || "?"}. The engine runs the steps and verifies their files; use workflow_status with this run id to follow it.` };
+  }
+  if (name === "workflow_status") {
+    const id = String(args.run_id ?? "").trim();
+    if (!id) return { text: "workflow_status needs run_id from run_workflow.", isError: true };
+    const { ok, status, body } = await apiResponse(`/api/internal/workflows/runs/${encodeURIComponent(id)}`);
+    if (!ok) {
+      return { text: status === 404 ? "No run with that id in your department." : status === 403 ? "That run belongs to another department." : String(body.error ?? `HTTP ${status}`), isError: true };
+    }
+    return { text: renderWorkflowRun(body) };
+  }
+  if (name === "cancel_workflow") {
+    const id = String(args.run_id ?? "").trim();
+    if (!id) return { text: "cancel_workflow needs run_id from run_workflow.", isError: true };
+    const { ok, status, body } = await apiResponse(`/api/internal/workflows/runs/${encodeURIComponent(id)}/cancel`, { method: "POST", body: "{}" });
+    if (!ok) {
+      return { text: status === 403 ? "Only the conversation that started this run can cancel it." : String(body.error ?? `HTTP ${status}`), isError: true };
+    }
+    return { text: `Run ${id} is cancelled. Files already written stay on disk.` };
+  }
   // Second lock: with sharing off the catalog already omits these tools.
   if (SHARED_COMPUTER_TOOL_NAMES.has(name) && !context.sharedComputers) {
     return { text: "Computer sharing is turned off in this workspace. There are no shared computers to use.", isError: true };
