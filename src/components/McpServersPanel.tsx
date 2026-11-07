@@ -20,6 +20,7 @@ import { cn } from "@/lib/cn";
 import { t } from "@/lib/i18n";
 import type { LocaleKey } from "@/locales";
 import { updateMcpServers } from "@/lib/mcp-servers";
+import { reserveConnectionPage } from "@/lib/connector-oauth";
 import { completeMcpSignIn, mcpSignInLink, runMcpSignIn, type McpSignInStatus } from "@/lib/mcp-sign-in";
 import { api, useStore } from "@/state/store";
 
@@ -400,6 +401,7 @@ export function McpServersPanel({ embedded = false, whopCard = false, hideWhop =
   };
 
   const signIn = async (server: McpServerListing) => {
+    const launch = reserveConnectionPage();
     const controller = new AbortController();
     signInAbort.current = controller;
     setSigningIn(server.name);
@@ -414,7 +416,10 @@ export function McpServersPanel({ embedded = false, whopCard = false, hideWhop =
       return next;
     });
     try {
-      const result = await runMcpSignIn(server.name, { api, open: openExternalLink, signal: controller.signal, onStarted: (status, complete) => {
+      const open = async (url: string) => {
+        if (!await launch.open(url) && mounted.current && !controller.signal.aborted) setCallbackError(t("connectors.card.popupBlocked"));
+      };
+      const result = await runMcpSignIn(server.name, { api, open, signal: controller.signal, onStarted: (status, complete) => {
         setSignInFlow(status);
         signInComplete.current = complete;
       } });
@@ -438,6 +443,7 @@ export function McpServersPanel({ embedded = false, whopCard = false, hideWhop =
     } catch (cause) {
       if (mounted.current && !controller.signal.aborted) setProbe((current) => ({ ...current, [server.name]: { ok: false, error: cause instanceof Error ? cause.message : String(cause) } }));
     } finally {
+      launch.cancel();
       if (signInAbort.current === controller) {
         signInAbort.current = null;
         signInComplete.current = null;
@@ -566,7 +572,7 @@ export function McpServersPanel({ embedded = false, whopCard = false, hideWhop =
           <Loader2 size={13} className="animate-spin" /> {t(signInFlow?.phase === "succeeded" ? "whop.loadingTools" : "mcp.auth.waiting")}
         </div>
         {signInFlow?.authorizationUrl && mcpSignInLink(signInFlow.authorizationUrl) && (
-          <button type="button" onClick={() => void openExternalLink(signInFlow.authorizationUrl!).catch(() => setCallbackError(t("mcp.auth.openFailed")))} className="text-accent hover:underline">
+          <button type="button" onClick={() => { setCallbackError(null); void openExternalLink(signInFlow.authorizationUrl!).catch(() => setCallbackError(t("mcp.auth.openFailed"))); }} className="text-accent hover:underline">
             {t("mcp.auth.openAgain")}
           </button>
         )}
