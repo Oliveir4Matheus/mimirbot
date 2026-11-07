@@ -320,7 +320,7 @@ export function PreviewTable({ columns, rows, query, ariaLabel }: PreviewTablePr
     : [];
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-app text-ink" dir="ltr">
+    <div className="flex h-full min-h-0 min-w-0 flex-col bg-app text-ink" dir="ltr">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-hairline bg-card px-4 py-[9px] text-[11px] text-ink-secondary">
         <span role="status">
           {t("preview.table.count", {
@@ -336,7 +336,7 @@ export function PreviewTable({ columns, rows, query, ariaLabel }: PreviewTablePr
         tabIndex={0}
         role="region"
         aria-label={ariaLabel}
-        className="min-h-0 flex-1 overflow-auto overscroll-x-contain focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus"
+        className="min-h-0 min-w-0 flex-1 overflow-auto overscroll-x-contain focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus"
       >
         <table
           aria-label={ariaLabel}

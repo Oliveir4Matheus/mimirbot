@@ -487,14 +487,11 @@ export function FilePreviewDialog({
       aria-modal={position === "center" ? true : undefined}
       aria-label={t("preview.aria", { name })}
       tabIndex={-1}
-      className={`flex min-h-0 flex-col overflow-hidden bg-panel text-ink outline-none ${
+      className={`flex min-h-0 min-w-0 flex-col overflow-hidden bg-panel text-ink outline-none ${
         position === "center"
-          ? "h-[min(790px,calc(100dvh-44px))] w-[min(1030px,100%)] rounded-[16px] border border-hairline shadow-[0_35px_120px_#000C] max-[650px]:h-[100dvh] max-[650px]:w-[100vw] max-[650px]:rounded-none max-[650px]:border-0"
+          ? "h-[min(790px,calc(100dvh-44px))] w-[min(1030px,100%)] rounded-[16px] border border-hairline px-[10px] shadow-[0_35px_120px_#000C] max-[650px]:h-[100dvh] max-[650px]:w-[100vw] max-[650px]:rounded-none max-[650px]:border-0"
           : "h-full w-full"
       }`}
-      style={position === "center"
-        ? undefined
-        : { width: "min(clamp(420px, 43vw, 680px), calc(100vw - 24px))", height: "calc(100dvh - 24px)" }}
     >
       <header className="flex min-h-[54px] shrink-0 flex-wrap items-center gap-[9px] border-b border-hairline bg-card px-[14px] py-2 max-[650px]:px-[11px]">
         {formatStyle && <PreviewIcon format={format!} />}
