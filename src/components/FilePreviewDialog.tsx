@@ -39,8 +39,9 @@ import { composeMessage, imageAttachmentFromFile } from "@/lib/composer-attachme
 import { copyText } from "@/lib/copy-text";
 import { t } from "@/lib/i18n";
 import { capturePreviewRegion, isUsableSelection, normalizeSelection, type SelectionRect } from "@/lib/preview-capture";
-import { parseTableFile, tableDelimiter, type TextTable } from "@/lib/table-data";
-import { readXlsxWorkbook, type XlsxWorkbook } from "@/lib/xlsx";
+import { tableDelimiter, type TextTable } from "@/lib/table-data";
+import { parseTableInWorker, parseWorkbookInWorker } from "@/lib/preview-workers";
+import type { XlsxWorkbook } from "@/lib/xlsx";
 import { useStore } from "@/state/store";
 import { canonicalDownloadFilename, requestMessageFile, type MessageAttachmentContext } from "./AttachmentPreview";
 import { PreviewTable } from "./PreviewTable";
@@ -227,10 +228,10 @@ export function FilePreviewDialog({
           if (blob.size > textPreviewLimit(format)) throw new Error("tooLarge");
           text = await blob.text();
           if (format === "csv" || format === "tsv") {
-            table = parseTableFile(text, tableDelimiter(name) ?? tableDelimiter(path) ?? ",");
+            table = await parseTableInWorker(text, tableDelimiter(name) ?? tableDelimiter(path) ?? ",", controller.signal);
           }
         } else if (format === "xlsx") {
-          workbook = await readXlsxWorkbook(new Uint8Array(await blob.arrayBuffer()));
+          workbook = await parseWorkbookInWorker(new Uint8Array(await blob.arrayBuffer()), controller.signal);
           if (workbook.sheets.length === 0) throw new Error("noSheets");
         } else if (format === "pdf") {
           pdfPages = countPdfPages(new Uint8Array(await blob.arrayBuffer()));

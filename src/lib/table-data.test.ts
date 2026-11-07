@@ -11,8 +11,12 @@ describe("table data", () => {
     expect(() => parseTableFile("a,b\n1,2,3", ",")).toThrow("columns");
     expect(() => parseTableFile("a,b\n1", ",")).toThrow("columns");
     expect(() => parseTableFile("a\0", ",")).toThrow("format");
-    expect(() => parseTableFile(Array(201).fill("column").join(","), ",")).toThrow("size");
-    expect(() => parseTableFile("a\n" + "row\n".repeat(100_001), ",")).toThrow("size");
+    expect(() => parseTableFile(Array(501).fill("column").join(","), ",")).toThrow("size");
+    expect(() => parseTableFile("a\n" + "row\n".repeat(250_001), ",")).toThrow("size");
+  });
+  it("opens files beyond the previous 100,000-row ceiling", () => {
+    const parsed = parseTableFile("id,name\n" + Array.from({ length: 120_000 }, (_, index) => `${index},row`).join("\n"), ",");
+    expect(parsed.rows).toHaveLength(120_000);
   });
   it("handles empty and header-only files", () => {
     expect(parseTableFile("", ",")).toEqual({ headers: [], rows: [] });

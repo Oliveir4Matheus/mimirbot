@@ -18,7 +18,7 @@ interface ZipEntry {
 const EOCD_SIGNATURE = 0x06054b50;
 const CENTRAL_SIGNATURE = 0x02014b50;
 const LOCAL_SIGNATURE = 0x04034b50;
-const MAX_UNCOMPRESSED_BYTES = 64 * 1024 * 1024;
+const MAX_UNCOMPRESSED_BYTES = 256 * 1024 * 1024;
 
 function readUint16(bytes: Uint8Array, offset: number): number {
   return bytes[offset]! | (bytes[offset + 1]! << 8);
