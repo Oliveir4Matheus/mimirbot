@@ -493,7 +493,7 @@ export function FilePreviewDialog({
           : "h-full w-full"
       }`}
     >
-      <header className="flex min-h-[54px] shrink-0 flex-wrap items-center gap-[9px] border-b border-hairline bg-card px-[14px] py-2 max-[650px]:px-[11px]">
+      <header className="flex min-h-[46px] shrink-0 flex-wrap items-center gap-[9px] border-b border-hairline bg-card px-[14px] py-1.5 max-[650px]:px-[11px]">
         {formatStyle && <PreviewIcon format={format!} />}
         <div className="min-w-0 flex-1">
           <div className="truncate text-[12px] font-[630] text-ink" title={name}>{name}</div>

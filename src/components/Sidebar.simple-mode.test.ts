@@ -87,7 +87,7 @@ describe("bot-first sidebar", () => {
     { advanced: true, enabled: false, density: "comfortable", size: 27, spacing: ["h-[43px]", "gap-[10px]", "pl-[9px]", "pr-[30px]"] },
     { advanced: false, enabled: false, density: "comfortable", size: 27, spacing: ["h-[43px]", "gap-[10px]", "pl-[9px]", "pr-[30px]"] },
     { advanced: false, enabled: false, density: "compact", size: 27, spacing: ["h-[43px]", "gap-[10px]", "pl-[9px]", "pr-[30px]"] },
-    { advanced: false, enabled: false, density: "icons", size: 36, spacing: ["h-[52px]", "justify-center"] },
+    { advanced: false, enabled: false, density: "icons", size: 36, spacing: ["h-[43px]", "justify-center"] },
   ] as const)("sizes bot portraits and row spacing in $density density with threads $enabled (advanced $advanced)", ({ advanced, enabled, density, size, spacing }) => {
     fixture.advanced = advanced;
     fixture.showThreads = enabled;

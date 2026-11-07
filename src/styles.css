@@ -1362,7 +1362,7 @@ body {
   gap: 9px;
   width: 298px;
   max-width: 100%;
-  height: 41px;
+  height: 31px;
   /* The stroke's top edge lands on the header's bottom border, so the two read as one line. */
   margin-top: -1px;
   padding: 4px 32px 2px;
@@ -1422,14 +1422,14 @@ body {
 @container chathead (max-width: 730px) {
   .conversation-submenu {
     width: 260px;
-    height: 39px;
+    height: 29px;
     padding: 3px 25px 1px;
   }
 }
 @container chathead (max-width: 490px) {
   .conversation-submenu {
     width: 210px;
-    height: 36px;
+    height: 27px;
     padding: 3px 18px 1px;
   }
 }
