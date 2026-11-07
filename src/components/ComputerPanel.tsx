@@ -34,6 +34,7 @@ import { browserAvailable, browserUnavailableReason, builtInBrowserEnabled } fro
 import { parseComputerHelp, transitionComputerControlLease, type ComputerControlAction } from "@/lib/computer-control";
 import { openProviderDesktop, useComputerTakeover } from "./computer-takeover";
 import { SignInBanner } from "./SignInRequestCard";
+import { FullScreenButton } from "./FullScreenButton";
 import { LocalScreenPreview } from "./LocalScreenPreview";
 import { LinuxLocalControl } from "./LinuxLocalControl";
 import { MacLocalControl } from "./MacLocalControl";
@@ -902,6 +903,7 @@ export function ComputerPanel({
     }
   };
 
+  const takeBlocked = pending === "join" || (phase === "vm" && !liveTarget);
   const takeControl = async (expand = false) => {
     if (!liveTarget) return cloudPreviewReady ? openDesktop() : undefined;
     if (takeover.here) return takeover.setExpanded(expand || takeover.expanded);
@@ -1671,7 +1673,7 @@ export function ComputerPanel({
               <button
                 type="button"
                 onClick={() => void takeControl()}
-                disabled={controlPending || pending === "join" || (phase === "vm" && !liveTarget)}
+                disabled={controlPending || takeBlocked}
                 className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-accent py-2 text-[13px] font-medium text-accent-ink hover:brightness-110 disabled:opacity-50"
                 title={t("computer.takeControlTitle")}
               >
@@ -1679,16 +1681,10 @@ export function ComputerPanel({
                 {t("computer.takeControl")}
               </button>
             )}
-            <button
-              type="button"
-              onClick={() => void takeControl(true)}
-              disabled={pending === "join" || (!control.held && controlPending) || (phase === "vm" && !liveTarget)}
-              className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-control py-2 text-[13px] text-ink hover:bg-raised-hover disabled:opacity-50"
-              title={t("computer.openLiveDesktop")}
-            >
-              <Maximize2 size={14} />
-              {t("computer.fullScreen")}
-            </button>
+            <FullScreenButton
+              held={control.held} frame={frameSrc} name={bot.name} onTakeControl={(expand) => void takeControl(expand)}
+              disabled={control.held && takeBlocked} takeDisabled={controlPending || takeBlocked}
+            />
             {cloudPreviewReady && canManageCloud && (cloudBackend === "vps" || boatState !== "archived") && (
               <button
                 type="button"
