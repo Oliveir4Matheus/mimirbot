@@ -13,6 +13,7 @@ import type { BotApps } from "./bot-settings/useBotApps";
 // the element tree.
 const fixture = vi.hoisted(() => {
   vi.stubGlobal("window", { confirm: () => true });
+  vi.stubGlobal("document", { visibilityState: "visible" });
   vi.stubGlobal("localStorage", { getItem: () => null, setItem: () => {} });
   return {
     advanced: false,
@@ -126,7 +127,6 @@ const { openBotSettings } = await import("./bot-panel/panel-link");
 const { PageHeader } = await import("./bot-panel/rows");
 const { ChatMoreMenu } = await import("./ChatMoreMenu");
 const { SoulField } = await import("./SoulField");
-const { LocalComputerAutoWarning } = await import("./LocalComputerAutoWarning");
 const { ModelPicker, ModelVariantRow } = await import("./ModelPicker");
 const { ThreadModelsLine } = await import("./ThreadModelsLine");
 const { ModelSection } = await import("./bot-settings/ModelSection");
@@ -380,7 +380,8 @@ describe("the bot panel in Simple mode", () => {
     const screen = panel(bot);
     expect(switches(screen.html)).toBe(0);
     for (const text of ["Memory", "Upkeep", "Record"]) expect(screen.html).not.toContain(`>${text}<`);
-    expect(screen.html.match(/<button[^>]*>Browser</g)).toEqual([expect.stringContaining('data-place-choice="browser"')]);
+    expect(screen.html).toContain('data-testid="computer-tabs"');
+    expect(screen.html).toContain(">Browser</span>");
   });
 });
 
@@ -703,108 +704,27 @@ describe("the Bot tab", () => {
 });
 
 describe("the Computer tab", () => {
-  it("offers Let it choose, this computer, the bot's browser and the Cloud desktop, with no hint text, and a Watch button", () => {
+  it("embeds the four tools and the six-place grid in one panel", () => {
     const rendered = computer(makeBot());
+    expect(rendered.html).toContain('data-panel-tabpanel="computer"');
+    expect(rendered.html).toContain('data-testid="computer-tabs"');
+    for (const name of ["Screen", "Browser", "Data", "Files"]) expect(rendered.html).toContain(`${name}</button>`);
+    for (const name of ["Auto", "Cloud desktop", "Private desktop", "This PC", "Browser", "Off"]) {
+      expect(rendered.html).toContain(`>${name}</span>`);
+    }
     expect(rendered.html).toContain("Where Scout works");
-    // The tests run on no platform in particular, so this computer is a PC; a Mac says This Mac.
-    expect(segment(rendered, "data-place-choice").options.map((option) => [option.value, option.label])).toEqual([
-      ["auto", "Let it choose"], ["local", "This PC"], ["browser", "Browser"], ["cloud", "Cloud desktop"],
-    ]);
-    expect(pressed(rendered.html, "data-place-choice")).toEqual(["auto"]);
-    expect(rendered.html).not.toContain("Picks the right place for each task");
-    expect(rendered.html).not.toContain("More places");
+    expect(rendered.html).toContain("Choose automatically");
+    expect(rendered.html).toContain('aria-pressed="true"');
     expect(rendered.html).toContain(">Watch<");
     expect(rendered.html).toContain("Scout&#x27;s screen");
-    expect(switches(rendered.html)).toBe(0);
+    expect(rendered.html).toContain('data-panel-page="browser"');
+    expect(rendered.html).toContain("Signed-in sites");
   });
 
-  it("saves each place through the bot patch, and sends nothing for the place already chosen", () => {
+  it("does not render the standalone panel's chrome inside the agent panel", () => {
     const rendered = computer(makeBot());
-    segment(rendered, "data-place-choice").onChange("cloud");
-    expect(patch).toHaveBeenLastCalledWith({ computer: "cloud" });
-    segment(rendered, "data-place-choice").onChange("local");
-    expect(patch).toHaveBeenLastCalledWith({ computer: "local" });
-    segment(rendered, "data-place-choice").onChange("browser");
-    expect(patch).toHaveBeenLastCalledWith({ computer: "browser", browser: true });
-    segment(computer(makeBot({ computer: "cloud" })), "data-place-choice").onChange("auto");
-    expect(patch).toHaveBeenLastCalledWith({ computer: null });
-    patch.mockReset();
-    segment(computer(makeBot({ computer: "cloud" })), "data-place-choice").onChange("cloud");
-    expect(patch).not.toHaveBeenCalled();
-  });
-
-  it.each([["vm", "Private desktop"], ["off", "Off"]] as const)(
-    "shows a bot kept on %s as a last, selected pill it cannot pick again", (place, label) => {
-      const rendered = computer(makeBot({ computer: place }));
-      const where = segment(rendered, "data-place-choice");
-      expect(where.options.map((option) => [option.value, option.label, Boolean(option.disabled)])).toEqual([
-        ["auto", "Let it choose", false], ["local", "This PC", false], ["browser", "Browser", false], ["cloud", "Cloud desktop", false], [place, label, true],
-      ]);
-      expect(pressed(rendered.html, "data-place-choice")).toEqual([place]);
-      where.onChange(place);
-      expect(patch).not.toHaveBeenCalled();
-      where.onChange("auto");
-      expect(patch).toHaveBeenLastCalledWith({ computer: null });
-    },
-  );
-
-  it("holds a place the bot cannot use with the reason on it, and leaves out the Cloud desktop when none is offered", () => {
-    fixture.places.cloud = [true, false, "Not ready"];
-    const blocked = segment(computer(makeBot()), "data-place-choice").options.find((option) => option.value === "cloud")!;
-    expect(blocked).toMatchObject({ disabled: true, tooltip: "Not ready." });
-    fixture.places.cloud = [false, false, "Not offered"];
-    const rendered = computer(makeBot());
-    expect(segment(rendered, "data-place-choice").options.map((option) => option.value)).toEqual(["auto", "local", "browser"]);
-    fixture.places.local = [false, false, "Not offered"];
-    expect(segment(computer(makeBot()), "data-place-choice").options.map((option) => option.value)).toEqual(["auto", "browser"]);
-    fixture.places.browser = [false, false, "Not offered"];
-    expect(segment(computer(makeBot()), "data-place-choice").options.map((option) => option.value)).toEqual(["auto"]);
-    expect(segment(computer(makeBot({ computer: "browser" })), "data-place-choice").options.map((option) => [option.value, Boolean(option.disabled)]))
-      .toEqual([["auto", false], ["browser", true]]);
-  });
-
-  it("names the browser My Chrome when the bot's profile is the person's own Chrome", () => {
-    fixture.storeState = { ...fixture.storeState, config: { browserEngine: { myChrome: true }, browserProfiles: [{ id: "bank", name: "Bank", browser: "chrome" }] } };
-    const where = segment(computer(makeBot({ browserProfile: "bank" })), "data-place-choice");
-    expect(where.options.find((option) => option.value === "browser")?.label).toBe("My Chrome");
-    expect(segment(computer(makeBot()), "data-place-choice").options.find((option) => option.value === "browser")?.label).toBe("Browser");
-  });
-
-  it("says where the bot works right now when that is not the place chosen", () => {
-    const at = (surface: "local" | "browser" | undefined, extra: Partial<Bot> = {}) =>
-      computer(makeBot({ ...extra, tasks: [{ threadId: "thread-scout", title: "Main", ...(surface ? { surface } : {}) }] as Bot["tasks"] })).html;
-    expect(at("local")).toContain("Right now: This PC");
-    expect(at("browser")).toContain("Right now: Browser");
-    expect(at(undefined)).not.toContain("Right now");
-    expect(at("browser", { computer: "browser" })).not.toContain("Right now");
-    expect(at("local", { computer: "cloud" })).toContain("Right now: This PC");
-  });
-
-  it("warns before this computer for a bot that decides alone", () => {
-    fixture.derived.approvalMode = "auto";
-    const bot = makeBot();
-    segment(computer(bot), "data-place-choice").onChange("local");
-    expect(patch).not.toHaveBeenCalled();
-    const warning = ofType(computer(bot), LocalComputerAutoWarning)!;
-    expect(warning.props.open).toBe(true);
-    (warning.props.onConfirm as () => void)();
-    expect(fixture.dispatch).toHaveBeenLastCalledWith({ type: "updateBot", botId: "scout", patch: { computer: "local", acknowledgeLocalAuto: true } });
-  });
-
-  it("leads to the signed-in sites, and opens the full view from Watch", () => {
-    const rendered = computer(makeBot());
-    click(find(rendered, "data-panel-page", "browser"));
-    expect(onOpen).toHaveBeenLastCalledWith("browser");
-    for (const page of ["folder", "logins", "android"]) expect(has(rendered, "data-panel-page", page)).toBe(false);
-    expect(has(rendered, "data-panel-row", "data")).toBe(false);
-    const setItem = vi.fn();
-    vi.stubGlobal("localStorage", { getItem: () => null, setItem });
-    click(find(rendered, "data-panel-action", "open-computer"));
-    expect(setItem).toHaveBeenLastCalledWith("omb-computer-panel-view:scout", "computer");
-    expect((fixture.dispatch as ReturnType<typeof vi.fn>).mock.calls.slice(-1)).toEqual([
-      [{ type: "toggleComputer", open: true }],
-    ]);
-    vi.stubGlobal("localStorage", { getItem: () => null, setItem: () => {} });
+    expect(rendered.html).not.toContain("data-computer-panel-close");
+    expect(rendered.html).not.toContain("Resize the Screen panel");
   });
 });
 

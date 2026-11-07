@@ -357,19 +357,26 @@ function browserSwitch(rendered: ReturnType<typeof render>) {
 }
 
 describe("Where the bot works", () => {
-  it("offers six places in a 3-column grid with plain names", () => {
+  it("offers six places in a 3-column grid with names and short descriptions", () => {
     const rendered = render(makeBot());
     const card = rendered.nodes.find((node) => node.props["data-testid"] === "where-works")!;
     expect(rendered.html).toContain("Where Scout works");
     expect(nodes(card.props.children).find((node) => node.props.role === "group")!.props.className).toContain("grid-cols-3");
-    expect(grid(rendered).map((node) => text(node.props.children))).toEqual(["Auto", "Cloud desktop", "Private desktop", "This Mac", "Browser", "Off"]);
+    expect(grid(rendered).map((node) => text(node.props.children))).toEqual([
+      "AutoChoose automatically",
+      "Cloud desktopA desktop in the cloud",
+      "Private desktopIsolated local desktop",
+      "This MacYour screen and apps",
+      "BrowserWeb pages only",
+      "OffNo computer access",
+    ]);
     expect(placeLine(rendered)).toBe("Uses the built-in browser, a private desktop on this computer, or this computer's screen, whichever the task needs.");
   });
 
   it("says This PC off a Mac, and never names a Local VM in Auto's line there", () => {
     fixture.platform = "win32";
     const rendered = render(makeBot());
-    expect(grid(rendered).map((node) => text(node.props.children))).toContain("This PC");
+    expect(grid(rendered).map((node) => text(node.props.children)).some((label) => label.startsWith("This PC"))).toBe(true);
     expect(placeLine(rendered)).not.toMatch(/Local VM|Boat|cloud box/i);
   });
 
@@ -464,7 +471,7 @@ describe("Where the bot works", () => {
   it("asks before letting an auto-approving bot use this Mac", () => {
     const start = makeBot({ computer: "off", approvalMode: "auto" } as Partial<Bot>);
     const rendered = render(start);
-    (grid(rendered).find((node) => text(node.props.children) === "This Mac")!.props.onClick as () => void)();
+    (grid(rendered).find((node) => text(node.props.children).startsWith("This Mac"))!.props.onClick as () => void)();
     expect(fixture.dispatch).not.toHaveBeenCalled();
     const warning = render(start).nodes.find((node) => node.type === LocalComputerAutoWarning)!;
     expect(warning.props.open).toBe(true);

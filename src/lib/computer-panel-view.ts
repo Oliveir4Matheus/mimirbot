@@ -40,3 +40,24 @@ export function writeComputerPanelView(
   } catch {
   }
 }
+
+const VIEWER_PREFIX = "omb-computer-viewer";
+
+/** One shot per open: the Watch action asks for the live viewer, and the next panel mount consumes it. */
+export function writeComputerViewer(botId: string): void {
+  try {
+    sessionStorage.setItem(`${VIEWER_PREFIX}:${botId}`, "1");
+  } catch {
+  }
+}
+
+export function takeComputerViewer(botId: string): boolean {
+  try {
+    const key = `${VIEWER_PREFIX}:${botId}`;
+    const viewer = sessionStorage.getItem(key) === "1";
+    if (viewer) sessionStorage.removeItem(key);
+    return viewer;
+  } catch {
+    return false;
+  }
+}
