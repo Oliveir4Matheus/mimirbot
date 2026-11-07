@@ -56,10 +56,10 @@ export function SidebarEdgeToggle({ collapsed, onToggle, style, anchorRef }: {
       aria-label={t(collapsed ? "sidebar.density.expand" : "sidebar.density.collapseAria")}
       aria-expanded={!collapsed}
       title={t(collapsed ? "sidebar.density.expand" : "sidebar.density.collapse")}
-      style={pinned ? { ...style, left: edge.left, top: edge.top + 7 } : style}
+      style={pinned ? { ...style, left: edge.left, top: edge.top + 10 } : style}
       className={cn(
         pinned ? "fixed" : "absolute -right-[14px]",
-        "top-[7px] z-30 hidden h-8 w-[14px] items-center justify-center rounded-r-[4px] border border-l-0 border-hairline/50 bg-panel text-ink-tertiary shadow-[1px_0_2px_rgb(0_0_0/0.06)] hover:bg-raised hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus md:flex",
+        "top-[10px] z-30 hidden h-[26px] w-[14px] items-center justify-center rounded-r-[4px] border border-l-0 border-hairline/50 bg-panel text-ink-tertiary shadow-[1px_0_2px_rgb(0_0_0/0.06)] hover:bg-raised hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus md:flex",
       )}
     >
       <Arrow size={12} strokeWidth={2.25} aria-hidden="true" />

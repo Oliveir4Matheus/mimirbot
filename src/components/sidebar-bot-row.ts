@@ -14,7 +14,7 @@ export function botRowClass({ iconOnly, railTile, showThreads, selected }: {
   return cn(
     "flex w-full items-center rounded-lg text-left outline-none transition-colors duration-150 focus-visible:ring-1 focus-visible:ring-accent/60",
     iconOnly
-      ? railTile ? "h-[52px] justify-center" : "justify-center px-1 py-1.5"
+      ? railTile ? "h-[43px] justify-center" : "justify-center px-1 py-1.5"
       : cn(BOT_ROW_HEIGHT, BOT_ROW_GAP, showThreads ? "pl-6 max-md:pl-6 pr-[30px] max-md:pr-[27px]" : BOT_ROW_PADDING),
     selected ? "bg-raised shadow-[0_1px_2px_rgb(0_0_0/0.10)]" : "hover:bg-raised/50",
   );

@@ -1035,7 +1035,7 @@ export function ChatView({ bot: profile }: { bot: Bot }) {
             "w-full border-b border-hairline bg-panel",
             phone
               ? "flex items-center justify-between gap-2 px-3 pb-3 pl-14"
-              : "grid grid-cols-[minmax(120px,1fr)_minmax(0,max-content)_minmax(220px,1fr)] items-center gap-3 md:h-[58px] md:pl-[26px] md:pr-[25px]",
+              : "grid grid-cols-[minmax(120px,1fr)_minmax(0,max-content)_minmax(220px,1fr)] items-center gap-3 md:h-[46px] md:pl-[26px] md:pr-[25px]",
           )}
         >
         {!phone && <div className="flex justify-self-start"><MimirChatNav bot={bot} /></div>}<div data-chathead-identity className={cn("flex min-w-0 items-center gap-2.5", phone ? "flex-1" : "justify-center")} style={headerNoDragStyle}>
