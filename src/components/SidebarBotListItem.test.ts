@@ -44,7 +44,7 @@ afterEach(() => {
 });
 
 describe("BotListItem", () => {
-  it("makes a bot waiting for you louder than a preview", () => {
+  it("marks waiting, teammate waits and work with the row's indicators", () => {
     const opening = (markup: string, testId: string) => {
       const tag = markup.match(new RegExp(`<span[^>]*data-testid="${testId}"[^>]*>`))?.[0];
       expect(tag, testId).toBeTruthy();
@@ -55,42 +55,27 @@ describe("BotListItem", () => {
     expect(badge).toContain('role="status"');
     expect(badge).toContain('aria-label="Waiting for you…"');
     expect(badge).toContain('title="Waiting for you…"');
-    expect(badge).toContain("size-4");
+    expect(badge).toContain("size-3.5");
     expect(badge).toContain("bg-warning");
-    expect(badge).toContain("border-2");
-    expect(badge).toContain("border-panel");
-    expect(badge).not.toContain("size-2.5");
-    expect(badge).not.toContain("size-3");
     expect(waiting).toContain('aria-hidden="true">!</span>');
-    expect(waiting).toContain('class="flex min-w-0 items-center gap-1.5 truncate text-[13px] leading-[18px] font-semibold text-warning"');
-    expect(waiting).toContain('class="truncate">Waiting for you…</span>');
-
-    const icons = opening(renderRow(bot({ activity: "waiting-on-you" }), false, "icons"), "waiting-dot");
-    expect(icons).toContain("size-5");
-    expect(icons).toContain("bg-warning");
-    expect(icons).not.toContain("size-4");
-    expect(icons).not.toContain("size-2.5");
+    expect(waiting).not.toContain("Waiting for you…</span>");
 
     const teammate = renderRow(bot({ waitingForTeammates: true }));
     const teammateDot = opening(teammate, "teammate-wait-dot");
-    expect(teammateDot).toContain("size-2.5");
-    expect(teammateDot).not.toContain("size-4");
-    expect(teammate).toContain('class="truncate">Waiting on a teammate…</span>');
-    expect(teammate).toContain("truncate text-[13px] leading-[18px] text-ink-secondary");
-    expect(teammate).not.toContain("font-semibold text-warning");
+    expect(teammateDot).toContain("size-[7px]");
+    expect(teammate).not.toContain("Waiting on a teammate…</span>");
 
     const working = renderRow(bot({ busy: true }));
-    expect(opening(working, "working-dot")).toContain("size-2.5");
+    expect(opening(working, "working-dots")).toContain("gap-[3px]");
+    expect(working.match(/size-\[3px\] animate-pulse rounded-full bg-success/g)).toHaveLength(3);
     expect(working).not.toContain("waiting-dot");
-    expect(working).not.toContain("font-semibold text-warning");
+    expect(working).not.toContain('data-testid="working-dot"');
 
-    const preview = renderRow(bot({
+    const idle = renderRow(bot({
       messages: [{ id: "b1", role: "bot", kind: "text", text: "Created notes.txt", at: 2 }] as Bot["messages"],
     }));
-    expect(preview).toContain('class="truncate">Created notes.txt</span>');
-    expect(preview).toContain("truncate text-[13px] leading-[18px] text-ink-secondary");
-    expect(preview).not.toContain("text-warning");
-    expect(preview).not.toContain("waiting-dot");
+    expect(idle).not.toContain("Created notes.txt");
+    expect(idle).toContain(formatTime(2));
   });
 
   it("offers direct New thread and New folder icons and a keyboard-accessible bot menu", () => {
@@ -120,15 +105,17 @@ describe("BotListItem", () => {
     expect(toggle).not.toContain("hover:bg-");
   });
 
-  it("previews the last reply, not the digest receipt that follows it", () => {
+  it("times the row by the last reply, not the digest receipt that follows it", () => {
     const markup = renderRow(bot({
       messages: [
         { id: "u1", role: "user", kind: "text", text: "make notes.txt", at: 1 },
         { id: "b1", role: "bot", kind: "text", text: "Created notes.txt with three lines.", at: 2 },
-        { id: "d1", role: "bot", kind: "digest", text: "[digest] · tools: Write ×1", at: 3, digest: { turnId: "t1", tools: [{ name: "Write", count: 1 }], hookCoverage: "full" } },
+        { id: "d1", role: "bot", kind: "digest", text: "[digest] · tools: Write ×1", at: 120_000, digest: { turnId: "t1", tools: [{ name: "Write", count: 1 }], hookCoverage: "full" } },
       ] as Bot["messages"],
     }));
-    expect(markup).toContain("Created notes.txt with three lines.");
+    expect(markup).toContain(formatTime(2));
+    expect(markup).not.toContain(formatTime(120_000));
+    expect(markup).not.toContain("Created notes.txt with three lines.");
     expect(markup).not.toContain("[digest]");
   });
 
@@ -144,20 +131,23 @@ describe("BotListItem", () => {
       vi.fn(), candidate, { density: "comfortable", quiet: false, query, onMenu: vi.fn() },
     )));
 
-    it("previews the last reply, not the record that follows it", () => {
+    it("times the row by the last reply, not the record that follows it", () => {
       const markup = draw(bot({
         messages: [spoken, { id: "b1", role: "bot", kind: "text", text: "Sunny in Pune.", at: at(1) }, record] as Bot["messages"],
       }));
-      expect(markup).toContain("Sunny in Pune.");
+      expect(markup).toContain(formatTime(at(1)));
+      expect(markup).not.toContain(formatTime(at(2)));
+      expect(markup).not.toContain("Sunny in Pune.");
       expect(markup).not.toContain("Call with Atlas");
     });
 
-    it("previews a failed turn's row when the record follows it", () => {
+    it("keeps the failed turn out of the row", () => {
       const markup = draw(bot({
         messages: [spoken, { id: "e1", role: "bot", kind: "activity", at: at(1), tool: { name: "error: This computer isn't a place on your OMB Cloud: its bots run in the cloud.", ok: false } }, record] as Bot["messages"],
       }));
-      expect(markup).toContain("This computer isn&#x27;t a place on your OMB Cloud: its bots run in the cloud.");
+      expect(markup).not.toContain("This computer isn&#x27;t a place on your OMB Cloud: its bots run in the cloud.");
       expect(markup).not.toContain("Call with Atlas");
+      expect(markup).toContain(formatTime(at(1)));
     });
 
     it("times the open row by the last reply, not by the hang-up", () => {
@@ -178,18 +168,18 @@ describe("BotListItem", () => {
           record,
         ] as Bot["messages"],
       }), { query: "current" });
-      expect(markup).toContain("Running the tests");
+      expect(markup).toContain('data-testid="working-dots"');
     });
   });
 
-  it("previews a failed turn without its error marker", () => {
+  it("keeps a failed turn's text out of the row", () => {
     const markup = renderRow(bot({
       messages: [
         { id: "u1", role: "user", kind: "text", text: "check the site", at: 1 },
         { id: "e1", role: "bot", kind: "activity", at: 2, tool: { name: "error: This computer isn't a place on your OMB Cloud: its bots run in the cloud.", ok: false } },
       ] as Bot["messages"],
     }));
-    expect(markup).toContain("This computer isn&#x27;t a place on your OMB Cloud: its bots run in the cloud.");
+    expect(markup).not.toContain("This computer isn&#x27;t a place on your OMB Cloud: its bots run in the cloud.");
     expect(markup).not.toContain("error:");
   });
 
@@ -204,28 +194,14 @@ describe("BotListItem", () => {
       ] as Bot["messages"],
     });
 
-    it("keeps the request's title while it is still open", () => {
-      expect(renderRow(approval({}))).toContain("Approval needed");
-    });
-
-    it("says Allowed once it was allowed", () => {
-      const markup = renderRow(approval({ answered: "allow" }));
-      expect(markup).toContain("Allowed");
-      expect(markup).not.toContain("Approval needed");
-    });
-
-    it("says Denied once it was denied, or closed by Stop", () => {
-      for (const answered of ["deny", "unavailable"]) {
-        const markup = renderRow(approval({ answered, dismissed: answered === "unavailable" }));
-        expect(markup).toContain("Denied");
+    it("keeps the card and its outcome out of the row", () => {
+      for (const card of [{}, { answered: "allow" as const }, { answered: "deny" as const }, { expired: true, options: [] }]) {
+        const markup = renderRow(approval(card));
         expect(markup).not.toContain("Approval needed");
+        expect(markup).not.toContain("Allowed");
+        expect(markup).not.toContain("Denied");
+        expect(markup).not.toContain("Expired");
       }
-    });
-
-    it("says Expired once nothing can answer it", () => {
-      const markup = renderRow(approval({ expired: true, options: [] }));
-      expect(markup).toContain("Expired");
-      expect(markup).not.toContain("Approval needed");
     });
   });
 
@@ -241,7 +217,7 @@ describe("BotListItem", () => {
     expect(markup).toContain('data-testid="chief-crown"');
     expect(markup).toContain('aria-label="Chief of Staff"');
     expect(markup.indexOf('data-testid="chief-crown"')).toBeGreaterThan(markup.indexOf(">Atlas<"));
-    expect(markup.indexOf('data-testid="bot-role"')).toBeGreaterThan(markup.indexOf('data-testid="chief-crown"'));
+    expect(markup).not.toContain('data-testid="bot-role"');
     expect(markup).not.toContain("Chief of Staff</span>");
     expect(markup).toContain('title="Atlas · Developer · Chief of Staff"');
 
@@ -257,26 +233,13 @@ describe("BotListItem", () => {
     expect(untitled).toContain('title="Atlas"');
   });
 
-  const titleLine = /<div class="truncate text-\[11px\][^"]*">([^<]*)<\/div>/;
-  const roleOf = (markup: string) => /<span data-testid="bot-role"[^>]*><span title="([^"]*)" class="([^"]*)"><span class="sr-only">, <\/span>([^<]*)<\/span>/.exec(markup);
-
-  it("shows the bot's role beside its name as one muted, truncated line, read out after the name", () => {
+  it("leaves the bot's role out of the row", () => {
     const markup = renderRow(bot({ title: "  Developer ", messages: [{ id: "b1", role: "bot", kind: "text", text: "All set.", at: 1 }] as Bot["messages"] }));
-    const role = roleOf(markup);
-    expect(role?.[1]).toBe("Developer");
-    expect(role?.[3]).toBe("Developer");
-    expect(role?.[2].split(" ")).toEqual(expect.arrayContaining(["truncate", "text-[13px]", "font-normal", "text-ink-secondary"]));
-    expect(markup.indexOf('data-testid="bot-role"')).toBeGreaterThan(markup.indexOf(">Atlas<"));
-    expect(markup.indexOf('data-testid="bot-role"')).toBeLessThan(markup.indexOf(">All set.<"));
-    expect(titleLine.test(markup)).toBe(false);
+    expect(markup).not.toContain('data-testid="bot-role"');
+    expect(markup).not.toContain("Developer</span>");
+    expect(markup).not.toContain(">All set.<");
     expect(markup).toContain('title="Atlas · Developer"');
     expect(markup).toContain('title="Double-click to rename"');
-  });
-
-  it("gives way to the name: the role takes only the room left and steps aside below a word's width", () => {
-    const wrapper = /<span data-testid="bot-role" class="([^"]*)"/.exec(renderRow(bot({ title: "Developer" })))?.[1].split(" ");
-    expect(wrapper).toEqual(expect.arrayContaining(["@container", "min-w-0", "grow"]));
-    expect(roleOf(renderRow(bot({ title: "Developer" })))?.[2]).toContain("@max-[3rem]:sr-only");
   });
 
   it("draws no role for a bot without one", () => {
@@ -296,33 +259,23 @@ describe("BotListItem", () => {
     expect(rowClass(chief)).toBe(rowClass(plain));
   });
 
-  it("reads the name at 15px semibold and the preview at 13px", () => {
+  it("reads the name at 12px and the time at 10px", () => {
     const markup = renderRow(bot({ messages: [{ id: "b1", role: "bot", kind: "text", text: "All set.", at: 1 }] as Bot["messages"] }));
-    expect(markup).toMatch(/class="[^"]*text-\[15px\] font-semibold[^"]*"/);
-    expect(markup).toMatch(/class="[^"]*truncate text-\[13px\][^"]*text-ink-secondary[^"]*"/);
+    expect(markup).toMatch(/class="[^"]*truncate text-\[12px\] font-medium[^"]*"/);
+    expect(markup).toMatch(/class="[^"]*text-\[10px\][^"]*tabular-nums[^"]*"/);
   });
 
-  it("previews the last reply as plain text, without its markdown", () => {
-    const markup = renderRow(bot({
-      messages: [{ id: "b1", role: "bot", kind: "text", text: "I read **[Prudctual/MimirBot](https://github.com/Prudctual/OpenMausBot)**. Run `pnpm install` first.", at: 1 }] as Bot["messages"],
-    }));
-    expect(markup).toContain(">I read Prudctual/MimirBot. Run pnpm install first.<");
-    expect(markup).not.toContain("**");
-    expect(markup).not.toContain("](https://");
-  });
-
-  it("says what the bot is doing in place of its preview text while it works, in a line as tall as the preview", () => {
+  it("says the bot is working with three dots instead of a preview", () => {
     const markup = renderRow(bot({ busy: true, messages: [{ id: "b1", role: "bot", kind: "text", text: "hello", at: 1 }] as Bot["messages"] }));
-
-    expect(markup).toContain('<span dir="auto" data-sidebar-working-phrase="" class="truncate">Thinking</span>');
+    expect(markup).toContain('data-testid="working-dots"');
     expect(markup).not.toContain(">hello<");
     expect(markup).not.toContain("animate-status-pulse");
   });
 
-  it("marks the avatar with a green presence dot only while the bot works", () => {
-    expect(renderRow(bot({ busy: true }))).toContain('data-testid="working-dot"');
-    expect(renderRow(bot())).not.toContain('data-testid="working-dot"');
-    expect(renderRow(bot({ busy: true, activity: "waiting-on-you" }))).not.toContain('data-testid="working-dot"');
+  it("marks work with the dots only while the bot works", () => {
+    expect(renderRow(bot({ busy: true }))).toContain('data-testid="working-dots"');
+    expect(renderRow(bot())).not.toContain('data-testid="working-dots"');
+    expect(renderRow(bot({ busy: true, activity: "waiting-on-you" }))).not.toContain('data-testid="working-dots"');
   });
 
   it("marks the bot this window is on a Live call with by a green phone badge", () => {
@@ -347,14 +300,13 @@ describe("BotListItem", () => {
   it("marks an idle bot waiting on a teammate with a quiet dot, never the work signals", () => {
     const markup = renderRow(bot({ waitingForTeammates: true, busy: false, activity: "idle" }));
     expect(markup).toContain('data-testid="teammate-wait-dot"');
-    expect(markup).not.toContain('data-testid="working-dot"');
+    expect(markup).not.toContain('data-testid="working-dots"');
     expect(markup).not.toContain("animate-status-pulse");
-    expect(markup).toContain("Waiting on a teammate…");
   });
 
   it("keeps real sibling work visible while another thread waits for a teammate", () => {
     const markup = renderRow(bot({ waitingForTeammates: true, busy: true, activity: "working" }));
-    expect(markup).toContain('data-testid="working-dot"');
+    expect(markup).toContain('data-testid="working-dots"');
     expect(markup).not.toContain('data-testid="teammate-wait-dot"');
   });
 
@@ -440,7 +392,7 @@ describe("bot deletion feedback", () => {
   describe("quiet rows", () => {
     const titleLine = /<div class="truncate text-\[11px\][^"]*">([^<]*)<\/div>/;
 
-    it("reduces an idle bot to one line, its name and role: no title line, no Chief line, no preview", () => {
+    it("reduces an idle bot to one line: its name, the crown and the time", () => {
       const markup = renderRow(bot({
         title: "Developer",
         chiefOfStaff: true,
@@ -449,21 +401,22 @@ describe("bot deletion feedback", () => {
       expect(titleLine.test(markup)).toBe(false);
       expect(markup).not.toContain("Chief of Staff</span>");
       expect(markup).not.toContain("Created notes.txt with three lines.");
+      expect(markup).not.toContain("Developer</span>");
       expect(markup).toContain(">Atlas<");
-      expect(markup).toContain('<span class="sr-only">, </span>Developer</span>');
       expect(markup).toContain('data-testid="chief-crown"');
       expect(markup).toContain('aria-label="Chief of Staff"');
+      expect(markup).toContain(formatTime(2));
     });
 
-    it("keeps the status line while something is happening", () => {
-      expect(renderRow(bot({ busy: true }), true)).toContain('data-sidebar-working-phrase=""');
-      expect(renderRow(bot({ activity: "waiting-on-you" }), true)).toContain("Waiting for you…");
-      expect(renderRow(bot({ waitingForTeammates: true, busy: false }), true)).toContain("Waiting on a teammate…");
+    it("keeps the indicators while something is happening", () => {
+      expect(renderRow(bot({ busy: true }), true)).toContain('data-testid="working-dots"');
+      expect(renderRow(bot({ activity: "waiting-on-you" }), true)).toContain('data-testid="waiting-dot"');
+      expect(renderRow(bot({ waitingForTeammates: true, busy: false }), true)).toContain('data-testid="teammate-wait-dot"');
     });
 
     it("keeps the unread dot in the name line when the preview line is gone", () => {
       const markup = renderRow(bot({ unread: true, messages: [{ id: "b1", role: "bot", kind: "text", text: "hello", at: 1 }] as Bot["messages"] }), true);
-      expect(markup).toContain('aria-label="Unread threads"');
+      expect(markup).toContain('data-testid="unread-dot"');
       expect(markup).not.toContain(">hello<");
     });
 

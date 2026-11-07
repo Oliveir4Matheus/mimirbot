@@ -2,13 +2,15 @@ import { boatCapableEngine, cloudEngineOf } from "@/lib/remote-desktop";
 import { canWorkOnCloud } from "../../shared/cloud-computer";
 import { viewerTargetId } from "../../shared/desktop-viewer";
 import { Switch } from "./SettingsPrimitives";
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { z } from "zod";
 import { waitForLocalVmReady } from "@/lib/local-vm-readiness";
 import { CalendarClock, Columns2, Box, Check, Cloud, Sparkles, Globe, Hand, Loader2, Maximize2, Monitor, Moon, Power, Settings, X } from "lucide-react";
 import { api, ApiError, currentTaskBot, useStore, type Bot, type ConfigStatus } from "@/state/store";
 import { setAdvancedMode, useAdvancedMode } from "@/lib/interface-mode";
 import { ComputerFilesPane } from "./ComputerFilesPane";
+import { BotAvatar } from "./Avatar";
+import { screenFramePreview } from "./ScreenFrame";
 import { effectivePlace, isComputerPlace, placeLabelKey, placeOffered } from "@/lib/place";
 import type { CloudBackend } from "../../shared/wire";
 import { ApiKeyRow } from "./ApiKeys";
@@ -53,6 +55,7 @@ import {
   computerPanelTabs,
   readComputerPanelView,
   resolveComputerPanelView,
+  takeComputerViewer,
   writeComputerPanelView,
   type ComputerPanelView,
 } from "@/lib/computer-panel-view";
@@ -125,9 +128,18 @@ const computerControlSnapshotSchema = z.object({
 export function ComputerPanel({
   bot: profileBot,
   onOpenVmWorkspace,
+  embedded = false,
+  sites,
+  onWatch,
 }: {
   bot: Bot;
   onOpenVmWorkspace?: (botId: string) => void;
+  /** The same four tools inside the agent panel: no window chrome, resize handle or close button. */
+  embedded?: boolean;
+  /** The signed-in sites card, shown under the place grid in the Screen tab. */
+  sites?: ReactNode;
+  /** Opens the live desktop from the agent panel's preview. */
+  onWatch?: () => void;
 }) {
   const { padClass, dragProps } = useCaptionChrome();
   const { panelWidth, separatorRef, separatorWidth, onSeparatorKeyDown, onResizeStart, onResizeMove, onResizeEnd } = useComputerPanelResize();
@@ -254,13 +266,14 @@ export function ComputerPanel({
   const [error, setError] = useState<Error | string | null>(null);
   const errorText = panelErrorText(error);
   const advanced = useAdvancedMode();
+  const [viewer] = useState(() => !embedded && takeComputerViewer(profileBot.id));
   const [storedPanelView, setPanelView] = useState<ComputerPanelView>(() => readComputerPanelView(bot.id));
   const requestedDataResult = state.dataResultFocus?.botId === bot.id ? state.dataResultFocus : undefined;
   const [dataRequest, setDataRequest] = useState<{ id: string; requestId: number }>();
   const androidStatus = useAndroidUsbDevices();
   const androidConnected = androidStatus.devices.length > 0;
   const panelTabs = computerPanelTabs({ advanced, androidConnected });
-  const panelView = resolveComputerPanelView(storedPanelView, { advanced, androidConnected });
+  const panelView = viewer ? "computer" : resolveComputerPanelView(storedPanelView, { advanced, androidConnected });
   const panelRef = useComputerPanelEntry(profileBot.id, panelView);
   const browserAvailableHere = browserAvailable(state.config);
   const browserEnabled = builtInBrowserEnabled(state.config) && bot.browser !== false
@@ -1112,24 +1125,37 @@ export function ComputerPanel({
     : undefined;
   const cloudView = viewOf("cloud", cloudRefused);
   const autoView = viewOf("auto");
-  const placeOptions = ([
+  const myChrome = state.config?.browserEngine?.myChrome === true
+    && (state.config?.browserProfiles ?? []).some((profile) => profile.id === profileBot.browserProfile && profile.browser === "chrome");
+  const placeLabel = (place: Bot["computer"]) => (place === "browser" && myChrome ? t("settings.profiles.myChrome") : worksOnSimpleLabel(place, capabilities.host.platform));
+  const usingNow = liveTask?.surface && liveTask.surface !== (profileBot.computer ?? "auto") ? placeLabel(liveTask.surface) : null;
+  const agentScreen = embedded
+    ? [...profileBot.messages].reverse().find((message) => message.kind === "screen" && (message.hasImage || message.png))
+    : undefined;
+  const agentScreenSrc = agentScreen
+    ? screenFramePreview({ threadId: profileBot.threadId, messageId: agentScreen.id }, agentScreen.mime).src
+    : null;
+  const allPlaceOptions = ([
     [null, "vm.dest.auto", "computer.dest.autoDesc", Sparkles],
     ["cloud", "place.cloud", "computer.dest.cloudDesc", Cloud],
     ["vm", "vm.dest.vm", "computer.dest.vmDesc", Box],
     ["local", "vm.dest.local", "computer.dest.localDesc", Monitor],
     ["browser", "vm.dest.browser", "computer.dest.browserDesc", Globe],
     ["off", "vm.dest.off", "computer.dest.offDesc", Power],
-  ] as const).filter(([mode]) => mode === null || mode === "off" || placeOffered(mode, state.config)).map(([mode, labelKey, descriptionKey, Icon]) => {
+  ] as const).map(([mode, labelKey, descriptionKey, Icon]) => {
     const selected = mode === null ? !profileBot.computer : profileBot.computer === mode;
     const managedKind = mode === "local" ? "thisComputer" : mode === "vm" ? "localVm" : mode === "cloud" ? (profileBot.cloudBackend === "vps" ? "vps" : "box") : null;
     const managedBy = managedPolicy && managedKind && !managedPolicy.computers[managedKind] ? t("policy.managedBy", { organization: managedPolicy.organizationName }) : undefined;
     const view = mode === null ? autoView : mode === "cloud" ? cloudView : viewOf(mode);
-    const disabled = Boolean(managedBy) || placeBlocked(view);
+    const offered = mode === null || mode === "off" || placeOffered(mode, state.config);
+    const disabled = !offered || Boolean(managedBy) || placeBlocked(view);
     const issue = !managedBy && placeHasIssue(view);
     const unavailableTitle = managedBy ?? (issue ? view.line : mode === "browser" ? t("computer.browserOnlyTitle") : undefined);
-    return { mode, labelKey, descriptionKey, Icon, simpleLabel: worksOnSimpleLabel(mode ?? undefined, capabilities.host.platform), selected, managedBy, disabled, unavailableTitle, view, issue };
+    return { mode, labelKey, descriptionKey, Icon, simpleLabel: placeLabel(mode ?? undefined), selected, managedBy, disabled, unavailableTitle, view, issue };
   });
-  const worksOnView = placeOptions.find(({ selected }) => selected)?.view ?? autoView;
+  const placeOptions = allPlaceOptions.filter(({ mode }) => mode === null || mode === "off" || placeOffered(mode, state.config));
+  const simplePlaceOptions = allPlaceOptions;
+  const worksOnView = simplePlaceOptions.find(({ selected }) => selected)?.view ?? autoView;
   const runPlaceAction = (id: PlaceActionId) => {
     if (id === "start" || id === "wake") return startCloudComputer();
     if (id === "try-again") return setRetry((n) => n + 1);
@@ -1192,13 +1218,15 @@ export function ComputerPanel({
     <>
     <aside
       className={cn(
-        "animate-panel-in relative flex h-full shrink-0 flex-col border-l border-hairline/40 bg-panel",
-        "max-md:absolute max-md:inset-0 max-md:z-40 max-md:w-full!",
+        embedded
+          ? "flex min-h-0 flex-1 flex-col"
+          : "animate-panel-in relative flex h-full shrink-0 flex-col border-l border-hairline/40 bg-panel max-md:absolute max-md:inset-0 max-md:z-40 max-md:w-full!",
       )}
       ref={panelRef}
       data-computer-panel
-      style={{ width: panelWidth }}
+      style={embedded ? undefined : { width: panelWidth }}
     >
+      {!embedded && (
       <div
         ref={separatorRef}
         role="separator"
@@ -1215,10 +1243,11 @@ export function ComputerPanel({
         onPointerCancel={onResizeEnd}
         className="absolute inset-y-0 left-0 z-10 w-1.5 cursor-col-resize hover:bg-accent/40 focus-visible:bg-accent/60 max-md:hidden"
       />
+      )}
       {/* ml-1.5 keeps the drag region clear of the resize handle: a later drag region in the DOM wins. */}
-      <div {...dragProps} className={cn("@container/paneltabs ml-1.5 py-3 pl-2.5 pr-4", padClass)}>
-        <div className="relative flex min-h-7 items-center justify-center">
-          {advanced && (
+      <div {...(embedded ? {} : dragProps)} className={cn("@container/paneltabs", embedded ? "pb-3" : "ml-1.5 py-3 pl-2.5 pr-4", padClass)}>
+        <div className={cn("relative flex min-h-7 items-center", embedded ? "justify-start" : "justify-center")}>
+          {!embedded && advanced && (
             <button
               onClick={() => {
                 releaseComputerPanelFocus(panelRef.current, bot.id);
@@ -1231,7 +1260,8 @@ export function ComputerPanel({
               <Settings size={18} />
             </button>
           )}
-          <div className="mx-9 flex min-w-0 touch-pan-x gap-0.5 overflow-x-auto whitespace-nowrap rounded-full bg-inset p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" data-tour="computer-tabs" data-testid="computer-tabs" role="tablist" aria-label={t("computer.tabsAria")} onWheel={scrollTabsWithWheel} onKeyDown={(event) => moveBetweenTabs(event, panelTabs, chooseTab)}>
+          {!viewer && (
+          <div className={cn("flex min-w-0 touch-pan-x gap-0.5 overflow-x-auto whitespace-nowrap rounded-full bg-inset p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden", embedded ? "w-full" : "mx-9")} data-tour="computer-tabs" data-testid="computer-tabs" role="tablist" aria-label={t("computer.tabsAria")} onWheel={scrollTabsWithWheel} onKeyDown={(event) => moveBetweenTabs(event, panelTabs, chooseTab)}>
             {panelTabs.map((view) => {
               const { Icon, label, tour } = PANEL_TABS[view];
               const live = !placeLive ? undefined
@@ -1245,6 +1275,8 @@ export function ComputerPanel({
               );
             })}
           </div>
+          )}
+          {!embedded && (
           <button
             data-computer-panel-close
             onClick={() => {
@@ -1257,6 +1289,7 @@ export function ComputerPanel({
           >
             <X size={18} />
           </button>
+          )}
         </div>
       </div>
 
@@ -1265,7 +1298,7 @@ export function ComputerPanel({
           <RoutinesSection key={bot.id} bot={bot} routines={botRoutines} runs={state.routineRuns} defaultRunOn={cloudRoutineReady ? "cloud" : "maus"} />
         </div>
       ) : panelView === "browser" && browserEnabled ? (
-        <div {...tabPanelProps("browser")} className={cn("flex min-h-0 flex-1 flex-col px-4 pb-4", TAB_PANEL_FOCUS)}>
+        <div {...tabPanelProps("browser")} className={cn("flex min-h-0 flex-1 flex-col", embedded ? "pb-0" : "px-4 pb-4", TAB_PANEL_FOCUS)}>
           {browserSwitchRow}
           {signInHelp?.place === "browser" && <div className="-mt-1 mb-3">{signInBanner()}</div>}
           <BrowserPanel bot={bot} signIn={signInRequest} page={pageRequest} />
@@ -1276,7 +1309,7 @@ export function ComputerPanel({
           )}
         </div>
       ) : panelView === "browser" ? (
-        <div {...tabPanelProps("browser")} className={cn("flex-1 overflow-y-auto px-5 pb-5", TAB_PANEL_FOCUS)} data-testid="browser-off">
+        <div {...tabPanelProps("browser")} className={cn("flex-1 overflow-y-auto", embedded ? "pb-0" : "px-5 pb-5", TAB_PANEL_FOCUS)} data-testid="browser-off">
           {browserSwitchRow}
           <div className="mt-2 flex flex-col items-center gap-3 rounded-xl bg-card px-6 py-8 text-center">
             <Globe size={22} className="text-ink-secondary" aria-hidden="true" />
@@ -1306,18 +1339,35 @@ export function ComputerPanel({
           <AndroidDevicePanel status={androidStatus} />
         </div>
       ) : (
-      <div {...tabPanelProps("computer")} className={cn("flex-1 overflow-y-auto px-5 pb-5", TAB_PANEL_FOCUS)}>
-          <div className="mb-1.5 mt-2 flex items-center justify-between text-[13px] text-ink-secondary">
-            <span>{t("computer.screenOf", { name: bot.name })}</span>
-            {currentTeamComputer && <span className="text-[11px]">{autoView.short}</span>}
-            {phase === "local" && <span className="text-[11px]">{t("computer.badge.local")}</span>}
-            {liveHere && <span className="flex items-center gap-1.5 text-[11px] font-medium text-ink"><span className="size-1.5 rounded-full bg-success" />{t("computer.inControl")}</span>}
-            {phase === "vm" && !liveHere && <span className="text-[11px]">{t("vm.dest.vm")}</span>}
-            {(phase === "show-ready-boat" || phase === "show-sleeping-boat" || phase === "show-pending-boat") && (
-              <span className="text-[11px]">{t("computer.badge.autoBoat")}</span>
-            )}
-            {computerStatusCurrent && bot.computer === "cloud" && cloudBackend === "vps" && (phase === "ready" || phase === "starting") && !liveHere && <span className="text-[11px]">{t("computer.badge.vps")}</span>}
-        </div>
+      <div {...tabPanelProps("computer")} className={cn("flex-1 overflow-y-auto", embedded ? "pb-1" : "px-5 pb-5", TAB_PANEL_FOCUS)}>
+        {embedded && (
+          <>
+            <div className="relative mt-2 flex aspect-[16/10] w-full flex-col items-center justify-center gap-2 overflow-hidden rounded-[14px] border border-ink/[0.06] bg-inset">
+              {agentScreenSrc ? (
+                <img src={agentScreenSrc} alt={t("computer.screenOf", { name: profileBot.name })} className="absolute inset-0 size-full object-cover" />
+              ) : (
+                <>
+                  <span className="opacity-55"><BotAvatar bot={profileBot} size={52} animated={false} /></span>
+                  <span className="max-w-[80%] text-center text-[12.5px] text-ink-secondary">
+                    {t(profileBot.busy ? "botPanel.screen.working" : "botPanel.screen.idle")}
+                  </span>
+                </>
+              )}
+              <button
+                type="button"
+                data-panel-action="open-computer"
+                onClick={onWatch}
+                className="absolute bottom-2.5 right-2.5 flex h-7 items-center gap-1.5 rounded-full border border-ink/10 bg-panel/80 px-2.5 text-[12px] text-ink backdrop-blur-sm hover:bg-panel"
+              >
+                <Monitor size={13} aria-hidden="true" />
+                {t("place.action.watch")}
+              </button>
+            </div>
+            <div className="mb-1.5 mt-[7px] text-center text-[12px] text-ink-tertiary">{t("computer.screenOf", { name: profileBot.name })}</div>
+          </>
+        )}
+        {!embedded && (
+        <>
         <div className={cn("relative flex aspect-[16/10] w-full items-center justify-center overflow-hidden rounded-xl bg-card", liveHere && "ring-2 ring-accent")}>
           {liveHere && liveTarget ? (
             <Suspense fallback={<Loader2 size={18} className="animate-spin text-ink-secondary" />}>
@@ -1516,6 +1566,20 @@ export function ComputerPanel({
           )}
         </div>
 
+        <div className="mb-1.5 mt-2 flex items-center justify-between gap-2 text-[13px] text-ink-secondary">
+          <span className="min-w-0 truncate">{t("computer.screenOf", { name: bot.name })}</span>
+          <span className="flex shrink-0 items-center gap-2">
+            {currentTeamComputer && <span className="text-[11px]">{autoView.short}</span>}
+            {phase === "local" && <span className="text-[11px]">{t("computer.badge.local")}</span>}
+            {liveHere && <span className="flex items-center gap-1.5 text-[11px] font-medium text-ink"><span className="size-1.5 rounded-full bg-success" />{t("computer.inControl")}</span>}
+            {phase === "vm" && !liveHere && <span className="text-[11px]">{t("vm.dest.vm")}</span>}
+            {(phase === "show-ready-boat" || phase === "show-sleeping-boat" || phase === "show-pending-boat") && (
+              <span className="text-[11px]">{t("computer.badge.autoBoat")}</span>
+            )}
+            {computerStatusCurrent && bot.computer === "cloud" && cloudBackend === "vps" && (phase === "ready" || phase === "starting") && !liveHere && <span className="text-[11px]">{t("computer.badge.vps")}</span>}
+          </span>
+        </div>
+
         {errorText && !cloudRefused && (
           <div className="mt-2 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-[12px] text-danger">
             {errorText}
@@ -1681,8 +1745,10 @@ export function ComputerPanel({
           <LinuxLocalControl />
           <MacLocalControl />
         </>}
+        </>
+        )}
 
-        {advanced ? <>
+        {!viewer && (advanced ? <>
           <div className="mt-4 rounded-xl bg-card p-4">
             <div className="text-[15px] font-medium text-ink">{t("computer.worksOn")}</div>
             <p className="mt-1 text-[12px] leading-5 text-ink-secondary">
@@ -1746,8 +1812,9 @@ export function ComputerPanel({
         </> : (
           <div className="mt-4 rounded-xl bg-card p-4" data-testid="where-works">
             <div className="text-[15px] font-medium text-ink">{t("computer.simple.whereWorks", { name: bot.name })}</div>
-            <div role="group" aria-label={t("computer.destinationAria")} className="mt-3 grid grid-cols-3 gap-2">
-              {placeOptions.map(({ mode, Icon, selected, disabled, unavailableTitle, simpleLabel, issue, view }) => (
+            {usingNow && <div className="mt-1 text-[11.5px] leading-5 text-ink-secondary">{t("computer.simple.usingNow", { place: usingNow })}</div>}
+            <div role="group" aria-label={t("computer.destinationAria")} className="mt-3 grid auto-rows-fr grid-cols-3 gap-2">
+              {simplePlaceOptions.map(({ mode, Icon, selected, disabled, unavailableTitle, simpleLabel, descriptionKey, issue, view }) => (
                 <button
                   key={mode ?? "auto"}
                   type="button"
@@ -1756,7 +1823,7 @@ export function ComputerPanel({
                   aria-pressed={selected}
                   onClick={() => selectPlace(mode)}
                   className={cn(
-                    "flex min-w-0 flex-col items-center gap-1.5 rounded-lg border px-1.5 py-2.5 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-card",
+                    "flex h-full min-w-0 flex-col items-center gap-1.5 rounded-lg border px-1.5 py-2.5 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-card",
                     selected
                       ? "border-accent/60 bg-accent/10 text-ink"
                       : "border-hairline/50 bg-panel/30 text-ink-secondary",
@@ -1764,8 +1831,8 @@ export function ComputerPanel({
                   )}
                 >
                   <Icon size={16} className={cn("shrink-0", selected ? "text-accent" : "text-ink-secondary")} aria-hidden="true" />
-                  <span className="w-full truncate text-[12px] font-medium leading-4">{simpleLabel}</span>
-                  {issue && <span className="w-full truncate text-[10.5px] leading-3 text-ink-secondary">{view.short}</span>}
+                  <span className="w-full text-[11.5px] font-medium leading-4">{simpleLabel}</span>
+                  <span className="w-full text-[10.5px] leading-3 text-ink-secondary">{issue ? view.short : t(descriptionKey)}</span>
                 </button>
               ))}
             </div>
@@ -1777,7 +1844,7 @@ export function ComputerPanel({
               <div className="mt-2 flex items-center gap-2">
                 <p className="min-w-0 flex-1 text-[11.5px] leading-5 text-ink-secondary" data-testid="place-pinned-note">
                   {t("place.pinnedNoteSimple", {
-                    place: placeOptions.find(({ mode }) => mode === heldPin)?.simpleLabel ?? t(placeLabelKey(heldPin)),
+                    place: simplePlaceOptions.find(({ mode }) => mode === heldPin)?.simpleLabel ?? t(placeLabelKey(heldPin)),
                   })}
                 </p>
                 <button
@@ -1789,13 +1856,14 @@ export function ComputerPanel({
                   data-testid="place-unpin"
                 >
                   {t("place.unpinSimple", {
-                    place: placeOptions.find(({ selected }) => selected)?.simpleLabel ?? t(placeLabelKey(profileBot.computer ?? "auto")),
+                    place: simplePlaceOptions.find(({ selected }) => selected)?.simpleLabel ?? t(placeLabelKey(profileBot.computer ?? "auto")),
                   })}
                 </button>
               </div>
             )}
           </div>
-        )}
+        ))}
+        {embedded && sites}
       </div>
       )}
 

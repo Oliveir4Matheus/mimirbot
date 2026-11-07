@@ -203,13 +203,13 @@ describe("Simple-mode sidebar layout", () => {
     expect(listedBots(render().tree)).toHaveLength(3);
   });
 
-  it("opens at 288px in Simple and 320px in Advanced, each remembering its own resized width", () => {
+  it("opens at 292px in both modes, each remembering its own resized width", () => {
     const width = () => render().root.props.style!["--sidebar-width"];
-    expect(width()).toBe("288px");
-    expect(render().root.props.className).toContain("w-[288px]");
+    expect(width()).toBe("292px");
+    expect(render().root.props.className).toContain("w-[292px]");
     fixture.values = [];
     fixture.advanced = true;
-    expect(width()).toBe("320px");
+    expect(width()).toBe("292px");
     fixture.storage.set(SIDEBAR_WIDTH_KEY, "360");
     fixture.storage.set(SIMPLE_SIDEBAR_WIDTH_KEY, "300");
     fixture.values = [];
@@ -218,7 +218,7 @@ describe("Simple-mode sidebar layout", () => {
     fixture.advanced = false;
     expect(width()).toBe("300px");
     const handle = render().tree.find((node) => node.type === SidebarResizeHandle)!.props as Parameters<typeof SidebarResizeHandle>[0];
-    expect(handle.sizing.defaultWidth).toBe(288);
+    expect(handle.sizing.defaultWidth).toBe(292);
     expect(handle.sizing.valueNow).toBe(300);
     fixture.advanced = true;
     render();

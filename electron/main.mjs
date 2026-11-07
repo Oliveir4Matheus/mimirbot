@@ -39,6 +39,7 @@ import { createLendingDialogs } from "./lending-dialogs.mjs";
 let startupScreen = null;
 let desktopTray = null;
 import { collisionFreeDownloadPath, defaultSaveName, openLogsFolder, revealDownloadWhenDone, revealInFolder, withSavableFile } from "./save-file.mjs";
+import { installPreviewCaptureIpc } from "./preview-capture-ipc.mjs";
 import { desktopViewerPermissionAllowed } from "./desktop-viewer-permissions.mjs";
 import { appPermissionHandlers, externalLinkUrl } from "./app-permissions.mjs";
 import { appFrameNavigationAllowed } from "./app-frame-guard.mjs";
@@ -534,7 +535,7 @@ import { CREDENTIAL_PATCH, credentialSaveError } from "./credential-patch.mjs";
 const { isLocalSender: senderIsLocal, localOnly, localOnlySync, setLocalOrigin } = localOriginModule;
 /** This computer's page, or My Cloud's own page once it is home (home-window.mjs). */
 const localOrHome = (channel, handler) => (event, ...args) => (homeWindow.homePage(event) ? handler : localOnly(channel, handler))(event, ...args);
-
+installPreviewCaptureIpc({ ipcMain, localOnly, BrowserWindow });
 let companionPowerBlocker = null;
 
 function syncCompanionKeepAwake(companionEnabled, keepAwake) {
