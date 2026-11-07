@@ -25198,7 +25198,6 @@
       "preview.reading": "463816d07097e1a7cf27b86cf03082ee49f6ce2d87663cd27a24d7254a83e76a",
       "preview.source": "0e570ca6fabe24f94e52c1833f3ffd25567022beb826fa16891f3322051bc221",
       "preview.download": "d6eafe82359100423c93c5ce53c352c1b51ca1e699215fcec3f5c5dd9bf12d24",
-      "preview.moveLeft": "e286c1dc0ca61d26b6b7a7e70a39fa5729b96c967f4fa3d22848632ec281f862",
       "preview.center": "6352ab108e18e4d337fa0ed6de2b35450cd1c9507f9582bcf65b4d5356cc1249",
       "preview.annotate": "205fc388c79eb84686bf83ebc25fe642af71949937f7799f8eb89aa71865935f",
       "preview.close": "7d9eb7acb13e24625c404401d8e88b2350e32162455885f18276cf802f7701ed",
@@ -25244,7 +25243,8 @@
       "preview.annotation.discard": "eb1a70e39274bb762b5d7c1adb5debeea2b05e12af28207f21a375b596853273",
       "preview.annotation.thumbnail": "c9b55284ab975e4c91f9bca4d7558d75960d6adc6438501d25f7287ada13a4d3",
       "preview.annotation.send": "77a860cbc5859185b58c9d3cd70ba94a5692ceddabe56fdfc9d9ef9e7aea8beb",
-      "preview.annotation.sendFailed": "6410f1d406cf746df51fe3ef18cdf42299f45b3832a3374d2a829d6c97164c5c"
+      "preview.annotation.sendFailed": "6410f1d406cf746df51fe3ef18cdf42299f45b3832a3374d2a829d6c97164c5c",
+      "preview.openSide": "a66fa431d74a99b8f0b2a3efe589edb0ada0279662d062a8c22e8afeb3d2c7a2"
     },
     "zh": {
       "signIn.answeredInChat": "77883f86ed4b5a0b328c72376ebdb53cd30508f75674b57c6c62e3643ee0e004",

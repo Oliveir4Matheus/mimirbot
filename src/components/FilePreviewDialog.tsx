@@ -15,7 +15,7 @@ import {
   LoaderCircle,
   Maximize2,
   Minus,
-  PanelLeft,
+  PanelRight,
   Pencil,
   Plus,
   RotateCcw,
@@ -46,7 +46,7 @@ import { useStore } from "@/state/store";
 import { canonicalDownloadFilename, requestMessageFile, type MessageAttachmentContext } from "./AttachmentPreview";
 import { PreviewTable } from "./PreviewTable";
 
-export type PreviewPosition = "center" | "left";
+export type PreviewPosition = "center" | "right";
 
 let sessionPosition: PreviewPosition = "center";
 
@@ -91,7 +91,7 @@ function PreviewIcon({ format }: { format: PreviewFormat }) {
 
 function ViewTabs({ value, onChange, labels }: { value: string; onChange: (value: string) => void; labels: Array<{ value: string; label: string }> }) {
   return (
-    <div className="flex items-center gap-1 rounded-[8px] border border-[#303236] bg-[#1B1C1E] p-[2px]">
+    <div className="flex items-center gap-1 rounded-[8px] border border-hairline bg-card p-[2px]">
       {labels.map((item) => (
         <button
           key={item.value}
@@ -99,7 +99,7 @@ function ViewTabs({ value, onChange, labels }: { value: string; onChange: (value
           aria-pressed={value === item.value}
           onClick={() => onChange(item.value)}
           className={`rounded-[6px] px-2 py-[3px] text-[11px] transition-colors ${
-            value === item.value ? "bg-[#3A3B3E] text-[#EFF0F2]" : "text-[#8D9097] hover:text-[#EFF0F2]"
+            value === item.value ? "bg-raised text-ink" : "text-ink-secondary hover:text-ink"
           }`}
         >
           {item.label}
@@ -111,26 +111,26 @@ function ViewTabs({ value, onChange, labels }: { value: string; onChange: (value
 
 function MarkdownBody({ text }: { text: string }) {
   return (
-    <article className="mx-auto w-full max-w-[750px] px-[clamp(19px,4vw,55px)] pt-[31px] pb-[70px] text-[13px] leading-[1.86] text-[#D0D2D6]">
+    <article className="mx-auto w-full max-w-[750px] px-[clamp(19px,4vw,55px)] pt-[31px] pb-[70px] text-[13px] leading-[1.86] text-ink">
       <Markdown
         remarkPlugins={[remarkGfm]}
         components={{
-          h1: ({ children }) => <h1 className="mb-4 text-[26px] font-semibold leading-tight text-[#F1F2F4]">{children}</h1>,
-          h2: ({ children }) => <h2 className="mb-3 mt-6 border-b border-[#2B2D31] pb-2 text-[18px] font-semibold text-[#F0F1F3]">{children}</h2>,
-          h3: ({ children }) => <h3 className="mb-2 mt-5 text-[14px] font-semibold text-[#EFF0F2]">{children}</h3>,
+          h1: ({ children }) => <h1 className="mb-4 text-[26px] font-semibold leading-tight text-ink">{children}</h1>,
+          h2: ({ children }) => <h2 className="mb-3 mt-6 border-b border-hairline pb-2 text-[18px] font-semibold text-ink">{children}</h2>,
+          h3: ({ children }) => <h3 className="mb-2 mt-5 text-[14px] font-semibold text-ink">{children}</h3>,
           p: ({ children }) => <p className="mb-3">{children}</p>,
           ul: ({ children }) => <ul className="mb-3 list-disc ps-6">{children}</ul>,
           ol: ({ children }) => <ol className="mb-3 list-decimal ps-6">{children}</ol>,
           li: ({ children }) => <li className="mb-1">{children}</li>,
-          blockquote: ({ children }) => <blockquote className="mb-3 border-s-2 border-[#776398] ps-3 text-[#A9ABB1]">{children}</blockquote>,
-          pre: ({ children }) => <pre className="mb-3 overflow-x-auto rounded-[10px] border border-[#34353B] bg-[#0F1012] p-[15px_17px] text-[12px] leading-[1.7]">{children}</pre>,
+          blockquote: ({ children }) => <blockquote className="mb-3 border-s-2 border-accent ps-3 text-ink-secondary">{children}</blockquote>,
+          pre: ({ children }) => <pre className="mb-3 overflow-x-auto rounded-[10px] border border-hairline bg-inset p-[15px_17px] text-[12px] leading-[1.7]">{children}</pre>,
           code: ({ children, className }) => className
             ? <code className={className}>{children}</code>
-            : <code className="rounded bg-[#242528] px-1 py-0.5 text-[12px] text-[#D8C4FC]">{children}</code>,
-          a: ({ href, children }) => <a href={href} target="_blank" rel="noreferrer" className="text-[#A485EE] underline decoration-[#A485EE]/40 hover:decoration-[#A485EE]">{children}</a>,
+            : <code className="rounded bg-raised px-1 py-0.5 text-[12px] text-accent">{children}</code>,
+          a: ({ href, children }) => <a href={href} target="_blank" rel="noreferrer" className="text-accent underline decoration-accent/40 hover:decoration-accent">{children}</a>,
           table: ({ children }) => <div className="mb-3 overflow-x-auto"><table className="w-full border-collapse text-[12px]">{children}</table></div>,
-          th: ({ children }) => <th className="border border-[#2C2E32] bg-[#1B1C1E] px-2 py-1.5 text-start font-medium">{children}</th>,
-          td: ({ children }) => <td className="border border-[#2C2E32] px-2 py-1.5">{children}</td>,
+          th: ({ children }) => <th className="border border-hairline bg-card px-2 py-1.5 text-start font-medium">{children}</th>,
+          td: ({ children }) => <td className="border border-hairline px-2 py-1.5">{children}</td>,
         }}
       >
         {text}
@@ -141,7 +141,7 @@ function MarkdownBody({ text }: { text: string }) {
 
 function SourceBody({ text }: { text: string }) {
   return (
-    <pre className="h-full overflow-auto whitespace-pre-wrap break-words px-[clamp(17px,3vw,50px)] py-[29px] font-mono text-[12px] leading-[1.8] text-[#D0D2D6]">
+    <pre className="h-full overflow-auto whitespace-pre-wrap break-words px-[clamp(17px,3vw,50px)] py-[29px] font-mono text-[12px] leading-[1.8] text-ink">
       {text}
     </pre>
   );
@@ -200,7 +200,7 @@ export function FilePreviewDialog({
   const closeRef = useRef(onClose);
   const { state, dispatch } = useStore();
   const narrow = useMediaQuery("(max-width: 760px)");
-  const effectivePosition = position === "left" && narrow ? "center" : position;
+  const effectivePosition = position === "right" && narrow ? "center" : position;
 
   useEffect(() => {
     closeRef.current = onClose;
@@ -318,7 +318,7 @@ export function FilePreviewDialog({
   }, [copyState]);
 
   const switchPosition = () => {
-    const next = position === "center" ? "left" : "center";
+    const next = position === "center" ? "right" : "center";
     sessionPosition = next;
     setPosition(next);
   };
@@ -448,16 +448,16 @@ export function FilePreviewDialog({
   const content = (() => {
     if (loading) {
       return (
-        <div role="status" className="flex h-full items-center justify-center gap-2 text-[13px] text-[#8D9097]">
+        <div role="status" className="flex h-full items-center justify-center gap-2 text-[13px] text-ink-secondary">
           <LoaderCircle size={17} className="animate-spin" /> {t("preview.loading")}
         </div>
       );
     }
     if (error) {
       return (
-        <div role="alert" className="flex h-full flex-col items-center justify-center gap-3 p-8 text-center text-[13px] text-[#8D9097]">
+        <div role="alert" className="flex h-full flex-col items-center justify-center gap-3 p-8 text-center text-[13px] text-ink-secondary">
           <p>{t(error === "tooLarge" ? "preview.tooLarge" : error === "noSheets" ? "preview.noSheets" : "preview.loadFailed")}</p>
-          <button type="button" onClick={() => setAttempt((value) => value + 1)} className="flex items-center gap-1.5 rounded-[7px] border border-[#383B41] bg-[#26272A] px-3 py-1.5 text-[#E9EAEC] hover:bg-[#34363A]">
+          <button type="button" onClick={() => setAttempt((value) => value + 1)} className="flex items-center gap-1.5 rounded-[7px] border border-hairline bg-raised px-3 py-1.5 text-ink hover:bg-raised-hover">
             <RotateCcw size={13} /> {t("preview.retry")}
           </button>
         </div>
@@ -479,33 +479,33 @@ export function FilePreviewDialog({
       return <video src={loaded.mediaUrl} controls className="h-full w-full bg-[#050608] object-contain" />;
     }
     if (format === "pdf" && loaded?.mediaUrl) {
-      return <iframe src={`${loaded.mediaUrl}#page=${page}&zoom=${zoom}`} title={t("preview.pdf.frame", { name })} className="h-full w-full border-0 bg-[#292A2D]" />;
+      return <iframe src={`${loaded.mediaUrl}#page=${page}&zoom=${zoom}`} title={t("preview.pdf.frame", { name })} className="h-full w-full border-0 bg-inset" />;
     }
-    return <div className="flex h-full items-center justify-center text-[13px] text-[#8D9097]">{t("preview.unsupported")}</div>;
+    return <div className="flex h-full items-center justify-center text-[13px] text-ink-secondary">{t("preview.unsupported")}</div>;
   })();
 
   const dialog = (
     <div
       ref={dialogRef}
-      role="dialog"
-      aria-modal={effectivePosition === "center"}
+      role={effectivePosition === "center" ? "dialog" : "complementary"}
+      aria-modal={effectivePosition === "center" ? true : undefined}
       aria-label={t("preview.aria", { name })}
       tabIndex={-1}
-      className={`flex min-h-0 flex-col overflow-hidden bg-[#18191B] text-[#E9EAEC] shadow-[0_35px_120px_#000C] outline-none ${
+      className={`flex min-h-0 flex-col overflow-hidden bg-panel text-ink shadow-[0_35px_120px_#000C] outline-none ${
         effectivePosition === "center"
-          ? "h-[min(790px,calc(100dvh-44px))] w-[min(1030px,100%)] rounded-[16px] border border-[#3A3C41] max-[650px]:h-[100dvh] max-[650px]:w-[100vw] max-[650px]:rounded-none max-[650px]:border-0"
-          : "rounded-[16px] border border-[#3A3C41]"
+          ? "h-[min(790px,calc(100dvh-44px))] w-[min(1030px,100%)] rounded-[16px] border border-hairline max-[650px]:h-[100dvh] max-[650px]:w-[100vw] max-[650px]:rounded-none max-[650px]:border-0"
+          : "rounded-[16px] border border-hairline"
       }`}
       style={effectivePosition === "center"
         ? undefined
         : { width: "min(clamp(420px, 43vw, 680px), calc(100vw - 24px))", height: "calc(100dvh - 24px)" }}
     >
-      <header className="flex min-h-[54px] shrink-0 flex-wrap items-center gap-[9px] border-b border-[#2B2D31] bg-[#1B1C1E] px-[14px] py-2 max-[650px]:px-[11px]">
+      <header className="flex min-h-[54px] shrink-0 flex-wrap items-center gap-[9px] border-b border-hairline bg-card px-[14px] py-2 max-[650px]:px-[11px]">
         {formatStyle && <PreviewIcon format={format!} />}
         <div className="min-w-0 flex-1">
-          <div className="truncate text-[12px] font-[630] text-[#EFF0F2]" title={name}>{name}</div>
-          <div className="text-[10px] text-[#868A92]">
-            <span className="rounded-[4px] bg-[#26272A] px-1 py-[1px] text-[9px]">{extension || previewFormatLabel(format ?? "md")}</span>
+          <div className="truncate text-[12px] font-[630] text-ink" title={name}>{name}</div>
+          <div className="text-[10px] text-ink-secondary">
+            <span className="rounded-[4px] bg-raised px-1 py-[1px] text-[9px]">{extension || previewFormatLabel(format ?? "md")}</span>
             {loaded?.blob.size ? <span className="ms-1.5">{previewFileSize(loaded.blob.size)}</span> : null}
           </div>
         </div>
@@ -524,44 +524,44 @@ export function FilePreviewDialog({
           )}
           {(format === "csv" || format === "tsv" || format === "xlsx") && (
             <>
-              <span className="rounded-[7px] bg-[#242528] px-2 py-1 text-[11px] text-[#E9EAEC]">{t("preview.table.title")}</span>
-              <label className="flex h-[30px] w-[188px] max-w-[45vw] items-center gap-1.5 rounded-[7px] border border-[#34363A] bg-[#242528] px-2 text-[11px] text-[#8D9097]">
+              <span className="rounded-[7px] bg-raised px-2 py-1 text-[11px] text-ink">{t("preview.table.title")}</span>
+              <label className="flex h-[30px] w-[188px] max-w-[45vw] items-center gap-1.5 rounded-[7px] border border-hairline bg-raised px-2 text-[11px] text-ink-secondary">
                 <Search size={12} className="shrink-0" />
                 <input
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
                   aria-label={t("preview.table.search")}
                   placeholder={t("preview.table.search")}
-                  className="min-w-0 flex-1 bg-transparent text-[#E9EAEC] outline-none placeholder:text-[#6F727A]"
+                  className="min-w-0 flex-1 bg-transparent text-ink outline-none placeholder:text-ink-tertiary"
                 />
               </label>
             </>
           )}
           {format === "pdf" && (
-            <div className="flex items-center gap-[2px] rounded-[8px] border border-[#393A40] bg-[#252629] p-[2px]">
-              <button type="button" disabled={page <= 1} onClick={() => setPage((value) => Math.max(1, value - 1))} aria-label={t("preview.pdf.previous")} title={t("preview.pdf.previous")} className="flex size-[27px] items-center justify-center rounded-[6px] text-[#E9EAEC] hover:bg-[#34363A] disabled:opacity-35">
+            <div className="flex items-center gap-[2px] rounded-[8px] border border-hairline bg-raised p-[2px]">
+              <button type="button" disabled={page <= 1} onClick={() => setPage((value) => Math.max(1, value - 1))} aria-label={t("preview.pdf.previous")} title={t("preview.pdf.previous")} className="flex size-[27px] items-center justify-center rounded-[6px] text-ink hover:bg-raised-hover disabled:opacity-35">
                 <ChevronLeft size={14} />
               </button>
-              <span className="min-w-[39px] text-center font-mono text-[11px] text-[#E9EAEC]">{page} / {loaded?.pdfPages ?? 1}</span>
-              <button type="button" disabled={page >= (loaded?.pdfPages ?? 1)} onClick={() => setPage((value) => Math.min(loaded?.pdfPages ?? 1, value + 1))} aria-label={t("preview.pdf.next")} title={t("preview.pdf.next")} className="flex size-[27px] items-center justify-center rounded-[6px] text-[#E9EAEC] hover:bg-[#34363A] disabled:opacity-35">
+              <span className="min-w-[39px] text-center font-mono text-[11px] text-ink">{page} / {loaded?.pdfPages ?? 1}</span>
+              <button type="button" disabled={page >= (loaded?.pdfPages ?? 1)} onClick={() => setPage((value) => Math.min(loaded?.pdfPages ?? 1, value + 1))} aria-label={t("preview.pdf.next")} title={t("preview.pdf.next")} className="flex size-[27px] items-center justify-center rounded-[6px] text-ink hover:bg-raised-hover disabled:opacity-35">
                 <ChevronRight size={14} />
               </button>
-              <span className="mx-1 h-4 w-px bg-[#393A40]" />
-              <button type="button" disabled={zoom <= 50} onClick={() => setZoom((value) => Math.max(50, value - 25))} aria-label={t("preview.pdf.zoomOut")} title={t("preview.pdf.zoomOut")} className="flex size-[27px] items-center justify-center rounded-[6px] text-[#E9EAEC] hover:bg-[#34363A] disabled:opacity-35">
+              <span className="mx-1 h-4 w-px bg-hairline" />
+              <button type="button" disabled={zoom <= 50} onClick={() => setZoom((value) => Math.max(50, value - 25))} aria-label={t("preview.pdf.zoomOut")} title={t("preview.pdf.zoomOut")} className="flex size-[27px] items-center justify-center rounded-[6px] text-ink hover:bg-raised-hover disabled:opacity-35">
                 <Minus size={14} />
               </button>
-              <span className="min-w-[39px] text-center font-mono text-[11px] text-[#E9EAEC]">{zoom}%</span>
-              <button type="button" disabled={zoom >= 200} onClick={() => setZoom((value) => Math.min(200, value + 25))} aria-label={t("preview.pdf.zoomIn")} title={t("preview.pdf.zoomIn")} className="flex size-[27px] items-center justify-center rounded-[6px] text-[#E9EAEC] hover:bg-[#34363A] disabled:opacity-35">
+              <span className="min-w-[39px] text-center font-mono text-[11px] text-ink">{zoom}%</span>
+              <button type="button" disabled={zoom >= 200} onClick={() => setZoom((value) => Math.min(200, value + 25))} aria-label={t("preview.pdf.zoomIn")} title={t("preview.pdf.zoomIn")} className="flex size-[27px] items-center justify-center rounded-[6px] text-ink hover:bg-raised-hover disabled:opacity-35">
                 <Plus size={14} />
               </button>
             </div>
           )}
-          <button type="button" onClick={() => void download()} aria-label={t("preview.download")} title={t("preview.download")} className="flex h-[29px] min-w-[29px] items-center justify-center gap-1 rounded-[7px] border border-[#383B41] bg-[#26272A] px-2 text-[11px] text-[#E9EAEC] hover:bg-[#34363A]">
+          <button type="button" onClick={() => void download()} aria-label={t("preview.download")} title={t("preview.download")} className="flex h-[29px] min-w-[29px] items-center justify-center gap-1 rounded-[7px] border border-hairline bg-raised px-2 text-[11px] text-ink hover:bg-raised-hover">
             <Download size={15} />
             <span className="max-[920px]:hidden">{t("preview.download")}</span>
           </button>
-          <button type="button" onClick={switchPosition} aria-label={effectivePosition === "center" ? t("preview.moveLeft") : t("preview.center")} title={effectivePosition === "center" ? t("preview.moveLeft") : t("preview.center")} className="flex size-[29px] items-center justify-center rounded-[7px] border border-[#383B41] bg-[#26272A] text-[#E9EAEC] hover:bg-[#34363A]">
-            {effectivePosition === "center" ? <PanelLeft size={15} /> : <Maximize2 size={15} />}
+          <button type="button" onClick={switchPosition} aria-label={effectivePosition === "center" ? t("preview.openSide") : t("preview.center")} title={effectivePosition === "center" ? t("preview.openSide") : t("preview.center")} className="flex size-[29px] items-center justify-center rounded-[7px] border border-hairline bg-raised text-ink hover:bg-raised-hover">
+            {effectivePosition === "center" ? <PanelRight size={15} /> : <Maximize2 size={15} />}
           </button>
           <button
             type="button"
@@ -575,21 +575,21 @@ export function FilePreviewDialog({
             title={t("preview.annotate")}
             className={`flex h-[29px] items-center justify-center gap-1 rounded-[7px] border px-2 text-[11px] ${
               annotating
-                ? "border-[#776398] bg-[#3A314B] text-[#D8C4FC]"
-                : "border-[#383B41] bg-[#26272A] text-[#E9EAEC] hover:bg-[#34363A]"
+                ? "border-accent bg-accent/15 text-accent"
+                : "border-hairline bg-raised text-ink hover:bg-raised-hover"
             }`}
           >
             <Pencil size={15} />
             <span className="max-[920px]:hidden">{t("preview.annotate")}</span>
           </button>
-          <button type="button" onClick={onClose} aria-label={t("preview.close")} title={t("preview.close")} className="flex size-[28px] items-center justify-center rounded-full bg-[#2D2E31] text-[#E9EAEC] hover:bg-[#34363A]">
+          <button type="button" onClick={onClose} aria-label={t("preview.close")} title={t("preview.close")} className="flex size-[28px] items-center justify-center rounded-full bg-raised text-ink hover:bg-raised-hover">
             <X size={15} />
           </button>
         </div>
       </header>
 
       {format === "xlsx" && workbook && (
-        <div className="flex h-[42px] shrink-0 items-stretch gap-1 overflow-x-auto border-b border-[#2B2D31] bg-[#1B1C1E] px-2">
+        <div className="flex h-[42px] shrink-0 items-stretch gap-1 overflow-x-auto border-b border-hairline bg-card px-2">
           {workbook.sheets.map((sheet, index) => (
             <button
               key={`${sheet.name}:${index}`}
@@ -600,67 +600,67 @@ export function FilePreviewDialog({
                 setSheetIndex(index);
                 setQuery("");
               }}
-              className={`relative shrink-0 px-3 text-[11.5px] ${index === sheetIndex ? "bg-[#242629] text-[#EFF0F2]" : "text-[#8D9097] hover:text-[#EFF0F2]"}`}
+              className={`relative shrink-0 px-3 text-[11.5px] ${index === sheetIndex ? "bg-raised text-ink" : "text-ink-secondary hover:text-ink"}`}
             >
-              {index === sheetIndex && <span className="absolute inset-x-1 bottom-0 h-[2px] rounded-t bg-[#7BCBA5]" aria-hidden="true" />}
+              {index === sheetIndex && <span className="absolute inset-x-1 bottom-0 h-[2px] rounded-t bg-success" aria-hidden="true" />}
               {sheet.name}
             </button>
           ))}
         </div>
       )}
 
-      <div ref={contentRef} className="relative min-h-0 flex-1 overflow-hidden bg-[#151618]">
+      <div ref={contentRef} className="relative min-h-0 flex-1 overflow-hidden bg-app">
         {content}
         {annotating && !capturing && (
           <div
             role="application"
             aria-label={t("preview.annotation.area")}
-            className="absolute inset-0 z-20 cursor-crosshair bg-[#AA89F208]"
+            className="absolute inset-0 z-20 cursor-crosshair bg-accent/[0.03]"
             onPointerDown={startSelection}
             onPointerMove={moveSelection}
             onPointerUp={finishSelection}
             onPointerCancel={() => setDragStart(null)}
           >
             <div className="pointer-events-none absolute inset-x-0 top-2 flex justify-center">
-              <span className="rounded-full border border-[#776398] bg-[#241C2E] px-3 py-1 text-[11px] text-[#D8C4FC]">
+              <span className="rounded-full border border-accent bg-card px-3 py-1 text-[11px] text-accent">
                 {t("preview.annotation.instruction")}
               </span>
             </div>
             {selection && (
               <div
                 aria-hidden="true"
-                className="pointer-events-none absolute border-2 border-[#AA89F2] bg-[#AA89F21B]"
+                className="pointer-events-none absolute border-2 border-accent bg-accent/10"
                 style={{ left: selection.x, top: selection.y, width: selection.width, height: selection.height }}
               />
             )}
             {annotationHint && !selection && (
               <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center">
-                <span className="rounded-[7px] bg-[#241C2E] px-3 py-1 text-[11px] text-[#D8C4FC]">{annotationHint}</span>
+                <span className="rounded-[7px] bg-card px-3 py-1 text-[11px] text-accent">{annotationHint}</span>
               </div>
             )}
           </div>
         )}
         {annotating && selection && !capturing && (
           <div
-            className="absolute bottom-4 right-4 z-30 flex max-h-[calc(100%-32px)] w-[min(334px,calc(100%-32px))] flex-col gap-2 rounded-[12px] border border-[#54505C] bg-[#232429] p-[13px] shadow-2xl max-[650px]:bottom-[9px] max-[650px]:right-[9px]"
+            className="absolute bottom-4 right-4 z-30 flex max-h-[calc(100%-32px)] w-[min(334px,calc(100%-32px))] flex-col gap-2 rounded-[12px] border border-hairline bg-card p-[13px] shadow-2xl max-[650px]:bottom-[9px] max-[650px]:right-[9px]"
             onPointerDown={(event) => event.stopPropagation()}
           >
-            <div className="text-[12px] font-medium text-[#EFF0F2]">{t("preview.annotation.title")}</div>
-            <div className="text-[10.5px] text-[#8D9097]">{t("preview.annotation.helper")}</div>
+            <div className="text-[12px] font-medium text-ink">{t("preview.annotation.title")}</div>
+            <div className="text-[10.5px] text-ink-secondary">{t("preview.annotation.helper")}</div>
             <textarea
               autoFocus
               value={comment}
               onChange={(event) => setComment(event.target.value)}
               placeholder={t("preview.annotation.placeholder")}
               aria-label={t("preview.annotation.title")}
-              className="min-h-[67px] max-h-[140px] resize-y rounded-[8px] border border-[#44414D] bg-[#17181B] p-2 text-[12px] text-[#E9EAEC] outline-none placeholder:text-[#6F727A] focus-visible:ring-2 focus-visible:ring-[#85A9FF]"
+              className="min-h-[67px] max-h-[140px] resize-y rounded-[8px] border border-hairline bg-inset p-2 text-[12px] text-ink outline-none placeholder:text-ink-tertiary focus-visible:ring-2 focus-visible:ring-focus"
             />
-            {annotationHint && <p role="alert" className="text-[10.5px] text-[#F39C91]">{annotationHint}</p>}
+            {annotationHint && <p role="alert" className="text-[10.5px] text-danger">{annotationHint}</p>}
             <div className="flex items-center justify-end gap-2">
-              <button type="button" onClick={() => { setSelection(null); setComment(""); setAnnotationHint(""); }} className="rounded-[7px] px-2 py-1.5 text-[11px] text-[#C0ADF0] hover:bg-[#34363A]">
+              <button type="button" onClick={() => { setSelection(null); setComment(""); setAnnotationHint(""); }} className="rounded-[7px] px-2 py-1.5 text-[11px] text-accent hover:bg-raised-hover">
                 {t("preview.annotation.cancel")}
               </button>
-              <button type="button" onClick={() => void addToPrompt()} className="rounded-[7px] bg-[#B39CEF] px-3 py-1.5 text-[11px] font-medium text-[#1A1424] hover:bg-[#C0ADF0]">
+              <button type="button" onClick={() => void addToPrompt()} className="rounded-[7px] bg-accent px-3 py-1.5 text-[11px] font-medium text-accent-ink hover:bg-accent/90">
                 {t("preview.annotation.addToPrompt")}
               </button>
             </div>
@@ -669,36 +669,36 @@ export function FilePreviewDialog({
       </div>
 
       {draft && (
-        <div className="shrink-0 border-t border-[#493C5E] bg-[#1D1D22] px-[14px] py-[10px]">
+        <div className="shrink-0 border-t border-hairline bg-card px-[14px] py-[10px]">
           <div className="mb-2 flex items-center justify-between gap-2">
-            <span className="text-[11px] font-medium text-[#EFF0F2]">{t("preview.annotation.messageTitle")}</span>
-            <button type="button" onClick={discardDraft} className="text-[11px] text-[#C0ADF0] hover:underline">{t("preview.annotation.discard")}</button>
+            <span className="text-[11px] font-medium text-ink">{t("preview.annotation.messageTitle")}</span>
+            <button type="button" onClick={discardDraft} className="text-[11px] text-accent hover:underline">{t("preview.annotation.discard")}</button>
           </div>
           <div className="flex flex-wrap items-start gap-2">
-            <img src={draft.url} alt={t("preview.annotation.thumbnail")} className="h-[66px] w-[102px] rounded-[6px] border border-[#5C5070] object-cover max-[650px]:h-[62px] max-[650px]:w-[88px]" />
+            <img src={draft.url} alt={t("preview.annotation.thumbnail")} className="h-[66px] w-[102px] rounded-[6px] border border-hairline object-cover max-[650px]:h-[62px] max-[650px]:w-[88px]" />
             <textarea
               value={prompt}
               onChange={(event) => setPrompt(event.target.value)}
               aria-label={t("preview.annotation.messageTitle")}
-              className="min-h-[66px] min-w-[180px] flex-1 resize-y rounded-[7px] border border-[#47434E] bg-[#141518] p-2 text-[11.5px] text-[#E9EAEC] outline-none focus-visible:ring-2 focus-visible:ring-[#85A9FF]"
+              className="min-h-[66px] min-w-[180px] flex-1 resize-y rounded-[7px] border border-hairline bg-inset p-2 text-[11.5px] text-ink outline-none focus-visible:ring-2 focus-visible:ring-focus"
             />
-            <button type="button" disabled={sending || !prompt.trim()} onClick={() => void sendToAgent()} className="h-[34px] rounded-[7px] bg-[#C0ADF0] px-3 text-[11.5px] font-medium text-[#241C2E] hover:bg-[#B39CEF] disabled:opacity-50 max-[650px]:w-full">
+            <button type="button" disabled={sending || !prompt.trim()} onClick={() => void sendToAgent()} className="h-[34px] rounded-[7px] bg-accent px-3 text-[11.5px] font-medium text-accent-ink hover:bg-accent/90 disabled:opacity-50 max-[650px]:w-full">
               {sending ? <LoaderCircle size={14} className="animate-spin" /> : t("preview.annotation.send")}
             </button>
           </div>
-          {sendError && <p role="alert" className="mt-2 text-[11px] text-[#F39C91]">{sendError}</p>}
+          {sendError && <p role="alert" className="mt-2 text-[11px] text-danger">{sendError}</p>}
         </div>
       )}
 
       {hasFooter && !draft && (
-        <footer className="flex h-[44px] shrink-0 items-center justify-between gap-2 border-t border-[#2D2E32] bg-[#1B1C1E] px-[15px]">
-          <span className="text-[11px] text-[#868A92]">{t("preview.readOnly")}</span>
+        <footer className="flex h-[44px] shrink-0 items-center justify-between gap-2 border-t border-hairline bg-card px-[15px]">
+          <span className="text-[11px] text-ink-secondary">{t("preview.readOnly")}</span>
           <div className="flex items-center gap-2">
-            {copyState !== "idle" && <span role={copyState === "failed" ? "alert" : "status"} className="text-[11px] text-[#868A92]">{t(copyState === "failed" ? "preview.copyFailed" : "preview.copied")}</span>}
-            <button type="button" onClick={() => void copy()} className="flex items-center gap-1 rounded-[8px] px-[13px] py-[7px] text-[11.5px] text-[#E9EAEC] hover:bg-[#34363A]">
+            {copyState !== "idle" && <span role={copyState === "failed" ? "alert" : "status"} className="text-[11px] text-ink-secondary">{t(copyState === "failed" ? "preview.copyFailed" : "preview.copied")}</span>}
+            <button type="button" onClick={() => void copy()} className="flex items-center gap-1 rounded-[8px] px-[13px] py-[7px] text-[11.5px] text-ink hover:bg-raised-hover">
               {copyState === "copied" ? <Check size={13} /> : <Copy size={13} />} {t("preview.copy")}
             </button>
-            <button type="button" onClick={onClose} className="rounded-[8px] px-[13px] py-[7px] text-[11.5px] text-[#E9EAEC] hover:bg-[#34363A]">{t("preview.done")}</button>
+            <button type="button" onClick={onClose} className="rounded-[8px] px-[13px] py-[7px] text-[11.5px] text-ink hover:bg-raised-hover">{t("preview.done")}</button>
           </div>
         </footer>
       )}
@@ -707,8 +707,8 @@ export function FilePreviewDialog({
 
   return createPortal(
     <div
-      className={effectivePosition === "left"
-        ? "fixed inset-y-0 left-0 z-[80] flex items-center p-3"
+      className={effectivePosition === "right"
+        ? "fixed inset-y-0 right-0 z-[80] flex items-center p-3"
         : "fixed inset-0 z-[80] flex items-center justify-center bg-[#030407C8] p-[22px] backdrop-blur-[5px] max-[650px]:p-0"}
       onMouseDown={(event) => {
         if (effectivePosition === "center" && event.target === event.currentTarget) onClose();

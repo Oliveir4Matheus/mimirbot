@@ -6622,7 +6622,6 @@
   "preview.reading": "Reading",
   "preview.source": "Source",
   "preview.download": "Download",
-  "preview.moveLeft": "Move to left side",
   "preview.center": "Center preview",
   "preview.annotate": "Annotate",
   "preview.close": "Close",
@@ -6668,5 +6667,6 @@
   "preview.annotation.discard": "Discard",
   "preview.annotation.thumbnail": "Selected area capture",
   "preview.annotation.send": "Send to agent",
-  "preview.annotation.sendFailed": "Could not send the annotation. Try again."
+  "preview.annotation.sendFailed": "Could not send the annotation. Try again.",
+  "preview.openSide": "Open on right side"
 }

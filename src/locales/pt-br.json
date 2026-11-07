@@ -6227,7 +6227,6 @@
   "preview.reading": "Leitura",
   "preview.source": "Código-fonte",
   "preview.download": "Baixar",
-  "preview.moveLeft": "Mover para a esquerda",
   "preview.center": "Centralizar prévia",
   "preview.annotate": "Anotar",
   "preview.close": "Fechar",
@@ -6273,5 +6272,6 @@
   "preview.annotation.discard": "Descartar",
   "preview.annotation.thumbnail": "Captura da área selecionada",
   "preview.annotation.send": "Enviar ao agente",
-  "preview.annotation.sendFailed": "Não foi possível enviar a anotação. Tente novamente."
+  "preview.annotation.sendFailed": "Não foi possível enviar a anotação. Tente novamente.",
+  "preview.openSide": "Abrir ao lado direito"
 }

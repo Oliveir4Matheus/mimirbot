@@ -158,8 +158,8 @@ export function PreviewTable({ columns, rows, query, ariaLabel }: PreviewTablePr
     : [];
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-[#151618] text-[#E9EAEC]" dir="ltr">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-[#2B2D31] bg-[#1A1B1D] px-4 py-[9px] text-[11px] text-[#8D9097]">
+    <div className="flex h-full min-h-0 flex-col bg-app text-ink" dir="ltr">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-hairline bg-card px-4 py-[9px] text-[11px] text-ink-secondary">
         <span role="status">
           {t("preview.table.count", {
             shown: order.length.toLocaleString(),
@@ -167,14 +167,14 @@ export function PreviewTable({ columns, rows, query, ariaLabel }: PreviewTablePr
             columns: columns.length,
           })}
         </span>
-        {active > 0 && <span className="text-[#BBA5FA]">{t("preview.table.activeFilters", { count: active })}</span>}
+        {active > 0 && <span className="text-accent">{t("preview.table.activeFilters", { count: active })}</span>}
       </div>
       <div
         ref={scroll}
         tabIndex={0}
         role="region"
         aria-label={ariaLabel}
-        className="min-h-0 flex-1 overflow-auto overscroll-x-contain focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#85A9FF]"
+        className="min-h-0 flex-1 overflow-auto overscroll-x-contain focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus"
       >
         <table
           aria-label={ariaLabel}
@@ -186,9 +186,9 @@ export function PreviewTable({ columns, rows, query, ariaLabel }: PreviewTablePr
             <col style={{ width: 47 }} />
             {widths.map((width, index) => <col key={index} style={{ width }} />)}
           </colgroup>
-          <thead ref={heading} className="sticky top-0 z-10 bg-[#1E1F22]">
+          <thead ref={heading} className="sticky top-0 z-10 bg-raised">
             <tr>
-              <th scope="col" className="h-[37px] border-b border-[#2C2E32] px-2 text-start font-medium text-[#6F727A]">#</th>
+              <th scope="col" className="h-[37px] border-b border-hairline px-2 text-start font-medium text-ink-tertiary">#</th>
               {columns.map((column, index) => {
                 const sorted = sort?.column === index;
                 const filter = filterFor(index);
@@ -197,18 +197,18 @@ export function PreviewTable({ columns, rows, query, ariaLabel }: PreviewTablePr
                     key={index}
                     scope="col"
                     aria-sort={sorted ? sort.descending ? "descending" : "ascending" : "none"}
-                    className="h-[37px] border-b border-[#2C2E32] px-3 font-medium"
+                    className="h-[37px] border-b border-hairline px-3 font-medium"
                   >
                     <div className="flex min-w-0 items-center gap-1">
                       <button
                         type="button"
                         onClick={() => setSort((current) => nextTableSort(current, index))}
-                        className="flex min-w-0 flex-1 items-center gap-1 text-start hover:text-[#EFF0F2]"
+                        className="flex min-w-0 flex-1 items-center gap-1 text-start hover:text-ink"
                       >
                         <span className="min-w-0 truncate">{column || t("preview.table.column", { number: index + 1 })}</span>
                         {sorted && (sort.descending
-                          ? <ArrowDown size={13} className="shrink-0 text-[#BBA5FA]" />
-                          : <ArrowUp size={13} className="shrink-0 text-[#BBA5FA]" />)}
+                          ? <ArrowDown size={13} className="shrink-0 text-accent" />
+                          : <ArrowUp size={13} className="shrink-0 text-accent" />)}
                       </button>
                       <button
                         type="button"
@@ -216,10 +216,10 @@ export function PreviewTable({ columns, rows, query, ariaLabel }: PreviewTablePr
                         aria-label={t("preview.table.filterColumn", { column: column || index + 1 })}
                         title={t("preview.table.filterColumn", { column: column || index + 1 })}
                         onClick={(event) => openMenu(index, event.currentTarget)}
-                        className="relative flex size-7 shrink-0 items-center justify-center rounded-[7px] hover:bg-[#34363A]"
+                        className="relative flex size-7 shrink-0 items-center justify-center rounded-[7px] hover:bg-raised-hover"
                       >
-                        <Filter size={13} className={filter ? "text-[#9AA8FA]" : "text-[#8D9097]"} />
-                        {filter && <span className="absolute right-1 top-1 size-1.5 rounded-full bg-[#A485EE]" />}
+                        <Filter size={13} className={filter ? "text-accent" : "text-ink-secondary"} />
+                        {filter && <span className="absolute right-1 top-1 size-1.5 rounded-full bg-accent" />}
                       </button>
                     </div>
                   </th>
@@ -235,13 +235,13 @@ export function PreviewTable({ columns, rows, query, ariaLabel }: PreviewTablePr
                 data-index={item.index}
                 ref={virtual ? virtualizer.measureElement : undefined}
                 aria-rowindex={item.index + 2}
-                className={item.index % 2 ? "bg-[#17181B] hover:bg-[#222327]" : "hover:bg-[#222327]"}
+                className={item.index % 2 ? "bg-inset/40 hover:bg-raised/60" : "hover:bg-raised/60"}
               >
-                <td className="border-b border-[#2C2E32] px-2 py-2 text-[#6F727A] tabular-nums">{item.index + 1}</td>
+                <td className="border-b border-hairline px-2 py-2 text-ink-tertiary tabular-nums">{item.index + 1}</td>
                 {columns.map((_, index) => {
                   const value = rows[order[item.index]!]?.[index] ?? "";
                   return (
-                    <td key={index} className="border-b border-[#2C2E32] px-3 py-[10px] align-top">
+                    <td key={index} className="border-b border-hairline px-3 py-[10px] align-top">
                       <div title={value} className="truncate">{value}</div>
                     </td>
                   );
@@ -252,7 +252,7 @@ export function PreviewTable({ columns, rows, query, ariaLabel }: PreviewTablePr
           </tbody>
         </table>
         {order.length === 0 && (
-          <p className="p-8 text-center text-[13px] text-[#8D9097]">
+          <p className="p-8 text-center text-[13px] text-ink-secondary">
             {rows.length ? t("preview.table.noMatches") : t("preview.table.empty")}
           </p>
         )}
@@ -262,46 +262,46 @@ export function PreviewTable({ columns, rows, query, ariaLabel }: PreviewTablePr
           data-filter-menu={menuId}
           role="dialog"
           aria-label={t("preview.table.filterColumn", { column: columns[menu.column] || menu.column + 1 })}
-          className="fixed z-[95] flex w-[245px] flex-col gap-2 overflow-y-auto rounded-[11px] border border-[#424449] bg-[#242528] p-[9px] text-[11px] text-[#E9EAEC] shadow-2xl"
+          className="fixed z-[95] flex w-[245px] flex-col gap-2 overflow-y-auto rounded-[11px] border border-hairline bg-menu p-[9px] text-[11px] text-ink shadow-2xl"
           style={{ left: menu.anchor.left, top: menu.anchor.top, maxHeight: menu.anchor.maxHeight }}
         >
           <div className="truncate text-[12px] font-medium">{columns[menu.column] || t("preview.table.column", { number: menu.column + 1 })}</div>
           <div className="flex flex-col gap-1">
-            <button type="button" onClick={() => sortFromMenu(false)} className="flex items-center gap-2 rounded-[7px] px-2 py-1.5 text-start hover:bg-[#34363A]">
+            <button type="button" onClick={() => sortFromMenu(false)} className="flex items-center gap-2 rounded-[7px] px-2 py-1.5 text-start hover:bg-raised-hover">
               <ArrowUp size={13} /> {t("preview.table.sortAscending")}
             </button>
-            <button type="button" onClick={() => sortFromMenu(true)} className="flex items-center gap-2 rounded-[7px] px-2 py-1.5 text-start hover:bg-[#34363A]">
+            <button type="button" onClick={() => sortFromMenu(true)} className="flex items-center gap-2 rounded-[7px] px-2 py-1.5 text-start hover:bg-raised-hover">
               <ArrowDown size={13} /> {t("preview.table.sortDescending")}
             </button>
           </div>
-          <div className="text-[#8D9097]">{t("preview.table.filterValues")}</div>
-          <label className="flex h-[31px] items-center gap-2 rounded-[7px] border border-[#34363A] bg-[#1B1C1E] px-2">
-            <Search size={12} className="shrink-0 text-[#8D9097]" />
+          <div className="text-ink-secondary">{t("preview.table.filterValues")}</div>
+          <label className="flex h-[31px] items-center gap-2 rounded-[7px] border border-hairline bg-inset px-2">
+            <Search size={12} className="shrink-0 text-ink-secondary" />
             <input
               value={menu.search}
               onChange={(event) => setMenu({ ...menu, search: event.target.value })}
               aria-label={t("preview.table.searchValues")}
               placeholder={t("preview.table.searchValues")}
-              className="min-w-0 flex-1 bg-transparent text-[11px] text-[#E9EAEC] outline-none placeholder:text-[#6F727A]"
+              className="min-w-0 flex-1 bg-transparent text-[11px] text-ink outline-none placeholder:text-ink-tertiary"
             />
           </label>
-          <div className="max-h-[165px] overflow-y-auto rounded-[7px] border border-[#303236]">
+          <div className="max-h-[165px] overflow-y-auto rounded-[7px] border border-hairline">
             {menuValues.map((value) => (
-              <label key={value} className="flex cursor-pointer items-center gap-2 px-2 py-1.5 hover:bg-[#34363A]">
+              <label key={value} className="flex cursor-pointer items-center gap-2 px-2 py-1.5 hover:bg-raised-hover">
                 <input
                   type="checkbox"
                   checked={menu.values.has(value)}
                   onChange={() => toggleValue(value)}
-                  className="size-3 accent-[#A485EE]"
+                  className="size-3 accent-accent"
                 />
                 <span className="min-w-0 truncate">{value || t("preview.table.emptyValue")}</span>
               </label>
             ))}
-            {menuValues.length === 0 && <p className="px-2 py-3 text-[#8D9097]">{t("preview.table.noValues")}</p>}
+            {menuValues.length === 0 && <p className="px-2 py-3 text-ink-secondary">{t("preview.table.noValues")}</p>}
           </div>
           <div className="flex items-center justify-between gap-2 pt-1">
-            <button type="button" onClick={clearColumn} className="rounded-[7px] px-2 py-1.5 text-[#C0ADF0] hover:bg-[#34363A]">{t("preview.table.clear")}</button>
-            <button type="button" onClick={applyFilter} className="rounded-[7px] bg-[#B39CEF] px-3 py-1.5 font-medium text-[#1A1424] hover:bg-[#C0ADF0]">{t("preview.table.apply")}</button>
+            <button type="button" onClick={clearColumn} className="rounded-[7px] px-2 py-1.5 text-accent hover:bg-raised-hover">{t("preview.table.clear")}</button>
+            <button type="button" onClick={applyFilter} className="rounded-[7px] bg-accent px-3 py-1.5 font-medium text-accent-ink hover:bg-accent/80">{t("preview.table.apply")}</button>
           </div>
         </div>,
         document.body,
