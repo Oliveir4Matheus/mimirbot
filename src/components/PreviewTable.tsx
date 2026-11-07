@@ -305,7 +305,7 @@ export function PreviewTable({ columns, rows, query, ariaLabel }: PreviewTablePr
     const column = menu.column;
     setFilters((current) => current.filter((filter) => filter.column !== column));
     setSort((current) => current?.column === column ? null : current);
-    setMenu(null);
+    setMenu({ ...menu, values: new Set(), search: "" });
   };
 
   const sortFromMenu = (descending: boolean) => {
