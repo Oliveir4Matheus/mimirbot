@@ -67,11 +67,11 @@ it("sits level with the sidebar's top, below a strip shown above the app, at any
   const rail = container.querySelector("[data-mimir-rail]")!;
   expect(observed).toContain(rail);
   expect(observed).toContain(rail.parentElement);
-  expect(bump.style.top).toBe("7px");
+  expect(bump.style.top).toBe("10px");
   // My Cloud's two-line strip pushes the sidebar 58px down, and the sidebar is at its narrowest.
   top = 58; right = 240;
   flushSync(() => resized!());
-  expect(bump.style.top).toBe("65px");
+  expect(bump.style.top).toBe("68px");
   expect(bump.style.left).toBe("240px");
   // The rail retracts by 66px; the sidebar moves left with it, and the bump follows.
   right = 174;

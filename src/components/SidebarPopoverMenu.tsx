@@ -27,7 +27,7 @@ export interface SidebarMenuItem {
 
 const OPEN_DELAY_MS = 80;
 const CLOSE_DELAY_MS = 250;
-export const ANCHORED_MENU_WIDTH = 280;
+export const ANCHORED_MENU_WIDTH = 250;
 const EDGE_MARGIN = 8;
 const ANCHOR_GAP = 6;
 
@@ -93,8 +93,8 @@ function MenuRows({
     <>
       {items.map((item) => (
         <div key={item.key}>
-          {item.separatorBefore && <div role="separator" className={cn("h-px bg-hairline/50", roomy ? "mx-3 my-1.5" : "my-1.5")} />}
-          {item.heading && <div className="px-3 pb-0.5 pt-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-secondary">{item.heading}</div>}
+          {item.separatorBefore && <div role="separator" className={cn("h-px bg-hairline/50", roomy ? "mx-3 my-1" : "my-1")} />}
+          {item.heading && <div className="px-3 pb-0.5 pt-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-secondary">{item.heading}</div>}
           <button
             type="button"
             role="menuitem"
@@ -111,7 +111,7 @@ function MenuRows({
             className={cn(
               "flex w-full items-center text-start disabled:opacity-60 focus-visible:outline-none",
               roomy
-                ? "min-h-10 gap-3 rounded-lg px-3 py-2 text-[15px] font-medium leading-5 focus-visible:bg-raised/70"
+                ? "min-h-8 gap-3 rounded-lg px-3 py-1 text-[15px] font-medium leading-5 focus-visible:bg-raised/70"
                 : "gap-3 px-3.5 py-2 text-[14px] focus-visible:bg-raised/70",
               item.active || (item.submenu && openSubmenu === item.key) ? "bg-raised text-ink" : "text-ink hover:bg-raised/70",
             )}
@@ -315,7 +315,7 @@ export function SidebarPopoverMenu({
   const roomy = anchored;
   const sheetClass = cn(
     "overflow-hidden border border-hairline/50 bg-menu shadow-2xl shadow-black/50",
-    roomy ? "rounded-2xl p-1.5" : "rounded-xl py-1.5",
+    roomy ? "rounded-2xl p-1" : "rounded-xl py-1.5",
   );
 
   const sheet = motion.shown && (

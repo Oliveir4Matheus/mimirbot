@@ -25,12 +25,12 @@ describe("anchoredMenuPosition", () => {
 
   it("anchors to the trigger's right edge in RTL, and stays inside the window", () => {
     const rtlRow = { left: 980, right: 1268, top: 740, bottom: 784 };
-    expect(anchoredMenuPosition(rtlRow, menu, viewport, true)).toEqual({ left: 1268 - 280, top: 434 });
+    expect(anchoredMenuPosition(rtlRow, menu, viewport, true)).toEqual({ left: 1268 - ANCHORED_MENU_WIDTH, top: 434 });
     expect(anchoredMenuPosition({ left: 0, right: 44, top: 740, bottom: 784 }, menu, viewport, true).left).toBe(8);
   });
 
   it("never runs off the inline end of a narrow window", () => {
-    expect(anchoredMenuPosition({ left: 200, right: 260, top: 500, bottom: 540 }, menu, { width: 320, height: 600 }).left).toBe(320 - 280 - 8);
+    expect(anchoredMenuPosition({ left: 200, right: 260, top: 500, bottom: 540 }, menu, { width: 320, height: 600 }).left).toBe(320 - ANCHORED_MENU_WIDTH - 8);
   });
 
   it("drops below the trigger when there is no room above, and clamps to a short window", () => {

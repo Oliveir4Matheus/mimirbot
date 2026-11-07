@@ -1513,7 +1513,7 @@ export function Sidebar({ open, onClose, collapseToIcons = false }: {
         className={cn(
           "flex items-center",
           density === "icons" ? "flex-col gap-1 px-2 pt-3.5 pb-1" : "relative pl-4 pr-2",
-          density !== "icons" && !macInset && "h-[60px] border-b border-hairline/40 max-md:h-16",
+          density !== "icons" && !macInset && "h-[46px] border-b border-hairline/40 max-md:h-16",
         )}
         style={density !== "icons" && macInset ? { ...windowDragStyle, height: MAC_TRAFFIC_LIGHT_CENTER_Y * 2 } : windowDragStyle}
       >
