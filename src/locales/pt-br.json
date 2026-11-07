@@ -6273,5 +6273,6 @@
   "preview.annotation.thumbnail": "Captura da área selecionada",
   "preview.annotation.send": "Enviar ao agente",
   "preview.annotation.sendFailed": "Não foi possível enviar a anotação. Tente novamente.",
-  "preview.openSide": "Abrir ao lado direito"
+  "preview.openSide": "Abrir ao lado direito",
+  "preview.table.loadingValues": "Carregando valores…"
 }

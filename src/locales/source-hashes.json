@@ -25244,7 +25244,8 @@
       "preview.annotation.thumbnail": "c9b55284ab975e4c91f9bca4d7558d75960d6adc6438501d25f7287ada13a4d3",
       "preview.annotation.send": "77a860cbc5859185b58c9d3cd70ba94a5692ceddabe56fdfc9d9ef9e7aea8beb",
       "preview.annotation.sendFailed": "6410f1d406cf746df51fe3ef18cdf42299f45b3832a3374d2a829d6c97164c5c",
-      "preview.openSide": "a66fa431d74a99b8f0b2a3efe589edb0ada0279662d062a8c22e8afeb3d2c7a2"
+      "preview.openSide": "a66fa431d74a99b8f0b2a3efe589edb0ada0279662d062a8c22e8afeb3d2c7a2",
+      "preview.table.loadingValues": "6cfa9909fa1643b170993b1a7f6bc614f59d81f398517f05260744f3a4a6d026"
     },
     "zh": {
       "signIn.answeredInChat": "77883f86ed4b5a0b328c72376ebdb53cd30508f75674b57c6c62e3643ee0e004",

@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useRef, useState, type RefObject } from "react";
+import { memo, useCallback, useEffect, useId, useMemo, useRef, useState, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { ArrowDown, ArrowUp, Filter, Search } from "lucide-react";
@@ -28,7 +28,139 @@ interface FilterMenuState {
   values: Set<string>;
   search: string;
   allValues: string[];
+  loadingValues: boolean;
 }
+
+const PreviewTableHeader = memo(function PreviewTableHeader({
+  columns,
+  sort,
+  filters,
+  onSort,
+  onOpenFilter,
+  headingRef,
+}: {
+  columns: readonly string[];
+  sort: TableSort;
+  filters: readonly ColumnFilter[];
+  onSort: (column: number) => void;
+  onOpenFilter: (column: number, trigger: HTMLElement) => void;
+  headingRef: RefObject<HTMLTableSectionElement | null>;
+}) {
+  return (
+    <thead ref={headingRef} className="sticky top-0 z-10 bg-raised">
+      <tr>
+        <th scope="col" className="h-[37px] border-b border-hairline px-2 text-start font-medium text-ink-tertiary">#</th>
+        {columns.map((column, index) => {
+          const sorted = sort?.column === index;
+          const filter = filters.find((candidate) => candidate.column === index);
+          return (
+            <th
+              key={index}
+              scope="col"
+              aria-sort={sorted ? sort.descending ? "descending" : "ascending" : "none"}
+              className="h-[37px] border-b border-hairline px-3 font-medium"
+            >
+              <div className="flex min-w-0 items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => onSort(index)}
+                  className="flex min-w-0 flex-1 items-center gap-1 text-start hover:text-ink"
+                >
+                  <span className="min-w-0 truncate">{column || t("preview.table.column", { number: index + 1 })}</span>
+                  {sorted && (sort.descending
+                    ? <ArrowDown size={13} className="shrink-0 text-accent" />
+                    : <ArrowUp size={13} className="shrink-0 text-accent" />)}
+                </button>
+                <button
+                  type="button"
+                  data-filter-trigger
+                  aria-label={t("preview.table.filterColumn", { column: column || index + 1 })}
+                  title={t("preview.table.filterColumn", { column: column || index + 1 })}
+                  onClick={(event) => onOpenFilter(index, event.currentTarget)}
+                  className="relative flex size-7 shrink-0 items-center justify-center rounded-[7px] hover:bg-raised-hover"
+                >
+                  <Filter size={13} className={filter ? "text-accent" : "text-ink-secondary"} />
+                  {filter && <span className="absolute right-1 top-1 size-1.5 rounded-full bg-accent" />}
+                </button>
+              </div>
+            </th>
+          );
+        })}
+      </tr>
+    </thead>
+  );
+});
+const PreviewTableRow = memo(function PreviewTableRow({
+  displayIndex,
+  row,
+  columns,
+}: {
+  displayIndex: number;
+  row: readonly string[];
+  columns: number;
+}) {
+  return (
+    <tr
+      data-index={displayIndex}
+      aria-rowindex={displayIndex + 2}
+      className={displayIndex % 2 ? "bg-inset/40 hover:bg-raised/60" : "hover:bg-raised/60"}
+    >
+      <td className="border-b border-hairline px-2 py-2 text-ink-tertiary tabular-nums">{displayIndex + 1}</td>
+      {Array.from({ length: columns }, (_, index) => {
+        const value = row[index] ?? "";
+        return (
+          <td key={index} className="border-b border-hairline px-3 py-[10px] align-top">
+            <div title={value} className="truncate">{value}</div>
+          </td>
+        );
+      })}
+    </tr>
+  );
+});
+
+const FilterValueList = memo(function FilterValueList({
+  values,
+  selected,
+  onToggle,
+}: {
+  values: readonly string[];
+  selected: ReadonlySet<string>;
+  onToggle: (value: string) => void;
+}) {
+  const listRef = useRef<HTMLDivElement>(null);
+  const virtualizer = useVirtualizer({
+    count: values.length,
+    getScrollElement: () => listRef.current,
+    estimateSize: () => 28,
+    overscan: 6,
+    initialRect: { width: 245, height: 165 },
+  });
+  const items = virtualizer.getVirtualItems();
+  return (
+    <div ref={listRef} className="max-h-[165px] overflow-y-auto rounded-[7px] border border-hairline">
+      <div style={{ height: virtualizer.getTotalSize(), position: "relative" }}>
+        {items.map((item) => {
+          const value = values[item.index] ?? "";
+          return (
+            <label
+              key={item.key}
+              style={{ position: "absolute", top: item.start, left: 0, right: 0, height: item.size }}
+              className="flex cursor-pointer items-center gap-2 px-2 py-1.5 hover:bg-raised-hover"
+            >
+              <input
+                type="checkbox"
+                checked={selected.has(value)}
+                onChange={() => onToggle(value)}
+                className="size-3 accent-accent"
+              />
+              <span className="min-w-0 truncate">{value || t("preview.table.emptyValue")}</span>
+            </label>
+          );
+        })}
+      </div>
+    </div>
+  );
+});
 
 function useHeadingHeight(ref: RefObject<HTMLTableSectionElement | null>): number {
   const [height, setHeight] = useState(37);
@@ -66,7 +198,7 @@ export function PreviewTable({ columns, rows, query, ariaLabel }: PreviewTablePr
     getScrollElement: () => scroll.current,
     estimateSize: () => 38,
     getItemKey: (index) => order[index]!,
-    overscan: 8,
+    overscan: 4,
     enabled: virtual,
     initialRect: { width: 800, height: 400 },
     scrollMargin: headingHeight,
@@ -91,19 +223,29 @@ export function PreviewTable({ columns, rows, query, ariaLabel }: PreviewTablePr
       if (target instanceof Element && target.closest("[data-filter-trigger]")) return;
       close();
     };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      event.stopPropagation();
+      close();
+    };
     const onScroll = () => close();
     window.addEventListener("pointerdown", onPointer, true);
+    window.addEventListener("keydown", onKey, true);
     window.addEventListener("resize", close);
     window.addEventListener("scroll", onScroll, true);
     return () => {
       window.removeEventListener("pointerdown", onPointer, true);
+      window.removeEventListener("keydown", onKey, true);
       window.removeEventListener("resize", close);
       window.removeEventListener("scroll", onScroll, true);
     };
   }, [menu, menuId]);
 
-  const openMenu = (column: number, trigger: HTMLElement) => {
-    const allValues = distinctColumnValues(rows, column);
+  const distinctCache = useRef(new Map<number, string[]>());
+
+  const openMenu = useCallback((column: number, trigger: HTMLElement) => {
+    const cached = distinctCache.current.get(column);
     const existing = filters.find((filter) => filter.column === column);
     setMenu({
       column,
@@ -111,11 +253,32 @@ export function PreviewTable({ columns, rows, query, ariaLabel }: PreviewTablePr
         width: window.innerWidth,
         height: window.innerHeight,
       }),
-      values: existing ? new Set(existing.values) : new Set(allValues),
+      values: existing ? new Set(existing.values) : new Set(cached ?? []),
       search: "",
-      allValues,
+      allValues: cached ?? [],
+      loadingValues: !cached,
     });
-  };
+    if (cached) return;
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        const allValues = distinctColumnValues(rows, column);
+        distinctCache.current.set(column, allValues);
+        setMenu((current) => {
+          if (!current || current.column !== column) return current;
+          return {
+            ...current,
+            allValues,
+            values: current.values.size > 0 ? current.values : new Set(allValues),
+            loadingValues: false,
+          };
+        });
+      }, 0);
+    });
+  }, [rows, filters]);
+
+  const sortColumn = useCallback((column: number) => {
+    setSort((current) => nextTableSort(current, column));
+  }, []);
 
   const toggleValue = (value: string) => {
     setMenu((current) => {
@@ -151,7 +314,6 @@ export function PreviewTable({ columns, rows, query, ariaLabel }: PreviewTablePr
     setMenu(null);
   };
 
-  const filterFor = (column: number) => filters.find((filter) => filter.column === column);
   const active = activeFilterCount(filters);
   const menuValues = menu
     ? menu.allValues.filter((value) => value.toLocaleLowerCase().includes(menu.search.trim().toLocaleLowerCase()))
@@ -186,67 +348,23 @@ export function PreviewTable({ columns, rows, query, ariaLabel }: PreviewTablePr
             <col style={{ width: 47 }} />
             {widths.map((width, index) => <col key={index} style={{ width }} />)}
           </colgroup>
-          <thead ref={heading} className="sticky top-0 z-10 bg-raised">
-            <tr>
-              <th scope="col" className="h-[37px] border-b border-hairline px-2 text-start font-medium text-ink-tertiary">#</th>
-              {columns.map((column, index) => {
-                const sorted = sort?.column === index;
-                const filter = filterFor(index);
-                return (
-                  <th
-                    key={index}
-                    scope="col"
-                    aria-sort={sorted ? sort.descending ? "descending" : "ascending" : "none"}
-                    className="h-[37px] border-b border-hairline px-3 font-medium"
-                  >
-                    <div className="flex min-w-0 items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => setSort((current) => nextTableSort(current, index))}
-                        className="flex min-w-0 flex-1 items-center gap-1 text-start hover:text-ink"
-                      >
-                        <span className="min-w-0 truncate">{column || t("preview.table.column", { number: index + 1 })}</span>
-                        {sorted && (sort.descending
-                          ? <ArrowDown size={13} className="shrink-0 text-accent" />
-                          : <ArrowUp size={13} className="shrink-0 text-accent" />)}
-                      </button>
-                      <button
-                        type="button"
-                        data-filter-trigger
-                        aria-label={t("preview.table.filterColumn", { column: column || index + 1 })}
-                        title={t("preview.table.filterColumn", { column: column || index + 1 })}
-                        onClick={(event) => openMenu(index, event.currentTarget)}
-                        className="relative flex size-7 shrink-0 items-center justify-center rounded-[7px] hover:bg-raised-hover"
-                      >
-                        <Filter size={13} className={filter ? "text-accent" : "text-ink-secondary"} />
-                        {filter && <span className="absolute right-1 top-1 size-1.5 rounded-full bg-accent" />}
-                      </button>
-                    </div>
-                  </th>
-                );
-              })}
-            </tr>
-          </thead>
+          <PreviewTableHeader
+            columns={columns}
+            sort={sort}
+            filters={filters}
+            onSort={sortColumn}
+            onOpenFilter={openMenu}
+            headingRef={heading}
+          />
           <tbody>
             {before > 0 && <tr aria-hidden="true"><td colSpan={columns.length + 1} style={{ height: before, padding: 0 }} /></tr>}
             {items.map((item) => (
-              <tr
+              <PreviewTableRow
                 key={item.key}
-                data-index={item.index}
-                ref={virtual ? virtualizer.measureElement : undefined}
-                aria-rowindex={item.index + 2}
-                className={item.index % 2 ? "bg-inset/40 hover:bg-raised/60" : "hover:bg-raised/60"}
-              >
-                <td className="border-b border-hairline px-2 py-2 text-ink-tertiary tabular-nums">{item.index + 1}</td>
-                {columns.map((_, index) => {
-                  const value = rows[order[item.index]!]?.[index] ?? "";
-                  return (
-                    <td key={index} className="border-b border-hairline px-3 py-[10px] align-top">
-                      <div title={value} className="truncate">{value}</div>
-                    </td>
-                  );
-                })}
-              </tr>
+                displayIndex={item.index}
+                row={rows[order[item.index]!] ?? []}
+                columns={columns.length}
+              />
             ))}
             {after > 0 && <tr aria-hidden="true"><td colSpan={columns.length + 1} style={{ height: after, padding: 0 }} /></tr>}
           </tbody>
@@ -285,20 +403,11 @@ export function PreviewTable({ columns, rows, query, ariaLabel }: PreviewTablePr
               className="min-w-0 flex-1 bg-transparent text-[11px] text-ink outline-none placeholder:text-ink-tertiary"
             />
           </label>
-          <div className="max-h-[165px] overflow-y-auto rounded-[7px] border border-hairline">
-            {menuValues.map((value) => (
-              <label key={value} className="flex cursor-pointer items-center gap-2 px-2 py-1.5 hover:bg-raised-hover">
-                <input
-                  type="checkbox"
-                  checked={menu.values.has(value)}
-                  onChange={() => toggleValue(value)}
-                  className="size-3 accent-accent"
-                />
-                <span className="min-w-0 truncate">{value || t("preview.table.emptyValue")}</span>
-              </label>
-            ))}
-            {menuValues.length === 0 && <p className="px-2 py-3 text-ink-secondary">{t("preview.table.noValues")}</p>}
-          </div>
+          {menu.loadingValues
+            ? <p className="px-2 py-3 text-ink-secondary">{t("preview.table.loadingValues")}</p>
+            : menuValues.length > 0
+              ? <FilterValueList values={menuValues} selected={menu.values} onToggle={toggleValue} />
+              : <p className="px-2 py-3 text-ink-secondary">{t("preview.table.noValues")}</p>}
           <div className="flex items-center justify-between gap-2 pt-1">
             <button type="button" onClick={clearColumn} className="rounded-[7px] px-2 py-1.5 text-accent hover:bg-raised-hover">{t("preview.table.clear")}</button>
             <button type="button" onClick={applyFilter} className="rounded-[7px] bg-accent px-3 py-1.5 font-medium text-accent-ink hover:bg-accent/80">{t("preview.table.apply")}</button>

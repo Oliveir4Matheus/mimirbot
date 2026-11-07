@@ -6668,5 +6668,6 @@
   "preview.annotation.thumbnail": "Selected area capture",
   "preview.annotation.send": "Send to agent",
   "preview.annotation.sendFailed": "Could not send the annotation. Try again.",
-  "preview.openSide": "Open on right side"
+  "preview.openSide": "Open on right side",
+  "preview.table.loadingValues": "Loading values…"
 }
