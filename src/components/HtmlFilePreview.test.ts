@@ -46,16 +46,16 @@ describe("HtmlPreviewFrame", () => {
 });
 
 describe("file chip preview button", () => {
-  it("offers a page preview for HTML and keeps the table preview for CSV", () => {
-    expect(chip("report.html")).toContain("Preview page: report.html");
+  it("opens the unified preview for HTML and CSV", () => {
+    expect(chip("report.html")).toContain("Open preview: report.html");
     expect(chip("report.html")).not.toContain("Preview table:");
-    expect(chip("data.csv")).toContain("Preview table: data.csv");
-    expect(chip("notes.txt")).not.toMatch(/Preview (page|table):/);
+    expect(chip("data.csv")).toContain("Open preview: data.csv");
+    expect(chip("notes.txt")).not.toContain("Open preview:");
   });
 
   it("offers no preview for files outside a message or not shared privately", () => {
-    expect(chip("report.html", {}, false)).not.toContain("Preview page:");
-    expect(chip("report.html", { private: false })).not.toContain("Preview page:");
+    expect(chip("report.html", {}, false)).not.toContain("Open preview:");
+    expect(chip("report.html", { private: false })).not.toContain("Open preview:");
   });
 });
 
