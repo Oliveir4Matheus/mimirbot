@@ -542,15 +542,23 @@ function LocalFileLink({ filePath, name, children, message }: { filePath: string
 
   return (
     <span dir="ltr" className="inline-flex flex-wrap items-center gap-x-1.5 [unicode-bidi:isolate]">
-      <FilePreviewButton path={filePath} name={name ?? fileName(filePath)} message={message} />
+      <FilePreviewButton
+        path={filePath}
+        name={name ?? fileName(filePath)}
+        message={message}
+        showIcon={false}
+        className="inline-flex items-center gap-1 break-words text-start text-accent underline decoration-accent/40 hover:decoration-accent"
+      >
+        {children}
+      </FilePreviewButton>
       <button
         type="button"
         onClick={() => void save.save()}
         disabled={save.state === "saving"}
         title="Save a copy"
+        aria-label={t("attach.saveAria", { name: name ?? fileName(filePath) })}
         className="inline-flex items-center gap-1 break-words text-start text-accent underline decoration-accent/40 hover:decoration-accent disabled:cursor-wait"
       >
-        {children}
         {save.state === "saving" ? (
           <LoaderCircle size={12} className="shrink-0 animate-spin" aria-hidden="true" />
         ) : save.state === "saved" ? (

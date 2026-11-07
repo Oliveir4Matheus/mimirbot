@@ -22,13 +22,22 @@ export interface RichTableProps {
 export function TableDialog({ title, onClose, children, returnFocus }: { title: string; onClose: () => void; children: ReactNode; returnFocus: HTMLElement | null }) {
   const ref = useRef<HTMLDialogElement>(null);
   const id = useId();
+  const closing = useRef(false);
   useEffect(() => {
     const dialog = ref.current!;
+    closing.current = false;
     dialog.showModal();
-    return () => { dialog.close(); if (returnFocus?.isConnected) returnFocus.focus(); };
+    return () => {
+      closing.current = true;
+      if (dialog.open) dialog.close();
+      if (returnFocus?.isConnected) returnFocus.focus();
+    };
   }, [returnFocus]);
+  const requestClose = () => {
+    if (!closing.current) onClose();
+  };
   return createPortal(
-    <dialog ref={ref} aria-labelledby={id} onCancel={onClose} onClose={onClose}
+    <dialog ref={ref} aria-labelledby={id} onCancel={requestClose}
       onKeyDown={(event) => { if (event.key === "Escape") event.stopPropagation(); }}
       className="m-auto flex max-h-[94dvh] w-[min(96vw,1400px)] max-w-none flex-col overflow-hidden rounded-2xl border border-hairline bg-panel p-0 text-ink shadow-2xl backdrop:bg-black/55">
       <header className="flex shrink-0 items-center justify-between gap-3 border-b border-hairline/40 px-4 py-3">

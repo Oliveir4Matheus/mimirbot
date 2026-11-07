@@ -921,6 +921,16 @@ export function AttachedFileChip({ file, message, linked = false, compact = fals
       className={cn("max-w-[280px] overflow-hidden rounded-lg border border-hairline/40 bg-inset/70 text-[12px] text-ink-secondary", className)}
     >
       <div className="flex items-center pe-1">
+        <FilePreviewButton
+          path={file.path}
+          name={file.name}
+          message={message}
+          showIcon={false}
+          className="flex min-h-10 min-w-0 flex-1 items-center gap-2 px-2.5 py-2 text-left transition-colors hover:bg-raised/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/60"
+        >
+          <FileText size={14} className="shrink-0" aria-hidden="true" />
+          <span className="min-w-0 flex-1 truncate text-ink">{file.name}</span>
+        </FilePreviewButton>
         <button
           type="button"
           onClick={() => void save.save()}
@@ -930,10 +940,9 @@ export function AttachedFileChip({ file, message, linked = false, compact = fals
               ? t("attach.retrySaveAria", { name: file.name })
               : t("attach.saveAria", { name: file.name })
           }
-          className="flex min-h-10 min-w-0 flex-1 items-center gap-2 px-2.5 py-2 text-left transition-colors hover:bg-raised/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/60 disabled:cursor-wait disabled:hover:bg-transparent"
+          title={t("attach.download")}
+          className="table-action shrink-0 disabled:cursor-wait"
         >
-          <FileText size={14} className="shrink-0" aria-hidden="true" />
-          <span className="min-w-0 flex-1 truncate text-ink">{file.name}</span>
           {save.state === "saving" ? (
             <LoaderCircle size={13} className="shrink-0 animate-spin" />
           ) : save.state === "saved" ? (
@@ -944,7 +953,6 @@ export function AttachedFileChip({ file, message, linked = false, compact = fals
             <Download size={13} className="shrink-0" />
           )}
         </button>
-        <FilePreviewButton path={file.path} name={file.name} message={message} />
       </div>
       {save.state !== "idle" && (
         <div
@@ -997,15 +1005,24 @@ function CompactFileChip({ file, message, linked, save, className }: {
         title={save.state === "saved" && save.savedTo ? t("attach.savedTo", { path: save.savedTo }) : file.name}
         className={cn(FILE_CHIP, "file-chip pe-0.5", className)}
       >
+        <FilePreviewButton
+          path={file.path}
+          name={file.name}
+          message={message}
+          showIcon={false}
+          className="inline-flex h-7 min-w-0 items-center gap-1.5 rounded-full ps-2.5 pe-2 transition-colors hover:bg-ink/[0.06] hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+        >
+          <FileText size={14} strokeWidth={1.75} className="shrink-0" aria-hidden="true" />
+          {name}
+        </FilePreviewButton>
         <button
           type="button"
           onClick={() => void save.save()}
           disabled={save.state === "saving"}
           aria-label={retryable ? t("attach.retrySaveAria", { name: file.name }) : t("attach.saveAria", { name: file.name })}
-          className="inline-flex h-7 min-w-0 items-center gap-1.5 rounded-full ps-2.5 pe-2 transition-colors hover:bg-ink/[0.06] hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-wait"
+          title={t("attach.download")}
+          className="table-action shrink-0 disabled:cursor-wait"
         >
-          <FileText size={14} strokeWidth={1.75} className="shrink-0" aria-hidden="true" />
-          {name}
           {save.state === "saving" ? (
             <LoaderCircle size={13} className="shrink-0 animate-spin" aria-hidden="true" />
           ) : save.state === "saved" ? (
@@ -1016,7 +1033,6 @@ function CompactFileChip({ file, message, linked, save, className }: {
             <Download size={13} strokeWidth={1.75} className="shrink-0" aria-hidden="true" />
           )}
         </button>
-        <FilePreviewButton path={file.path} name={file.name} message={message} />
       </span>
       {save.state !== "idle" && save.state !== "saved" && (
         <span role={failed ? "alert" : "status"} className={cn("px-2.5 text-[11.5px]", failed ? "text-danger" : "text-ink-secondary")}>
