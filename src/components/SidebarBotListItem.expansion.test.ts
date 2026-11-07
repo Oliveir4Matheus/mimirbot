@@ -61,11 +61,12 @@ function expectSoleRow(markup: string) {
 beforeEach(() => { fixture.slots = []; fixture.state.revealThread = null; forgetSearchDisclosuresForTests(); });
 
 describe("bot row expansion follows the visible thread tree", () => {
-  it("restores the sole conversation preview after clearing a thread search", () => {
+  it("restores the sole conversation's row after clearing a thread search", () => {
     expect(render(bot, "Current")).toContain('data-sidebar-thread-row="current"');
     const markup = render();
     expectSoleRow(markup);
-    expect(markup).toContain("The latest reply");
+    expect(markup).not.toContain("The latest reply");
+    expect(markup).toContain("tabular-nums");
   });
 
   it("puts a list back the way it was when the search that opened it is cleared (MOCA-293)", () => {
@@ -94,13 +95,13 @@ describe("bot row expansion follows the visible thread tree", () => {
     expect(ownerTag(expanded)).not.toContain('aria-current="page"');
     const sole = render();
     expectSoleRow(sole);
-    expect(sole).toContain("The latest reply");
+    expect(sole).toContain("tabular-nums");
   });
 
   it.each([
-    [{ busy: true }, '<span dir="auto" data-sidebar-working-phrase="" class="truncate">Thinking</span>'],
-    [{ activity: "waiting-on-you" }, '<span dir="auto" class="truncate">Waiting for you…'],
-    [{ waitingForTeammates: true }, '<span dir="auto" class="truncate">Waiting on a teammate…'],
+    [{ busy: true }, 'data-testid="working-dots"'],
+    [{ activity: "waiting-on-you" }, 'data-testid="waiting-dot"'],
+    [{ waitingForTeammates: true }, 'data-testid="teammate-wait-dot"'],
   ] as const)("keeps sole-thread activity visible after a reveal (%j)", (status, label) => {
     fixture.state.revealThread = { threadId: "current", nonce: 1 };
     render({ ...bot, ...status });
