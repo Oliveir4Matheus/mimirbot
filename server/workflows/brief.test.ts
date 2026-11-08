@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import type { WorkflowStep } from "../../shared/workflow.ts";
+import type { BotWorkflowStep } from "../../shared/workflow.ts";
 import { stepBrief, stepThreadTitle } from "./brief.ts";
 
-const step = (overrides: Partial<WorkflowStep> = {}): WorkflowStep => ({
+const step = (overrides: Partial<BotWorkflowStep> = {}): BotWorkflowStep => ({
   id: "revisar",
+  kind: "bot",
   name: "Review the numbers",
   botId: "bot-reviewer",
   instructions: "Check the numbers and answer with a decision.",

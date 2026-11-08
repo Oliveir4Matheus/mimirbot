@@ -61,6 +61,29 @@ export interface WorkflowRunPaths {
   runsDir: string;
 }
 
+/** The Workflow's own folder: `scripts/` and `runs/` live side by side. */
+export function workflowFolderPaths(input: {
+  department: string;
+  workflowId: string;
+  home?: string;
+  env?: NodeJS.ProcessEnv;
+}): Omit<WorkflowRunPaths, "runDir"> {
+  if (!isWorkflowId(input.workflowId)) throw new Error(`invalid workflow id ${JSON.stringify(input.workflowId)}`);
+  const departmentDir = join(workflowsRoot({ home: input.home, env: input.env }), departmentFolder(input.department));
+  const workflowDir = join(departmentDir, "workflows", input.workflowId.toLowerCase());
+  const runsDir = join(workflowDir, "runs");
+  return { departmentDir, workflowDir, runsDir };
+}
+
+export function workflowScriptsDir(input: {
+  department: string;
+  workflowId: string;
+  home?: string;
+  env?: NodeJS.ProcessEnv;
+}): string {
+  return join(workflowFolderPaths(input).workflowDir, "scripts");
+}
+
 export function workflowRunPaths(input: {
   department: string;
   workflowId: string;
@@ -68,12 +91,9 @@ export function workflowRunPaths(input: {
   home?: string;
   env?: NodeJS.ProcessEnv;
 }): WorkflowRunPaths {
-  if (!isWorkflowId(input.workflowId)) throw new Error(`invalid workflow id ${JSON.stringify(input.workflowId)}`);
   if (!isWorkflowRunId(input.runId)) throw new Error(`invalid workflow run id ${JSON.stringify(input.runId)}`);
-  const departmentDir = join(workflowsRoot({ home: input.home, env: input.env }), departmentFolder(input.department));
-  const workflowDir = join(departmentDir, "workflows", input.workflowId.toLowerCase());
-  const runsDir = join(workflowDir, "runs");
-  return { departmentDir, workflowDir, runsDir, runDir: join(runsDir, input.runId) };
+  const paths = workflowFolderPaths(input);
+  return { ...paths, runDir: join(paths.runsDir, input.runId) };
 }
 
 /** D14: one folder per step, numbered from 1 in workflow order. */

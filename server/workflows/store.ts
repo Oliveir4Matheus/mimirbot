@@ -1,11 +1,14 @@
 // Definitions and runs on disk. `workflows.json` lives in the app's data dir,
 // so a workspace backup carries the recipes; each run's `run.json` lives in
 // its own folder under ~/MimirBot and is the only state the engine trusts.
-import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync } from "node:fs";
+import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, rmSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 
 import {
   WORKFLOW_RETENTION_DEFAULT_DAYS,
+  WORKFLOW_SCRIPT_MAX_BYTES,
+  isScriptStep,
+  isWorkflowScriptName,
   workflowDefinitionSchema,
   workflowRunSchema,
   type WorkflowDefinition,
@@ -13,8 +16,10 @@ import {
 } from "../../shared/workflow.ts";
 import { writeFileAtomic } from "../atomic.ts";
 import { prepareRunDirectories } from "./files.ts";
-import { isWorkflowId, isWorkflowRunId, newWorkflowRunId, workflowRunPaths, workflowsRoot, stepDir } from "./paths.ts";
-import { createRun } from "./state.ts";
+import {
+  isWorkflowId, isWorkflowRunId, newWorkflowRunId, workflowRunPaths, workflowScriptsDir, workflowsRoot, stepDir,
+} from "./paths.ts";
+import { createRun, isActiveRun } from "./state.ts";
 
 export interface WorkflowStoreOptions {
   dataDir: string;
@@ -25,6 +30,21 @@ export interface WorkflowStoreOptions {
 }
 
 export type WorkflowSave = { ok: true; workflow: WorkflowDefinition } | { ok: false; error: string };
+
+/** A script file a Workflow's `scripts/` folder holds. */
+export interface WorkflowScriptInfo {
+  name: string;
+  bytes: number;
+  updatedAt: number;
+}
+
+export interface WorkflowScript extends WorkflowScriptInfo {
+  content: string;
+}
+
+export type WorkflowScriptSave =
+  | { ok: true; script: WorkflowScriptInfo }
+  | { ok: false; error: string };
 
 export interface WorkflowRunFilter {
   workflowId?: string;
@@ -48,6 +68,12 @@ export interface WorkflowStore {
   runDir(run: WorkflowRun): string;
   stepFolder(run: WorkflowRun, index: number): string;
   retentionDays(workflowId: string): number;
+  /** The `scripts/` folder of the Workflow's latest version, or undefined when the Workflow is gone. */
+  scriptsFolder(workflowId: string): string | undefined;
+  readScript(workflowId: string, name: string): WorkflowScript | undefined;
+  writeScript(workflowId: string, name: string, content: string): WorkflowScriptSave;
+  listScripts(workflowId: string): WorkflowScriptInfo[];
+  hasActiveRuns(workflowId: string): boolean;
 }
 
 const RUNS_SHOWN = 200;
@@ -101,6 +127,24 @@ export function createWorkflowStore(options: WorkflowStoreOptions): WorkflowStor
   const latestOf = (id: string): WorkflowDefinition | undefined => versionsOf(id)
     .reduce<WorkflowDefinition | undefined>((best, candidate) => !best || candidate.version > best.version ? candidate : best, undefined);
 
+  const scriptsDirOf = (id: string): string | undefined => {
+    const definition = latestOf(id);
+    if (!definition) return undefined;
+    return workflowScriptsDir({ department: definition.department, workflowId: definition.id, home, env });
+  };
+
+  const scriptFile = (workflowId: string, name: string): string | undefined => {
+    if (!isWorkflowScriptName(name)) return undefined;
+    const dir = scriptsDirOf(workflowId);
+    return dir ? join(dir, name) : undefined;
+  };
+
+  const scriptInfo = (name: string, info: { size: number; mtimeMs: number }): WorkflowScriptInfo => ({
+    name,
+    bytes: info.size,
+    updatedAt: Math.floor(info.mtimeMs),
+  });
+
   const pathsOf = (run: Pick<WorkflowRun, "id" | "workflowId" | "department">) =>
     workflowRunPaths({ department: run.department, workflowId: run.workflowId, runId: run.id, home, env });
 
@@ -142,7 +186,7 @@ export function createWorkflowStore(options: WorkflowStoreOptions): WorkflowStor
     writeFileAtomic(join(dir, "run.json"), JSON.stringify(parsed, null, 2), { mode: 0o600 });
   };
 
-  return {
+  const store: WorkflowStore = {
     file,
     workflows() {
       const latest = new Map<string, WorkflowDefinition>();
@@ -175,6 +219,19 @@ export function createWorkflowStore(options: WorkflowStoreOptions): WorkflowStor
         return { ok: false, error: parsed.error.issues.map((issue) => `${issue.path.join(".") || "workflow"}: ${issue.message}`).join("; ") };
       }
       const id = parsed.data.id.toLowerCase();
+      const invalidScript = parsed.data.steps.find((step) => {
+        if (!isScriptStep(step)) return false;
+        const file = join(workflowScriptsDir({ department: parsed.data.department, workflowId: id, home, env }), step.run);
+        try {
+          const info = lstatSync(file);
+          return info.isSymbolicLink() || !info.isFile();
+        } catch {
+          return true;
+        }
+      });
+      if (invalidScript && isScriptStep(invalidScript)) {
+        return { ok: false, error: `script ${JSON.stringify(invalidScript.run)} is not in the Workflow's scripts folder` };
+      }
       const existing = latestOf(id);
       const normalized: WorkflowDefinition = { ...parsed.data, id };
       if (existing && comparable(existing) === comparable(normalized)) return { ok: true, workflow: existing };
@@ -243,5 +300,55 @@ export function createWorkflowStore(options: WorkflowStoreOptions): WorkflowStor
     retentionDays(workflowId) {
       return latestOf(workflowId)?.retentionDays ?? WORKFLOW_RETENTION_DEFAULT_DAYS;
     },
+    scriptsFolder(workflowId) {
+      return isWorkflowId(workflowId) ? scriptsDirOf(workflowId.toLowerCase()) : undefined;
+    },
+    readScript(workflowId, name) {
+      if (!isWorkflowId(workflowId)) return undefined;
+      const file = scriptFile(workflowId.toLowerCase(), name);
+      if (!file) return undefined;
+      try {
+        const info = lstatSync(file);
+        if (info.isSymbolicLink() || !info.isFile()) return undefined;
+        const content = readFileSync(file, "utf8");
+        return { ...scriptInfo(name, info), content };
+      } catch {
+        return undefined;
+      }
+    },
+    writeScript(workflowId, name, content) {
+      if (!isWorkflowId(workflowId)) return { ok: false, error: "the Workflow id must be a uuid" };
+      if (!isWorkflowScriptName(name)) return { ok: false, error: "a script name must be a flat .mjs or .js file name" };
+      const dir = scriptsDirOf(workflowId.toLowerCase());
+      if (!dir) return { ok: false, error: "no such workflow" };
+      if (Buffer.byteLength(content, "utf8") > WORKFLOW_SCRIPT_MAX_BYTES) {
+        return { ok: false, error: `a script may be at most ${WORKFLOW_SCRIPT_MAX_BYTES / 1024}KB` };
+      }
+      const file = join(dir, name);
+      try {
+        mkdirSync(dir, { recursive: true, mode: 0o700 });
+        writeFileAtomic(file, content, { mode: 0o600 });
+        return { ok: true, script: scriptInfo(name, lstatSync(file)) };
+      } catch (error) {
+        return { ok: false, error: `could not write ${file}: ${reason(error)}` };
+      }
+    },
+    listScripts(workflowId) {
+      if (!isWorkflowId(workflowId)) return [];
+      const dir = scriptsDirOf(workflowId.toLowerCase());
+      if (!dir) return [];
+      try {
+        return readdirSync(dir, { withFileTypes: true })
+          .filter((entry) => entry.isFile() && isWorkflowScriptName(entry.name))
+          .map((entry) => scriptInfo(entry.name, lstatSync(join(dir, entry.name))))
+          .sort((left, right) => left.name.localeCompare(right.name));
+      } catch {
+        return [];
+      }
+    },
+    hasActiveRuns(workflowId) {
+      return store.listRuns({ workflowId, limit: Number.POSITIVE_INFINITY }).some((run) => isActiveRun(run.status));
+    },
   };
+  return store;
 }

@@ -6850,5 +6850,11 @@
   "workflows.time.now": "just now",
   "workflows.time.yesterday": "yesterday",
   "workflows.title": "Workflows",
-  "workflows.error.notFound": "This item no longer exists."
+  "workflows.error.notFound": "This item no longer exists.",
+  "workflows.detail.script": "Script · {file}",
+  "workflows.step.script": "SCRIPT",
+  "workflows.step.scriptRuntime": "Node · stops after {seconds}s",
+  "workflows.step.flow": "FLOW",
+  "workflows.step.next": "Next",
+  "workflows.step.onFailure": "On failure"
 }

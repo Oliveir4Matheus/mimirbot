@@ -1,5 +1,5 @@
 import { Fragment } from "react";
-import { ChevronRight, FileText } from "lucide-react";
+import { ChevronRight, Code, FileText } from "lucide-react";
 
 import type { WorkflowDefinition } from "../../../shared/workflow";
 import { cn } from "@/lib/cn";
@@ -48,7 +48,7 @@ export function WorkflowSteps({ workflow, botName, activeStep, selectedStep, onS
       </div>
       <div className="mx-auto flex w-full max-w-[375px] flex-col items-center">
         {workflow.steps.map((step, index) => {
-          const name = botName(step.botId);
+          const name = step.kind === "bot" ? botName(step.botId) : undefined;
           const running = activeStep === index;
           const selected = selectedStep === index;
           const outputs = step.outputs.length === 1
@@ -72,8 +72,15 @@ export function WorkflowSteps({ workflow, botName, activeStep, selectedStep, onS
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-[12px] font-semibold text-[#202124]">{step.name}</span>
                   <span className="mt-1 flex items-center gap-1.5 text-[10.5px] text-[#808287]">
-                    <BotAvatar name={name} />
-                    <span className="truncate">{t("workflows.detail.bot", { name })} · {outputs}</span>
+                    {step.kind === "bot"
+                      ? <BotAvatar name={name!} />
+                      : <Code size={12} className="shrink-0" aria-hidden="true" />}
+                    <span className="truncate">
+                      {step.kind === "bot"
+                        ? t("workflows.detail.bot", { name: name! })
+                        : t("workflows.detail.script", { file: step.run })}
+                      {" · "}{outputs}
+                    </span>
                   </span>
                 </span>
                 {running && (

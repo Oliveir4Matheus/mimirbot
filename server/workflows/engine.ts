@@ -1,14 +1,21 @@
 // The engine is the only code that decides what runs next. It copies a step's
-// declared inputs, opens one thread with cwd = step-N, waits for that turn's
-// single onSettled, verifies the declared outputs (and `require`), and only
-// then moves on. A run advances one step at a time; a step that fails stops it.
-import { requireMismatch, type WorkflowRun } from "../../shared/workflow.ts";
+// declared inputs, opens one thread with cwd = step-N (or runs the step's
+// script), waits for that turn's single onSettled, verifies the declared
+// outputs (and `require`), and only then moves on. A run advances one step at
+// a time; a step that fails stops the run unless the Workflow declared an
+// `onFailure` path. A back edge is a repeat, capped by the visit limit.
+import { lstatSync } from "node:fs";
+import { join } from "node:path";
+
+import { requireMismatch, WORKFLOW_STEP_VISIT_MAX, type WorkflowDefinition, type WorkflowRun, type WorkflowStep } from "../../shared/workflow.ts";
 import type { HostTurnResult } from "../coordinator.ts";
 import { stepBrief, stepThreadTitle } from "./brief.ts";
-import { copyStepInputs, verifyStepOutputs } from "./files.ts";
-import { stepOutputDir } from "./paths.ts";
+import { copyStepInputs, resetStepFolders, verifyStepOutputs, type OutputVerification } from "./files.ts";
+import { failureStepIndex, nextStepIndex } from "./flow.ts";
+import { stepInputDir, stepOutputDir } from "./paths.ts";
+import { runWorkflowScript, type WorkflowScriptHandle } from "./script.ts";
 import {
-  beginRun, beginStep, cancelRun, completeStep, failRun, failStep, isTerminalRun, pauseRun, resumeRun, type RunTransition,
+  beginRun, beginStep, cancelRun, completeStep, failRun, failStep, failStepTo, isTerminalRun, pauseRun, resumeRun, type RunTransition,
 } from "./state.ts";
 import type { WorkflowStore } from "./store.ts";
 
@@ -63,6 +70,8 @@ export function createWorkflowEngine(deps: WorkflowEngineDeps): WorkflowEngine {
   const stepThreads = new Map<string, { runId: string; index: number }>();
   /** The last turn reported per step conversation: the host settles a turn more than once, and only the first is news. */
   const reportedTurns = new Map<string, string>();
+  /** Script processes a live run owns, so a cancel can stop the child. */
+  const scripts = new Map<string, WorkflowScriptHandle>();
 
   const enqueue = (runId: string, task: () => Promise<void>): Promise<void> => {
     const previous = chains.get(runId) ?? Promise.resolve();
@@ -109,6 +118,37 @@ export function createWorkflowEngine(deps: WorkflowEngineDeps): WorkflowEngine {
     };
   };
 
+  /** A verified failure stops the run, or follows the step's `onFailure` edge. */
+  const failOrRoute = (run: WorkflowRun, index: number, error: string, definition: WorkflowDefinition): void => {
+    const target = failureStepIndex(definition.steps, index);
+    if (target === null) {
+      apply(failStep(run, index, error, now()));
+      return;
+    }
+    const moved = apply(failStepTo(run, index, error, target, now()));
+    if (moved) void enqueue(run.id, () => advance(run.id));
+  };
+
+  /** The step delivered: check `require`, pick the declared next step and complete it. */
+  const passStep = (
+    run: WorkflowRun,
+    index: number,
+    step: WorkflowStep,
+    definition: WorkflowDefinition,
+    verification: Extract<OutputVerification, { ok: true }>,
+  ): void => {
+    if (step.require !== undefined) {
+      const mismatch = requireMismatch(verification.result, step.require);
+      if (mismatch) {
+        failOrRoute(run, index, resultReason(verification.result) ?? mismatch, definition);
+        return;
+      }
+    }
+    const target = nextStepIndex(definition.steps, index, verification.result);
+    const completed = apply(completeStep(run, index, { verified: verification.verified, result: verification.result }, now(), target));
+    if (completed && !isTerminalRun(completed.status)) void enqueue(run.id, () => advance(run.id));
+  };
+
   /** Reads the step's files, or parks the run while a card the step left open has no answer. */
   const finishStep = (
     run: WorkflowRun,
@@ -129,7 +169,7 @@ export function createWorkflowEngine(deps: WorkflowEngineDeps): WorkflowEngine {
       return;
     }
     if (!outcome.ok) {
-      apply(failStep(run, index, outcome.text.trim() || "the step's turn failed", now()));
+      failOrRoute(run, index, outcome.text.trim() || "the step's turn failed", definition);
       return;
     }
     const reported = outcome.cards
@@ -142,18 +182,66 @@ export function createWorkflowEngine(deps: WorkflowEngineDeps): WorkflowEngine {
     }
     const verification = verifyStepOutputs(stepOutputDir(deps.store.runDir(run), index + 1), step.outputs, step.result);
     if (!verification.ok) {
-      apply(failStep(run, index, verification.error, now()));
+      failOrRoute(run, index, verification.error, definition);
       return;
     }
-    if (step.require !== undefined) {
-      const mismatch = requireMismatch(verification.result, step.require);
-      if (mismatch) {
-        apply(failStep(run, index, resultReason(verification.result) ?? mismatch, now()));
-        return;
+    passStep(run, index, step, definition, verification);
+  };
+
+  /** Runs a script step's file and then verifies it exactly like a bot step's output. */
+  const runScriptStep = async (
+    run: WorkflowRun,
+    index: number,
+    step: Extract<WorkflowStep, { kind: "script" }>,
+    definition: WorkflowDefinition,
+  ): Promise<void> => {
+    const scriptsFolder = deps.store.scriptsFolder(run.workflowId);
+    const scriptPath = scriptsFolder ? join(scriptsFolder, step.run) : undefined;
+    let plain = false;
+    if (scriptPath) {
+      try {
+        const info = lstatSync(scriptPath);
+        plain = !info.isSymbolicLink() && info.isFile();
+      } catch {
+        plain = false;
       }
     }
-    const completed = apply(completeStep(run, index, { verified: verification.verified, result: verification.result }, now()));
-    if (completed && !isTerminalRun(completed.status)) void enqueue(run.id, () => advance(run.id));
+    if (!scriptPath || !plain) {
+      failOrRoute(run, index, `script ${JSON.stringify(step.run)} is not in the Workflow's scripts folder`, definition);
+      return;
+    }
+    const started = apply(beginStep(run, index, {}, now()));
+    if (!started) return;
+    if (deps.store.readRun(run.id)?.status !== "running") return;
+    const runDir = deps.store.runDir(run);
+    const handle = runWorkflowScript({
+      scriptPath,
+      stepDir: deps.store.stepFolder(run, index),
+      inputDir: stepInputDir(runDir, index + 1),
+      outputDir: stepOutputDir(runDir, index + 1),
+      timeoutMs: step.timeoutMs,
+      runId: run.id,
+      stepId: step.id,
+    });
+    scripts.set(run.id, handle);
+    let outcome;
+    try {
+      outcome = await handle.promise;
+    } finally {
+      scripts.delete(run.id);
+    }
+    const current = deps.store.readRun(run.id);
+    if (!current || current.status !== "running") return;
+    if (!outcome.ok) {
+      failOrRoute(current, index, outcome.error, definition);
+      return;
+    }
+    const verification = verifyStepOutputs(stepOutputDir(runDir, index + 1), step.outputs, step.result);
+    if (!verification.ok) {
+      failOrRoute(current, index, verification.error, definition);
+      return;
+    }
+    passStep(current, index, step, definition, verification);
   };
 
   const settle = async (runId: string, index: number, outcome: HostTurnResult): Promise<void> => {
@@ -184,9 +272,18 @@ export function createWorkflowEngine(deps: WorkflowEngineDeps): WorkflowEngine {
       return;
     }
     if (stepState.status !== "pending") return;
+    if (stepState.attempts >= WORKFLOW_STEP_VISIT_MAX) {
+      apply(failStep(run, index, `step ${JSON.stringify(step.id)} reached the visit limit of ${WORKFLOW_STEP_VISIT_MAX}`, now()));
+      return;
+    }
+    if (stepState.attempts > 0) resetStepFolders(deps.store.runDir(run), index + 1);
     const copied = copyStepInputs(deps.store.runDir(run), index, step, definition.steps);
     if (!copied.ok) {
-      apply(failStep(run, index, copied.error, now()));
+      failOrRoute(run, index, copied.error, definition);
+      return;
+    }
+    if (step.kind === "script") {
+      await runScriptStep(run, index, step, definition);
       return;
     }
     const threadId = deps.createThread({
@@ -271,9 +368,11 @@ export function createWorkflowEngine(deps: WorkflowEngineDeps): WorkflowEngine {
       const cancelled = cancelRun(run, reason, now());
       if (!cancelled.ok) return cancelled;
       apply(cancelled);
+      scripts.get(runId)?.kill();
       const current = run.steps[run.currentStep];
       if (current?.threadId) {
-        const botId = deps.store.workflow(run.workflowId, run.workflowVersion)?.steps[run.currentStep]?.botId;
+        const currentStep = deps.store.workflow(run.workflowId, run.workflowVersion)?.steps[run.currentStep];
+        const botId = currentStep?.kind === "bot" ? currentStep.botId : undefined;
         if (botId) {
           try {
             deps.interrupt?.(botId, current.threadId);

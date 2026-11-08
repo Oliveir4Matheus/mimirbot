@@ -180,3 +180,57 @@ describe("a bot's routes", () => {
     expect((state.body as { run: { status: string } }).run.status).toBe("cancelled");
   });
 });
+
+describe("Workflow scripts", () => {
+  const scriptStep = { id: "validar", kind: "script", name: "Validate", run: "validar.mjs", outputs: [{ path: "result.json" }], result: "result.json" } as const;
+
+  it("uploads, lists and reads a script", async () => {
+    const { call, state, definition: def } = harness();
+    await call("PUT", `/api/workflows/${def.id}/scripts/validar.mjs`, { content: "export {};\n" });
+    expect(state.status).toBe(200);
+    expect(state.body).toMatchObject({ script: { name: "validar.mjs", bytes: 11 } });
+
+    await call("GET", `/api/workflows/${def.id}/scripts/validar.mjs`);
+    expect(state.status).toBe(200);
+    expect((state.body as { script: { content: string } }).script.content).toBe("export {};\n");
+
+    await call("GET", `/api/workflows/${def.id}/scripts`);
+    expect(state.status).toBe(200);
+    expect((state.body as { scripts: unknown[] }).scripts).toHaveLength(1);
+  });
+
+  it("refuses a name that is a path or another extension", async () => {
+    const { call, state, definition: def } = harness();
+    for (const name of ["../validar.mjs", "validar.sh", "sub%2Fvalidar.mjs"]) {
+      await call("PUT", `/api/workflows/${def.id}/scripts/${name}`, { content: "x" });
+      expect(state.status).toBe(400);
+    }
+  });
+
+  it("refuses a script for a Workflow that does not exist", async () => {
+    const { call, state } = harness();
+    await call("PUT", "/api/workflows/11111111-2222-4333-8444-555555555555/scripts/validar.mjs", { content: "x" });
+    expect(state.status).toBe(404);
+  });
+
+  it("refuses to change a script while a run is active", async () => {
+    const { call, state, definition: def, store } = harness();
+    const run = store.createRun(def);
+    store.writeRun({ ...run, status: "running", startedAt: NOW });
+    await call("PUT", `/api/workflows/${def.id}/scripts/validar.mjs`, { content: "x" });
+    expect(state.status).toBe(409);
+  });
+
+  it("refuses to save a Workflow whose script is not uploaded yet", async () => {
+    const { call, state, definition: def } = harness();
+    const body = { ...def, steps: [...def.steps, scriptStep] };
+    await call("PUT", `/api/workflows/${def.id}`, body);
+    expect(state.status).toBe(400);
+    expect((state.body as { error: string }).error).toContain("scripts folder");
+
+    await call("PUT", `/api/workflows/${def.id}/scripts/validar.mjs`, { content: "export {};\n" });
+    await call("PUT", `/api/workflows/${def.id}`, body);
+    expect(state.status).toBe(200);
+    expect((state.body as { workflow: { version: number } }).workflow.version).toBe(2);
+  });
+});

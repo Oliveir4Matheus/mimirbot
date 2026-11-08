@@ -5,6 +5,7 @@
 import type { ServerResponse } from "node:http";
 
 import type { json as sendJson } from "../harness/http.ts";
+import { isWorkflowScriptName } from "../../shared/workflow.ts";
 import type { WorkflowEngine } from "../workflows/engine.ts";
 import { isWorkflowId } from "../workflows/paths.ts";
 import { isActiveRun } from "../workflows/state.ts";
@@ -102,6 +103,32 @@ export function createWorkflowRoutes(deps: WorkflowRoutesDeps): RouteHandler {
 
     const id = parts[0]!;
     if (!isWorkflowId(id)) return void json(res, 400, { error: "the Workflow id must be a uuid" });
+    if (parts[1] === "scripts") {
+      if (!deps.store.workflow(id)) return void json(res, 404, { error: "no such workflow" });
+      if (parts.length === 2 && method === "GET") {
+        return void json(res, 200, { scripts: deps.store.listScripts(id) });
+      }
+      const name = parts[2];
+      if (!name || parts.length !== 3) return void json(res, 400, { error: "give a script name" });
+      if (!isWorkflowScriptName(name)) return void json(res, 400, { error: "a script name must be a flat .mjs or .js file name" });
+      if (method === "GET") {
+        const script = deps.store.readScript(id, name);
+        return script ? void json(res, 200, { script }) : void json(res, 404, { error: "no such script" });
+      }
+      if (method === "PUT") {
+        if (deps.store.hasActiveRuns(id)) {
+          return void json(res, 409, { error: "this Workflow has active runs; cancel them before changing a script" });
+        }
+        const body = await readBody(req);
+        if (!isRecord(body) || typeof body.content !== "string" || body.content.length === 0) {
+          return void json(res, 400, { error: "a script body needs a non-empty content string" });
+        }
+        const saved = deps.store.writeScript(id, name, body.content);
+        if (!saved.ok) return void json(res, saved.error === "no such workflow" ? 404 : 400, { error: saved.error });
+        return void json(res, 200, { script: saved.script });
+      }
+      return void json(res, 405, { error: "method not allowed" });
+    }
     if (parts.length === 1 && method === "GET") {
       const definition = deps.store.workflow(id);
       if (!definition) return void json(res, 404, { error: "no such workflow" });

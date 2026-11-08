@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { X } from "lucide-react";
+import { Code, X } from "lucide-react";
 
 import type { WorkflowDefinition, WorkflowStep } from "../../../shared/workflow";
 import { cn } from "@/lib/cn";
@@ -45,7 +45,7 @@ export function StepPanel({ workflow, step, index, botName, onClose }: {
   onClose: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const name = botName(step.botId);
+  const name = step.kind === "bot" ? botName(step.botId) : undefined;
   const sourceName = (id: string) => workflow.steps.find((candidate) => candidate.id === id)?.name ?? id;
   const conditions = Object.entries(step.require ?? {});
 
@@ -65,20 +65,37 @@ export function StepPanel({ workflow, step, index, botName, onClose }: {
 
       <div className="wf-thin-scroll min-h-0 flex-1 overflow-auto px-[18px] pb-5">
         <section className="mb-4">
-          <div className={LABEL}>{t("workflows.step.bot")}</div>
-          <div className="flex items-center gap-2 text-[11.5px] font-medium text-ink">
-            <BotAvatar name={name} size={20} />
-            {name}
-          </div>
+          {step.kind === "bot" ? (
+            <>
+              <div className={LABEL}>{t("workflows.step.bot")}</div>
+              <div className="flex items-center gap-2 text-[11.5px] font-medium text-ink">
+                <BotAvatar name={name!} size={20} />
+                {name}
+              </div>
+            </>
+          ) : (
+            <>
+              <div className={LABEL}>{t("workflows.step.script")}</div>
+              <div className="flex items-center gap-2 text-[11.5px] font-medium text-ink">
+                <Code size={14} aria-hidden="true" />
+                <span className="font-mono">{step.run}</span>
+              </div>
+              <div className="mt-1.5 text-[10px] text-ink-tertiary">
+                {t("workflows.step.scriptRuntime", { seconds: Math.round(step.timeoutMs / 1000) })}
+              </div>
+            </>
+          )}
         </section>
 
-        <section className="mb-4">
-          <div className={LABEL}>{t("workflows.step.instructions")}</div>
-          <p className={cn("whitespace-pre-wrap text-[10.5px] leading-[1.55] text-ink-secondary", !expanded && "line-clamp-4")}>{step.instructions}</p>
-          <button type="button" onClick={() => setExpanded((value) => !value)} className="mt-1 text-[10px] font-medium text-accent-text hover:underline">
-            {expanded ? t("workflows.step.showLess") : t("workflows.step.showMore")}
-          </button>
-        </section>
+        {step.kind === "bot" && (
+          <section className="mb-4">
+            <div className={LABEL}>{t("workflows.step.instructions")}</div>
+            <p className={cn("whitespace-pre-wrap text-[10.5px] leading-[1.55] text-ink-secondary", !expanded && "line-clamp-4")}>{step.instructions}</p>
+            <button type="button" onClick={() => setExpanded((value) => !value)} className="mt-1 text-[10px] font-medium text-accent-text hover:underline">
+              {expanded ? t("workflows.step.showLess") : t("workflows.step.showMore")}
+            </button>
+          </section>
+        )}
 
         <section className="mb-4">
           <div className={LABEL}>{t("workflows.step.inputs")}</div>
@@ -103,13 +120,37 @@ export function StepPanel({ workflow, step, index, botName, onClose }: {
           {step.result ? <span className="font-mono text-[10.5px] text-ink-secondary">{step.result}</span> : <None />}
         </section>
 
-        <section>
+        <section className="mb-4">
           <div className={LABEL}>{t("workflows.step.conditions")}</div>
           {conditions.length === 0 ? <None /> : (
             <Table
               head={[t("workflows.step.conditionField"), t("workflows.step.conditionValue")]}
               rows={conditions.map(([field, value]) => [field, JSON.stringify(value)])}
             />
+          )}
+        </section>
+
+        <section>
+          <div className={LABEL}>{t("workflows.step.flow")}</div>
+          {!step.next && !step.onFailure && !step.when?.length ? <None /> : (
+            <div className="space-y-2">
+              {step.next && (
+                <div className="text-[10.5px] text-ink-secondary">
+                  {t("workflows.step.next")}: <span className="text-ink">{sourceName(step.next)}</span>
+                </div>
+              )}
+              {step.onFailure && (
+                <div className="text-[10.5px] text-ink-secondary">
+                  {t("workflows.step.onFailure")}: <span className="text-ink">{sourceName(step.onFailure)}</span>
+                </div>
+              )}
+              {step.when?.length ? (
+                <Table
+                  head={[t("workflows.step.conditionField"), t("workflows.step.conditionValue"), t("workflows.step.next")]}
+                  rows={step.when.map((branch) => [branch.field, JSON.stringify(branch.equals), sourceName(branch.next)])}
+                />
+              ) : null}
+            </div>
           )}
         </section>
       </div>

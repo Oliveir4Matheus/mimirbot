@@ -91,7 +91,8 @@ export function RunDetail({ run, workflow, now, botName, onCancel, onDelete, onR
 
   const conversationFor = (step: WorkflowRunStep) => {
     if (!step.threadId) return null;
-    const botId = definitionStep(step.id)?.botId ?? run.requestedBy?.botId;
+    const definition = definitionStep(step.id);
+    const botId = (definition?.kind === "bot" ? definition.botId : undefined) ?? run.requestedBy?.botId;
     return botId ? { botId, threadId: step.threadId } : null;
   };
 

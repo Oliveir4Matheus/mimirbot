@@ -1,7 +1,7 @@
 // The run folder's file rules: a step only writes inside its own output/,
 // the engine verifies what it declared, and the engine alone copies one
 // step's declared output into the next step's input/.
-import { chmodSync, copyFileSync, lstatSync, mkdirSync, readFileSync } from "node:fs";
+import { chmodSync, copyFileSync, lstatSync, mkdirSync, readFileSync, rmSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 
 import { isWorkflowRelativePath, type WorkflowStep, type StepOutput } from "../../shared/workflow.ts";
@@ -126,4 +126,12 @@ export function prepareRunDirectories(runDir: string, stepCount: number): string
     mkdirSync(join(base, "output"), { recursive: true, mode: 0o700 });
     return base;
   });
+}
+
+/** A repeated step starts clean, so a file from the previous visit never passes the next verification. */
+export function resetStepFolders(runDir: string, stepNumber: number): void {
+  for (const dir of [stepInputDir(runDir, stepNumber), stepOutputDir(runDir, stepNumber)]) {
+    rmSync(dir, { recursive: true, force: true });
+    mkdirSync(dir, { recursive: true, mode: 0o700 });
+  }
 }

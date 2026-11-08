@@ -1,6 +1,6 @@
 # Workflow: análise da implementação
 
-Data: 2026-11-03 · Revisado em 2026-11-07 (contratos do motor e F1) · Base: `tmp/spec-workflow.md` (D1–D18) · Código: `shared/workflow.ts`, `server/workflows/` (F0: `paths.ts`, `files.ts`; F1: `state.ts`, `brief.ts`, `engine.ts`, `store.ts`, `retention.ts`; 108 testes no motor + 8 nas rotas)
+Data: 2026-11-03 · Revisado em 2026-11-08 (contratos do motor, F1, F2 e etapa de script) · Base: `tmp/spec-workflow.md` (D1–D18) · Código: `shared/workflow.ts`, `server/workflows/` (F0: `paths.ts`, `files.ts`; F1: `state.ts`, `brief.ts`, `engine.ts`, `store.ts`, `retention.ts`; F2: `flow.ts`, `script.ts`)
 
 Este documento fecha a linha de raciocínio: o problema de hoje, o impacto, a
 solução, como ela será construída, o que já existe para reaproveitar e como o
@@ -111,26 +111,27 @@ Invariantes que dão a garantia:
 |---|---|---|
 | F0 | Contrato, layout de pastas, verificação de saída e cópia de entrada | **feito** (58 testes) |
 | F1 | Máquina de estados, brief da etapa, executor, store, retenção, rotas e tools | **feito** (108 testes no motor + 8 nas rotas) |
-| F2 | Destino "Workflow" nos gatilhos, aprovação longa, retry, UI simples, etapa de script, condição e repetição, record→promote | depois |
+| F2 | Destino "Workflow" nos gatilhos, aprovação longa, UI simples, etapa de script, condição e repetição (**feitos**); retry adiado; record→promote pendente | parcial |
 | F3 | Editor visual, Team Cloud/VM | futuro |
 
 ### Lacunas conhecidas
 
-- Aprovação: `onSettled` da etapa retorna uma vez. A resposta do cartão abre um
-  turno de continuação do host (`cardContinuation`) e não chama o `onSettled`
-  da etapa de novo. Falta um sinal para o motor verificar a etapa depois da
-  resposta (P16). Fica para a F2.
+- Aprovação: resolvida (P16). A etapa que termina com cartão aberto deixa a run
+  `waiting_approval`; o turno de continuação (`cardContinuation`) chega por
+  `engine.turnSettled`, que re-verifica a etapa. Recusa cancela a run.
 - Histórico de versões: todas as versões ficam em `workflows.json`, sem nota,
   autor, hash ou retenção do histórico. A F1 já permite escolher a versão de
   uma nova run; metadados e GC do histórico ficam para a F2.
-- `run.json` guarda o id da etapa, não o nome: depois de apagar o Workflow, a
-  run continua legível por status e arquivos, mas sem os nomes humanos. Um
-  snapshot mínimo do Workflow na run fica para a F2.
+- `run.json` guarda o id da etapa, não o nome: o snapshot (`snapshot.name` e
+  `snapshot.steps`) foi implementado na F2; runs antigas sem snapshot continuam
+  mostrando o aviso de definição indisponível.
+- Script: Node apenas, sem bloqueio real de rede, sem sandbox (roda como o
+  usuário do app) e sem editor na tela; o arquivo entra pela rota admin.
 
 ### Layout
 
 O Workflow vive em `workflows.json`, no data dir do app (entra no backup); a
-pasta do Workflow guarda só as runs.
+pasta do Workflow guarda as runs e os scripts.
 
 ```
 ~/MimirBot/
@@ -291,6 +292,8 @@ um script.
 | `server/workflows/files.ts` | Verificação de saída e cópia de entrada | feito |
 | `server/workflows/state.ts` | Transições puras da run | feito |
 | `server/workflows/brief.ts` | Brief determinístico da etapa | feito |
+| `server/workflows/flow.ts` | Escolha do próximo passo e do caminho de falha | feito |
+| `server/workflows/script.ts` | Executor de etapa de script | feito |
 | `server/workflows/engine.ts` | Scheduler sobre `startTurn`/`onSettled` | feito |
 | `server/workflows/store.ts` | Workflows e runs, escrita atômica | feito |
 | `server/workflows/retention.ts` | Limpeza por idade, sem tocar pausadas | feito |
@@ -346,54 +349,31 @@ evolui. `POST /api/workflows/:id/run` aceita `{ "version": N }` para rodar uma
 versão anterior. Não há commit metadata (autor, nota, hash, parent) nem GC do
 histórico na F1; snapshots completos são baratos porque o Workflow é pequeno.
 
-### F2: script, condição e repetição
+### F2: script, condição e repetição (implementado em 08/11/2026)
 
-Etapa de script, condição e repetição formam uma feature só. Entram juntas na
-F2; o MVP fica com etapas de bot e o portão `require`.
+O contrato completo, decisões e limitações estão na Parte 1 de
+`tmp/Workflows_Spec_Completa.md`. Resumo do que está no código:
 
-```json
-{
-  "id": "validar",
-  "kind": "script",
-  "name": "Validar entrega",
-  "run": "validar.mjs",
-  "inputs": [{ "as": "mensagens.json", "from": { "step": "cobrar", "output": "mensagens.json" } }],
-  "outputs": [{ "path": "result.json", "required": true }],
-  "result": "result.json",
-  "require": { "ok": true }
-}
-```
+- `WorkflowStep` é união por `kind` (`"bot"` padrão, `"script"`). Script tem
+  `run` (nome plano `.mjs`/`.js` em `scripts/`), `timeoutMs` (60 s padrão, teto
+  300 s), e o mesmo `inputs`/`outputs`/`result`/`require`.
+- O motor roda o script com `cwd` = pasta da etapa, `WORKFLOW_STEP_INPUT`,
+  `WORKFLOW_STEP_OUTPUT`, `WORKFLOW_RUN_ID` e `WORKFLOW_STEP_ID`, ambiente
+  mínimo, sem shell, com kill no timeout e no cancelamento. Em Electron
+  empacotado usa `ELECTRON_RUN_AS_NODE=1`.
+- `next`, `when` (caminho pontuado no `result.json`) e `onFailure` escolhem o
+  destino. Repetição é caminho de volta, com teto de 25 visitas (`attempts`).
+  Ao revisitar, `input/`/`output/` são limpos; ao concluir, etapas não
+  percorridas ficam `skipped`.
+- Scripts entram por `PUT /api/workflows/:id/scripts/:name` (admin, 256 KB,
+  409 com run ativa). `saveWorkflow` recusa etapa de script sem arquivo.
+- Verificação: `docs/verification/workflow-script.md`.
 
-O contrato do script é o mesmo da etapa de bot:
+Limitação declarada: o script roda com o usuário do app; não é sandbox e a rede
+não é bloqueada no v1.
 
-- o motor passa o `cwd` da etapa e as variáveis `WORKFLOW_STEP_INPUT` e
-  `WORKFLOW_STEP_OUTPUT`;
-- o script escreve `result.json` em `output/` e termina;
-- o motor valida como qualquer etapa: arquivo, JSON, `require`.
-
-O script pode devolver qualquer coisa, desde que caiba no contrato. O motor
-não interpreta a saída livre; ele lê o `result.json` declarado.
-
-Condição e repetição leem esse resultado:
-
-- condição: `when` escolhe o próximo passo; `onFailure` escolhe o caminho de
-  falha. Sem `onFailure`, a run para como hoje;
-- repetição: `repeat` com limite duro, para o caso de o script pedir outra
-  volta.
-
-Riscos que a F2 precisa fechar antes de rodar:
-
-- o Workflow passa a conter código executável; hoje ele é só dado. Só quem
-  pode editar o Workflow no departamento pode adicionar script;
-- o caminho do script fica dentro da pasta do Workflow, sem `..` e sem link;
-- interpretador permitido (lista fechada), sem shell, com timeout e sem rede
-  por padrão;
-- o script roda com o mesmo usuário do app. Isso não é sandbox; é execução
-  local. Se o dono quiser isolamento, o script roda no computador do bot, não
-  no host.
-
-**Ideia para a F2:** o `require` do MVP compara igualdade. Se o caso pedir, ele
-cresce para um schema pequeno, com os mesmos recursos do contrato de tool
+**Ideia futura:** o `require` compara igualdade. Se o caso pedir, ele cresce
+para um schema pequeno, com os mesmos recursos do contrato de tool
 (`fullInputSchema`/`compileToolSchema`): tipo, obrigatório, faixa, enum.
 Continua declarativo; o motor não executa código do Workflow.
 
@@ -432,8 +412,8 @@ Continua declarativo; o motor não executa código do Workflow.
 | Política de retry | Não há retentativa automática | F2 |
 | Retenção por Workflow | Não há limpeza por pasta/idade | F1 |
 | Editor/visualização | O canvas não é editor de fluxo | F2 (UI simples) / F3 (editor) |
-| Etapa de script | Toda etapa é um bot; não há executor de script | F2 |
-| Condição e repetição | Só o `result.json` está previsto; não há `when`, `onFailure` nem `repeat` | F2 |
+| Etapa de script | Executor `.mjs` com env, timeout, kill e validação igual à de bot | F2 (feito) |
+| Condição e repetição | `when`/`next`/`onFailure`, caminho de volta com teto de 25 visitas | F2 (feito) |
 | Confirmar `cwd` por thread em cada engine | `SendTurnInput.cwd` é por turno e Claude, Codex e Antigravity usam `turn.cwd`; `--add-dir` do Claude é só para skills, e Codex lê `writableRoots` do config | F1 (confirmar, sem acesso extra) |
 
 ## 7. Como isso vira as tools que os agentes chamam

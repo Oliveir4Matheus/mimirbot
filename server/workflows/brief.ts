@@ -1,11 +1,11 @@
 // The step brief is built from the definition alone: same step, same words.
 // It lists the files the step receives and the files it must leave, so the
 // bot never has to infer the contract from the previous conversation.
-import type { WorkflowStep } from "../../shared/workflow.ts";
+import type { BotWorkflowStep } from "../../shared/workflow.ts";
 
 export function stepBrief(input: {
   workflowName: string;
-  step: WorkflowStep;
+  step: BotWorkflowStep;
   index: number;
   total: number;
 }): string {
@@ -31,6 +31,6 @@ export function stepBrief(input: {
   return lines.join("\n");
 }
 
-export function stepThreadTitle(workflowName: string, step: WorkflowStep, runId: string): string {
+export function stepThreadTitle(workflowName: string, step: BotWorkflowStep, runId: string): string {
   return `${workflowName} · ${step.name} · ${runId}`;
 }

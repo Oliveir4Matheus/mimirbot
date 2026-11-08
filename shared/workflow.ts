@@ -10,8 +10,17 @@ export const WORKFLOW_INSTRUCTIONS_MAX = 12_000;
 export const WORKFLOW_PATH_MAX = 200;
 export const WORKFLOW_RETENTION_DEFAULT_DAYS = 90;
 export const WORKFLOW_RETENTION_MAX_DAYS = 3_650;
+/** A script the Workflow can reference: flat name, Node runtime only. */
+export const WORKFLOW_SCRIPT_MAX_BYTES = 256 * 1024;
+export const WORKFLOW_SCRIPT_TIMEOUT_DEFAULT_MS = 60_000;
+export const WORKFLOW_SCRIPT_TIMEOUT_MAX_MS = 300_000;
+/** Hard cap on how many times one step may run in a single run, so a back edge always ends. */
+export const WORKFLOW_STEP_VISIT_MAX = 25;
+export const WORKFLOW_BRANCH_MAX = 8;
 
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const SCRIPT_NAME = /^[a-z0-9][a-z0-9-]{0,62}\.(?:mjs|js)$/;
+const RESULT_FIELD = /^[A-Za-z0-9_-]{1,64}(?:\.[A-Za-z0-9_-]{1,64})*$/;
 
 /** C0 controls and DEL: never in a folder or file name the engine writes. */
 export function hasControlCharacter(value: string): boolean {
@@ -24,6 +33,11 @@ export function hasControlCharacter(value: string): boolean {
 
 export function isWorkflowSlug(value: string): boolean {
   return value.length >= 1 && value.length <= WORKFLOW_SLUG_MAX && SLUG.test(value);
+}
+
+/** The file name a script step points at inside the Workflow's `scripts/` folder. */
+export function isWorkflowScriptName(value: string): boolean {
+  return value.length <= 67 && SCRIPT_NAME.test(value);
 }
 
 /** A path a step may declare: relative, no `.`/`..` segment, no absolute
@@ -60,18 +74,54 @@ const requireSchema = z.record(z.string().min(1).max(64), z.unknown()).refine(
   { message: "require must be a small JSON object" },
 );
 
-export const workflowStepSchema = z.object({
-  id: z.string().refine(isWorkflowSlug, { message: "must be lowercase letters, digits and single hyphens" }),
+const stepIdSchema = z.string().refine(isWorkflowSlug, { message: "must be lowercase letters, digits and single hyphens" });
+
+const whenSchema = z.object({
+  /** Dotted path into the step's declared result, e.g. `ok` or `check.total`. */
+  field: z.string().regex(RESULT_FIELD, { message: "must be a dotted path of letters, digits, _ or -" }),
+  equals: z.unknown(),
+  next: stepIdSchema,
+}).refine((value) => JSON.stringify(value).length <= 4_096, { message: "a when branch must be small" });
+
+const stepBaseSchema = z.object({
+  id: stepIdSchema,
   name: z.string().trim().min(1).max(120),
-  botId: z.string().min(1).max(200),
-  instructions: z.string().trim().min(1).max(WORKFLOW_INSTRUCTIONS_MAX),
   inputs: z.array(stepInputSchema).max(50).default([]),
   outputs: z.array(stepOutputSchema).min(1).max(50),
   /** The short JSON object a later branch reads; must be one of the outputs. */
   result: workflowPath.optional(),
   /** Fields of the declared result that must match by equality for the step to pass. */
   require: requireSchema.optional(),
+  /** Where to go after this step passes. Default: the next step in array order. */
+  next: stepIdSchema.optional(),
+  /** Where to go when this step fails. Without it the run stops, as it always did. */
+  onFailure: stepIdSchema.optional(),
+  /** The first branch whose field matches the declared result chooses the next step. */
+  when: z.array(whenSchema).min(1).max(WORKFLOW_BRANCH_MAX).optional(),
 });
+
+const botStepSchema = stepBaseSchema.extend({
+  kind: z.literal("bot"),
+  botId: z.string().min(1).max(200),
+  instructions: z.string().trim().min(1).max(WORKFLOW_INSTRUCTIONS_MAX),
+});
+
+const scriptStepSchema = stepBaseSchema.extend({
+  kind: z.literal("script"),
+  /** A file name inside the Workflow's `scripts/` folder, never a path. */
+  run: z.string().refine(isWorkflowScriptName, { message: "must be a flat .mjs or .js file name" }),
+  timeoutMs: z.number().int().min(1_000).max(WORKFLOW_SCRIPT_TIMEOUT_MAX_MS).default(WORKFLOW_SCRIPT_TIMEOUT_DEFAULT_MS),
+});
+
+const stepUnionSchema = z.discriminatedUnion("kind", [botStepSchema, scriptStepSchema]);
+
+/** Older Workflows have no `kind`: a step without one was always a bot step. */
+export const workflowStepSchema = z.preprocess(
+  (value) => value !== null && typeof value === "object" && !Array.isArray(value) && (value as Record<string, unknown>).kind === undefined
+    ? { ...(value as Record<string, unknown>), kind: "bot" }
+    : value,
+  stepUnionSchema,
+);
 
 export const workflowDefinitionSchema = z.object({
   id: z.uuid(),
@@ -106,6 +156,20 @@ export const workflowDefinitionSchema = z.object({
     if (step.require !== undefined && step.result === undefined) {
       context.addIssue({ code: "custom", path: ["steps", index, "require"], message: "require needs a declared result" });
     }
+    if (step.when !== undefined && step.result === undefined) {
+      context.addIssue({ code: "custom", path: ["steps", index, "when"], message: "when needs a declared result" });
+    }
+    if (step.next !== undefined && !positions.has(step.next)) {
+      context.addIssue({ code: "custom", path: ["steps", index, "next"], message: `next step ${JSON.stringify(step.next)} does not exist` });
+    }
+    if (step.onFailure !== undefined && !positions.has(step.onFailure)) {
+      context.addIssue({ code: "custom", path: ["steps", index, "onFailure"], message: `onFailure step ${JSON.stringify(step.onFailure)} does not exist` });
+    }
+    step.when?.forEach((branch, branchIndex) => {
+      if (!positions.has(branch.next)) {
+        context.addIssue({ code: "custom", path: ["steps", index, "when", branchIndex, "next"], message: `next step ${JSON.stringify(branch.next)} does not exist` });
+      }
+    });
     const names = new Set<string>();
     step.inputs.forEach((input, inputIndex) => {
       if (names.has(input.as)) {
@@ -130,8 +194,18 @@ export const workflowDefinitionSchema = z.object({
 
 export type StepInput = z.output<typeof stepInputSchema>;
 export type StepOutput = z.output<typeof stepOutputSchema>;
+export type BotWorkflowStep = z.output<typeof botStepSchema>;
+export type ScriptWorkflowStep = z.output<typeof scriptStepSchema>;
 export type WorkflowStep = z.output<typeof workflowStepSchema>;
 export type WorkflowDefinition = z.output<typeof workflowDefinitionSchema>;
+
+export function isBotStep(step: WorkflowStep): step is BotWorkflowStep {
+  return step.kind === "bot";
+}
+
+export function isScriptStep(step: WorkflowStep): step is ScriptWorkflowStep {
+  return step.kind === "script";
+}
 
 export type WorkflowRunStatus = "queued" | "running" | "waiting_approval" | "succeeded" | "failed" | "cancelled";
 export type WorkflowStepStatus = "pending" | "running" | "succeeded" | "failed" | "skipped";
@@ -242,7 +316,7 @@ export const workflowRunSchema: z.ZodType<WorkflowRun> = z.object({
   snapshot: workflowRunSnapshotSchema.optional(),
 });
 
-function sameJsonValue(left: unknown, right: unknown): boolean {
+export function sameJsonValue(left: unknown, right: unknown): boolean {
   if (left === right) return true;
   if (typeof left !== typeof right) return false;
   if (Array.isArray(left) || Array.isArray(right)) {
@@ -274,4 +348,16 @@ export function requireMismatch(result: unknown, requirement: Record<string, unk
 
 export function requireMatches(result: unknown, requirement: Record<string, unknown>): boolean {
   return requireMismatch(result, requirement) === undefined;
+}
+
+/** A dotted path read out of a step's `result.json`; `found` is false when a segment is missing. */
+export function resultField(result: unknown, field: string): { found: boolean; value: unknown } {
+  let current: unknown = result;
+  for (const segment of field.split(".")) {
+    if (current === null || typeof current !== "object" || Array.isArray(current) || !Object.hasOwn(current, segment)) {
+      return { found: false, value: undefined };
+    }
+    current = (current as Record<string, unknown>)[segment];
+  }
+  return { found: true, value: current };
 }

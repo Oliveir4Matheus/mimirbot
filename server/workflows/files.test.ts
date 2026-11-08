@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import type { WorkflowStep, StepOutput } from "../../shared/workflow.ts";
+import type { BotWorkflowStep, StepOutput } from "../../shared/workflow.ts";
 import { WORKFLOW_RESULT_MAX_BYTES, copyStepInputs, prepareRunDirectories, safeWorkflowPath, verifyStepOutputs } from "./files.ts";
 
 let root: string;
@@ -18,8 +18,9 @@ afterEach(() => {
 
 const required = (...paths: string[]): StepOutput[] => paths.map((path) => ({ path, required: true }));
 
-const step = (overrides: Partial<WorkflowStep> = {}): WorkflowStep => ({
+const step = (overrides: Partial<BotWorkflowStep> = {}): BotWorkflowStep => ({
   id: "revisar",
+  kind: "bot",
   name: "Review",
   botId: "bot-reviewer",
   instructions: "Read the input and leave a decision.",

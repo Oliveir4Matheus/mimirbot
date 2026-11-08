@@ -9,6 +9,7 @@ import {
   createRun,
   failRun,
   failStep,
+  failStepTo,
   isTerminalRun,
   pauseRun,
   resumeRun,
@@ -157,5 +158,46 @@ describe("approval pauses", () => {
     if (!resumed.ok) throw new Error(resumed.error);
     expect(resumed.run.status).toBe("running");
     expect(resumed.run.pause).toBeUndefined();
+  });
+});
+
+describe("branching transitions", () => {
+  const started = () => {
+    const begun = beginRun(queued(), 20);
+    if (!begun.ok) throw new Error(begun.error);
+    const step = beginStep(begun.run, 0, { threadId: "t-1" }, 30);
+    if (!step.ok) throw new Error(step.error);
+    return step.run;
+  };
+
+  it("finishes the run and marks the steps the path never took as skipped", () => {
+    const next = completeStep(started(), 0, { verified: ["numbers.csv"] }, 40, null);
+    if (!next.ok) throw new Error(next.error);
+    expect(next.run.status).toBe("succeeded");
+    expect(next.run.currentStep).toBe(2);
+    expect(next.run.steps.map((step) => step.status)).toEqual(["succeeded", "skipped"]);
+  });
+
+  it("reopens a visited step, keeping the visit count and clearing the old marks", () => {
+    const first = completeStep(started(), 0, { verified: ["numbers.csv"] }, 40, 1);
+    if (!first.ok) throw new Error(first.error);
+    const second = beginStep(first.run, 1, { threadId: "t-2" }, 50);
+    if (!second.ok) throw new Error(second.error);
+    const back = completeStep(second.run, 1, { verified: ["decision.json"], result: { ok: true } }, 60, 0);
+    if (!back.ok) throw new Error(back.error);
+    expect(back.run.status).toBe("running");
+    expect(back.run.currentStep).toBe(0);
+    expect(back.run.steps[0]).toMatchObject({ status: "pending", attempts: 1 });
+    expect(back.run.steps[0]!.verified).toBeUndefined();
+    expect(back.run.steps[0]!.finishedAt).toBeUndefined();
+  });
+
+  it("moves to the onFailure step and keeps the run going", () => {
+    const moved = failStepTo(started(), 0, "missing output", 1, 40);
+    if (!moved.ok) throw new Error(moved.error);
+    expect(moved.run.status).toBe("running");
+    expect(moved.run.currentStep).toBe(1);
+    expect(moved.run.steps[0]).toMatchObject({ status: "failed", error: "missing output" });
+    expect(moved.run.steps[1]!.status).toBe("pending");
   });
 });
