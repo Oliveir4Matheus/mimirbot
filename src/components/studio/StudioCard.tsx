@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  ArrowDownToLine, ArrowUpFromLine, Check, Code2, CornerUpLeft, FileText, GitBranch, Layers, List, MoreHorizontal, Play, Plus, Sparkles, Wrench, X,
+  AlertTriangle, ArrowDownToLine, ArrowUpFromLine, Check, Clock, Code2, CornerUpLeft, FileText, GitBranch, Layers, List, MoreHorizontal, Play, Plus, Sparkles, Wrench, X,
 } from "lucide-react";
 
 import type { WorkflowStep } from "../../../shared/workflow";
@@ -17,7 +17,7 @@ const clip = (text: string, max = 85) => {
   return flat.length > max ? `${flat.slice(0, max - 1)}…` : flat;
 };
 
-type BranchKey = "instructions" | "context" | "tools" | "return" | "run" | "input" | "output" | "script" | "condition" | "true" | "false";
+type BranchKey = "instructions" | "context" | "tools" | "return" | "run" | "input" | "output" | "script" | "condition" | "true" | "false" | "failure" | "timeout";
 
 interface BranchSpec {
   key: BranchKey;
@@ -47,10 +47,10 @@ const CONDITION_BRANCHES: BranchSpec[] = [
   { key: "condition", label: "studio.branch.condition", icon: List },
 ];
 
-const SIDE_BRANCHES: BranchSpec[] = [
-  { key: "true", label: "studio.branch.true", icon: Check, color: "#39876D", port: "true" },
-  { key: "false", label: "studio.branch.false", icon: X, color: "#BC655C", port: "false" },
-];
+const TRUE_BRANCH: BranchSpec = { key: "true", label: "studio.branch.true", icon: Check, color: "#39876D", port: "true" };
+const FALSE_BRANCH: BranchSpec = { key: "false", label: "studio.branch.false", icon: X, color: "#BC655C", port: "false" };
+const FAILURE_BRANCH: BranchSpec = { key: "failure", label: "studio.branch.failure", icon: AlertTriangle, color: "#BC655C", port: "failure" };
+const TIMEOUT_BRANCH: BranchSpec = { key: "timeout", label: "studio.branch.timeout", icon: Clock, color: "#C08023", port: "timeout" };
 
 export function StudioCard({ draft, step, index, selected, botName, onSelect, onDragStart, onEntry, onBranch, onPort, onRename, onDuplicate, onDelete }: {
   draft: StudioDraft;
@@ -93,19 +93,24 @@ export function StudioCard({ draft, step, index, selected, botName, onSelect, on
       if (key === "context") return step.inputs.length ? step.inputs.map((input) => input.as).join(", ") : t("studio.card.noContext");
       if (key === "tools") return botName(step.botId) || t("studio.card.noBot");
       if (key === "return") return step.result ?? t("studio.card.noResult");
-      if (key === "run") return step.next ? nameOf(step.next) : t("studio.card.noNext");
+      if (key === "run") return typeof step.onSuccess === "string" ? nameOf(step.onSuccess) : t("studio.card.end");
+      if (key === "failure") return step.onFailure ? nameOf(step.onFailure) : t("studio.condition.none");
+      if (key === "timeout") return step.onTimeout ? nameOf(step.onTimeout) : t("studio.condition.none");
     }
     if (step.kind === "script") {
       if (key === "input") return step.inputs.length ? step.inputs.map((input) => input.as).join(", ") : t("studio.card.noContext");
       if (key === "output") return step.outputs.map((output) => output.path).join(", ");
       if (key === "script") return step.run;
-      if (key === "run") return step.next ? nameOf(step.next) : t("studio.card.noNext");
+      if (key === "run") return typeof step.onSuccess === "string" ? nameOf(step.onSuccess) : t("studio.card.end");
+      if (key === "failure") return step.onFailure ? nameOf(step.onFailure) : t("studio.condition.none");
+      if (key === "timeout") return step.onTimeout ? nameOf(step.onTimeout) : t("studio.condition.none");
     }
     if (step.kind === "condition") {
       if (key === "condition") return `${step.field} ${step.op}${step.value === undefined ? "" : ` ${JSON.stringify(step.value)}`}`;
       if (key === "run") return t("studio.condition.twoRoutes");
       if (key === "true") return step.whenTrue ? nameOf(step.whenTrue) : t("studio.condition.none");
       if (key === "false") return step.whenFalse ? nameOf(step.whenFalse) : t("studio.condition.none");
+      if (key === "failure") return step.onFailure ? nameOf(step.onFailure) : t("studio.condition.none");
     }
     return "";
   };
@@ -116,6 +121,7 @@ export function StudioCard({ draft, step, index, selected, botName, onSelect, on
   const accentSoft = step.kind === "bot" ? "#F2F0FF" : step.kind === "script" ? "#EAF6F7" : "#FFF6E8";
   const waiting = step.kind === "bot" ? t("studio.card.waitingAgent") : step.kind === "script" ? t("studio.card.waitingScript") : t("studio.card.waitingCondition");
   const branches = step.kind === "bot" ? BOT_BRANCHES : step.kind === "script" ? SCRIPT_BRANCHES : CONDITION_BRANCHES;
+  const sideBranches = step.kind === "condition" ? [TRUE_BRANCH, FALSE_BRANCH, FAILURE_BRANCH] : [FAILURE_BRANCH, TIMEOUT_BRANCH];
   const centers = step.kind === "condition" ? [79, 161] : branchCenters(branches.length);
   const width = step.kind === "condition" ? 340 : CARD_WIDTH;
 
@@ -252,7 +258,7 @@ export function StudioCard({ draft, step, index, selected, botName, onSelect, on
         );
       })}
 
-      {step.kind === "condition" && SIDE_BRANCHES.map((branch, row) => {
+      {sideBranches.map((branch, row) => {
         const top = 21 + row * 47;
         return (
           <span key={branch.key}>

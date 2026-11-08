@@ -7,7 +7,7 @@ import { Select } from "@/components/Select";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/cn";
 import type { BranchKey } from "./StudioCard";
-import { conditionOpLabel, nextConditionValue, outputsOf, type StudioDraft } from "./studio-model";
+import { conditionOpLabel, nextConditionValue, outputsOf, type StudioBranch, type StudioDraft } from "./studio-model";
 
 const MAX_PREVIEW = 512_000;
 
@@ -25,11 +25,13 @@ const BRANCH_TITLE: Record<BranchKey, LocaleKey> = {
   condition: "studio.branch.condition",
   true: "studio.branch.true",
   false: "studio.branch.false",
+  failure: "studio.branch.failure",
+  timeout: "studio.branch.timeout",
 };
 
 export interface BalloonBot { id: string; name: string; section?: string }
 
-export function StudioBalloon({ draft, step, branch, anchor, bots, scripts, onChange, onScript, onToast, onClose }: {
+export function StudioBalloon({ draft, step, branch, anchor, bots, scripts, onChange, onScript, onToast, onDisconnect, onClose }: {
   draft: StudioDraft;
   step: WorkflowStep;
   branch: BranchKey;
@@ -39,6 +41,7 @@ export function StudioBalloon({ draft, step, branch, anchor, bots, scripts, onCh
   onChange: (patch: Partial<WorkflowStep>) => void;
   onScript: (name: string, content: string) => void;
   onToast: (key: LocaleKey) => void;
+  onDisconnect: (branch: StudioBranch) => void;
   onClose: () => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -205,24 +208,58 @@ export function StudioBalloon({ draft, step, branch, anchor, bots, scripts, onCh
         )}
 
         {step.kind === "condition" && (branch === "true" || branch === "false") && (
-          <Field label={t("studio.condition.connected")} help={t("studio.condition.connectHelp")}>
+          <Field label={t("studio.condition.connected")} help={branch === "true" ? t("studio.condition.trueHelp") : t("studio.condition.falseHelp")}>
             <div className="studio-info">
               {branch === "true"
                 ? (step.whenTrue ? nameOf(step.whenTrue) : t("studio.condition.none"))
                 : (step.whenFalse ? nameOf(step.whenFalse) : t("studio.condition.none"))}
             </div>
-            <div className="studio-help">{branch === "true" ? t("studio.condition.trueHelp") : t("studio.condition.falseHelp")}</div>
+            {(branch === "true" ? step.whenTrue : step.whenFalse) && (
+              <DisconnectRow label={t("studio.disconnect")} onClick={() => onDisconnect(branch)} />
+            )}
+          </Field>
+        )}
+
+        {(branch === "failure" || branch === "timeout") && (
+          <Field label={t("studio.condition.connected")} help={t("studio.condition.connectHelp")}>
+            <div className="studio-info">
+              {branch === "failure"
+                ? (step.onFailure ? nameOf(step.onFailure) : t("studio.condition.none"))
+                : (step.kind !== "condition" && step.onTimeout ? nameOf(step.onTimeout) : t("studio.condition.none"))}
+            </div>
+            {((branch === "failure" && step.onFailure !== undefined)
+              || (branch === "timeout" && step.kind !== "condition" && step.onTimeout !== undefined)) && (
+              <DisconnectRow label={t("studio.disconnect")} onClick={() => onDisconnect(branch)} />
+            )}
           </Field>
         )}
 
         {branch === "run" && (
-          <Field label={t("studio.condition.connected")} help={step.kind === "condition" ? t("studio.condition.runHelp") : t("studio.agent.runHelp")}>
-            <div className="studio-info">
-              {step.kind === "condition"
-                ? t("studio.condition.twoRoutes")
-                : step.next ? nameOf(step.next) : t("studio.condition.none")}
-            </div>
-          </Field>
+          <>
+            <Field label={t("studio.condition.connected")} help={step.kind === "condition" ? t("studio.condition.runHelp") : t("studio.agent.runHelp")}>
+              <div className="studio-info">
+                {step.kind === "condition"
+                  ? t("studio.condition.twoRoutes")
+                  : typeof step.onSuccess === "string" ? nameOf(step.onSuccess) : t("studio.card.end")}
+              </div>
+              {step.kind !== "condition" && typeof step.onSuccess === "string" && (
+                <DisconnectRow label={t("studio.disconnect")} onClick={() => onDisconnect("run")} />
+              )}
+            </Field>
+            {step.kind === "bot" && (
+              <Field label={t("studio.agent.timeout")} help={t("studio.agent.timeoutHelp")}>
+                <input
+                  type="number"
+                  min={0}
+                  max={3_600}
+                  className="studio-input"
+                  placeholder={t("studio.agent.timeoutNone")}
+                  value={step.timeoutMs > 0 ? Math.round(step.timeoutMs / 1000) : ""}
+                  onChange={(event) => onChange({ timeoutMs: Math.max(0, Math.min(3_600, Number(event.target.value) || 0)) * 1000 } as Partial<WorkflowStep>)}
+                />
+              </Field>
+            )}
+          </>
         )}
       </div>
 
@@ -250,6 +287,15 @@ function UploadRow({ label, onClick }: { label: string; onClick: () => void }) {
       <Upload size={16} aria-hidden="true" />
       <span>{label}</span>
       <span aria-hidden="true">+</span>
+    </button>
+  );
+}
+
+function DisconnectRow({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button type="button" className="studio-upload" onClick={onClick}>
+      <X size={15} aria-hidden="true" />
+      <span>{label}</span>
     </button>
   );
 }

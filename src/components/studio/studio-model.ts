@@ -11,7 +11,7 @@ import {
 } from "../../../shared/workflow";
 
 export type StudioKind = "agent" | "script" | "condition" | "note" | "container";
-export type StudioBranch = "run" | "true" | "false";
+export type StudioBranch = "run" | "failure" | "timeout" | "true" | "false";
 export type StudioSelection = { kind: "step" | "note" | "container"; id: string } | null;
 
 export interface StudioDraft {
@@ -94,13 +94,17 @@ export function fromDefinition(definition: WorkflowDefinition): StudioDraft {
   const canvas = definition.canvas ?? emptyCanvas();
   const layout = autoLayout(definition.steps);
   const nodes = { ...layout, ...canvas.nodes };
+  const steps = structuredClone(definition.steps).map((step, index, all) => {
+    if (step.kind === "condition" || step.onSuccess !== undefined) return step;
+    return { ...step, onSuccess: index + 1 < all.length ? all[index + 1]!.id : null } as WorkflowStep;
+  });
   return {
     id: definition.id,
     version: definition.version,
     name: definition.name,
     department: definition.department,
     retentionDays: definition.retentionDays,
-    steps: structuredClone(definition.steps),
+    steps,
     canvas: { nodes, notes: structuredClone(canvas.notes), containers: structuredClone(canvas.containers) },
     createdAt: definition.createdAt,
     updatedAt: definition.updatedAt,
@@ -114,13 +118,16 @@ export function toDefinition(draft: StudioDraft): WorkflowDefinition {
   const notes = draft.canvas.notes.map((note) => note.link && note.link.kind === "container" && !containerIds.has(note.link.id)
     ? { ...note, link: undefined }
     : note);
+  const steps = structuredClone(draft.steps).map((step) => step.kind !== "condition" && step.onSuccess === undefined
+    ? { ...step, onSuccess: null } as WorkflowStep
+    : step);
   return {
     id: draft.id,
     version: draft.version ?? 1,
     name: draft.name.trim(),
     department: draft.department.trim(),
     retentionDays: draft.retentionDays,
-    steps: structuredClone(draft.steps),
+    steps,
     createdAt: draft.createdAt,
     updatedAt: draft.updatedAt,
     canvas: { nodes, notes, containers: structuredClone(draft.canvas.containers) },
@@ -134,7 +141,7 @@ export function createStep(draft: StudioDraft, kind: Exclude<StudioKind, "note" 
   const id = uniqueId(slugify(baseName), taken);
   const step: WorkflowStep = kind === "agent"
     ? {
-      id, kind: "bot", name: baseName, botId: botId ?? FALLBACK_BOT,
+      id, kind: "bot", name: baseName, botId: botId ?? FALLBACK_BOT, timeoutMs: 0,
       instructions: DEFAULT_INSTRUCTIONS, inputs: [], outputs: structuredClone(DEFAULT_OUTPUTS), result: "result.json",
     }
     : kind === "script"
@@ -197,8 +204,9 @@ export function removeStep(draft: StudioDraft, stepId: string): StudioDraft {
       return {
         ...step,
         inputs: step.inputs.filter((input) => input.from.step !== stepId),
-        next: step.next === stepId ? undefined : step.next,
+        onSuccess: step.onSuccess === stepId ? null : step.onSuccess,
         onFailure: step.onFailure === stepId ? undefined : step.onFailure,
+        onTimeout: step.onTimeout === stepId ? undefined : step.onTimeout,
       } as WorkflowStep;
     });
   const { [stepId]: _removed, ...nodes } = draft.canvas.nodes;
@@ -223,14 +231,20 @@ export function outgoing(step: WorkflowStep): Array<{ branch: StudioBranch; targ
     return [
       ...(step.whenTrue ? [{ branch: "true" as const, target: step.whenTrue }] : []),
       ...(step.whenFalse ? [{ branch: "false" as const, target: step.whenFalse }] : []),
+      ...(step.onFailure ? [{ branch: "failure" as const, target: step.onFailure }] : []),
     ];
   }
-  return step.next ? [{ branch: "run" as const, target: step.next }] : [];
+  return [
+    ...(typeof step.onSuccess === "string" ? [{ branch: "run" as const, target: step.onSuccess }] : []),
+    ...(step.onFailure ? [{ branch: "failure" as const, target: step.onFailure }] : []),
+    ...(step.onTimeout ? [{ branch: "timeout" as const, target: step.onTimeout }] : []),
+  ];
 }
 
+/** The step that owns a step's success entry. Failure and timeout edges may fan in. */
 export function entrySource(draft: StudioDraft, stepId: string): string | undefined {
   for (const step of draft.steps) {
-    if (outgoing(step).some((edge) => edge.target === stepId)) return step.id;
+    if (outgoing(step).some((edge) => edge.target === stepId && edge.branch !== "failure" && edge.branch !== "timeout")) return step.id;
   }
   return undefined;
 }
@@ -257,17 +271,23 @@ export function connect(draft: StudioDraft, fromId: string, branch: StudioBranch
   const source = draft.steps.find((step) => step.id === fromId);
   if (!source) return { ok: false, key: "studio.toast.entryTaken" };
   if (fromId === toId) return { ok: false, key: "studio.toast.self" };
-  if (branch !== "run" && source.kind !== "condition") return { ok: false, key: "studio.toast.entryTaken" };
+  const side = branch === "failure" || branch === "timeout";
   if (branch === "run" && source.kind === "condition") return { ok: false, key: "studio.toast.entryTaken" };
+  if ((branch === "true" || branch === "false") && source.kind !== "condition") return { ok: false, key: "studio.toast.entryTaken" };
+  if (branch === "timeout" && source.kind === "condition") return { ok: false, key: "studio.toast.entryTaken" };
   const current = branch === "run"
-    ? (source.kind === "condition" ? undefined : source.next)
-    : source.kind === "condition" ? (branch === "true" ? source.whenTrue : source.whenFalse) : undefined;
-  if (current !== undefined) return { ok: false, key: "studio.toast.outputTaken" };
-  if (entrySource(draft, toId) !== undefined) return { ok: false, key: "studio.toast.entryTaken" };
+    ? (source.kind === "condition" ? undefined : source.onSuccess)
+    : branch === "failure" ? source.onFailure
+      : branch === "timeout" ? (source.kind === "condition" ? undefined : source.onTimeout)
+        : source.kind === "condition" ? (branch === "true" ? source.whenTrue : source.whenFalse) : undefined;
+  if (current !== undefined && current !== null) return { ok: false, key: "studio.toast.outputTaken" };
+  if (!side && entrySource(draft, toId) !== undefined) return { ok: false, key: "studio.toast.entryTaken" };
   if (reaches(draft, toId, fromId)) return { ok: false, key: "studio.toast.cycle" };
   const steps = draft.steps.map((step) => {
     if (step.id !== fromId) return step;
-    if (branch === "run" && step.kind !== "condition") return { ...step, next: toId };
+    if (branch === "run" && step.kind !== "condition") return { ...step, onSuccess: toId };
+    if (branch === "failure") return { ...step, onFailure: toId };
+    if (branch === "timeout" && step.kind !== "condition") return { ...step, onTimeout: toId };
     if (branch === "true" && step.kind === "condition") return { ...step, whenTrue: toId };
     if (branch === "false" && step.kind === "condition") return { ...step, whenFalse: toId };
     return step;
@@ -284,9 +304,15 @@ export function disconnect(draft: StudioDraft, stepId: string, branch: StudioBra
     steps: draft.steps.map((step) => {
       if (step.id !== stepId) return step;
       if (step.kind === "condition") {
-        return { ...step, ...(branch === "true" ? { whenTrue: undefined } : branch === "false" ? { whenFalse: undefined } : {}) };
+        if (branch === "true") return { ...step, whenTrue: undefined };
+        if (branch === "false") return { ...step, whenFalse: undefined };
+        if (branch === "failure") return { ...step, onFailure: undefined };
+        return step;
       }
-      return branch === "run" ? { ...step, next: undefined } : step;
+      if (branch === "run") return { ...step, onSuccess: null };
+      if (branch === "failure") return { ...step, onFailure: undefined };
+      if (branch === "timeout") return { ...step, onTimeout: undefined };
+      return step;
     }),
   };
 }
@@ -357,6 +383,9 @@ export function draftProblem(draft: StudioDraft, botIds: ReadonlySet<string>): D
   for (const step of draft.steps) {
     if (step.kind === "bot" && (!step.botId || !botIds.has(step.botId))) return { key: "studio.needBot", params: { name: step.name } };
     if (step.kind === "script" && !isWorkflowScriptName(step.run)) return { key: "studio.needScriptName", params: { name: step.name } };
+    if (step.kind !== "condition" && step.onTimeout !== undefined && step.timeoutMs <= 0) {
+      return { key: "studio.needTimeout", params: { name: step.name } };
+    }
     if (step.kind === "condition") {
       if (!step.from) return { key: "studio.needFrom", params: { name: step.name } };
       const source = draft.steps.find((candidate) => candidate.id === step.from);

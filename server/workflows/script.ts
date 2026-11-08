@@ -15,7 +15,7 @@ export interface WorkflowScriptOptions {
   stepId: string;
 }
 
-export type WorkflowScriptResult = { ok: true } | { ok: false; error: string };
+export type WorkflowScriptResult = { ok: true } | { ok: false; error: string; timedOut?: true };
 
 export interface WorkflowScriptHandle {
   promise: Promise<WorkflowScriptResult>;
@@ -109,7 +109,7 @@ export function runWorkflowScript(options: WorkflowScriptOptions): WorkflowScrip
     });
     child.on("close", (code, signal) => {
       if (timedOut) {
-        settle({ ok: false, error: `the script ran longer than ${timeoutMs}ms` });
+        settle({ ok: false, error: `the script ran longer than ${timeoutMs}ms`, timedOut: true });
         return;
       }
       if (code !== 0) {

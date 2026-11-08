@@ -42,8 +42,8 @@ describe("createRun", () => {
     expect(run.status).toBe("queued");
     expect(run.currentStep).toBe(0);
     expect(run.steps).toEqual([
-      { id: "coletar", status: "pending", attempts: 0 },
-      { id: "revisar", status: "pending", attempts: 0 },
+      { id: "coletar", status: "pending" },
+      { id: "revisar", status: "pending" },
     ]);
     expect(run.department).toBe("Financeiro");
     expect(run.workflowVersion).toBe(1);
@@ -75,10 +75,10 @@ describe("beginRun", () => {
 });
 
 describe("beginStep", () => {
-  it("records the thread, counts the attempt and only moves the current step", () => {
+  it("records the thread and only moves the current step", () => {
     const started = beginStep(running(), 0, { threadId: "t-1" }, 30);
     if (!started.ok) throw new Error(started.error);
-    expect(started.run.steps[0]).toMatchObject({ status: "running", attempts: 1, threadId: "t-1", startedAt: 30 });
+    expect(started.run.steps[0]).toMatchObject({ status: "running", threadId: "t-1", startedAt: 30 });
     expect(beginStep(started.run, 1, { threadId: "t-2" }, 31).ok).toBe(false);
     expect(beginStep(started.run, 0, { threadId: "t-2" }, 31).ok).toBe(false);
   });
@@ -178,20 +178,6 @@ describe("branching transitions", () => {
     expect(next.run.steps.map((step) => step.status)).toEqual(["succeeded", "skipped"]);
   });
 
-  it("reopens a visited step, keeping the visit count and clearing the old marks", () => {
-    const first = completeStep(started(), 0, { verified: ["numbers.csv"] }, 40, 1);
-    if (!first.ok) throw new Error(first.error);
-    const second = beginStep(first.run, 1, { threadId: "t-2" }, 50);
-    if (!second.ok) throw new Error(second.error);
-    const back = completeStep(second.run, 1, { verified: ["decision.json"], result: { ok: true } }, 60, 0);
-    if (!back.ok) throw new Error(back.error);
-    expect(back.run.status).toBe("running");
-    expect(back.run.currentStep).toBe(0);
-    expect(back.run.steps[0]).toMatchObject({ status: "pending", attempts: 1 });
-    expect(back.run.steps[0]!.verified).toBeUndefined();
-    expect(back.run.steps[0]!.finishedAt).toBeUndefined();
-  });
-
   it("moves to the onFailure step and keeps the run going", () => {
     const moved = failStepTo(started(), 0, "missing output", 1, 40);
     if (!moved.ok) throw new Error(moved.error);
@@ -199,5 +185,11 @@ describe("branching transitions", () => {
     expect(moved.run.currentStep).toBe(1);
     expect(moved.run.steps[0]).toMatchObject({ status: "failed", error: "missing output" });
     expect(moved.run.steps[1]!.status).toBe("pending");
+  });
+
+  it("records a timeout as its own failure kind", () => {
+    const moved = failStepTo(started(), 0, "the step timed out after 1000ms", 1, 40, "timeout");
+    if (!moved.ok) throw new Error(moved.error);
+    expect(moved.run.steps[0]).toMatchObject({ status: "failed", failureKind: "timeout" });
   });
 });

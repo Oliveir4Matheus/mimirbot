@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 
+import { workflowDefinitionSchema } from "../../../shared/workflow";
 import {
-  autoLayout, connect, containedBy, createStep, draftProblem, fromDefinition, newDraft, removeStep,
+  autoLayout, connect, containedBy, createStep, disconnect, draftProblem, fromDefinition, newDraft, removeStep,
   toDefinition, updateNote, type StudioDraft,
 } from "./studio-model";
 
@@ -27,7 +28,7 @@ describe("studio model", () => {
     if (!result.ok) throw new Error(result.key);
     const source = result.draft.steps[0]!;
     const target = result.draft.steps[1]!;
-    expect(source.kind === "bot" && source.next).toBe(condition.id);
+    expect(source.kind === "bot" && source.onSuccess).toBe(condition.id);
     expect(target.kind === "condition" && target.from).toBe(agent.id);
   });
 
@@ -94,5 +95,59 @@ describe("studio model", () => {
     const draft = step(newDraft("Financeiro"), "agent", 300, 300).draft;
     const inside = containedBy({ ...draft, canvas: { ...draft.canvas, containers: [{ id: "c1", x: 100, y: 100, width: 520, height: 310, name: "Group" }] } }, "c1");
     expect(inside.steps).toEqual([draft.steps[0]!.id]);
+  });
+
+  it("materializes a legacy success edge and saves an unconnected step as the end", () => {
+    const definition = workflowDefinitionSchema.parse({
+      id: "8a5b1c2d-3e4f-4a5b-8c9d-0e1f2a3b4c5d",
+      version: 1,
+      name: "Legacy",
+      department: "Financeiro",
+      steps: [
+        { id: "a", name: "A", botId: "bot-a", instructions: "A.", outputs: [{ path: "a.txt" }] },
+        { id: "b", name: "B", botId: "bot-a", instructions: "B.", outputs: [{ path: "b.txt" }] },
+      ],
+      createdAt: 1,
+      updatedAt: 1,
+    });
+    const draft = fromDefinition(definition);
+    expect(draft.steps[0]!.kind === "bot" && draft.steps[0]!.onSuccess).toBe("b");
+    expect(draft.steps[1]!.kind === "bot" && draft.steps[1]!.onSuccess).toBeNull();
+    const saved = toDefinition(draft);
+    expect(saved.steps[0]!.kind === "bot" && saved.steps[0]!.onSuccess).toBe("b");
+  });
+
+  it("connects and disconnects the failure and timeout routes", () => {
+    const draft = step(step(newDraft("Financeiro"), "agent", 200, 200).draft, "agent", 600, 200).draft;
+    const [a, b] = draft.steps;
+    const failure = connect(draft, a!.id, "failure", b!.id);
+    if (!failure.ok) throw new Error(failure.key);
+    expect(failure.draft.steps[0]!.kind === "bot" && failure.draft.steps[0]!.onFailure).toBe(b!.id);
+    const timeout = connect(draft, a!.id, "timeout", b!.id);
+    if (!timeout.ok) throw new Error(timeout.key);
+    expect(timeout.draft.steps[0]!.kind === "bot" && timeout.draft.steps[0]!.onTimeout).toBe(b!.id);
+    const cleared = disconnect(timeout.draft, a!.id, "timeout");
+    expect(cleared.steps[0]!.kind === "bot" && cleared.steps[0]!.onTimeout).toBeUndefined();
+    const runCleared = disconnect(cleared, a!.id, "run");
+    expect(runCleared.steps[0]!.kind === "bot" && runCleared.steps[0]!.onSuccess).toBeNull();
+  });
+
+  it("allows a success entry where a failure edge lands and still refuses two success entries", () => {
+    const draft = step(step(step(newDraft("Financeiro"), "agent", 200, 200).draft, "agent", 600, 200).draft, "agent", 1000, 200).draft;
+    const [a, b, c] = draft.steps;
+    const failed = connect(draft, a!.id, "failure", c!.id);
+    if (!failed.ok) throw new Error(failed.key);
+    expect(connect(failed.draft, b!.id, "run", c!.id).ok).toBe(true);
+    const success = connect(draft, a!.id, "run", c!.id);
+    if (!success.ok) throw new Error(success.key);
+    expect(connect(success.draft, b!.id, "run", c!.id)).toEqual({ ok: false, key: "studio.toast.entryTaken" });
+  });
+
+  it("reports a timeout route that has no maximum time", () => {
+    const draft = step(step(newDraft("Financeiro"), "agent", 200, 200).draft, "agent", 600, 200).draft;
+    const [a, b] = draft.steps;
+    const connected = connect(draft, a!.id, "timeout", b!.id);
+    if (!connected.ok) throw new Error(connected.key);
+    expect(draftProblem({ ...connected.draft, name: "Test" }, new Set(["bot-a"]))?.key).toBe("studio.needTimeout");
   });
 });

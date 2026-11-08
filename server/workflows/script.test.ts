@@ -70,12 +70,13 @@ describe("runWorkflowScript", () => {
     expect(result.error).toContain("missing file");
   });
 
-  it("kills a script that runs past its timeout", async () => {
+  it("kills a script that runs past its timeout and marks it as timed out", async () => {
     const path = script(`setTimeout(() => {}, 60_000);`);
     const result = await run(path, 1_000).promise;
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.error).toContain("longer than 1000ms");
+    expect(result.timedOut).toBe(true);
   });
 
   it("stops a running script when the run is cancelled", async () => {

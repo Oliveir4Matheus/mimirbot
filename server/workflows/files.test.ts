@@ -24,6 +24,7 @@ const step = (overrides: Partial<BotWorkflowStep> = {}): BotWorkflowStep => ({
   name: "Review",
   botId: "bot-reviewer",
   instructions: "Read the input and leave a decision.",
+  timeoutMs: 0,
   inputs: [],
   outputs: required("decision.json"),
   ...overrides,

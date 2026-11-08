@@ -105,6 +105,64 @@ describe("the person's routes", () => {
     expect(state.status).toBe(400);
   });
 
+  it("saves the success, failure and timeout routes and reads them back", async () => {
+    const { call, state, definition: def } = harness();
+    const routed = definition({
+      steps: [
+        { id: "coletar", name: "Collect", botId: "bot-a", instructions: "Collect.", timeoutMs: 30_000, onSuccess: "revisar", onFailure: "revisar", onTimeout: "revisar", outputs: [{ path: "numbers.csv" }] },
+        { id: "revisar", name: "Review", botId: "bot-a", instructions: "Review.", outputs: [{ path: "decision.json" }], result: "decision.json", onSuccess: null },
+      ],
+    });
+    await call("POST", "/api/workflows", { ...routed, id: def.id });
+    expect(state.status).toBe(200);
+    const saved = (state.body as { workflow: WorkflowDefinition }).workflow;
+    const first = saved.steps[0]!;
+    expect(first.kind === "bot" && first.onSuccess).toBe("revisar");
+    expect(first.kind === "bot" && first.onFailure).toBe("revisar");
+    expect(first.kind === "bot" && first.onTimeout).toBe("revisar");
+    expect(saved.steps[1]!.kind === "bot" && saved.steps[1]!.onSuccess).toBeNull();
+  });
+
+  it("reads an old next edge as onSuccess when saving", async () => {
+    const { call, state, definition: def } = harness();
+    const body = {
+      id: def.id,
+      version: 1,
+      name: "Legacy",
+      department: "Financeiro",
+      steps: [
+        { id: "coletar", name: "Collect", botId: "bot-a", instructions: "Collect.", outputs: [{ path: "numbers.csv" }], next: "revisar" },
+        { id: "revisar", name: "Review", botId: "bot-a", instructions: "Review.", outputs: [{ path: "decision.json" }], result: "decision.json" },
+      ],
+      createdAt: 1,
+      updatedAt: 1,
+    };
+    await call("POST", "/api/workflows", body);
+    expect(state.status).toBe(200);
+    const saved = (state.body as { workflow: WorkflowDefinition }).workflow;
+    expect(saved.steps[0]!.kind === "bot" && saved.steps[0]!.onSuccess).toBe("revisar");
+    expect((saved.steps[0] as Record<string, unknown>).next).toBeUndefined();
+  });
+
+  it("refuses a save whose success edge points backwards", async () => {
+    const { call, state, definition: def } = harness();
+    const body = {
+      id: def.id,
+      version: 1,
+      name: "Backwards",
+      department: "Financeiro",
+      steps: [
+        { id: "coletar", name: "Collect", botId: "bot-a", instructions: "Collect.", outputs: [{ path: "numbers.csv" }], onSuccess: "revisar" },
+        { id: "revisar", name: "Review", botId: "bot-a", instructions: "Review.", outputs: [{ path: "decision.json" }], result: "decision.json", onSuccess: "coletar" },
+      ],
+      createdAt: 1,
+      updatedAt: 1,
+    };
+    await call("POST", "/api/workflows", body);
+    expect(state.status).toBe(400);
+    expect((state.body as { error: string }).error).toContain("onSuccess");
+  });
+
   it("lists, saves and reads a workflow", async () => {
     const { call, state, definition: def } = harness();
     await call("GET", "/api/workflows");

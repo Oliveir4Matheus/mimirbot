@@ -12,11 +12,40 @@ Atualizado em 08/11/2026.
 | F2 | Gatilho "Workflow" | Concluída |
 | F2 | Snapshot da run | Concluída |
 | F2 | Etapa de script, condição e repetição | Concluída |
-| F3 | Editor visual e Team Cloud/VM | Não iniciada |
+| F3.1 | Editor visual Workflow Studio v0.5 | Concluída (08/11/2026) |
+| F3.1.1 | Correções do Studio: `onSuccess`, `onFailure`/`onTimeout` na UI, fim explícito e desconectar | Concluída (09/11/2026) |
+| F3.3 | Componente `kind: "loop"` (repetição estruturada) | Planejada |
+| F3 | Editor visual e Team Cloud/VM | Em andamento |
 
 A tela F2 foi mergeada em `feat/workflow-f1` (commit `6c9f98fdc`). As mudanças
 da aprovação longa (P16) estão na working tree dessa branch, ainda sem commit e
 sem push.
+
+## Decisões aprovadas para a F3.1.1 (09/11/2026)
+
+A validação de 5 cenários de ETL pela UI encontrou quatro pontos. As decisões
+foram:
+
+1. **Resultados por etapa:** renomear `next` para `onSuccess` no nível da etapa
+   (`onSuccess`, `onFailure`, `onTimeout`). `onSkipped` **não** será
+   implementado: uma etapa `skipped` nunca executa, então não há evento para
+   rotear; o pulo continua sendo decisão do IF/Else. `onTimeout` passa a ser
+   distinto de falha.
+2. **Timeout por etapa:** qualquer etapa executável (Agente ou Script) pode
+   declarar `timeoutMs`. O timeout vira um resultado próprio e pode seguir
+   `onTimeout`; sem ele, cai em `onFailure`; sem nenhum dos dois, a run para.
+3. **Repetição:** removida do produto. Saem o caminho de volta, o teto de 25
+   visitas (`WORKFLOW_STEP_VISIT_MAX`), o reset de revisita, o campo `attempts`
+   do `run.json` e a exibição de tentativas. O schema passa a exigir arestas só
+   para frente; o Studio continua recusando ciclos. A repetição visível volta
+   como componente `kind: "loop"` na F3.3.
+4. **Fim explícito:** `onSuccess: null` encerra o ramo. O Studio grava `null`
+   quando a saída de sucesso não está conectada; `onSuccess` ausente continua
+   significando “próxima do array” para definições antigas.
+5. **Desconectar:** expor no Studio o `disconnect()` que já existe no modelo.
+
+O plano detalhado, com arquivos e linhas, está em
+`docs/superpowers/specs/2026-11-09-workflow-f31-fixes.md`.
 
 ## O que já foi feito
 
@@ -147,15 +176,15 @@ sem push.
 - Fixture isolado (`control-omb launch`, fake Claude, dados temporários): a rotina `target: "workflow"` iniciou a run, a run gravou `triggeredBy`, terminou `succeeded` com `verified: ["result.json"]` e `result: {ok: true}`, a run da rotina terminou `completed` com o mesmo `workflowRunId`, e depois de apagar o Workflow o `run.json` manteve `snapshot.name` e `snapshot.steps`.
 - Receita reproduzível em `docs/verification/workflow-trigger.md`.
 
-### Etapa de script + condição/repetição
+### Etapa de script + condição (a repetição foi removida na F3.1.1)
 
-- `shared/workflow.ts`: etapa é união por `kind` (`"bot"` padrão, `"script"` com `run` e `timeoutMs`), mais `next`, `when` e `onFailure`.
-- `server/workflows/script.ts`: executor Node com `cwd` da etapa, `WORKFLOW_STEP_INPUT`/`OUTPUT`, ambiente mínimo, timeout, kill e saída capturada; em Electron usa `ELECTRON_RUN_AS_NODE=1`.
-- `server/workflows/flow.ts`: `when` (caminho pontuado no `result.json`), `next` e `onFailure`; repetição é caminho de volta com teto de 25 visitas.
-- `state.ts`: `completeStep` recebe o destino, `failStepTo` continua a run pela `onFailure`, etapa revisitada reabre preservando `attempts`, caminho não percorrido termina `skipped`.
-- `store.ts` + rotas: `PUT/GET /api/workflows/:id/scripts/:name` (admin, 256 KB, 409 com run ativa); o save recusa etapa de script sem arquivo.
-- Tela F2 somente leitura: card de script, painel com arquivo/runtime e seção **Fluxo**; `en.json`/`pt-br.json` atualizados.
-- Testes: `shared/workflow.test.ts`, `flow.test.ts`, `script.test.ts`, estado, motor (desvio, `onFailure`, volta com teto, `skipped`, script ausente) e rotas.
+- `shared/workflow.ts`: etapa é união por `kind` (`"bot"` padrão, `"script"` com `run` e `timeoutMs`), mais `onSuccess`, `onFailure`, `onTimeout`, `when` e `timeoutMs` no bot. A repetição e o teto de 25 visitas foram removidos na F3.1.1.
+- `server/workflows/script.ts`: executor Node com `cwd` da etapa, `WORKFLOW_STEP_INPUT`/`OUTPUT`, ambiente mínimo, timeout, kill e saída capturada; em Electron usa `ELECTRON_RUN_AS_NODE=1`. O timeout agora marca `timedOut` e segue `onTimeout`.
+- `server/workflows/flow.ts`: `when` (caminho pontuado no `result.json`), `onSuccess` (`null` = fim, ausente = próxima do array), `onFailure` e `onTimeout`. A repetição por caminho de volta e o teto de 25 visitas foram removidos na F3.1.1.
+- `state.ts`: `completeStep` recebe o destino, `failStepTo` continua a run pela `onFailure`/`onTimeout` e grava `failureKind`; caminho não percorrido termina `skipped`. Não há mais `attempts` nem reabertura de etapa.
+- `store.ts` + rotas: `PUT/GET /api/workflows/:id/scripts/:name` (admin, 256 KB, 409 com run ativa); o save recusa etapa de script sem arquivo e aresta para trás.
+- Tela F2 somente leitura: card de script, painel com arquivo/runtime e seção **Fluxo** (`onSuccess`, `onFailure`, `onTimeout` e **Fim**); `en.json`/`pt-br.json` atualizados.
+- Testes: `shared/workflow.test.ts`, `flow.test.ts`, `script.test.ts`, estado, motor (desvio, `onFailure`, `onTimeout`, timeout de bot e de script, pausa de aprovação, `skipped`, script ausente) e rotas.
 - `pnpm typecheck`, `pnpm lint` e `pnpm i18n:check`: passaram.
 - Fixture isolado (`control-omb launch`, fake Claude, dados temporários): a run v2 rodou o script real, o `when` escolheu `fechar`, `corrigir` ficou `skipped`, terminou `succeeded` e manteve o snapshot depois de apagar o Workflow.
 - Receita reproduzível em `docs/verification/workflow-script.md`.
@@ -174,6 +203,18 @@ sem push.
 - Fixture isolado (`control-omb launch`, scripts reais, dados temporários): o save com `scripts` criou o Workflow, a condição leu `{ "ok": false }` e seguiu `nao`; `sim` ficou `skipped` e a run terminou `succeeded`.
 - Fixture de tela (`pnpm dev:server` + `pnpm dev`, dados temporários): **Novo Workflow**, Script + IF/Else, conexão Run → entrada, **Salvar**; o Workflow apareceu na lista com as duas etapas e o `run.json`/definição guardaram `next` e `from`.
 - Receita reproduzível em `docs/verification/workflow-studio.md`.
+
+### Correções do Studio (F3.1.1)
+
+- Contrato: `next` virou `onSuccess` (nullable; ausente = legado, `null` = fim). Etapas de bot e script ganharam `onTimeout` e `timeoutMs` (bot 0 = sem limite; script mantém 60 s). `when[].next` continua igual.
+- Motor: timeout é resultado próprio (`failureKind: "timeout"`); segue `onTimeout`, cai em `onFailure` ou para. O relógio do bot cobre o turno ativo e para na pausa de aprovação. O timeout do script marca `timedOut`.
+- Repetição removida: `WORKFLOW_STEP_VISIT_MAX`, a checagem em `advance`, `resetStepFolders`, `attempts` do `run.json` e a exibição de tentativas. O schema recusa arestas para trás em `onSuccess`, `onFailure`, `onTimeout`, `when[].next`, `whenTrue`, `whenFalse` e `from`.
+- Studio: portas de Falha e Tempo esgotado nos cards de Agente e Script (Falha também no IF/Else), **Fim do fluxo** quando `onSuccess` é `null`, tempo máximo do bot no balão de Execução e botão **Desconectar**. Abrir um Workflow antigo materializa `onSuccess`; salvar um passo sem conexão grava `null`.
+- F2: o painel mostra `onSuccess`/`onTimeout`/Fim; a timeline mostra **Tempo esgotado** e não mostra mais tentativas.
+- `pnpm typecheck`, `pnpm lint` e `pnpm i18n:check`: passaram.
+- `pnpm vitest run server/workflows server/routes/workflows.test.ts src/components/studio src/components/workflows shared/workflow.test.ts`: **195 testes** passaram.
+- Fixture isolado (`pnpm dev:server` em 8999, scripts reais, dados temporários): cenário 1 termina com `corrigir` `skipped`; cenário 2 com `carrega` `skipped`; cenário 3 segue `onFailure` e, sem ele, a run para; cenário 4 falha com `missing required output "result.json"` e a próxima fica `pending`; cenário 5 é recusado no save (`onSuccess step "a" must come after this step`); um script que estoura o timeout segue `onTimeout`. Nenhum `run.json` tem `attempts` e não existe erro de teto de visitas.
+- Studio real em Chrome headless: as portas Falha/Tempo esgotado aparecem, a conexão para frente mostra **Etapas conectadas**, a conexão de volta é recusada com **Conexão recusada: o fluxo deve permanecer sem ciclos** e **Desconectar** volta o Run para **Fim do fluxo**.
 
 Desvios deliberados do protótipo v0.5 nesta fatia:
 

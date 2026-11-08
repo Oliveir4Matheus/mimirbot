@@ -48,8 +48,7 @@ export function runPoint(node: Point, count: number): Point {
   return { x: node.x + center + BRANCH_SIZE / 2 + 8, y: branchCenterY(node.y) };
 }
 
-export function conditionSidePoint(node: Point, branch: "true" | "false"): Point {
-  const row = branch === "true" ? 0 : 1;
+export function sidePoint(node: Point, row: number): Point {
   const y = node.y + CONDITION_SIDE.top + row * (CONDITION_SIDE.row + CONDITION_SIDE.gap) + CONDITION_SIDE.row / 2;
   return {
     x: node.x + CONDITION_SIDE.start + CONDITION_SIDE.stem + CONDITION_SIDE.button + CONDITION_SIDE.pointGap + CONDITION_SIDE.point / 2,
@@ -57,12 +56,24 @@ export function conditionSidePoint(node: Point, branch: "true" | "false"): Point
   };
 }
 
+export function conditionSidePoint(node: Point, branch: "true" | "false"): Point {
+  return sidePoint(node, branch === "true" ? 0 : 1);
+}
+
 export function outputPoint(draft: StudioDraft, stepId: string, branch: StudioBranch): Point | undefined {
   const node = draft.canvas.nodes[stepId];
   const step = draft.steps.find((candidate) => candidate.id === stepId);
   if (!node || !step) return undefined;
-  if (step.kind === "condition") return branch === "run" ? undefined : conditionSidePoint(node, branch);
-  return branch === "run" ? runPoint(node, 5) : undefined;
+  if (step.kind === "condition") {
+    if (branch === "true") return sidePoint(node, 0);
+    if (branch === "false") return sidePoint(node, 1);
+    if (branch === "failure") return sidePoint(node, 2);
+    return undefined;
+  }
+  if (branch === "run") return runPoint(node, 5);
+  if (branch === "failure") return sidePoint(node, 0);
+  if (branch === "timeout") return sidePoint(node, 1);
+  return undefined;
 }
 
 export function bezier(from: Point, to: Point): string {

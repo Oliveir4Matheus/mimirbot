@@ -9,6 +9,7 @@ const step = (overrides: Partial<BotWorkflowStep> = {}): BotWorkflowStep => ({
   name: "Review the numbers",
   botId: "bot-reviewer",
   instructions: "Check the numbers and answer with a decision.",
+  timeoutMs: 0,
   inputs: [{ as: "numbers.csv", from: { step: "coletar", output: "numbers.csv" } }],
   outputs: [{ path: "decision.json", required: true }, { path: "notes.md", required: true }],
   result: "decision.json",

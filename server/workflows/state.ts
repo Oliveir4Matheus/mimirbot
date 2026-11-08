@@ -1,7 +1,7 @@
 // Pure run transitions. The engine decides when one happens; this module only
 // says what the run looks like afterwards, so a transition is testable without
 // a disk, a turn or a clock.
-import type { WorkflowDefinition, WorkflowRun, WorkflowRunPause } from "../../shared/workflow.ts";
+import type { WorkflowDefinition, WorkflowRun, WorkflowRunPause, WorkflowRunStep } from "../../shared/workflow.ts";
 
 export type RunTransition = { ok: true; run: WorkflowRun } | { ok: false; error: string };
 
@@ -33,7 +33,7 @@ export function createRun(input: {
     department: definition.department,
     status: "queued",
     currentStep: 0,
-    steps: definition.steps.map((step) => ({ id: step.id, status: "pending", attempts: 0 })),
+    steps: definition.steps.map((step) => ({ id: step.id, status: "pending" })),
     createdAt: now,
     updatedAt: now,
     ...(requestedBy ? { requestedBy } : {}),
@@ -68,7 +68,6 @@ export function beginStep(
   const next = clone(run);
   const target = next.steps[index]!;
   target.status = "running";
-  target.attempts += 1;
   if (input.threadId !== undefined) target.threadId = input.threadId;
   if (input.assignmentId !== undefined) target.assignmentId = input.assignmentId;
   target.startedAt ??= now;
@@ -76,19 +75,8 @@ export function beginStep(
   return { ok: true, run: next };
 }
 
-/** Points the run at `index` and clears the previous visit's marks, keeping `attempts` as the visit count. */
+/** Points the run at `index`. Only a forward edge reaches this, so the step is still pending. */
 function enterStep(run: WorkflowRun, index: number, now: number): void {
-  const target = run.steps[index];
-  if (!target) return;
-  if (target.status !== "pending") {
-    target.status = "pending";
-    target.threadId = undefined;
-    target.assignmentId = undefined;
-    target.startedAt = undefined;
-    target.finishedAt = undefined;
-    target.error = undefined;
-    target.verified = undefined;
-  }
   run.currentStep = index;
   run.updatedAt = now;
 }
@@ -130,7 +118,14 @@ export function completeStep(
 }
 
 /** A step failed on a path the Workflow declared with `onFailure`: the run continues there. */
-export function failStepTo(run: WorkflowRun, index: number, error: string, nextIndex: number, now: number): RunTransition {
+export function failStepTo(
+  run: WorkflowRun,
+  index: number,
+  error: string,
+  nextIndex: number,
+  now: number,
+  failureKind?: WorkflowRunStep["failureKind"],
+): RunTransition {
   if (run.status !== "running") return { ok: false, error: `a ${run.status} run cannot fail a step` };
   const step = run.steps[index];
   if (!step || (step.status !== "running" && step.status !== "pending")) {
@@ -142,11 +137,18 @@ export function failStepTo(run: WorkflowRun, index: number, error: string, nextI
   target.status = "failed";
   target.error = error;
   target.finishedAt = now;
+  if (failureKind !== undefined) target.failureKind = failureKind;
   enterStep(next, nextIndex, now);
   return { ok: true, run: next };
 }
 
-export function failStep(run: WorkflowRun, index: number, error: string, now: number): RunTransition {
+export function failStep(
+  run: WorkflowRun,
+  index: number,
+  error: string,
+  now: number,
+  failureKind?: WorkflowRunStep["failureKind"],
+): RunTransition {
   const step = run.steps[index];
   if (!step) return { ok: false, error: `the run has no step ${index + 1}` };
   if (isTerminalRun(run.status)) return { ok: false, error: `a ${run.status} run cannot fail` };
@@ -155,6 +157,7 @@ export function failStep(run: WorkflowRun, index: number, error: string, now: nu
   target.status = "failed";
   target.error = error;
   target.finishedAt = now;
+  if (failureKind !== undefined) target.failureKind = failureKind;
   next.status = "failed";
   next.error = error;
   next.finishedAt = now;

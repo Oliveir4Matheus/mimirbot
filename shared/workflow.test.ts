@@ -209,16 +209,17 @@ const branchWorkflow = (overrides: Record<string, unknown> = {}) => definition({
       result: "result.json",
       when: [{ field: "ok", equals: false, next: "corrigir" }],
     },
-    { id: "corrigir", kind: "bot", name: "Fix", botId: "bot-b", instructions: "Fix.", outputs: [{ path: "result.json" }], next: "validar" },
+    { id: "corrigir", kind: "bot", name: "Fix", botId: "bot-b", instructions: "Fix.", outputs: [{ path: "result.json" }], onSuccess: "fechar" },
     { id: "fechar", kind: "bot", name: "Close", botId: "bot-b", instructions: "Close.", outputs: [{ path: "result.json" }], result: "result.json" },
   ],
   ...overrides,
 });
 
 describe("script steps and flow edges", () => {
-  it("parses bot and script steps, defaulting the script timeout", () => {
+  it("parses bot and script steps, defaulting the script timeout and leaving the bot unlimited", () => {
     const parsed = workflowDefinitionSchema.parse(branchWorkflow());
     expect(parsed.steps[0]!.kind).toBe("bot");
+    expect(parsed.steps[0]!.kind === "bot" && parsed.steps[0]!.timeoutMs).toBe(0);
     const script = parsed.steps[1]!;
     expect(script.kind).toBe("script");
     if (script.kind !== "script") throw new Error("expected a script step");
@@ -231,10 +232,46 @@ describe("script steps and flow edges", () => {
     expect(parsed.steps.map((step) => step.kind)).toEqual(["bot", "bot"]);
   });
 
-  it("accepts a back edge and every declared destination", () => {
-    const parsed = workflowDefinitionSchema.parse(branchWorkflow());
-    expect(parsed.steps[1]!.when?.[0]?.next).toBe("corrigir");
-    expect(parsed.steps[2]!.next).toBe("validar");
+  it("reads the old next field as onSuccess and drops it", () => {
+    const workflow = branchWorkflow();
+    (workflow.steps[2] as Record<string, unknown>).onSuccess = undefined;
+    (workflow.steps[2] as Record<string, unknown>).next = "fechar";
+    const parsed = workflowDefinitionSchema.parse(workflow);
+    expect(parsed.steps[2]!.kind === "bot" && parsed.steps[2]!.onSuccess).toBe("fechar");
+    expect((parsed.steps[2] as Record<string, unknown>).next).toBeUndefined();
+    expect(parsed.steps[1]!.kind === "script" && parsed.steps[1]!.when?.[0]?.next).toBe("corrigir");
+  });
+
+  it("keeps an explicit end and every forward destination", () => {
+    const workflow = branchWorkflow();
+    (workflow.steps[2] as Record<string, unknown>).onSuccess = null;
+    const parsed = workflowDefinitionSchema.parse(workflow);
+    expect(parsed.steps[2]!.kind === "bot" && parsed.steps[2]!.onSuccess).toBeNull();
+    expect(parsed.steps[1]!.kind === "script" && parsed.steps[1]!.when?.[0]?.next).toBe("corrigir");
+  });
+
+  it("refuses an edge that points backwards", () => {
+    const backwardNext = branchWorkflow();
+    (backwardNext.steps[2] as Record<string, unknown>).onSuccess = "coletar";
+    expect(issues(backwardNext)).toContain("steps.2.onSuccess");
+
+    const backwardFailure = branchWorkflow();
+    (backwardFailure.steps[2] as Record<string, unknown>).onFailure = "validar";
+    expect(issues(backwardFailure)).toContain("steps.2.onFailure");
+
+    const backwardTimeout = branchWorkflow();
+    (backwardTimeout.steps[1] as Record<string, unknown>).onTimeout = "coletar";
+    expect(issues(backwardTimeout)).toContain("steps.1.onTimeout");
+
+    const backwardWhen = branchWorkflow();
+    (backwardWhen.steps[1] as Record<string, unknown>).when = [{ field: "ok", equals: false, next: "coletar" }];
+    expect(issues(backwardWhen)).toContain("steps.1.when.0.next");
+  });
+
+  it("refuses onTimeout without a maximum time", () => {
+    const workflow = branchWorkflow();
+    (workflow.steps[2] as Record<string, unknown>).onTimeout = "fechar";
+    expect(issues(workflow)).toContain("steps.2.onTimeout");
   });
 
   it("rejects a script name that is a path or another extension", () => {
@@ -245,10 +282,10 @@ describe("script steps and flow edges", () => {
     }
   });
 
-  it("rejects an unknown next, onFailure or when target", () => {
+  it("rejects an unknown onSuccess, onFailure or when target", () => {
     const unknownNext = branchWorkflow();
-    (unknownNext.steps[2] as Record<string, unknown>).next = "nope";
-    expect(issues(unknownNext)).toContain("steps.2.next");
+    (unknownNext.steps[2] as Record<string, unknown>).onSuccess = "nope";
+    expect(issues(unknownNext)).toContain("steps.2.onSuccess");
 
     const unknownFailure = branchWorkflow();
     (unknownFailure.steps[2] as Record<string, unknown>).onFailure = "nope";
@@ -311,6 +348,20 @@ describe("condition steps and the Studio canvas", () => {
     const workflow = withCondition();
     (workflow.steps[1] as Record<string, unknown>).whenTrue = "missing";
     expect(issues(workflow)).toContain("steps.1.whenTrue");
+  });
+
+  it("refuses a condition route or source that points backwards", () => {
+    const backwardTrue = withCondition();
+    (backwardTrue.steps[1] as Record<string, unknown>).whenTrue = "revisar";
+    expect(issues(backwardTrue)).toContain("steps.1.whenTrue");
+
+    const backwardFalse = withCondition();
+    (backwardFalse.steps[1] as Record<string, unknown>).whenFalse = "revisar";
+    expect(issues(backwardFalse)).toContain("steps.1.whenFalse");
+
+    const backwardSource = withCondition();
+    (backwardSource.steps[1] as Record<string, unknown>).from = "fechar";
+    expect(issues(backwardSource)).toContain("steps.1.from");
   });
 
   it("keeps the canvas with positions, notes and containers", () => {

@@ -360,7 +360,7 @@ describe("long approval", () => {
       ...run,
       status: "waiting_approval",
       startedAt: NOW,
-      steps: [{ id: "coletar", status: "running", attempts: 1, threadId: "t-1", startedAt: NOW }, run.steps[1]!],
+      steps: [{ id: "coletar", status: "running", threadId: "t-1", startedAt: NOW }, run.steps[1]!],
       pause: { stepId: "coletar", question: "ok?", cardIds: ["card-1"], askedAt: NOW },
     });
     engine.recover();
@@ -387,13 +387,13 @@ describe("recover", () => {
   it("fails a step left running by a restart instead of running it twice", async () => {
     const { store, engine, definition: def } = setup();
     const run = store.createRun(def);
-    store.writeRun({ ...run, status: "running", startedAt: NOW, steps: [{ id: "coletar", status: "running", attempts: 1, threadId: "t-1", startedAt: NOW }, ...run.steps.slice(1)] });
+    store.writeRun({ ...run, status: "running", startedAt: NOW, steps: [{ id: "coletar", status: "running", threadId: "t-1", startedAt: NOW }, ...run.steps.slice(1)] });
     engine.recover();
     await engine.idle();
     const recovered = store.readRun(run.id)!;
     expect(recovered.status).toBe("failed");
     expect(recovered.error).toContain("restarted");
-    expect(recovered.steps[0]).toMatchObject({ status: "failed", attempts: 1 });
+    expect(recovered.steps[0]).toMatchObject({ status: "failed" });
   });
 
   it("continues a queued run and a run stopped between steps", async () => {
@@ -456,46 +456,6 @@ describe("script steps and branching", () => {
     expect(finished.steps.map((step) => step.status)).toEqual(["succeeded", "succeeded"]);
     expect(finished.steps[0]!.verified).toEqual(["result.json"]);
     expect(calls.map((call) => call.options.workflowStep.stepId)).toEqual(["fechar"]);
-  });
-
-  it("follows when and takes a back edge until the script passes", async () => {
-    const def = scriptDefinition({
-      steps: [
-        {
-          id: "validar",
-          kind: "script",
-          name: "Validate",
-          run: "validar.mjs",
-          outputs: [{ path: "result.json" }],
-          result: "result.json",
-          when: [{ field: "ok", equals: true, next: "fechar" }],
-        },
-        { id: "corrigir", name: "Fix", botId: "bot-b", instructions: "Fix.", outputs: [{ path: "result.json" }], next: "validar" },
-        { id: "fechar", name: "Close", botId: "bot-b", instructions: "Close.", outputs: [{ path: "result.json" }], result: "result.json" },
-      ],
-    });
-    installScript(def, `
-      import { readFileSync, writeFileSync } from "node:fs";
-      let visits = 0;
-      try { visits = Number(readFileSync("../visits.txt", "utf8")); } catch {}
-      visits += 1;
-      writeFileSync("../visits.txt", String(visits));
-      writeFileSync("output/result.json", JSON.stringify({ ok: visits >= 2 }));
-    `);
-    const { store, engine, calls, onTurn } = setup(def);
-    onTurn((_botId, _text, options) => {
-      write(store, options, { "result.json": JSON.stringify({ ok: true }) });
-      options.onSettled({ ok: true, text: "done" });
-    });
-    const started = engine.start(def.id);
-    if (!started.ok) throw new Error(started.error);
-    await engine.idle();
-    const finished = store.readRun(started.run.id)!;
-    expect(finished.status).toBe("succeeded");
-    expect(finished.steps[0]!.attempts).toBe(2);
-    expect(finished.steps[1]!.attempts).toBe(1);
-    expect(finished.steps[2]!.attempts).toBe(1);
-    expect(calls.map((call) => call.options.workflowStep.stepId)).toEqual(["corrigir", "fechar"]);
   });
 
   it("continues on the declared onFailure path and keeps the failed step on record", async () => {
@@ -574,26 +534,109 @@ describe("script steps and branching", () => {
     expect(finished.steps.map((step) => step.status)).toEqual(["succeeded", "skipped", "succeeded"]);
   });
 
-  it("stops a repeat at the visit limit instead of looping forever", async () => {
+  it("routes a script that outlives its timeout through onTimeout", async () => {
     const def = scriptDefinition({
-      steps: [{
-        id: "loop",
-        kind: "script",
-        name: "Loop",
-        run: "validar.mjs",
-        outputs: [{ path: "result.json" }],
-        result: "result.json",
-        next: "loop",
-      }],
+      steps: [
+        { id: "validar", kind: "script", name: "Validate", run: "validar.mjs", timeoutMs: 1_000, onTimeout: "fechar", onFailure: "corrigir", outputs: [{ path: "result.json" }], result: "result.json" },
+        { id: "corrigir", name: "Fix", botId: "bot-b", instructions: "Fix.", outputs: [{ path: "result.json" }], result: "result.json" },
+        { id: "fechar", name: "Close", botId: "bot-b", instructions: "Close.", outputs: [{ path: "result.json" }], result: "result.json" },
+      ],
     });
-    installScript(def, writeResult);
-    const { store, engine } = setup(def);
+    installScript(def, `setTimeout(() => {}, 60_000);`);
+    const { store, engine, calls, onTurn } = setup(def);
+    onTurn((_botId, _text, options) => {
+      write(store, options, { "result.json": JSON.stringify({ ok: true }) });
+      options.onSettled({ ok: true, text: "done" });
+    });
     const started = engine.start(def.id);
     if (!started.ok) throw new Error(started.error);
     await engine.idle();
     const finished = store.readRun(started.run.id)!;
-    expect(finished.status).toBe("failed");
-    expect(finished.error).toContain("visit limit");
-    expect(finished.steps[0]!.attempts).toBe(25);
+    expect(finished.status).toBe("succeeded");
+    expect(finished.steps.map((step) => step.status)).toEqual(["failed", "skipped", "succeeded"]);
+    expect(finished.steps[0]).toMatchObject({ failureKind: "timeout" });
+    expect(finished.steps[0]!.error).toContain("longer than 1000ms");
+    expect(calls.map((call) => call.options.workflowStep.stepId)).toEqual(["fechar"]);
+  });
+
+  it("routes a script that exits with an error through onFailure, not onTimeout", async () => {
+    const def = scriptDefinition({
+      steps: [
+        { id: "validar", kind: "script", name: "Validate", run: "validar.mjs", timeoutMs: 1_000, onTimeout: "fechar", onFailure: "corrigir", outputs: [{ path: "result.json" }], result: "result.json" },
+        { id: "corrigir", name: "Fix", botId: "bot-b", instructions: "Fix.", outputs: [{ path: "result.json" }], result: "result.json" },
+        { id: "fechar", name: "Close", botId: "bot-b", instructions: "Close.", outputs: [{ path: "result.json" }], result: "result.json" },
+      ],
+    });
+    installScript(def, `console.error("broken"); process.exit(1);`);
+    const { store, engine, calls, onTurn } = setup(def);
+    onTurn((_botId, _text, options) => {
+      write(store, options, { "result.json": JSON.stringify({ ok: true }) });
+      options.onSettled({ ok: true, text: "done" });
+    });
+    const started = engine.start(def.id);
+    if (!started.ok) throw new Error(started.error);
+    await engine.idle();
+    const finished = store.readRun(started.run.id)!;
+    expect(finished.status).toBe("succeeded");
+    expect(finished.steps.map((step) => step.status)).toEqual(["failed", "succeeded", "succeeded"]);
+    expect(finished.steps[0]).toMatchObject({ failureKind: "failure" });
+    expect(calls.map((call) => call.options.workflowStep.stepId)).toEqual(["corrigir", "fechar"]);
+  });
+
+  it("times out a bot step that never settles and follows onTimeout", async () => {
+    const def = definition({
+      steps: [
+        { id: "coletar", name: "Collect", botId: "bot-a", instructions: "Collect.", timeoutMs: 20, onTimeout: "avisar", outputs: [{ path: "numbers.csv" }] },
+        { id: "avisar", name: "Warn", botId: "bot-b", instructions: "Warn.", outputs: [{ path: "result.json" }], result: "result.json" },
+      ],
+    });
+    const { store, engine, calls, onTurn } = setup(def);
+    onTurn((_botId, _text, options) => {
+      if (options.workflowStep.stepId !== "avisar") return;
+      write(store, options, { "result.json": JSON.stringify({ ok: true }) });
+      options.onSettled({ ok: true, text: "done" });
+    });
+    const started = engine.start(def.id);
+    if (!started.ok) throw new Error(started.error);
+    await engine.idle();
+    await new Promise((resolve) => setTimeout(resolve, 80));
+    await engine.idle();
+    const finished = store.readRun(started.run.id)!;
+    expect(finished.status).toBe("succeeded");
+    expect(finished.steps[0]).toMatchObject({ status: "failed", failureKind: "timeout" });
+    expect(finished.steps[0]!.error).toContain("timed out after 20ms");
+    expect(finished.steps[1]!.status).toBe("succeeded");
+    expect(calls.map((call) => call.options.workflowStep.stepId)).toEqual(["coletar", "avisar"]);
+  });
+
+  it("stops the timeout clock while the run waits for approval", async () => {
+    let open: Array<{ id: string; question: string }> = [];
+    const def = definition({
+      steps: [
+        { id: "coletar", name: "Collect", botId: "bot-a", instructions: "Collect.", timeoutMs: 20, onTimeout: "revisar", outputs: [{ path: "numbers.csv" }] },
+        { id: "revisar", name: "Review", botId: "bot-b", instructions: "Review.", inputs: [{ as: "numbers.csv", from: { step: "coletar", output: "numbers.csv" } }], outputs: [{ path: "decision.json" }], result: "decision.json" },
+      ],
+    });
+    const { store, engine, onTurn } = setup(def, undefined, (threadId) => threadId.endsWith("step-1") ? open : []);
+    onTurn((_botId, _text, options) => {
+      if (options.workflowStep.stepId === "coletar") {
+        write(store, options, { "numbers.csv": "1,2,3\n" });
+        options.onSettled({ ok: true, text: "asked", cards: { question: "ok?", ids: ["card-1"] } });
+        return;
+      }
+      write(store, options, { "decision.json": JSON.stringify({ ok: true }) });
+      options.onSettled({ ok: true, text: "done" });
+    });
+    open = [{ id: "card-1", question: "ok?" }];
+    const started = engine.start(def.id);
+    if (!started.ok) throw new Error(started.error);
+    await engine.idle();
+    expect(store.readRun(started.run.id)!.status).toBe("waiting_approval");
+    await new Promise((resolve) => setTimeout(resolve, 80));
+    expect(store.readRun(started.run.id)!.status).toBe("waiting_approval");
+    open = [];
+    engine.turnSettled("thread-bot-a-step-1", "turn-1", { ok: true, text: "answered" });
+    await engine.idle();
+    expect(store.readRun(started.run.id)!.status).toBe("succeeded");
   });
 });

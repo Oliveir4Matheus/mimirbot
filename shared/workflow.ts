@@ -14,8 +14,9 @@ export const WORKFLOW_RETENTION_MAX_DAYS = 3_650;
 export const WORKFLOW_SCRIPT_MAX_BYTES = 256 * 1024;
 export const WORKFLOW_SCRIPT_TIMEOUT_DEFAULT_MS = 60_000;
 export const WORKFLOW_SCRIPT_TIMEOUT_MAX_MS = 300_000;
-/** Hard cap on how many times one step may run in a single run, so a back edge always ends. */
-export const WORKFLOW_STEP_VISIT_MAX = 25;
+/** The longest an executable step may declare; 0 turns the limit off. */
+export const WORKFLOW_STEP_TIMEOUT_MAX_MS = 3_600_000;
+export const WORKFLOW_BOT_TIMEOUT_DEFAULT_MS = 0;
 export const WORKFLOW_BRANCH_MAX = 8;
 /** The Studio keeps at most this many notes and containers, and this much Markdown per note. */
 export const WORKFLOW_CANVAS_NOTE_MAX = 30;
@@ -145,10 +146,12 @@ const stepBaseSchema = z.object({
   result: workflowPath.optional(),
   /** Fields of the declared result that must match by equality for the step to pass. */
   require: requireSchema.optional(),
-  /** Where to go after this step passes. Default: the next step in array order. */
-  next: stepIdSchema.optional(),
+  /** Where to go after this step passes. null ends the flow; absent means the next step in array order. */
+  onSuccess: stepIdSchema.nullable().optional(),
   /** Where to go when this step fails. Without it the run stops, as it always did. */
   onFailure: stepIdSchema.optional(),
+  /** Where to go when this step times out; needs `timeoutMs` greater than 0. */
+  onTimeout: stepIdSchema.optional(),
   /** The first branch whose field matches the declared result chooses the next step. */
   when: z.array(whenSchema).min(1).max(WORKFLOW_BRANCH_MAX).optional(),
 });
@@ -157,6 +160,8 @@ const botStepSchema = stepBaseSchema.extend({
   kind: z.literal("bot"),
   botId: z.string().min(1).max(200),
   instructions: z.string().trim().min(1).max(WORKFLOW_INSTRUCTIONS_MAX),
+  /** 0 means the bot's turn has no limit. An approval pause stops the clock. */
+  timeoutMs: z.number().int().min(0).max(WORKFLOW_STEP_TIMEOUT_MAX_MS).default(WORKFLOW_BOT_TIMEOUT_DEFAULT_MS),
 });
 
 const scriptStepSchema = stepBaseSchema.extend({
@@ -187,11 +192,17 @@ const conditionStepSchema = z.object({
 
 const stepUnionSchema = z.discriminatedUnion("kind", [botStepSchema, scriptStepSchema, conditionStepSchema]);
 
-/** Older Workflows have no `kind`: a step without one was always a bot step. */
+/** Older Workflows have no `kind` (a step without one was always a bot step)
+ * and spell the success edge `next`; both are normalized here on read. */
 export const workflowStepSchema = z.preprocess(
-  (value) => value !== null && typeof value === "object" && !Array.isArray(value) && (value as Record<string, unknown>).kind === undefined
-    ? { ...(value as Record<string, unknown>), kind: "bot" }
-    : value,
+  (value) => {
+    if (value === null || typeof value !== "object" || Array.isArray(value)) return value;
+    const record = { ...(value as Record<string, unknown>) };
+    if (record.kind === undefined) record.kind = "bot";
+    if (record.onSuccess === undefined && record.next !== undefined) record.onSuccess = record.next;
+    delete record.next;
+    return record;
+  },
   stepUnionSchema,
 );
 
@@ -220,6 +231,8 @@ export const workflowDefinitionSchema = z.object({
     const sourceIndex = positions.get(step.from);
     if (sourceIndex === undefined) {
       context.addIssue({ code: "custom", path: ["steps", index, "from"], message: `source step ${JSON.stringify(step.from)} does not exist` });
+    } else if (sourceIndex >= index) {
+      context.addIssue({ code: "custom", path: ["steps", index, "from"], message: "a condition must read an earlier step" });
     } else {
       const source = definition.steps[sourceIndex]!;
       if (source.kind === "condition") {
@@ -236,8 +249,12 @@ export const workflowDefinitionSchema = z.object({
     }
     for (const [field, target] of [["whenTrue", step.whenTrue], ["whenFalse", step.whenFalse], ["onFailure", step.onFailure]] as const) {
       if (target === undefined) continue;
-      if (target === step.id) context.addIssue({ code: "custom", path: ["steps", index, field], message: "a condition cannot point at itself" });
-      else if (!positions.has(target)) context.addIssue({ code: "custom", path: ["steps", index, field], message: `${field} step ${JSON.stringify(target)} does not exist` });
+      const targetIndex = positions.get(target);
+      if (targetIndex === undefined) {
+        context.addIssue({ code: "custom", path: ["steps", index, field], message: `${field} step ${JSON.stringify(target)} does not exist` });
+      } else if (targetIndex <= index) {
+        context.addIssue({ code: "custom", path: ["steps", index, field], message: `${field} step ${JSON.stringify(target)} must come after this step` });
+      }
     }
   });
   const outputs = new Map<string, Map<string, z.output<typeof stepOutputSchema>>>();
@@ -259,15 +276,24 @@ export const workflowDefinitionSchema = z.object({
     if (step.when !== undefined && step.result === undefined) {
       context.addIssue({ code: "custom", path: ["steps", index, "when"], message: "when needs a declared result" });
     }
-    if (step.next !== undefined && !positions.has(step.next)) {
-      context.addIssue({ code: "custom", path: ["steps", index, "next"], message: `next step ${JSON.stringify(step.next)} does not exist` });
+    for (const [field, target] of [["onSuccess", step.onSuccess], ["onFailure", step.onFailure], ["onTimeout", step.onTimeout]] as const) {
+      if (target === undefined || target === null) continue;
+      const targetIndex = positions.get(target);
+      if (targetIndex === undefined) {
+        context.addIssue({ code: "custom", path: ["steps", index, field], message: `${field} step ${JSON.stringify(target)} does not exist` });
+      } else if (targetIndex <= index) {
+        context.addIssue({ code: "custom", path: ["steps", index, field], message: `${field} step ${JSON.stringify(target)} must come after this step` });
+      }
     }
-    if (step.onFailure !== undefined && !positions.has(step.onFailure)) {
-      context.addIssue({ code: "custom", path: ["steps", index, "onFailure"], message: `onFailure step ${JSON.stringify(step.onFailure)} does not exist` });
+    if (step.onTimeout !== undefined && step.timeoutMs <= 0) {
+      context.addIssue({ code: "custom", path: ["steps", index, "onTimeout"], message: "onTimeout needs a timeoutMs greater than 0" });
     }
     step.when?.forEach((branch, branchIndex) => {
-      if (!positions.has(branch.next)) {
+      const targetIndex = positions.get(branch.next);
+      if (targetIndex === undefined) {
         context.addIssue({ code: "custom", path: ["steps", index, "when", branchIndex, "next"], message: `next step ${JSON.stringify(branch.next)} does not exist` });
+      } else if (targetIndex <= index) {
+        context.addIssue({ code: "custom", path: ["steps", index, "when", branchIndex, "next"], message: `next step ${JSON.stringify(branch.next)} must come after this step` });
       }
     });
     const names = new Set<string>();
@@ -329,12 +355,13 @@ export type WorkflowStepStatus = "pending" | "running" | "succeeded" | "failed" 
 export interface WorkflowRunStep {
   id: string;
   status: WorkflowStepStatus;
-  attempts: number;
   assignmentId?: string;
   threadId?: string;
   startedAt?: number;
   finishedAt?: number;
   error?: string;
+  /** Whether the step stopped as a plain failure or as a timeout; absent means failure. */
+  failureKind?: "failure" | "timeout";
   /** The declared outputs the engine found, in declaration order. */
   verified?: string[];
 }
@@ -387,12 +414,12 @@ export interface WorkflowRun {
 const workflowRunStepSchema = z.object({
   id: z.string().min(1).max(WORKFLOW_SLUG_MAX),
   status: z.enum(["pending", "running", "succeeded", "failed", "skipped"]),
-  attempts: z.number().int().nonnegative(),
   assignmentId: z.string().min(1).optional(),
   threadId: z.string().min(1).optional(),
   startedAt: z.number().int().nonnegative().optional(),
   finishedAt: z.number().int().nonnegative().optional(),
   error: z.string().optional(),
+  failureKind: z.enum(["failure", "timeout"]).optional(),
   verified: z.array(z.string()).optional(),
 });
 

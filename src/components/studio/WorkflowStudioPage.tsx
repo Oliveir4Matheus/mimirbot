@@ -15,7 +15,7 @@ import { StudioPalette } from "./StudioPalette";
 import { bezier, entryHit, noteAnchor, noteLinkTarget, outputPoint, type Point } from "./studio-geometry";
 import {
   CARD_HEIGHT, CARD_WIDTH, DEFAULT_SCRIPT, containedBy, connect, createContainer, createNote, createStep,
-  draftProblem, fromDefinition, moveContainer, moveNode, moveNote, newDraft,
+  disconnect, draftProblem, fromDefinition, moveContainer, moveNode, moveNote, newDraft,
   removeContainer, removeNote, removeStep, renameContainer, resizeContainer, resizeNote,
   toDefinition, updateNote, updateStep, type StudioBranch, type StudioDraft, type StudioKind, type StudioSelection,
 } from "./studio-model";
@@ -380,10 +380,27 @@ export function WorkflowStudioPage({ workflowId, department, onBack, onSaved }: 
         const to = draft.canvas.nodes[step.whenFalse];
         if (from && to) links.push({ key: `${step.id}-false`, path: bezier(from, { x: to.x, y: to.y + 57 }), color: "#868F96" });
       }
-    } else if (step.next) {
-      const from = outputPoint(draft, step.id, "run");
-      const to = draft.canvas.nodes[step.next];
-      if (from && to) links.push({ key: `${step.id}-run`, path: bezier(from, { x: to.x, y: to.y + 57 }), color: "#868F96" });
+      if (step.onFailure) {
+        const from = outputPoint(draft, step.id, "failure");
+        const to = draft.canvas.nodes[step.onFailure];
+        if (from && to) links.push({ key: `${step.id}-failure`, path: bezier(from, { x: to.x, y: to.y + 57 }), color: "#BC655C" });
+      }
+    } else {
+      if (typeof step.onSuccess === "string") {
+        const from = outputPoint(draft, step.id, "run");
+        const to = draft.canvas.nodes[step.onSuccess];
+        if (from && to) links.push({ key: `${step.id}-run`, path: bezier(from, { x: to.x, y: to.y + 57 }), color: "#868F96" });
+      }
+      if (step.onFailure) {
+        const from = outputPoint(draft, step.id, "failure");
+        const to = draft.canvas.nodes[step.onFailure];
+        if (from && to) links.push({ key: `${step.id}-failure`, path: bezier(from, { x: to.x, y: to.y + 57 }), color: "#BC655C" });
+      }
+      if (step.onTimeout) {
+        const from = outputPoint(draft, step.id, "timeout");
+        const to = draft.canvas.nodes[step.onTimeout];
+        if (from && to) links.push({ key: `${step.id}-timeout`, path: bezier(from, { x: to.x, y: to.y + 57 }), color: "#C08023" });
+      }
     }
   }
   const noteLinks: Array<{ key: string; path: string }> = [];
@@ -503,8 +520,8 @@ export function WorkflowStudioPage({ workflowId, department, onBack, onSaved }: 
                 const clone: WorkflowStep = step.kind === "condition"
                   ? { ...step, id: copy.id, name: copy.name, whenTrue: undefined, whenFalse: undefined, onFailure: undefined }
                   : step.kind === "script" && runName
-                    ? { ...step, id: copy.id, name: copy.name, run: runName, next: undefined, onFailure: undefined }
-                    : { ...step, id: copy.id, name: copy.name, next: undefined, onFailure: undefined } as WorkflowStep;
+                    ? { ...step, id: copy.id, name: copy.name, run: runName, onSuccess: undefined, onFailure: undefined, onTimeout: undefined }
+                    : { ...step, id: copy.id, name: copy.name, onSuccess: undefined, onFailure: undefined, onTimeout: undefined } as WorkflowStep;
                 edit(() => ({ ...created.draft, steps: created.draft.steps.map((candidate) => candidate.id === copy.id ? clone : candidate) }));
                 setSelection({ kind: "step", id: copy.id });
               }}
@@ -582,6 +599,7 @@ export function WorkflowStudioPage({ workflowId, department, onBack, onSaved }: 
             onChange={(patch) => edit((current) => updateStep(current, balloonStep.id, patch))}
             onScript={(name, content) => setScripts((current) => ({ ...current, [name]: content }))}
             onToast={(key) => showToast(t(key))}
+            onDisconnect={(branch) => edit((current) => disconnect(current, balloonStep.id, branch))}
             onClose={() => setBalloon(null)}
           />
         )}
@@ -628,11 +646,11 @@ function targetName(draft: StudioDraft, target: { kind: "step" | "container"; id
 function nearestFreeOutput(draft: StudioDraft, point: Point, radius: number): { from: string; branch: StudioBranch } | undefined {
   let best: { from: string; branch: StudioBranch; distance: number } | undefined;
   for (const step of draft.steps) {
-    const branches: StudioBranch[] = step.kind === "condition" ? ["true", "false"] : ["run"];
+    const branches: StudioBranch[] = step.kind === "condition" ? ["true", "false", "failure"] : ["run", "failure", "timeout"];
     for (const branch of branches) {
       const taken = step.kind === "condition"
-        ? (branch === "true" ? step.whenTrue !== undefined : step.whenFalse !== undefined)
-        : step.next !== undefined;
+        ? (branch === "true" ? step.whenTrue !== undefined : branch === "false" ? step.whenFalse !== undefined : step.onFailure !== undefined)
+        : branch === "run" ? typeof step.onSuccess === "string" : branch === "failure" ? step.onFailure !== undefined : step.onTimeout !== undefined;
       if (taken) continue;
       const output = outputPoint(draft, step.id, branch);
       if (!output) continue;

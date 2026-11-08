@@ -28,8 +28,8 @@ const run = {
   status: "running",
   currentStep: 1,
   steps: [
-    { id: "coletar", status: "succeeded", attempts: 1, verified: ["numbers.csv"] },
-    { id: "revisar", status: "running", attempts: 1 },
+    { id: "coletar", status: "succeeded", verified: ["numbers.csv"] },
+    { id: "revisar", status: "running" },
   ],
   createdAt: 1,
   updatedAt: 2,

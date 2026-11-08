@@ -49,6 +49,11 @@ export function StepPanel({ workflow, step, index, botName, onClose }: {
   const sourceName = (id: string) => workflow.steps.find((candidate) => candidate.id === id)?.name ?? id;
   const condition = step.kind === "condition" ? step : undefined;
   const fileStep = step.kind === "condition" ? undefined : step;
+  const successTarget = fileStep === undefined
+    ? undefined
+    : typeof fileStep.onSuccess === "string" ? fileStep.onSuccess
+      : fileStep.onSuccess === null ? undefined
+        : workflow.steps[index + 1]?.id;
   const conditions = Object.entries(fileStep?.require ?? {});
 
   return (
@@ -74,6 +79,11 @@ export function StepPanel({ workflow, step, index, botName, onClose }: {
                 <BotAvatar name={name!} size={20} />
                 {name}
               </div>
+              {step.timeoutMs > 0 && (
+                <div className="mt-1.5 text-[10px] text-ink-tertiary">
+                  {t("workflows.step.botRuntime", { seconds: Math.round(step.timeoutMs / 1000) })}
+                </div>
+              )}
             </>
           ) : step.kind === "script" ? (
             <>
@@ -174,16 +184,19 @@ export function StepPanel({ workflow, step, index, botName, onClose }: {
                 </div>
               )}
             </div>
-          ) : !fileStep?.next && !fileStep?.onFailure && !fileStep?.when?.length ? <None /> : (
+          ) : !fileStep || (!successTarget && !fileStep.onFailure && !fileStep.onTimeout && !fileStep.when?.length) ? <None /> : (
             <div className="space-y-2">
-              {fileStep?.next && (
-                <div className="text-[10.5px] text-ink-secondary">
-                  {t("workflows.step.next")}: <span className="text-ink">{sourceName(fileStep.next)}</span>
-                </div>
-              )}
-              {fileStep?.onFailure && (
+              <div className="text-[10.5px] text-ink-secondary">
+                {t("workflows.step.onSuccess")}: <span className="text-ink">{successTarget ? sourceName(successTarget) : t("workflows.step.timeoutEnd")}</span>
+              </div>
+              {fileStep.onFailure && (
                 <div className="text-[10.5px] text-ink-secondary">
                   {t("workflows.step.onFailure")}: <span className="text-ink">{sourceName(fileStep.onFailure)}</span>
+                </div>
+              )}
+              {fileStep.onTimeout && (
+                <div className="text-[10.5px] text-ink-secondary">
+                  {t("workflows.step.onTimeout")}: <span className="text-ink">{sourceName(fileStep.onTimeout)}</span>
                 </div>
               )}
               {fileStep?.when?.length ? (

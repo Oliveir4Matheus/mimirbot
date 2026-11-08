@@ -4001,7 +4001,7 @@ describe("workflow trigger", () => {
     department: "General",
     status,
     currentStep: 0,
-    steps: [{ id: "step", status: "pending", attempts: 0 }],
+    steps: [{ id: "step", status: "pending" }],
     createdAt: start,
     updatedAt: start,
     ...extra,

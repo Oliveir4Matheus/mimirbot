@@ -2,17 +2,17 @@
 // declared inputs, opens one thread with cwd = step-N (or runs the step's
 // script), waits for that turn's single onSettled, verifies the declared
 // outputs (and `require`), and only then moves on. A run advances one step at
-// a time; a step that fails stops the run unless the Workflow declared an
-// `onFailure` path. A back edge is a repeat, capped by the visit limit.
+// a time, always forward: a step that fails stops the run unless the Workflow
+// declared an `onFailure` (or, for a timeout, an `onTimeout`) path.
 import { lstatSync } from "node:fs";
 import { join } from "node:path";
 
-import { requireMismatch, WORKFLOW_STEP_VISIT_MAX, type BotWorkflowStep, type ConditionWorkflowStep, type ScriptWorkflowStep, type WorkflowDefinition, type WorkflowRun, type WorkflowStep } from "../../shared/workflow.ts";
+import { requireMismatch, type BotWorkflowStep, type ConditionWorkflowStep, type ScriptWorkflowStep, type WorkflowDefinition, type WorkflowRun, type WorkflowStep } from "../../shared/workflow.ts";
 import type { HostTurnResult } from "../coordinator.ts";
 import { stepBrief, stepThreadTitle } from "./brief.ts";
 import { evaluateCondition } from "./condition.ts";
-import { copyStepInputs, resetStepFolders, verifyStepOutputs, type OutputVerification } from "./files.ts";
-import { failureStepIndex, nextStepIndex } from "./flow.ts";
+import { copyStepInputs, verifyStepOutputs, type OutputVerification } from "./files.ts";
+import { failureStepIndex, nextStepIndex, type StepFailureKind } from "./flow.ts";
 import { stepInputDir, stepOutputDir } from "./paths.ts";
 import { runWorkflowScript, type WorkflowScriptHandle } from "./script.ts";
 import {
@@ -73,8 +73,17 @@ export function createWorkflowEngine(deps: WorkflowEngineDeps): WorkflowEngine {
   const reportedTurns = new Map<string, string>();
   /** Script processes a live run owns, so a cancel can stop the child. */
   const scripts = new Map<string, WorkflowScriptHandle>();
+  /** The running bot step's timeout clock, one per run: a pause stops it and it never restarts. */
+  const timers = new Map<string, ReturnType<typeof setTimeout>>();
 
-  const enqueue = (runId: string, task: () => Promise<void>): Promise<void> => {
+  const clearTimer = (runId: string): void => {
+    const timer = timers.get(runId);
+    if (timer === undefined) return;
+    clearTimeout(timer);
+    timers.delete(runId);
+  };
+
+  const enqueue = (runId: string, task: () => Promise<void> | void): Promise<void> => {
     const previous = chains.get(runId) ?? Promise.resolve();
     const next = previous
       .then(task)
@@ -102,7 +111,10 @@ export function createWorkflowEngine(deps: WorkflowEngineDeps): WorkflowEngine {
     deps.store.writeRun(transition.run);
     deps.broadcast({ kind: "workflow.run", run: transition.run });
     deps.onRun?.(transition.run);
-    if (isTerminalRun(transition.run.status)) forgetRun(transition.run.id);
+    if (isTerminalRun(transition.run.status)) {
+      forgetRun(transition.run.id);
+      clearTimer(transition.run.id);
+    }
     return transition.run;
   };
 
@@ -119,14 +131,14 @@ export function createWorkflowEngine(deps: WorkflowEngineDeps): WorkflowEngine {
     };
   };
 
-  /** A verified failure stops the run, or follows the step's `onFailure` edge. */
-  const failOrRoute = (run: WorkflowRun, index: number, error: string, definition: WorkflowDefinition): void => {
-    const target = failureStepIndex(definition.steps, index);
+  /** A verified failure stops the run, or follows the step's `onFailure` (or `onTimeout`) edge. */
+  const failOrRoute = (run: WorkflowRun, index: number, error: string, definition: WorkflowDefinition, kind: StepFailureKind = "failure"): void => {
+    const target = failureStepIndex(definition.steps, index, kind);
     if (target === null) {
-      apply(failStep(run, index, error, now()));
+      apply(failStep(run, index, error, now(), kind));
       return;
     }
-    const moved = apply(failStepTo(run, index, error, target, now()));
+    const moved = apply(failStepTo(run, index, error, target, now(), kind));
     if (moved) void enqueue(run.id, () => advance(run.id));
   };
 
@@ -159,6 +171,7 @@ export function createWorkflowEngine(deps: WorkflowEngineDeps): WorkflowEngine {
   ): void => {
     const stepState = run.steps[index];
     if (!stepState || stepState.status !== "running") return;
+    clearTimer(run.id);
     const definition = deps.store.workflow(run.workflowId, run.workflowVersion);
     if (!definition) {
       apply(failRun(run, `definition ${run.workflowId} version ${run.workflowVersion} is not available`, now()));
@@ -234,7 +247,7 @@ export function createWorkflowEngine(deps: WorkflowEngineDeps): WorkflowEngine {
     const current = deps.store.readRun(run.id);
     if (!current || current.status !== "running") return;
     if (!outcome.ok) {
-      failOrRoute(current, index, outcome.error, definition);
+      failOrRoute(current, index, outcome.error, definition, outcome.timedOut ? "timeout" : "failure");
       return;
     }
     const verification = verifyStepOutputs(stepOutputDir(runDir, index + 1), step.outputs, step.result);
@@ -286,6 +299,28 @@ export function createWorkflowEngine(deps: WorkflowEngineDeps): WorkflowEngine {
     finishStep(run, index, outcome);
   };
 
+  /** A bot step's turn outlived its declared limit: route it as its own kind of failure. */
+  const timeOutStep = (runId: string, index: number, timeoutMs: number): void => {
+    const run = deps.store.readRun(runId);
+    if (!run || run.status !== "running" || run.currentStep !== index) return;
+    const stepState = run.steps[index];
+    if (stepState?.status !== "running") return;
+    const definition = deps.store.workflow(run.workflowId, run.workflowVersion);
+    if (!definition) {
+      apply(failRun(run, `definition ${run.workflowId} version ${run.workflowVersion} is not available`, now()));
+      return;
+    }
+    const step = definition.steps[index];
+    if (step?.kind === "bot" && stepState.threadId) {
+      try {
+        deps.interrupt?.(step.botId, stepState.threadId);
+      } catch (error) {
+        log(`workflows: could not interrupt ${stepState.threadId}: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
+    failOrRoute(run, index, `the step timed out after ${timeoutMs}ms`, definition, "timeout");
+  };
+
   const advance = async (runId: string): Promise<void> => {
     let run = deps.store.readRun(runId);
     if (!run) return;
@@ -308,11 +343,6 @@ export function createWorkflowEngine(deps: WorkflowEngineDeps): WorkflowEngine {
       return;
     }
     if (stepState.status !== "pending") return;
-    if (stepState.attempts >= WORKFLOW_STEP_VISIT_MAX) {
-      apply(failStep(run, index, `step ${JSON.stringify(step.id)} reached the visit limit of ${WORKFLOW_STEP_VISIT_MAX}`, now()));
-      return;
-    }
-    if (stepState.attempts > 0) resetStepFolders(deps.store.runDir(run), index + 1);
     if (step.kind === "condition") {
       runConditionStep(run, index, step, definition);
       return;
@@ -338,6 +368,14 @@ export function createWorkflowEngine(deps: WorkflowEngineDeps): WorkflowEngine {
     const started = apply(beginStep(run, index, { threadId }, now()));
     if (!started) return;
     stepThreads.set(threadId, { runId: run.id, index });
+    if (step.timeoutMs > 0) {
+      const timer = setTimeout(() => {
+        timers.delete(run.id);
+        void enqueue(run.id, () => timeOutStep(run.id, index, step.timeoutMs));
+      }, step.timeoutMs);
+      timer.unref?.();
+      timers.set(run.id, timer);
+    }
     // A cancel can land between beginStep and the dispatch; never start a turn for a run that already stopped.
     if (deps.store.readRun(run.id)?.status !== "running") return;
     try {
@@ -407,6 +445,7 @@ export function createWorkflowEngine(deps: WorkflowEngineDeps): WorkflowEngine {
       if (!run) return { ok: false, error: "no such run" };
       const cancelled = cancelRun(run, reason, now());
       if (!cancelled.ok) return cancelled;
+      clearTimer(runId);
       apply(cancelled);
       scripts.get(runId)?.kill();
       const current = run.steps[run.currentStep];
@@ -424,6 +463,7 @@ export function createWorkflowEngine(deps: WorkflowEngineDeps): WorkflowEngine {
       return cancelled;
     },
     recover() {
+      for (const runId of timers.keys()) clearTimer(runId);
       stepThreads.clear();
       reportedTurns.clear();
       for (const run of deps.store.listRuns(everything)) {

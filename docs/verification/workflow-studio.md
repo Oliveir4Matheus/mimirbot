@@ -105,7 +105,7 @@ then **Novo Workflow** (the `+` beside *Ao vivo*). In the Studio:
 5. type a name and click **Salvar**: the Workflows screen lists the new
    Workflow with its two steps and the **Editar** button.
 
-The saved definition must carry `next` on the script and `from` on the
+The saved definition must carry `onSuccess` on the script and `from` on the
 condition:
 
 ```sh

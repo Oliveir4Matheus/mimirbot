@@ -2,6 +2,8 @@
 // id that is not in `steps` means the Workflow was edited under a live run.
 import { resultField, sameJsonValue, type WorkflowStep } from "../../shared/workflow.ts";
 
+export type StepFailureKind = "failure" | "timeout";
+
 function indexOf(steps: readonly WorkflowStep[], id: string): number | null {
   const index = steps.findIndex((step) => step.id === id);
   return index < 0 ? null : index;
@@ -15,12 +17,15 @@ export function nextStepIndex(steps: readonly WorkflowStep[], index: number, res
     const { found, value } = resultField(result, branch.field);
     if (found && sameJsonValue(value, branch.equals)) return indexOf(steps, branch.next);
   }
-  if (step.next !== undefined) return indexOf(steps, step.next);
+  if (step.onSuccess === null) return null;
+  if (step.onSuccess !== undefined) return indexOf(steps, step.onSuccess);
   return index + 1 < steps.length ? index + 1 : null;
 }
 
-/** The step `onFailure` names, or null when the run must stop on the failure. */
-export function failureStepIndex(steps: readonly WorkflowStep[], index: number): number | null {
+/** The step a failure or timeout routes to, or null when the run must stop. */
+export function failureStepIndex(steps: readonly WorkflowStep[], index: number, kind: StepFailureKind = "failure"): number | null {
   const step = steps[index];
-  return step?.onFailure === undefined ? null : indexOf(steps, step.onFailure);
+  if (!step) return null;
+  const target = kind === "timeout" && step.kind !== "condition" ? step.onTimeout ?? step.onFailure : step.onFailure;
+  return target === undefined ? null : indexOf(steps, target);
 }

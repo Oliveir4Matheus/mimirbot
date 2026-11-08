@@ -1,5 +1,12 @@
 # MimirBot — Workflows: especificação completa
 
+> [!IMPORTANT]
+> **Nota da F3.1.1 (09/11/2026):** a repetição por caminho de volta, o teto de
+> 25 visitas, o reset de revisita e o campo `attempts` foram **removidos**. Onde
+> este documento descreve repetição (F2 e seções históricas), leia como
+> histórico. O estado atual do contrato está em
+> `docs/superpowers/specs/2026-11-09-workflow-f31-fixes.md`.
+
 **Documento único** que reúne as três especificações do projeto Workflows:
 
 | Parte | Assunto | Fonte original |
@@ -23,9 +30,10 @@
 > - **F2 UI compacta (Concluída):** Tela de administração Workflows/Runs implementada e mergeada na branch `feat/workflow-f1`.
 > - **F2 Aprovação Longa (P16, Concluída):** run pausa em `waiting_approval` quando a etapa termina com cartão aberto e retoma quando a pessoa responde.
 > - **F2 Gatilho "Workflow" e snapshot da run (Concluídos):** rotina `target: "workflow"` inicia a run, grava a origem `triggeredBy` e o `run.json` guarda nomes do Workflow e das etapas.
-> - **F2 Etapa de Script + Condição/Repetição (Concluída em 08/11/2026):** etapa `kind: "script"`, desvios por `next`/`when`/`onFailure`, repetição por caminho de volta com teto de 25 visitas.
+> - **F2 Etapa de Script + Condição (Concluída em 08/11/2026):** etapa `kind: "script"`, desvios por `next`/`when`/`onFailure`. A repetição por caminho de volta e o teto de 25 visitas que entraram junto foram **removidos na F3.1.1**.
 > - **F3.1 Editor visual Workflow Studio v0.5 (Concluída em 08/11/2026):** canvas com pan/zoom, paleta de cinco elementos, cards Agente/Script/IF-Else, conexões, notas Markdown, containers, salvamento versionado e a etapa `kind: "condition"` no motor. Detalhes e desvios deliberados na seção “Status da implementação (F3.1)” da Parte 3.
-> - **Próximo passo imediato de código:** F3.2 (modo Manual, ferramentas por etapa, Python/TypeScript), depois record→promote e o Team Cloud/VM.
+> - **F3.1.1 Correções do Studio (Planejada em 09/11/2026):** renomear `next` para `onSuccess`, separar `onTimeout` de falha, permitir `timeoutMs` por etapa, fim explícito com `onSuccess: null`, expor `onFailure`/`onTimeout` na UI e desconectar arestas. Repetição é removida (caminho de volta, teto e `attempts`); o `kind: "loop"` entra na F3.3. Plano em `docs/superpowers/specs/2026-11-09-workflow-f31-fixes.md`.
+> - **Próximo passo imediato de código:** F3.1.1, depois F3.2 (modo Manual, ferramentas por etapa, Python/TypeScript), a F3.3 (`kind: "loop"`) e o Team Cloud/VM.
 >
 > **Decisões aprovadas para o P16 (Aprovação Longa) — implementadas:**
 > 1. Resposta continua no cartão do chat (`cardContinuation`);
@@ -323,7 +331,9 @@ Invariantes que dão a garantia:
 | F2 | Gatilho "Workflow" e snapshot da run | **feito** |
 | F2 | Etapa de script, condição e repetição | **feito** (08/11/2026) |
 | F3.1 | Editor visual (Workflow Studio v0.5): canvas, cards, conexões, notas, containers e etapa `condition` | **feito** (08/11/2026) |
+| F3.1.1 | Correções: `onSuccess`, `onFailure`/`onTimeout` na UI, timeout por etapa, fim explícito e desconectar | planejado (09/11/2026) |
 | F3.2 | Modo Manual, ferramentas por etapa, Python/TypeScript e polimento | futuro |
+| F3.3 | Repetição estruturada: componente `kind: "loop"` (corpo, condição de parada e `maxIterations`) | futuro |
 | F3 | Team Cloud/VM | futuro |
 
 ### Lacunas conhecidas
@@ -626,6 +636,15 @@ O teto é `WORKFLOW_STEP_VISIT_MAX = 25` visitas por etapa, contadas em
 `step "x" reached the visit limit of 25`. Ao revisitar, `input/` e `output/` da
 etapa são limpos para nenhum arquivo da visita anterior passar na verificação.
 Ao concluir, etapas que o caminho não percorreu ficam `skipped`.
+
+> [!IMPORTANT]
+> **Mudança aprovada na F3.1.1:** o contrato acima descreve o estado do F2.
+> A F3.1.1 renomeia `next` para `onSuccess`, adiciona `onTimeout` separado de
+> falha e `timeoutMs` por etapa, e passa a aceitar `onSuccess: null` como fim
+> explícito. A repetição por caminho de volta é removida nesta rodada (teto,
+> reset de revisita e `attempts` saem do código); ela volta como o
+> `kind: "loop"` na F3.3. Detalhes em
+> `docs/superpowers/specs/2026-11-09-workflow-f31-fixes.md`.
 
 #### Persistência dos scripts
 
@@ -1946,6 +1965,29 @@ referência visual):
    protótipo”;
 8. o texto “Editor demonstrativo. O código não é executado.” não existe: o
    script é real.
+
+### Correções aprovadas para a F3.1.1 (09/11/2026)
+
+A validação de 5 cenários de ETL pela UI confirmou quatro lacunas. As decisões
+estão detalhadas, com arquivos e linhas, em `docs/superpowers/specs/2026-11-09-workflow-f31-fixes.md`:
+
+1. **Resultados da etapa:** o campo `next` passa a se chamar `onSuccess`; a
+   etapa ganha `onFailure` e `onTimeout` como arestas explícitas. `onSkipped`
+   não será implementado: etapa `skipped` não executa, então não há evento para
+   rotear; o pulo continua sendo decisão do IF/Else.
+2. **Timeout:** cada etapa executável (Agente ou Script) pode declarar
+   `timeoutMs`; o timeout é um resultado próprio e segue `onTimeout`, depois
+   `onFailure`, ou para a run.
+3. **Repetição:** removida. Saem o caminho de volta, o teto de 25 visitas
+   (`WORKFLOW_STEP_VISIT_MAX`), o reset de revisita, o campo `attempts` do
+   `run.json` e a exibição de tentativas. O schema passa a exigir arestas só
+   para frente e o Studio continua recusando ciclos. A repetição visível volta
+   como componente `kind: "loop"` da F3.3, com corpo, condição de parada e
+   `maxIterations`.
+4. **Fim explícito:** `onSuccess: null` encerra o ramo; o Studio grava `null`
+   quando a saída de sucesso não está conectada. `onSuccess` ausente continua
+   valendo “próxima do array” para definições antigas.
+5. **Desconectar:** o `disconnect()` do modelo passa a ter ação na UI.
 
 Verificação: `docs/verification/workflow-studio.md`.
 

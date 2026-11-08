@@ -38,8 +38,9 @@ function stepMeta(step: WorkflowRunStep, status: DisplayStatus, timing: string):
   if (status === "waiting_approval") return t("workflows.status.waitingApproval");
   if (status === "running") return `${t("workflows.step.running")}${timing ? ` · ${timing}` : ""}`;
   if (status === "pending" || status === "skipped") return stepStatusLabel(status);
-  const attempts = step.attempts === 1 ? t("workflows.run.attemptsOne") : t("workflows.run.attemptsOther", { count: step.attempts });
-  return timing ? `${attempts} · ${timing}` : attempts;
+  const outcome = step.failureKind === "timeout" ? t("workflows.run.timedOut") : "";
+  if (outcome) return timing ? `${outcome} · ${timing}` : outcome;
+  return timing;
 }
 
 export function RunDetail({ run, workflow, now, botName, onCancel, onDelete, onRerun, onOpenConversation, onBack }: {
