@@ -41,16 +41,29 @@ const departmentOf = (deps: WorkflowRoutesDeps, botId: string): string => deps.b
 
 export function createWorkflowRoutes(deps: WorkflowRoutesDeps): RouteHandler {
   const save = async (res: ServerResponse, json: typeof sendJson, body: unknown, id: string | undefined): Promise<void> => {
+    if (!isRecord(body)) return void json(res, 400, { error: "a Workflow must be a JSON object" });
+    const { scripts, ...definition } = body;
     if (id !== undefined) {
       if (!isWorkflowId(id)) return void json(res, 400, { error: "the Workflow id must be a uuid" });
-      if (!isRecord(body)) return void json(res, 400, { error: "a Workflow must be a JSON object" });
-      const claimed = body.id;
+      const claimed = definition.id;
       if (claimed !== undefined && String(claimed).toLowerCase() !== id.toLowerCase()) {
         return void json(res, 400, { error: "the body id does not match the path" });
       }
-      body.id = id.toLowerCase();
+      definition.id = id.toLowerCase();
     }
-    const saved = deps.store.saveWorkflow(body);
+    let uploads: Array<{ name: string; content: string }> | undefined;
+    if (scripts !== undefined) {
+      if (!Array.isArray(scripts)) return void json(res, 400, { error: "scripts must be a list" });
+      uploads = scripts.map((entry) => isRecord(entry) && typeof entry.name === "string" && typeof entry.content === "string"
+        ? { name: entry.name, content: entry.content }
+        : null).filter((entry): entry is { name: string; content: string } => entry !== null);
+      if (uploads.length !== scripts.length) return void json(res, 400, { error: "a script needs a name and a content string" });
+      const workflowId = typeof definition.id === "string" ? definition.id : undefined;
+      if (workflowId && deps.store.hasActiveRuns(workflowId)) {
+        return void json(res, 409, { error: "this Workflow has active runs; cancel them before changing a script" });
+      }
+    }
+    const saved = deps.store.saveWorkflow(definition, uploads && uploads.length > 0 ? { scripts: uploads } : undefined);
     if (!saved.ok) return void json(res, 400, { error: saved.error });
     return void json(res, 200, { workflow: saved.workflow });
   };

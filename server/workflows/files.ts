@@ -83,6 +83,7 @@ export function copyStepInputs(
   step: WorkflowStep,
   steps: readonly WorkflowStep[],
 ): StepInputsCopy {
+  if (step.kind === "condition") return { ok: true, copied: [] };
   const targetDir = stepInputDir(runDir, stepIndex + 1);
   const copied: string[] = [];
   for (const input of step.inputs) {

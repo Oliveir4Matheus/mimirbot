@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Check, ListChecks, Play, Search, Workflow as WorkflowIcon, X } from "lucide-react";
+import { Check, ListChecks, Play, Plus, Search, Workflow as WorkflowIcon, X } from "lucide-react";
 
 import type { WorkflowDefinition, WorkflowRun } from "../../shared/workflow";
 import { WorkflowConsolePage } from "@/components/WorkflowConsolePage";
+import { WorkflowStudioPage } from "@/components/studio/WorkflowStudioPage";
 import { WindowDragStrip } from "@/components/DesktopCapabilities";
 import { useWorkflowFeed } from "@/hooks/useWorkflowFeed";
 import { ApiError } from "@/state/api";
@@ -69,6 +70,7 @@ export function WorkflowsPage() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [consoleOpen, setConsoleOpen] = useState(false);
+  const [studio, setStudio] = useState<{ id?: string } | null>(null);
   const [mobileDetail, setMobileDetail] = useState(false);
   const [width, setWidth] = useState(readWidth);
   const [visibleRuns, setVisibleRuns] = useState(PAGE_SIZE);
@@ -392,6 +394,7 @@ export function WorkflowsPage() {
           loading={detailLoading}
           onVersion={(next) => setSelectedVersion(next)}
           onRun={(next) => { setConflict(null); setDialog({ kind: "run", workflowId: selectedWorkflow.id, version: next }); }}
+          onEdit={() => setStudio({ id: selectedWorkflow.id })}
           onDelete={() => { setConflict(null); setDialog({ kind: "deleteWorkflow", workflowId: selectedWorkflow.id }); }}
           onSelectStep={(index) => setSelectedStep(index)}
           onCloseStep={() => setSelectedStep(null)}
@@ -421,6 +424,26 @@ export function WorkflowsPage() {
       />
     );
   };
+
+  if (studio) {
+    const department = (studio.id ? feed.workflows.find((workflow) => workflow.id === studio.id)?.department : undefined)
+      ?? selectedWorkflow?.department
+      ?? state.bots[0]?.section
+      ?? "General";
+    return (
+      <WorkflowStudioPage
+        workflowId={studio.id}
+        department={department}
+        onBack={() => setStudio(null)}
+        onSaved={(id) => {
+          setStudio(null);
+          setTab("workflows");
+          setSelectedWorkflowId(id);
+          feed.refresh();
+        }}
+      />
+    );
+  }
 
   if (consoleOpen) {
     return <WorkflowConsolePage onBack={() => setConsoleOpen(false)} />;
@@ -454,6 +477,15 @@ export function WorkflowsPage() {
               <span aria-hidden="true" className="size-[5px] rounded-full bg-[#45AC76]" />
               {t("workflows.live")}
             </span>
+            <button
+              type="button"
+              aria-label={t("workflows.new")}
+              title={t("workflows.new")}
+              onClick={() => setStudio({})}
+              className="grid size-6 place-items-center rounded-md border border-hairline text-ink-secondary hover:bg-raised/60 hover:text-ink"
+            >
+              <Plus size={14} aria-hidden="true" />
+            </button>
             <PanelMenu open={menuOpen} onOpenChange={setMenuOpen} onOpenConsole={() => setConsoleOpen(true)} />
           </div>
 

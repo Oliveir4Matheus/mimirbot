@@ -272,3 +272,67 @@ describe("script steps and flow edges", () => {
     expect(resultField(null, "ok")).toEqual({ found: false, value: undefined });
   });
 });
+
+describe("condition steps and the Studio canvas", () => {
+  const withCondition = (overrides: Record<string, unknown> = {}) => definition({
+    steps: [
+      { id: "revisar", name: "Review", botId: "bot-b", instructions: "Review.", outputs: [{ path: "decision.json" }], result: "decision.json" },
+      { id: "checar", kind: "condition", name: "Check", from: "revisar", field: "ok", op: "equals", value: true, whenTrue: "fechar", whenFalse: "corrigir" },
+      { id: "fechar", name: "Close", botId: "bot-a", instructions: "Close.", outputs: [{ path: "done.txt" }] },
+      { id: "corrigir", name: "Fix", botId: "bot-a", instructions: "Fix.", outputs: [{ path: "fixed.txt" }] },
+    ],
+    ...overrides,
+  });
+
+  it("parses a condition and its two routes", () => {
+    const parsed = workflowDefinitionSchema.parse(withCondition());
+    const condition = parsed.steps[1]!;
+    expect(condition.kind).toBe("condition");
+    expect(condition.kind === "condition" && condition.whenTrue).toBe("fechar");
+    expect(condition.kind === "condition" && condition.whenFalse).toBe("corrigir");
+  });
+
+  it("requires a value for every operator except exists", () => {
+    const missing = withCondition();
+    (missing.steps[1] as Record<string, unknown>).value = undefined;
+    expect(issues(missing)).toContain("steps.1.value");
+    const exists = withCondition();
+    Object.assign(exists.steps[1] as Record<string, unknown>, { op: "exists", value: undefined });
+    expect(issues(exists)).toEqual([]);
+  });
+
+  it("requires the source step to declare a result", () => {
+    const workflow = withCondition();
+    delete (workflow.steps[0] as Record<string, unknown>).result;
+    expect(issues(workflow)).toContain("steps.1.from");
+  });
+
+  it("refuses a condition that points at a step that does not exist", () => {
+    const workflow = withCondition();
+    (workflow.steps[1] as Record<string, unknown>).whenTrue = "missing";
+    expect(issues(workflow)).toContain("steps.1.whenTrue");
+  });
+
+  it("keeps the canvas with positions, notes and containers", () => {
+    const parsed = workflowDefinitionSchema.parse(withCondition({
+      canvas: {
+        nodes: { revisar: { x: 10, y: 20 } },
+        notes: [{ id: "note-1", x: 1, y: 2, width: 255, height: 180, markdown: "# Title" }],
+        containers: [{ id: "container-1", x: 0, y: 0, width: 520, height: 310, name: "Group" }],
+      },
+    }));
+    expect(parsed.canvas?.nodes.revisar).toEqual({ x: 10, y: 20 });
+    expect(parsed.canvas?.notes[0]?.markdown).toBe("# Title");
+  });
+
+  it("refuses a note linked to an element that does not exist", () => {
+    const workflow = withCondition({
+      canvas: {
+        nodes: {},
+        notes: [{ id: "note-1", x: 1, y: 2, width: 255, height: 180, markdown: "", link: { kind: "step", id: "missing" } }],
+        containers: [],
+      },
+    });
+    expect(issues(workflow)).toContain("canvas.notes.0.link.id");
+  });
+});

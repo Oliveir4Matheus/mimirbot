@@ -1,13 +1,14 @@
-import { ArrowLeft, ChevronDown, Play, Trash2 } from "lucide-react";
+import { ArrowLeft, Pencil, Play, Trash2 } from "lucide-react";
 
 import type { WorkflowDefinition, WorkflowRun } from "../../../shared/workflow";
 import { cn } from "@/lib/cn";
+import { Select } from "@/components/Select";
 import { t } from "@/lib/i18n";
 import { formatDateTime } from "@/lib/workflow-format";
 import { StepPanel } from "./StepPanel";
 import { WorkflowSteps } from "./WorkflowSteps";
 
-export function WorkflowDetail({ workflow, latest, versions, selectedVersion, activeRun, selectedStep, botName, loading, onVersion, onRun, onDelete, onSelectStep, onCloseStep, onBack }: {
+export function WorkflowDetail({ workflow, latest, versions, selectedVersion, activeRun, selectedStep, botName, loading, onVersion, onRun, onEdit, onDelete, onSelectStep, onCloseStep, onBack }: {
   workflow: WorkflowDefinition;
   latest: WorkflowDefinition;
   versions: WorkflowDefinition[];
@@ -18,6 +19,7 @@ export function WorkflowDetail({ workflow, latest, versions, selectedVersion, ac
   loading: boolean;
   onVersion: (version: number) => void;
   onRun: (version: number) => void;
+  onEdit: () => void;
   onDelete: () => void;
   onSelectStep: (index: number) => void;
   onCloseStep: () => void;
@@ -48,13 +50,13 @@ export function WorkflowDetail({ workflow, latest, versions, selectedVersion, ac
             <div className="mt-2.5 text-[10.5px] text-ink-tertiary">{t("workflows.detail.updated", { date: formatDateTime(latest.updatedAt) })}</div>
             <div className="mt-4 flex items-center gap-2.5">
               <span className="text-[10.5px] text-ink-tertiary">{t("workflows.detail.version")}</span>
-              <span className="relative inline-flex items-center">
-                <select
+              <span className="inline-flex items-center">
+                <Select
                   aria-label={t("workflows.detail.version")}
                   value={selectedVersion}
                   disabled={loading || versions.length === 0}
                   onChange={(event) => onVersion(Number(event.target.value))}
-                  className="h-[29px] appearance-none rounded-[7px] border border-hairline bg-app pl-2.5 pr-7 text-[10.5px] text-ink outline-none focus:border-accent disabled:opacity-50"
+                  size="sm"
                 >
                   {[...versions].reverse().map((version) => (
                     <option key={version.version} value={version.version}>
@@ -63,8 +65,7 @@ export function WorkflowDetail({ workflow, latest, versions, selectedVersion, ac
                         : t("workflows.detail.versionEntry", { version: version.version, date: formatDateTime(version.updatedAt) })}
                     </option>
                   ))}
-                </select>
-                <ChevronDown size={13} aria-hidden="true" className="pointer-events-none absolute right-2 text-ink-tertiary" />
+                </Select>
               </span>
             </div>
           </div>
@@ -77,6 +78,14 @@ export function WorkflowDetail({ workflow, latest, versions, selectedVersion, ac
             >
               <Play size={13} aria-hidden="true" />
               {outdated ? t("workflows.detail.runVersion", { version: selectedVersion }) : t("workflows.detail.run")}
+            </button>
+            <button
+              type="button"
+              onClick={onEdit}
+              className="flex h-[34px] items-center justify-center gap-1.5 rounded-[9px] border border-hairline px-3.5 text-[11.5px] font-medium text-ink hover:bg-raised/60"
+            >
+              <Pencil size={13} aria-hidden="true" />
+              {t("workflows.detail.edit")}
             </button>
             <button
               type="button"

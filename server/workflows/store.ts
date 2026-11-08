@@ -42,6 +42,12 @@ export interface WorkflowScript extends WorkflowScriptInfo {
   content: string;
 }
 
+/** A script the Studio saves together with the definition that references it. */
+export interface WorkflowScriptUpload {
+  name: string;
+  content: string;
+}
+
 export type WorkflowScriptSave =
   | { ok: true; script: WorkflowScriptInfo }
   | { ok: false; error: string };
@@ -58,7 +64,7 @@ export interface WorkflowStore {
   workflows(): WorkflowDefinition[];
   workflow(id: string, version?: number): WorkflowDefinition | undefined;
   versions(id: string): WorkflowDefinition[];
-  saveWorkflow(input: unknown): WorkflowSave;
+  saveWorkflow(input: unknown, options?: { scripts?: readonly WorkflowScriptUpload[] }): WorkflowSave;
   removeWorkflow(id: string): boolean;
   createRun(definition: WorkflowDefinition, options?: { requestedBy?: WorkflowRun["requestedBy"]; triggeredBy?: WorkflowRun["triggeredBy"] }): WorkflowRun;
   readRun(runId: string): WorkflowRun | undefined;
@@ -89,7 +95,8 @@ function subdirectories(dir: string): string[] {
   }
 }
 
-const comparable = (definition: WorkflowDefinition): string => JSON.stringify({ ...definition, version: 0, createdAt: 0, updatedAt: 0 });
+const comparable = (definition: WorkflowDefinition): string =>
+  JSON.stringify({ ...definition, version: 0, createdAt: 0, updatedAt: 0, canvas: undefined });
 
 export function createWorkflowStore(options: WorkflowStoreOptions): WorkflowStore {
   const file = join(options.dataDir, "workflows.json");
@@ -204,7 +211,7 @@ export function createWorkflowStore(options: WorkflowStoreOptions): WorkflowStor
     versions(id) {
       return [...versionsOf(id)].sort((left, right) => left.version - right.version);
     },
-    saveWorkflow(input) {
+    saveWorkflow(input, options) {
       if (unreadable) return { ok: false, error: `workflows.json is unreadable; fix or remove ${file}` };
       if (input === null || typeof input !== "object" || Array.isArray(input)) {
         return { ok: false, error: "a Workflow must be a JSON object" };
@@ -219,6 +226,23 @@ export function createWorkflowStore(options: WorkflowStoreOptions): WorkflowStor
         return { ok: false, error: parsed.error.issues.map((issue) => `${issue.path.join(".") || "workflow"}: ${issue.message}`).join("; ") };
       }
       const id = parsed.data.id.toLowerCase();
+      if (options?.scripts && options.scripts.length > 0) {
+        const dir = workflowScriptsDir({ department: parsed.data.department, workflowId: id, home, env });
+        for (const script of options.scripts) {
+          if (!isWorkflowScriptName(script.name)) {
+            return { ok: false, error: `script name ${JSON.stringify(script.name)} must be a flat .mjs or .js file name` };
+          }
+          if (Buffer.byteLength(script.content, "utf8") > WORKFLOW_SCRIPT_MAX_BYTES) {
+            return { ok: false, error: `script ${JSON.stringify(script.name)} is larger than ${WORKFLOW_SCRIPT_MAX_BYTES / 1024}KB` };
+          }
+          try {
+            mkdirSync(dir, { recursive: true, mode: 0o700 });
+            writeFileAtomic(join(dir, script.name), script.content, { mode: 0o600 });
+          } catch (error) {
+            return { ok: false, error: `could not write ${join(dir, script.name)}: ${reason(error)}` };
+          }
+        }
+      }
       const invalidScript = parsed.data.steps.find((step) => {
         if (!isScriptStep(step)) return false;
         const file = join(workflowScriptsDir({ department: parsed.data.department, workflowId: id, home, env }), step.run);
@@ -233,8 +257,22 @@ export function createWorkflowStore(options: WorkflowStoreOptions): WorkflowStor
         return { ok: false, error: `script ${JSON.stringify(invalidScript.run)} is not in the Workflow's scripts folder` };
       }
       const existing = latestOf(id);
-      const normalized: WorkflowDefinition = { ...parsed.data, id };
-      if (existing && comparable(existing) === comparable(normalized)) return { ok: true, workflow: existing };
+      const hasCanvas = Object.hasOwn(input as object, "canvas");
+      const normalized: WorkflowDefinition = { ...parsed.data, id, ...(hasCanvas || !existing?.canvas ? {} : { canvas: existing.canvas }) };
+      if (existing && comparable(existing) === comparable(normalized)) {
+        if (!hasCanvas || JSON.stringify(existing.canvas) === JSON.stringify(normalized.canvas)) return { ok: true, workflow: existing };
+        const index = definitions.findIndex((candidate) => candidate.id === id && candidate.version === existing.version);
+        const moved: WorkflowDefinition = { ...existing, canvas: normalized.canvas };
+        if (index < 0) return { ok: false, error: `could not find the current version of ${id}` };
+        definitions[index] = moved;
+        try {
+          persist();
+        } catch (error) {
+          definitions[index] = existing;
+          return { ok: false, error: `could not save ${file}: ${reason(error)}` };
+        }
+        return { ok: true, workflow: moved };
+      }
       const version = existing ? Math.max(...versionsOf(id).map((candidate) => candidate.version)) + 1 : normalized.version;
       const saved: WorkflowDefinition = { ...normalized, version, createdAt: existing?.createdAt ?? normalized.createdAt, updatedAt: stamp };
       definitions.push(saved);

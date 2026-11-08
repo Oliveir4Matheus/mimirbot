@@ -4,6 +4,7 @@ import { ChevronDown, Filter } from "lucide-react";
 import type { WorkflowDefinition, WorkflowRunStatus } from "../../../shared/workflow";
 import { usePopoverDismiss } from "@/hooks/use-popover-dismiss";
 import { cn } from "@/lib/cn";
+import { Select } from "@/components/Select";
 import { t } from "@/lib/i18n";
 import type { RunFilters, RunPeriod, Tab, WorkflowFilters, WorkflowSituation, WorkflowSort } from "./types";
 
@@ -18,7 +19,6 @@ const statusText = {
   cancelled: "workflows.status.cancelled",
 } as const;
 
-const FIELD = "h-[33px] w-full rounded-[7px] border border-hairline bg-app px-2 text-[11px] text-ink outline-none focus:border-accent";
 const LABEL = "mb-1.5 block text-[10px] text-ink-tertiary";
 
 export function defaultWorkflowFilters(): WorkflowFilters {
@@ -75,35 +75,35 @@ export function FilterPopover({ tab, open, onOpenChange, workflows, filters, onA
             <>
               <label className="mb-3 block">
                 <span className={LABEL}>{t("workflows.filters.department")}</span>
-                <select className={FIELD} value={workflowDraft.department} onChange={(event) => setWorkflowDraft({ ...workflowDraft, department: event.target.value })}>
+                <Select className="w-full" size="sm" value={workflowDraft.department} onChange={(event) => setWorkflowDraft({ ...workflowDraft, department: event.target.value })}>
                   <option value="">{t("workflows.filters.all")}</option>
                   {departments.map((department) => <option key={department} value={department}>{department}</option>)}
-                </select>
+                </Select>
               </label>
               <label className="mb-3 block">
                 <span className={LABEL}>{t("workflows.filters.situation")}</span>
-                <select className={FIELD} value={workflowDraft.situation} onChange={(event) => setWorkflowDraft({ ...workflowDraft, situation: event.target.value as WorkflowSituation })}>
+                <Select className="w-full" size="sm" value={workflowDraft.situation} onChange={(event) => setWorkflowDraft({ ...workflowDraft, situation: event.target.value as WorkflowSituation })}>
                   <option value="all">{t("workflows.filters.anySituation")}</option>
                   <option value="active">{t("workflows.filters.withActiveRun")}</option>
                   <option value="inactive">{t("workflows.filters.withoutActiveRun")}</option>
-                </select>
+                </Select>
               </label>
               <label className="mb-3 block">
                 <span className={LABEL}>{t("workflows.filters.sort")}</span>
-                <select className={FIELD} value={workflowDraft.sort} onChange={(event) => setWorkflowDraft({ ...workflowDraft, sort: event.target.value as WorkflowSort })}>
+                <Select className="w-full" size="sm" value={workflowDraft.sort} onChange={(event) => setWorkflowDraft({ ...workflowDraft, sort: event.target.value as WorkflowSort })}>
                   <option value="name">{t("workflows.filters.sortName")}</option>
                   <option value="activity">{t("workflows.filters.sortActivity")}</option>
-                </select>
+                </Select>
               </label>
             </>
           ) : (
             <>
               <label className="mb-3 block">
                 <span className={LABEL}>{t("workflows.filters.workflow")}</span>
-                <select className={FIELD} value={runDraft.workflowId} onChange={(event) => setRunDraft({ ...runDraft, workflowId: event.target.value })}>
+                <Select className="w-full" size="sm" value={runDraft.workflowId} onChange={(event) => setRunDraft({ ...runDraft, workflowId: event.target.value })}>
                   <option value="">{t("workflows.filters.all")}</option>
                   {ordered.map((workflow) => <option key={workflow.id} value={workflow.id}>{workflow.name}</option>)}
-                </select>
+                </Select>
               </label>
               <div className="mb-3">
                 <span className={LABEL}>{t("workflows.filters.situation")}</span>
@@ -128,19 +128,19 @@ export function FilterPopover({ tab, open, onOpenChange, workflows, filters, onA
               </div>
               <label className="mb-3 block">
                 <span className={LABEL}>{t("workflows.filters.department")}</span>
-                <select className={FIELD} value={runDraft.department} onChange={(event) => setRunDraft({ ...runDraft, department: event.target.value })}>
+                <Select className="w-full" size="sm" value={runDraft.department} onChange={(event) => setRunDraft({ ...runDraft, department: event.target.value })}>
                   <option value="">{t("workflows.filters.all")}</option>
                   {departments.map((department) => <option key={department} value={department}>{department}</option>)}
-                </select>
+                </Select>
               </label>
               <label className="mb-3 block">
                 <span className={LABEL}>{t("workflows.filters.period")}</span>
-                <select className={FIELD} value={runDraft.period} onChange={(event) => setRunDraft({ ...runDraft, period: event.target.value as RunPeriod })}>
+                <Select className="w-full" size="sm" value={runDraft.period} onChange={(event) => setRunDraft({ ...runDraft, period: event.target.value as RunPeriod })}>
                   <option value="today">{t("workflows.filters.periodToday")}</option>
                   <option value="7">{t("workflows.filters.period7")}</option>
                   <option value="30">{t("workflows.filters.period30")}</option>
                   <option value="all">{t("workflows.filters.periodAll")}</option>
-                </select>
+                </Select>
               </label>
             </>
           )}

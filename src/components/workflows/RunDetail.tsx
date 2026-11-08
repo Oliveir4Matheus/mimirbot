@@ -77,7 +77,8 @@ export function RunDetail({ run, workflow, now, botName, onCancel, onDelete, onR
   const lastResultFile = useMemo(() => {
     if (!workflow) return "result.json";
     for (let index = workflow.steps.length - 1; index >= 0; index -= 1) {
-      const declared = workflow.steps[index]?.result;
+      const step = workflow.steps[index];
+      const declared = step && step.kind !== "condition" ? step.result : undefined;
       if (declared) return declared;
     }
     return "result.json";

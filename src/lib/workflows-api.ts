@@ -55,3 +55,34 @@ export function deleteRun(id: string): Promise<boolean> {
   return api<{ removed: boolean }>(`/api/workflows/runs/${encodeURIComponent(id)}`, { method: "DELETE" })
     .then((answer) => answer.removed === true);
 }
+
+export interface WorkflowScriptUpload {
+  name: string;
+  content: string;
+}
+
+const saveBody = (definition: WorkflowDefinition, scripts?: readonly WorkflowScriptUpload[]): RequestInit => ({
+  method: "POST",
+  body: JSON.stringify(scripts && scripts.length > 0 ? { ...definition, scripts } : definition),
+});
+
+export function createWorkflow(definition: WorkflowDefinition, scripts?: readonly WorkflowScriptUpload[]): Promise<WorkflowDefinition> {
+  return api<{ workflow: WorkflowDefinition }>("/api/workflows", saveBody(definition, scripts)).then((answer) => answer.workflow);
+}
+
+export function updateWorkflow(definition: WorkflowDefinition, scripts?: readonly WorkflowScriptUpload[]): Promise<WorkflowDefinition> {
+  return api<{ workflow: WorkflowDefinition }>(`/api/workflows/${encodeURIComponent(definition.id)}`, {
+    ...saveBody(definition, scripts),
+    method: "PUT",
+  }).then((answer) => answer.workflow);
+}
+
+export function listScripts(id: string): Promise<Array<{ name: string }>> {
+  return api<{ scripts: Array<{ name: string }> }>(`/api/workflows/${encodeURIComponent(id)}/scripts`)
+    .then((answer) => answer.scripts ?? []);
+}
+
+export function readScript(id: string, name: string): Promise<string> {
+  return api<{ script: { content: string } }>(`/api/workflows/${encodeURIComponent(id)}/scripts/${encodeURIComponent(name)}`)
+    .then((answer) => answer.script?.content ?? "");
+}

@@ -1,5 +1,5 @@
 import { Fragment } from "react";
-import { ChevronRight, Code, FileText } from "lucide-react";
+import { ChevronRight, Code, FileText, GitBranch } from "lucide-react";
 
 import type { WorkflowDefinition } from "../../../shared/workflow";
 import { cn } from "@/lib/cn";
@@ -8,10 +8,10 @@ import { BotAvatar } from "./BotAvatar";
 
 function connectorLabels(workflow: WorkflowDefinition, index: number): string[] {
   const step = workflow.steps[index];
-  if (!step) return [];
+  if (!step || step.kind === "condition") return [];
   if (step.inputs.length > 0) return step.inputs.map((input) => input.as);
   const previous = workflow.steps[index - 1];
-  return previous?.outputs[0] ? [previous.outputs[0].path] : [];
+  return previous && previous.kind !== "condition" && previous.outputs[0] ? [previous.outputs[0].path] : [];
 }
 
 function Connector({ labels }: { labels: string[] }) {
@@ -51,9 +51,11 @@ export function WorkflowSteps({ workflow, botName, activeStep, selectedStep, onS
           const name = step.kind === "bot" ? botName(step.botId) : undefined;
           const running = activeStep === index;
           const selected = selectedStep === index;
-          const outputs = step.outputs.length === 1
-            ? t("workflows.detail.outputsOne")
-            : t("workflows.detail.outputsOther", { count: step.outputs.length });
+          const outputs = step.kind === "condition"
+            ? t("workflows.detail.conditionRoutes")
+            : step.outputs.length === 1
+              ? t("workflows.detail.outputsOne")
+              : t("workflows.detail.outputsOther", { count: step.outputs.length });
           return (
             <Fragment key={step.id}>
               {index > 0 && <Connector labels={connectorLabels(workflow, index)} />}
@@ -74,11 +76,15 @@ export function WorkflowSteps({ workflow, botName, activeStep, selectedStep, onS
                   <span className="mt-1 flex items-center gap-1.5 text-[10.5px] text-[#808287]">
                     {step.kind === "bot"
                       ? <BotAvatar name={name!} />
-                      : <Code size={12} className="shrink-0" aria-hidden="true" />}
+                      : step.kind === "script"
+                        ? <Code size={12} className="shrink-0" aria-hidden="true" />
+                        : <GitBranch size={12} className="shrink-0" aria-hidden="true" />}
                     <span className="truncate">
                       {step.kind === "bot"
                         ? t("workflows.detail.bot", { name: name! })
-                        : t("workflows.detail.script", { file: step.run })}
+                        : step.kind === "script"
+                          ? t("workflows.detail.script", { file: step.run })
+                          : t("workflows.detail.condition")}
                       {" · "}{outputs}
                     </span>
                   </span>

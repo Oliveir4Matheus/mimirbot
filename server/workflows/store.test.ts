@@ -70,6 +70,42 @@ describe("definitions", () => {
     expect(store.workflow(first.id, 1)?.name).toBe("Contrato mensal");
   });
 
+  it("keeps the version when only the canvas changed", () => {
+    const store = makeStore();
+    const first = saved(store);
+    const moved = saved(store, {
+      ...first,
+      canvas: { nodes: { coletar: { x: 10, y: 20 } }, notes: [], containers: [] },
+    });
+    expect(moved.version).toBe(1);
+    expect(store.workflow(first.id)?.canvas?.nodes.coletar).toEqual({ x: 10, y: 20 });
+  });
+
+  it("writes the scripts a save carries before checking the step that uses them", () => {
+    const store = makeStore();
+    const scripted = definition({
+      steps: [{
+        id: "validar", kind: "script", name: "Validate", run: "validar.mjs", timeoutMs: 60_000,
+        outputs: [{ path: "result.json" }], result: "result.json",
+      }],
+    });
+    const result = store.saveWorkflow(scripted, { scripts: [{ name: "validar.mjs", content: "console.log('ok')\n" }] });
+    if (!result.ok) throw new Error(result.error);
+    expect(result.workflow.steps[0]!.kind).toBe("script");
+    expect(store.readScript(scripted.id, "validar.mjs")?.content).toBe("console.log('ok')\n");
+  });
+
+  it("refuses a script step whose file the save did not carry", () => {
+    const store = makeStore();
+    const scripted = definition({
+      steps: [{
+        id: "validar", kind: "script", name: "Validate", run: "validar.mjs", timeoutMs: 60_000,
+        outputs: [{ path: "result.json" }], result: "result.json",
+      }],
+    });
+    expect(store.saveWorkflow(scripted).ok).toBe(false);
+  });
+
   it("normalizes an uppercase uuid to one folder and one history", () => {
     const store = makeStore();
     const first = saved(store);

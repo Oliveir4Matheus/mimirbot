@@ -82,6 +82,29 @@ function harness(botSection = "Financeiro") {
 }
 
 describe("the person's routes", () => {
+  it("saves a script step together with the file the Studio carries", async () => {
+    const { call, state, store, definition: def } = harness();
+    const scripted = definition({
+      steps: [{
+        id: "validar", kind: "script", name: "Validate", run: "validar.mjs", timeoutMs: 60_000,
+        outputs: [{ path: "result.json" }], result: "result.json",
+      }],
+    });
+    await call("PUT", `/api/workflows/${def.id}`, {
+      ...scripted,
+      id: def.id,
+      scripts: [{ name: "validar.mjs", content: "console.log('ok')\n" }],
+    });
+    expect(state.status).toBe(200);
+    expect(store.readScript(def.id, "validar.mjs")?.content).toBe("console.log('ok')\n");
+  });
+
+  it("refuses a save whose scripts list is malformed", async () => {
+    const { call, state, definition: def } = harness();
+    await call("PUT", `/api/workflows/${def.id}`, { ...def, scripts: [{ name: "validar.mjs" }] });
+    expect(state.status).toBe(400);
+  });
+
   it("lists, saves and reads a workflow", async () => {
     const { call, state, definition: def } = harness();
     await call("GET", "/api/workflows");

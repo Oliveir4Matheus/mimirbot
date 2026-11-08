@@ -10,7 +10,7 @@ function indexOf(steps: readonly WorkflowStep[], id: string): number | null {
 /** The next step after `index` passes, or null when this step ends the run. */
 export function nextStepIndex(steps: readonly WorkflowStep[], index: number, result: unknown): number | null {
   const step = steps[index];
-  if (!step) return null;
+  if (!step || step.kind === "condition") return null;
   for (const branch of step.when ?? []) {
     const { found, value } = resultField(result, branch.field);
     if (found && sameJsonValue(value, branch.equals)) return indexOf(steps, branch.next);

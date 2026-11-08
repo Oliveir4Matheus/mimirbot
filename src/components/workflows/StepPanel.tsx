@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Code, X } from "lucide-react";
+import { Code, GitBranch, X } from "lucide-react";
 
 import type { WorkflowDefinition, WorkflowStep } from "../../../shared/workflow";
 import { cn } from "@/lib/cn";
@@ -47,7 +47,9 @@ export function StepPanel({ workflow, step, index, botName, onClose }: {
   const [expanded, setExpanded] = useState(false);
   const name = step.kind === "bot" ? botName(step.botId) : undefined;
   const sourceName = (id: string) => workflow.steps.find((candidate) => candidate.id === id)?.name ?? id;
-  const conditions = Object.entries(step.require ?? {});
+  const condition = step.kind === "condition" ? step : undefined;
+  const fileStep = step.kind === "condition" ? undefined : step;
+  const conditions = Object.entries(fileStep?.require ?? {});
 
   return (
     <aside aria-label={t("workflows.step.panel")} className="flex max-h-[620px] w-[360px] shrink-0 flex-col overflow-hidden rounded-[13px] border border-hairline bg-app shadow-sm max-[1100px]:w-[300px] max-[900px]:w-full">
@@ -73,7 +75,7 @@ export function StepPanel({ workflow, step, index, botName, onClose }: {
                 {name}
               </div>
             </>
-          ) : (
+          ) : step.kind === "script" ? (
             <>
               <div className={LABEL}>{t("workflows.step.script")}</div>
               <div className="flex items-center gap-2 text-[11.5px] font-medium text-ink">
@@ -82,6 +84,14 @@ export function StepPanel({ workflow, step, index, botName, onClose }: {
               </div>
               <div className="mt-1.5 text-[10px] text-ink-tertiary">
                 {t("workflows.step.scriptRuntime", { seconds: Math.round(step.timeoutMs / 1000) })}
+              </div>
+            </>
+          ) : (
+            <>
+              <div className={LABEL}>{t("workflows.step.condition")}</div>
+              <div className="flex items-center gap-2 text-[11.5px] font-medium text-ink">
+                <GitBranch size={14} aria-hidden="true" />
+                {t("workflows.step.conditionFrom", { name: sourceName(step.from) })}
               </div>
             </>
           )}
@@ -97,57 +107,89 @@ export function StepPanel({ workflow, step, index, botName, onClose }: {
           </section>
         )}
 
-        <section className="mb-4">
-          <div className={LABEL}>{t("workflows.step.inputs")}</div>
-          {step.inputs.length === 0 ? <None /> : (
+        {condition && (
+          <section className="mb-4">
+            <div className={LABEL}>{t("workflows.step.condition")}</div>
             <Table
-              head={[t("workflows.step.inputFile"), t("workflows.step.inputFrom"), t("workflows.step.inputSource")]}
-              rows={step.inputs.map((input) => [input.as, sourceName(input.from.step), input.from.output])}
+              head={[t("workflows.step.conditionField"), t("workflows.step.conditionOperator"), t("workflows.step.conditionValue")]}
+              rows={[[condition.field, condition.op, condition.value === undefined ? "—" : JSON.stringify(condition.value)]]}
             />
-          )}
-        </section>
+          </section>
+        )}
 
-        <section className="mb-4">
-          <div className={LABEL}>{t("workflows.step.outputs")}</div>
-          <Table
-            head={[t("workflows.step.outputFile"), t("workflows.step.outputRequired")]}
-            rows={step.outputs.map((output) => [output.path, output.required])}
-          />
-        </section>
+        {fileStep && (
+          <section className="mb-4">
+            <div className={LABEL}>{t("workflows.step.inputs")}</div>
+            {fileStep.inputs.length === 0 ? <None /> : (
+              <Table
+                head={[t("workflows.step.inputFile"), t("workflows.step.inputFrom"), t("workflows.step.inputSource")]}
+                rows={fileStep.inputs.map((input) => [input.as, sourceName(input.from.step), input.from.output])}
+              />
+            )}
+          </section>
+        )}
 
-        <section className="mb-4">
-          <div className={LABEL}>{t("workflows.step.result")}</div>
-          {step.result ? <span className="font-mono text-[10.5px] text-ink-secondary">{step.result}</span> : <None />}
-        </section>
-
-        <section className="mb-4">
-          <div className={LABEL}>{t("workflows.step.conditions")}</div>
-          {conditions.length === 0 ? <None /> : (
+        {fileStep && (
+          <section className="mb-4">
+            <div className={LABEL}>{t("workflows.step.outputs")}</div>
             <Table
-              head={[t("workflows.step.conditionField"), t("workflows.step.conditionValue")]}
-              rows={conditions.map(([field, value]) => [field, JSON.stringify(value)])}
+              head={[t("workflows.step.outputFile"), t("workflows.step.outputRequired")]}
+              rows={fileStep.outputs.map((output) => [output.path, output.required])}
             />
-          )}
-        </section>
+          </section>
+        )}
+
+        {fileStep && (
+          <section className="mb-4">
+            <div className={LABEL}>{t("workflows.step.result")}</div>
+            {fileStep.result ? <span className="font-mono text-[10.5px] text-ink-secondary">{fileStep.result}</span> : <None />}
+          </section>
+        )}
+
+        {fileStep && (
+          <section className="mb-4">
+            <div className={LABEL}>{t("workflows.step.conditions")}</div>
+            {conditions.length === 0 ? <None /> : (
+              <Table
+                head={[t("workflows.step.conditionField"), t("workflows.step.conditionValue")]}
+                rows={conditions.map(([field, value]) => [field, JSON.stringify(value)])}
+              />
+            )}
+          </section>
+        )}
 
         <section>
           <div className={LABEL}>{t("workflows.step.flow")}</div>
-          {!step.next && !step.onFailure && !step.when?.length ? <None /> : (
+          {condition ? (
             <div className="space-y-2">
-              {step.next && (
+              <div className="text-[10.5px] text-ink-secondary">
+                {t("workflows.step.true")}: <span className="text-ink">{condition.whenTrue ? sourceName(condition.whenTrue) : t("workflows.step.none")}</span>
+              </div>
+              <div className="text-[10.5px] text-ink-secondary">
+                {t("workflows.step.false")}: <span className="text-ink">{condition.whenFalse ? sourceName(condition.whenFalse) : t("workflows.step.none")}</span>
+              </div>
+              {condition.onFailure && (
                 <div className="text-[10.5px] text-ink-secondary">
-                  {t("workflows.step.next")}: <span className="text-ink">{sourceName(step.next)}</span>
+                  {t("workflows.step.onFailure")}: <span className="text-ink">{sourceName(condition.onFailure)}</span>
                 </div>
               )}
-              {step.onFailure && (
+            </div>
+          ) : !fileStep?.next && !fileStep?.onFailure && !fileStep?.when?.length ? <None /> : (
+            <div className="space-y-2">
+              {fileStep?.next && (
                 <div className="text-[10.5px] text-ink-secondary">
-                  {t("workflows.step.onFailure")}: <span className="text-ink">{sourceName(step.onFailure)}</span>
+                  {t("workflows.step.next")}: <span className="text-ink">{sourceName(fileStep.next)}</span>
                 </div>
               )}
-              {step.when?.length ? (
+              {fileStep?.onFailure && (
+                <div className="text-[10.5px] text-ink-secondary">
+                  {t("workflows.step.onFailure")}: <span className="text-ink">{sourceName(fileStep.onFailure)}</span>
+                </div>
+              )}
+              {fileStep?.when?.length ? (
                 <Table
                   head={[t("workflows.step.conditionField"), t("workflows.step.conditionValue"), t("workflows.step.next")]}
-                  rows={step.when.map((branch) => [branch.field, JSON.stringify(branch.equals), sourceName(branch.next)])}
+                  rows={fileStep.when.map((branch) => [branch.field, JSON.stringify(branch.equals), sourceName(branch.next)])}
                 />
               ) : null}
             </div>

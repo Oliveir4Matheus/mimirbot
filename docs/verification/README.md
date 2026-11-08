@@ -114,7 +114,9 @@ has no Workflow verbs, so it drives the HTTP routes directly. The
 [Workflow trigger fixture](workflow-trigger.md) starts a run from a routine and
 checks the trigger as its origin. The [Workflow script fixture](workflow-script.md)
 runs a real Node script step, follows its `when` branch and checks the skipped
-step and the run snapshot.
+step and the run snapshot. The [Workflow Studio fixture](workflow-studio.md)
+saves a Workflow from the editor, runs a condition step that reads the previous
+step's `result.json`, and checks the screen the F2 page draws.
 
 The [switchable local environments recipe](local-environments.md) verifies
 creating, switching between and recovering named local environments by hand on

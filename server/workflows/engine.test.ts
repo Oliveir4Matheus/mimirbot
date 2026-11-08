@@ -104,6 +104,34 @@ describe("engine", () => {
     expect(broadcasts.some((frame) => frame.kind === "workflow.run")).toBe(true);
   });
 
+  it("routes a condition by the source step's result", async () => {
+    const def = definition({
+      steps: [
+        { id: "revisar", name: "Review", botId: "bot-b", instructions: "Review.", outputs: [{ path: "decision.json" }], result: "decision.json" },
+        { id: "checar", kind: "condition", name: "Check", from: "revisar", field: "ok", op: "equals", value: true, whenTrue: "fechar", whenFalse: "corrigir" },
+        { id: "fechar", name: "Close", botId: "bot-a", instructions: "Close.", outputs: [{ path: "done.txt" }] },
+        { id: "corrigir", name: "Fix", botId: "bot-a", instructions: "Fix.", outputs: [{ path: "fixed.txt" }] },
+      ],
+    });
+    const { store, engine, calls, onTurn } = setup(def);
+    onTurn((_botId, _text, options) => {
+      if (options.workflowStep.stepId === "revisar") {
+        write(store, options, { "decision.json": JSON.stringify({ ok: false }) });
+      } else {
+        write(store, options, { "fixed.txt": "fixed\n" });
+      }
+      options.onSettled({ ok: true, text: "done" });
+    });
+    const run = engine.start(def.id);
+    if (!run.ok) throw new Error(run.error);
+    await engine.idle();
+    const finished = store.readRun(run.run.id)!;
+    expect(finished.status).toBe("succeeded");
+    expect(finished.steps.map((step) => step.status)).toEqual(["succeeded", "succeeded", "skipped", "succeeded"]);
+    expect(finished.steps[1]!.verified).toEqual([]);
+    expect(calls.map((call) => call.options.workflowStep.stepId)).toEqual(["revisar", "corrigir"]);
+  });
+
   it("copies a declared output into the next step's input/", async () => {
     const { store, engine, definition: def, onTurn } = setup();
     onTurn((_botId, _text, options) => {

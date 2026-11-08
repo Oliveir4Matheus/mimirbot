@@ -7,9 +7,10 @@
 import { lstatSync } from "node:fs";
 import { join } from "node:path";
 
-import { requireMismatch, WORKFLOW_STEP_VISIT_MAX, type WorkflowDefinition, type WorkflowRun, type WorkflowStep } from "../../shared/workflow.ts";
+import { requireMismatch, WORKFLOW_STEP_VISIT_MAX, type BotWorkflowStep, type ConditionWorkflowStep, type ScriptWorkflowStep, type WorkflowDefinition, type WorkflowRun, type WorkflowStep } from "../../shared/workflow.ts";
 import type { HostTurnResult } from "../coordinator.ts";
 import { stepBrief, stepThreadTitle } from "./brief.ts";
+import { evaluateCondition } from "./condition.ts";
 import { copyStepInputs, resetStepFolders, verifyStepOutputs, type OutputVerification } from "./files.ts";
 import { failureStepIndex, nextStepIndex } from "./flow.ts";
 import { stepInputDir, stepOutputDir } from "./paths.ts";
@@ -133,7 +134,7 @@ export function createWorkflowEngine(deps: WorkflowEngineDeps): WorkflowEngine {
   const passStep = (
     run: WorkflowRun,
     index: number,
-    step: WorkflowStep,
+    step: BotWorkflowStep | ScriptWorkflowStep,
     definition: WorkflowDefinition,
     verification: Extract<OutputVerification, { ok: true }>,
   ): void => {
@@ -164,8 +165,8 @@ export function createWorkflowEngine(deps: WorkflowEngineDeps): WorkflowEngine {
       return;
     }
     const step = definition.steps[index];
-    if (!step) {
-      apply(failStep(run, index, `the run has no step ${index + 1} in the definition`, now()));
+    if (!step || step.kind !== "bot") {
+      apply(failStep(run, index, `the run has no bot step ${index + 1} in the definition`, now()));
       return;
     }
     if (!outcome.ok) {
@@ -244,6 +245,41 @@ export function createWorkflowEngine(deps: WorkflowEngineDeps): WorkflowEngine {
     passStep(current, index, step, definition, verification);
   };
 
+  /** A condition reads its source step's result.json and sends the run down one of two routes. */
+  const runConditionStep = (
+    run: WorkflowRun,
+    index: number,
+    step: ConditionWorkflowStep,
+    definition: WorkflowDefinition,
+  ): void => {
+    const started = apply(beginStep(run, index, {}, now()));
+    if (!started) return;
+    const sourceIndex = definition.steps.findIndex((candidate) => candidate.id === step.from);
+    const source = definition.steps[sourceIndex];
+    if (!source || source.kind === "condition" || source.result === undefined) {
+      failOrRoute(started, index, `condition ${JSON.stringify(step.id)} reads ${JSON.stringify(step.from)}, which declares no result`, definition);
+      return;
+    }
+    const verification = verifyStepOutputs(stepOutputDir(deps.store.runDir(started), sourceIndex + 1), source.outputs, source.result);
+    if (!verification.ok) {
+      failOrRoute(started, index, `condition ${JSON.stringify(step.id)} could not read step ${JSON.stringify(source.id)}: ${verification.error}`, definition);
+      return;
+    }
+    const outcome = evaluateCondition(verification.result, step.op, step.field, step.value);
+    if (!outcome.ok) {
+      failOrRoute(started, index, outcome.error, definition);
+      return;
+    }
+    const targetId = outcome.match ? step.whenTrue : step.whenFalse;
+    const target = targetId === undefined ? null : definition.steps.findIndex((candidate) => candidate.id === targetId);
+    if (target !== null && target < 0) {
+      failOrRoute(started, index, `condition ${JSON.stringify(step.id)} points at ${JSON.stringify(targetId)}, which does not exist`, definition);
+      return;
+    }
+    const completed = apply(completeStep(started, index, { verified: [] }, now(), target));
+    if (completed && !isTerminalRun(completed.status)) void enqueue(started.id, () => advance(started.id));
+  };
+
   const settle = async (runId: string, index: number, outcome: HostTurnResult): Promise<void> => {
     const run = deps.store.readRun(runId);
     if (!run || run.status !== "running") return;
@@ -277,6 +313,10 @@ export function createWorkflowEngine(deps: WorkflowEngineDeps): WorkflowEngine {
       return;
     }
     if (stepState.attempts > 0) resetStepFolders(deps.store.runDir(run), index + 1);
+    if (step.kind === "condition") {
+      runConditionStep(run, index, step, definition);
+      return;
+    }
     const copied = copyStepInputs(deps.store.runDir(run), index, step, definition.steps);
     if (!copied.ok) {
       failOrRoute(run, index, copied.error, definition);

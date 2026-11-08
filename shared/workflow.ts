@@ -17,6 +17,12 @@ export const WORKFLOW_SCRIPT_TIMEOUT_MAX_MS = 300_000;
 /** Hard cap on how many times one step may run in a single run, so a back edge always ends. */
 export const WORKFLOW_STEP_VISIT_MAX = 25;
 export const WORKFLOW_BRANCH_MAX = 8;
+/** The Studio keeps at most this many notes and containers, and this much Markdown per note. */
+export const WORKFLOW_CANVAS_NOTE_MAX = 30;
+export const WORKFLOW_CANVAS_CONTAINER_MAX = 20;
+export const WORKFLOW_CANVAS_MARKDOWN_MAX = 20_000;
+/** A condition compares one value from the source step's result.json. */
+export const WORKFLOW_CONDITION_VALUE_MAX = 4_096;
 
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const SCRIPT_NAME = /^[a-z0-9][a-z0-9-]{0,62}\.(?:mjs|js)$/;
@@ -69,6 +75,53 @@ const stepOutputSchema = z.object({
   required: z.boolean().default(true),
 });
 
+const canvasPointSchema = z.object({
+  x: z.number().finite().min(-1_000_000).max(1_000_000),
+  y: z.number().finite().min(-1_000_000).max(1_000_000),
+});
+
+const canvasNoteSchema = z.object({
+  id: z.string().min(1).max(64),
+  ...canvasPointSchema.shape,
+  width: z.number().finite().min(120).max(4_000),
+  height: z.number().finite().min(90).max(4_000),
+  markdown: z.string().max(WORKFLOW_CANVAS_MARKDOWN_MAX).default(""),
+  /** Documentation only: a note never joins the run. */
+  link: z.object({ kind: z.enum(["step", "container"]), id: z.string().min(1).max(64) }).optional(),
+});
+
+const canvasContainerSchema = z.object({
+  id: z.string().min(1).max(64),
+  ...canvasPointSchema.shape,
+  width: z.number().finite().min(200).max(8_000),
+  height: z.number().finite().min(120).max(8_000),
+  name: z.string().trim().max(64).default("Container"),
+});
+
+/** The Studio's visual state: positions, notes and containers. The engine never reads it. */
+export const workflowCanvasSchema = z.object({
+  nodes: z.record(z.string(), canvasPointSchema).default({}),
+  notes: z.array(canvasNoteSchema).max(WORKFLOW_CANVAS_NOTE_MAX).default([]),
+  containers: z.array(canvasContainerSchema).max(WORKFLOW_CANVAS_CONTAINER_MAX).default([]),
+}).superRefine((canvas, context) => {
+  const noteIds = new Set<string>();
+  canvas.notes.forEach((note, index) => {
+    if (noteIds.has(note.id)) {
+      context.addIssue({ code: "custom", path: ["notes", index, "id"], message: `note id ${JSON.stringify(note.id)} is used more than once` });
+    }
+    noteIds.add(note.id);
+  });
+  const containerIds = new Set<string>();
+  canvas.containers.forEach((container, index) => {
+    if (containerIds.has(container.id)) {
+      context.addIssue({ code: "custom", path: ["containers", index, "id"], message: `container id ${JSON.stringify(container.id)} is used more than once` });
+    }
+    containerIds.add(container.id);
+  });
+});
+
+export type WorkflowCanvas = z.output<typeof workflowCanvasSchema>;
+
 const requireSchema = z.record(z.string().min(1).max(64), z.unknown()).refine(
   (value) => Object.keys(value).length <= 64 && JSON.stringify(value).length <= 4_096,
   { message: "require must be a small JSON object" },
@@ -113,7 +166,26 @@ const scriptStepSchema = stepBaseSchema.extend({
   timeoutMs: z.number().int().min(1_000).max(WORKFLOW_SCRIPT_TIMEOUT_MAX_MS).default(WORKFLOW_SCRIPT_TIMEOUT_DEFAULT_MS),
 });
 
-const stepUnionSchema = z.discriminatedUnion("kind", [botStepSchema, scriptStepSchema]);
+export const conditionOps = ["equals", "not_equals", "exists", "contains", "gt", "gte", "lt", "lte"] as const;
+
+const conditionStepSchema = z.object({
+  id: stepIdSchema,
+  kind: z.literal("condition"),
+  name: z.string().trim().min(1).max(120),
+  /** The step whose result.json this condition reads. It must declare a result. */
+  from: stepIdSchema,
+  /** Dotted path into that result, e.g. `ok` or `check.total`. */
+  field: z.string().regex(RESULT_FIELD, { message: "must be a dotted path of letters, digits, _ or -" }),
+  op: z.enum(conditionOps),
+  /** Compared as JSON; required for every operator except `exists`. */
+  value: z.unknown().optional(),
+  /** Where each answer sends the run. Without one, that answer ends the run. */
+  whenTrue: stepIdSchema.optional(),
+  whenFalse: stepIdSchema.optional(),
+  onFailure: stepIdSchema.optional(),
+});
+
+const stepUnionSchema = z.discriminatedUnion("kind", [botStepSchema, scriptStepSchema, conditionStepSchema]);
 
 /** Older Workflows have no `kind`: a step without one was always a bot step. */
 export const workflowStepSchema = z.preprocess(
@@ -132,6 +204,8 @@ export const workflowDefinitionSchema = z.object({
   retentionDays: z.number().int().min(1).max(WORKFLOW_RETENTION_MAX_DAYS).default(WORKFLOW_RETENTION_DEFAULT_DAYS),
   createdAt: z.number().int().nonnegative(),
   updatedAt: z.number().int().nonnegative(),
+  /** Where the Studio drew the steps, notes and containers. Never used by the engine. */
+  canvas: workflowCanvasSchema.optional(),
 }).superRefine((definition, context) => {
   const positions = new Map<string, number>();
   definition.steps.forEach((step, index) => {
@@ -141,8 +215,34 @@ export const workflowDefinitionSchema = z.object({
       positions.set(step.id, index);
     }
   });
+  definition.steps.forEach((step, index) => {
+    if (step.kind !== "condition") return;
+    const sourceIndex = positions.get(step.from);
+    if (sourceIndex === undefined) {
+      context.addIssue({ code: "custom", path: ["steps", index, "from"], message: `source step ${JSON.stringify(step.from)} does not exist` });
+    } else {
+      const source = definition.steps[sourceIndex]!;
+      if (source.kind === "condition") {
+        context.addIssue({ code: "custom", path: ["steps", index, "from"], message: "a condition must read a bot or script step" });
+      } else if (source.result === undefined) {
+        context.addIssue({ code: "custom", path: ["steps", index, "from"], message: `step ${JSON.stringify(source.id)} must declare a result` });
+      }
+    }
+    if (step.op !== "exists" && step.value === undefined) {
+      context.addIssue({ code: "custom", path: ["steps", index, "value"], message: `the ${step.op} operator needs a value` });
+    }
+    if (step.value !== undefined && JSON.stringify(step.value).length > WORKFLOW_CONDITION_VALUE_MAX) {
+      context.addIssue({ code: "custom", path: ["steps", index, "value"], message: "the compared value must be small" });
+    }
+    for (const [field, target] of [["whenTrue", step.whenTrue], ["whenFalse", step.whenFalse], ["onFailure", step.onFailure]] as const) {
+      if (target === undefined) continue;
+      if (target === step.id) context.addIssue({ code: "custom", path: ["steps", index, field], message: "a condition cannot point at itself" });
+      else if (!positions.has(target)) context.addIssue({ code: "custom", path: ["steps", index, field], message: `${field} step ${JSON.stringify(target)} does not exist` });
+    }
+  });
   const outputs = new Map<string, Map<string, z.output<typeof stepOutputSchema>>>();
   definition.steps.forEach((step, index) => {
+    if (step.kind === "condition") return;
     const own = new Map<string, z.output<typeof stepOutputSchema>>();
     step.outputs.forEach((output, outputIndex) => {
       if (own.has(output.path)) {
@@ -190,12 +290,24 @@ export const workflowDefinitionSchema = z.object({
     });
     outputs.set(step.id, own);
   });
+  if (definition.canvas) {
+    const containerIds = new Set(definition.canvas.containers.map((container) => container.id));
+    definition.canvas.notes.forEach((note, index) => {
+      if (!note.link) return;
+      const exists = note.link.kind === "step" ? positions.has(note.link.id) : containerIds.has(note.link.id);
+      if (!exists) {
+        context.addIssue({ code: "custom", path: ["canvas", "notes", index, "link", "id"], message: "the linked element does not exist" });
+      }
+    });
+  }
 });
 
 export type StepInput = z.output<typeof stepInputSchema>;
 export type StepOutput = z.output<typeof stepOutputSchema>;
 export type BotWorkflowStep = z.output<typeof botStepSchema>;
 export type ScriptWorkflowStep = z.output<typeof scriptStepSchema>;
+export type ConditionWorkflowStep = z.output<typeof conditionStepSchema>;
+export type ConditionOp = (typeof conditionOps)[number];
 export type WorkflowStep = z.output<typeof workflowStepSchema>;
 export type WorkflowDefinition = z.output<typeof workflowDefinitionSchema>;
 
@@ -205,6 +317,10 @@ export function isBotStep(step: WorkflowStep): step is BotWorkflowStep {
 
 export function isScriptStep(step: WorkflowStep): step is ScriptWorkflowStep {
   return step.kind === "script";
+}
+
+export function isConditionStep(step: WorkflowStep): step is ConditionWorkflowStep {
+  return step.kind === "condition";
 }
 
 export type WorkflowRunStatus = "queued" | "running" | "waiting_approval" | "succeeded" | "failed" | "cancelled";

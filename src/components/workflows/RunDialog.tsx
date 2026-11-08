@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import type { WorkflowDefinition } from "../../../shared/workflow";
+import { Select } from "@/components/Select";
 import { t } from "@/lib/i18n";
 import { formatDateTime } from "@/lib/workflow-format";
 import { DIALOG_BUTTON, Dialog, PrimaryButton } from "./Dialog";
@@ -31,11 +32,12 @@ export function RunDialog({ workflow, versions, initialVersion, busy, onClose, o
     >
       <label className="block">
         <span className="mb-1.5 block text-[11px] font-semibold text-ink-secondary">{t("workflows.dialog.version")}</span>
-        <select
+        <Select
           value={version}
           onChange={(event) => setVersion(Number(event.target.value))}
           disabled={busy}
-          className="h-[37px] w-full rounded-[9px] border border-hairline bg-app px-2.5 text-[12px] text-ink outline-none focus:border-accent"
+          className="w-full"
+          size="md"
         >
           {[...options].reverse().map((option) => (
             <option key={option.version} value={option.version}>
@@ -44,7 +46,7 @@ export function RunDialog({ workflow, versions, initialVersion, busy, onClose, o
                 : t("workflows.detail.versionEntry", { version: option.version, date: formatDateTime(option.updatedAt) })}
             </option>
           ))}
-        </select>
+        </Select>
       </label>
       <p className="mt-3 text-[10.5px] text-ink-tertiary">{t("workflows.dialog.executeHelp")}</p>
     </Dialog>

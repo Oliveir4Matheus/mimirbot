@@ -112,7 +112,7 @@ Invariantes que dão a garantia:
 | F0 | Contrato, layout de pastas, verificação de saída e cópia de entrada | **feito** (58 testes) |
 | F1 | Máquina de estados, brief da etapa, executor, store, retenção, rotas e tools | **feito** (108 testes no motor + 8 nas rotas) |
 | F2 | Destino "Workflow" nos gatilhos, aprovação longa, UI simples, etapa de script, condição e repetição (**feitos**); retry adiado; record→promote pendente | parcial |
-| F3 | Editor visual, Team Cloud/VM | futuro |
+| F3 | Editor visual, Team Cloud/VM | parcial: F3.1 feita (08/11/2026), F3.2 e Team Cloud pendentes |
 
 ### Lacunas conhecidas
 
