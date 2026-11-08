@@ -2405,7 +2405,9 @@
       "toolDetail.unverified": "c6008b5b55ecb54f1981d0bafe236067280deb6bcec190ce7aab6915ea5d5948",
       "inspector.run.unverified": "c6008b5b55ecb54f1981d0bafe236067280deb6bcec190ce7aab6915ea5d5948",
       "chat.verify.unverified": "73fecd862e13d45b00c367857594e1921a12f6496ccbdf51ce910cd1d1d13ba9",
-      "computer.simple.usingNow": "87b34b405a8495e0f1656dd1a47919e55271849e0ad97a682e14ac256fca3eb6"
+      "computer.simple.usingNow": "87b34b405a8495e0f1656dd1a47919e55271849e0ad97a682e14ac256fca3eb6",
+      "computer.watchFullScreenTitle": "9f3f625c39cd1e74ba76474fda7f8cd15b2fabe6e6ee337201a72551f47986d2",
+      "computer.watchingBotWorks": "b441025e38fe828e8ec4d56a2c9c685f88d9b41d993242c2af8eeaeb8ae3878b"
     },
     "es": {
       "whop.description": "1a07cf04ef17029448d3781415cbac16d54e66b821907a40d94e0e6349710e70",
@@ -7827,7 +7829,9 @@
       "voice.yourVoices": "ef4e8ec03dd16e1a9d0313f15e9b0209599116979fe80db69dd75049b7ce7231",
       "voice.library": "7cc85c6bf86038604408b9a28f517c0795828fcd74981c0ab527a282edced344",
       "voice.libraryHint": "b1f4803e14cc85b75c73d1001263740aff3e8e4cbf82dc5b08206ca76ced8435",
-      "voice.adding": "c6de6f45c827f464b161b668ae93192ce4e6585c4029d8dd71795cbd7f922719"
+      "voice.adding": "c6de6f45c827f464b161b668ae93192ce4e6585c4029d8dd71795cbd7f922719",
+      "computer.watchFullScreenTitle": "9f3f625c39cd1e74ba76474fda7f8cd15b2fabe6e6ee337201a72551f47986d2",
+      "computer.watchingBotWorks": "b441025e38fe828e8ec4d56a2c9c685f88d9b41d993242c2af8eeaeb8ae3878b"
     },
     "fr": {
       "highlevel.unavailable": "87b8ac7f7610e6dd69f520bc59058fd92f307b9f4bcf804075f25d08bcaa7533",
@@ -10215,7 +10219,9 @@
       "toolDetail.unverified": "c6008b5b55ecb54f1981d0bafe236067280deb6bcec190ce7aab6915ea5d5948",
       "inspector.run.unverified": "c6008b5b55ecb54f1981d0bafe236067280deb6bcec190ce7aab6915ea5d5948",
       "chat.verify.unverified": "73fecd862e13d45b00c367857594e1921a12f6496ccbdf51ce910cd1d1d13ba9",
-      "computer.simple.usingNow": "87b34b405a8495e0f1656dd1a47919e55271849e0ad97a682e14ac256fca3eb6"
+      "computer.simple.usingNow": "87b34b405a8495e0f1656dd1a47919e55271849e0ad97a682e14ac256fca3eb6",
+      "computer.watchFullScreenTitle": "9f3f625c39cd1e74ba76474fda7f8cd15b2fabe6e6ee337201a72551f47986d2",
+      "computer.watchingBotWorks": "b441025e38fe828e8ec4d56a2c9c685f88d9b41d993242c2af8eeaeb8ae3878b"
     },
     "hi": {
       "highlevel.unavailable": "87b8ac7f7610e6dd69f520bc59058fd92f307b9f4bcf804075f25d08bcaa7533",
@@ -12603,7 +12609,9 @@
       "toolDetail.unverified": "c6008b5b55ecb54f1981d0bafe236067280deb6bcec190ce7aab6915ea5d5948",
       "inspector.run.unverified": "c6008b5b55ecb54f1981d0bafe236067280deb6bcec190ce7aab6915ea5d5948",
       "chat.verify.unverified": "73fecd862e13d45b00c367857594e1921a12f6496ccbdf51ce910cd1d1d13ba9",
-      "computer.simple.usingNow": "87b34b405a8495e0f1656dd1a47919e55271849e0ad97a682e14ac256fca3eb6"
+      "computer.simple.usingNow": "87b34b405a8495e0f1656dd1a47919e55271849e0ad97a682e14ac256fca3eb6",
+      "computer.watchFullScreenTitle": "9f3f625c39cd1e74ba76474fda7f8cd15b2fabe6e6ee337201a72551f47986d2",
+      "computer.watchingBotWorks": "b441025e38fe828e8ec4d56a2c9c685f88d9b41d993242c2af8eeaeb8ae3878b"
     },
     "ja": {
       "whop.description": "1a07cf04ef17029448d3781415cbac16d54e66b821907a40d94e0e6349710e70",
@@ -18992,7 +19000,9 @@
       "usageMeter.err.unavailable": "595b6d5ee610c3a384520e944fcd5449f8442ea75e081ac8a2700b1518ed50c2",
       "usageMeter.err.priceChanged": "4737b834de90a637e588ba53c167bab6a77257e82af3088f1edfb689d0a5520f",
       "usageMeter.err.rateLimited": "7c60904ddf11a211571c25c7869e52723733c20a064857d1daa8984c8a967cc0",
-      "usageMeter.err.failed": "e527568cff20cf21d1ecd40fc5a81641838f452d940fe891384ec8fc45cbb040"
+      "usageMeter.err.failed": "e527568cff20cf21d1ecd40fc5a81641838f452d940fe891384ec8fc45cbb040",
+      "computer.watchFullScreenTitle": "9f3f625c39cd1e74ba76474fda7f8cd15b2fabe6e6ee337201a72551f47986d2",
+      "computer.watchingBotWorks": "b441025e38fe828e8ec4d56a2c9c685f88d9b41d993242c2af8eeaeb8ae3878b"
     },
     "pt-br": {
       "signIn.answeredInChat": "77883f86ed4b5a0b328c72376ebdb53cd30508f75674b57c6c62e3643ee0e004",
@@ -25279,7 +25289,10 @@
       "settings.updates.channel.aria": "d4fc4230730665f7ebdf52d3ae8071025bd92e41eb56efc7a0d8200d665addf4",
       "settings.updates.channel.main": "58c78435cf60015f15d44fb52e2d65c964dcb9645679a6975499f9b21a2075c6",
       "settings.updates.channel.beta": "703390318bd55aef50b7823d2b90a846debff99e6e3d401a24a921b733912a6d",
-      "settings.section.updates": "22e2bada8f1c65cd83f4ba976f0027c5dd7cb81d5d2199cd1b0130792841eef4"
+      "settings.section.updates": "22e2bada8f1c65cd83f4ba976f0027c5dd7cb81d5d2199cd1b0130792841eef4",
+      "connectors.resetSavedKeys": "764411710357197d3d55fbf646d0ea6249c4236cbc635e0b4212b8d92cf5dea6",
+      "computer.watchFullScreenTitle": "9f3f625c39cd1e74ba76474fda7f8cd15b2fabe6e6ee337201a72551f47986d2",
+      "computer.watchingBotWorks": "b441025e38fe828e8ec4d56a2c9c685f88d9b41d993242c2af8eeaeb8ae3878b"
     },
     "zh": {
       "highlevel.unavailable": "87b8ac7f7610e6dd69f520bc59058fd92f307b9f4bcf804075f25d08bcaa7533",
@@ -28546,7 +28559,9 @@
       "voice.library": "7cc85c6bf86038604408b9a28f517c0795828fcd74981c0ab527a282edced344",
       "voice.libraryHint": "b1f4803e14cc85b75c73d1001263740aff3e8e4cbf82dc5b08206ca76ced8435",
       "voice.adding": "c6de6f45c827f464b161b668ae93192ce4e6585c4029d8dd71795cbd7f922719",
-      "computer.simple.usingNow": "87b34b405a8495e0f1656dd1a47919e55271849e0ad97a682e14ac256fca3eb6"
+      "computer.simple.usingNow": "87b34b405a8495e0f1656dd1a47919e55271849e0ad97a682e14ac256fca3eb6",
+      "computer.watchFullScreenTitle": "9f3f625c39cd1e74ba76474fda7f8cd15b2fabe6e6ee337201a72551f47986d2",
+      "computer.watchingBotWorks": "b441025e38fe828e8ec4d56a2c9c685f88d9b41d993242c2af8eeaeb8ae3878b"
     },
     "zh-tw": {
       "whop.description": "1a07cf04ef17029448d3781415cbac16d54e66b821907a40d94e0e6349710e70",
@@ -32833,7 +32848,9 @@
       "voice.yourVoices": "ef4e8ec03dd16e1a9d0313f15e9b0209599116979fe80db69dd75049b7ce7231",
       "voice.library": "7cc85c6bf86038604408b9a28f517c0795828fcd74981c0ab527a282edced344",
       "voice.libraryHint": "b1f4803e14cc85b75c73d1001263740aff3e8e4cbf82dc5b08206ca76ced8435",
-      "voice.adding": "c6de6f45c827f464b161b668ae93192ce4e6585c4029d8dd71795cbd7f922719"
+      "voice.adding": "c6de6f45c827f464b161b668ae93192ce4e6585c4029d8dd71795cbd7f922719",
+      "computer.watchFullScreenTitle": "9f3f625c39cd1e74ba76474fda7f8cd15b2fabe6e6ee337201a72551f47986d2",
+      "computer.watchingBotWorks": "b441025e38fe828e8ec4d56a2c9c685f88d9b41d993242c2af8eeaeb8ae3878b"
     },
     "uk": {
       "highlevel.unavailable": "87b8ac7f7610e6dd69f520bc59058fd92f307b9f4bcf804075f25d08bcaa7533",
@@ -35698,7 +35715,9 @@
       "voice.libraryHint": "b1f4803e14cc85b75c73d1001263740aff3e8e4cbf82dc5b08206ca76ced8435",
       "voice.adding": "c6de6f45c827f464b161b668ae93192ce4e6585c4029d8dd71795cbd7f922719",
       "toolDetail.unverified": "c6008b5b55ecb54f1981d0bafe236067280deb6bcec190ce7aab6915ea5d5948",
-      "computer.simple.usingNow": "87b34b405a8495e0f1656dd1a47919e55271849e0ad97a682e14ac256fca3eb6"
+      "computer.simple.usingNow": "87b34b405a8495e0f1656dd1a47919e55271849e0ad97a682e14ac256fca3eb6",
+      "computer.watchFullScreenTitle": "9f3f625c39cd1e74ba76474fda7f8cd15b2fabe6e6ee337201a72551f47986d2",
+      "computer.watchingBotWorks": "b441025e38fe828e8ec4d56a2c9c685f88d9b41d993242c2af8eeaeb8ae3878b"
     },
     "vi": {
       "whop.description": "1a07cf04ef17029448d3781415cbac16d54e66b821907a40d94e0e6349710e70",
@@ -40601,7 +40620,9 @@
       "voice.yourVoices": "ef4e8ec03dd16e1a9d0313f15e9b0209599116979fe80db69dd75049b7ce7231",
       "voice.library": "7cc85c6bf86038604408b9a28f517c0795828fcd74981c0ab527a282edced344",
       "voice.libraryHint": "b1f4803e14cc85b75c73d1001263740aff3e8e4cbf82dc5b08206ca76ced8435",
-      "voice.adding": "c6de6f45c827f464b161b668ae93192ce4e6585c4029d8dd71795cbd7f922719"
+      "voice.adding": "c6de6f45c827f464b161b668ae93192ce4e6585c4029d8dd71795cbd7f922719",
+      "computer.watchFullScreenTitle": "9f3f625c39cd1e74ba76474fda7f8cd15b2fabe6e6ee337201a72551f47986d2",
+      "computer.watchingBotWorks": "b441025e38fe828e8ec4d56a2c9c685f88d9b41d993242c2af8eeaeb8ae3878b"
     },
     "tr": {
       "whop.description": "1a07cf04ef17029448d3781415cbac16d54e66b821907a40d94e0e6349710e70",
@@ -45504,7 +45525,9 @@
       "voice.yourVoices": "ef4e8ec03dd16e1a9d0313f15e9b0209599116979fe80db69dd75049b7ce7231",
       "voice.library": "7cc85c6bf86038604408b9a28f517c0795828fcd74981c0ab527a282edced344",
       "voice.libraryHint": "b1f4803e14cc85b75c73d1001263740aff3e8e4cbf82dc5b08206ca76ced8435",
-      "voice.adding": "c6de6f45c827f464b161b668ae93192ce4e6585c4029d8dd71795cbd7f922719"
+      "voice.adding": "c6de6f45c827f464b161b668ae93192ce4e6585c4029d8dd71795cbd7f922719",
+      "computer.watchFullScreenTitle": "9f3f625c39cd1e74ba76474fda7f8cd15b2fabe6e6ee337201a72551f47986d2",
+      "computer.watchingBotWorks": "b441025e38fe828e8ec4d56a2c9c685f88d9b41d993242c2af8eeaeb8ae3878b"
     },
     "pl": {
       "whop.description": "1a07cf04ef17029448d3781415cbac16d54e66b821907a40d94e0e6349710e70",
@@ -51789,7 +51812,9 @@
       "voice.yourVoices": "ef4e8ec03dd16e1a9d0313f15e9b0209599116979fe80db69dd75049b7ce7231",
       "voice.library": "7cc85c6bf86038604408b9a28f517c0795828fcd74981c0ab527a282edced344",
       "voice.libraryHint": "b1f4803e14cc85b75c73d1001263740aff3e8e4cbf82dc5b08206ca76ced8435",
-      "voice.adding": "c6de6f45c827f464b161b668ae93192ce4e6585c4029d8dd71795cbd7f922719"
+      "voice.adding": "c6de6f45c827f464b161b668ae93192ce4e6585c4029d8dd71795cbd7f922719",
+      "computer.watchFullScreenTitle": "9f3f625c39cd1e74ba76474fda7f8cd15b2fabe6e6ee337201a72551f47986d2",
+      "computer.watchingBotWorks": "b441025e38fe828e8ec4d56a2c9c685f88d9b41d993242c2af8eeaeb8ae3878b"
     },
     "ru": {
       "whop.description": "1a07cf04ef17029448d3781415cbac16d54e66b821907a40d94e0e6349710e70",
@@ -58150,7 +58175,9 @@
       "sidebar.update.availableOther": "50ce0e6df74d25b1ce8721fa2fc6c7ea2990e1afdfddc95bb909e27cfd15bb16",
       "sidebar.update.upToDateOther": "fdb097b8cd4e3866d54a4b840b38432c4db69c7783112a8b4f80386b1cacbe12",
       "sidebar.update.howOther": "c8c6f89ce0b420107b0bf3e98ccc99ddb4677820437a6e5c87d1e6fea870dcf2",
-      "sidebar.update.howOtherRestart": "3f3c7744d5366d82720d7dafab9fd13a940da36431e8f2dbed06acd2b73c18f7"
+      "sidebar.update.howOtherRestart": "3f3c7744d5366d82720d7dafab9fd13a940da36431e8f2dbed06acd2b73c18f7",
+      "computer.watchFullScreenTitle": "9f3f625c39cd1e74ba76474fda7f8cd15b2fabe6e6ee337201a72551f47986d2",
+      "computer.watchingBotWorks": "b441025e38fe828e8ec4d56a2c9c685f88d9b41d993242c2af8eeaeb8ae3878b"
     },
     "it": {
       "whop.description": "1a07cf04ef17029448d3781415cbac16d54e66b821907a40d94e0e6349710e70",
@@ -64354,7 +64381,9 @@
       "usageMeter.err.unavailable": "595b6d5ee610c3a384520e944fcd5449f8442ea75e081ac8a2700b1518ed50c2",
       "usageMeter.err.priceChanged": "4737b834de90a637e588ba53c167bab6a77257e82af3088f1edfb689d0a5520f",
       "usageMeter.err.rateLimited": "7c60904ddf11a211571c25c7869e52723733c20a064857d1daa8984c8a967cc0",
-      "usageMeter.err.failed": "e527568cff20cf21d1ecd40fc5a81641838f452d940fe891384ec8fc45cbb040"
+      "usageMeter.err.failed": "e527568cff20cf21d1ecd40fc5a81641838f452d940fe891384ec8fc45cbb040",
+      "computer.watchFullScreenTitle": "9f3f625c39cd1e74ba76474fda7f8cd15b2fabe6e6ee337201a72551f47986d2",
+      "computer.watchingBotWorks": "b441025e38fe828e8ec4d56a2c9c685f88d9b41d993242c2af8eeaeb8ae3878b"
     }
   }
 }

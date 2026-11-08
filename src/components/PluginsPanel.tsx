@@ -33,6 +33,7 @@ import { X_CARD_SEARCH, XCard } from "./XCard";
 import { mergeCompleteConnectorStatus, mergeCurrentConnectorStatus, onlyLatestConnectorResponses } from "@/lib/connector-status-merge";
 import { openBotSettings } from "./bot-panel/panel-link";
 import { ServiceIcon, type ToolkitCard } from "./ServiceIcon";
+import { SavedKeysReset } from "./SavedKeysReset";
 export { ServiceIcon, type ToolkitCard } from "./ServiceIcon";
 
 let cachedConnectorStatus: Record<string, ConnectorStatus> | null = null;
@@ -621,6 +622,7 @@ export function PluginsPanel() {
               <TriangleAlert size={14} className="mt-px shrink-0" />
               <span>
                 {t("connectors.stale")}
+                <SavedKeysReset />
               </span>
             </div>
           )}

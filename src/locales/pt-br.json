@@ -6285,5 +6285,6 @@
   "preview.annotation.send": "Enviar ao agente",
   "preview.annotation.sendFailed": "Não foi possível enviar a anotação. Tente novamente.",
   "preview.openSide": "Abrir ao lado direito",
-  "preview.table.loadingValues": "Carregando valores…"
+  "preview.table.loadingValues": "Carregando valores…",
+  "connectors.resetSavedKeys": "Redefinir chaves salvas"
 }
