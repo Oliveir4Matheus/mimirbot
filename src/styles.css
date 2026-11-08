@@ -2878,3 +2878,30 @@ button:disabled.bg-danger {
 @media (prefers-reduced-motion: reduce) {
   .agent-provider-ring::before { animation: none; }
 }
+
+/* ── Workflows (F2) ───────────────────────────────────────────────────────
+   The dot canvas is the Workflow Studio surface: white with a 24px grid of
+   dark dots, per the approved F2 reference. It is the only place on this
+   screen that does not follow the active skin. */
+.wf-canvas {
+  background-color: #ffffff;
+  background-image: radial-gradient(circle, #292e32 0.85px, transparent 1.05px);
+  background-size: 24px 24px;
+  background-position: 12px 12px;
+}
+@keyframes wf-ring-spin { to { transform: rotate(360deg); } }
+.wf-run-glyph { --wf-glyph-ring: var(--color-panel); }
+.wf-run-row:hover .wf-run-glyph { --wf-glyph-ring: var(--color-raised); }
+.wf-run-row[data-selected="true"] .wf-run-glyph { --wf-glyph-ring: var(--color-raised-hover); }
+.wf-run-badge { border-color: var(--wf-glyph-ring); }
+@media (prefers-reduced-motion: reduce) {
+  .wf-ring-spin { animation: none !important; }
+}
+.wf-thin-scroll { scrollbar-width: thin; scrollbar-color: var(--color-scrollbar, #c4c4c4) transparent; }
+.wf-skeleton {
+  background: linear-gradient(90deg, var(--color-raised) 25%, var(--color-panel) 38%, var(--color-raised) 65%);
+  background-size: 400% 100%;
+  animation: wf-shimmer 1.4s ease infinite;
+}
+@keyframes wf-shimmer { to { background-position-x: -100%; } }
+@media (prefers-reduced-motion: reduce) { .wf-skeleton { animation: none; } }

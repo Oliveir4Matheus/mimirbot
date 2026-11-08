@@ -111,6 +111,7 @@ const ICONS = {
   automations: <Glyph><rect x="3" y="3.5" width="8.5" height="8.5" rx="2" /><rect x="13" y="13" width="8.5" height="8.5" rx="2" /><path d="M7.25 12v3.2a2 2 0 0 0 2 2H13" /></Glyph>,
   schedule: <Glyph><path d="M4 8V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3M8 1.7v4M16 1.7v4M4 8h16M4 9v10a2 2 0 0 0 2 2h5" /><circle cx="16.5" cy="16.5" r="5" /><path d="M16.5 13.7v3l2 1.1" /></Glyph>,
   logs: <Glyph><path d="m3 6 2.1 2.1L8.4 4.8M11.5 6.5H21M3 16l2.1 2.1 3.3-3.3M11.5 16.5H21" /><path d="M11.5 11.5H21" opacity=".75" /></Glyph>,
+  workflows: <Glyph><path d="M9 6h12M9 12h12M9 18h12M3 6l1.7 1.7L7.5 4.5M3 12l1.7 1.7L7.5 10.5M3 18l1.7 1.7L7.5 16.5" /></Glyph>,
   teamMap: (
     <Glyph strokeWidth={2}>
       <path d="M7.4 12.7 15.8 6.6M7.4 12.7h10.2M17.6 12.7l-5.2 5.1" />
@@ -120,7 +121,6 @@ const ICONS = {
   ),
   files: <Glyph><path d="M3 7.5V6a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" /><path d="M3 10h18" /></Glyph>,
   usage: <Glyph><path d="M3.5 2.8v18h18" /><path d="M7.5 17.2v-6.1l4 2.6 6-5.2v8.7z" /></Glyph>,
-  console: <Glyph><rect x="3" y="4" width="18" height="16" rx="2.5" /><path d="m7 9.5 3 2.5-3 2.5M12.5 15H17" /></Glyph>,
   apps: <Glyph><path d="M3.2 10.4 5 4.8h14l1.8 5.6c0 1.6-1.2 2.6-2.6 2.6-1 0-1.8-.5-2.3-1.2-.5.7-1.4 1.2-2.4 1.2s-1.8-.5-2.3-1.2c-.5.7-1.4 1.2-2.3 1.2S7.1 12.5 6.6 11.8c-.5.7-1.3 1.2-2.3 1.2-1.5 0-2.4-1.2-1.1-2.6Z" /><path d="M5 13v7h14v-7M9.2 20v-5h5.6v5" /></Glyph>,
   help: <Glyph strokeWidth={2}><circle cx="12" cy="12" r="9.3" /><path d="M9.6 9.3a2.6 2.6 0 0 1 5.1.6c0 1.8-2.6 2.1-2.6 4.1" /><path d="M12 17.5h.01" strokeWidth={3} /></Glyph>,
   notifications: <Glyph><path d="M6 9.5a6 6 0 0 1 12 0c0 4.6 1.8 6.3 2.3 6.8H3.7c.5-.5 2.3-2.2 2.3-6.8Z" /><path d="M10 19.5a2.1 2.1 0 0 0 4 0" /></Glyph>,
@@ -182,6 +182,7 @@ export function MimirRail() {
         </RailButton>
         <RailButton label={t("routines.drawer.schedule")} active={routines && focus.view === "calendar"} onClick={() => pick({ type: "showRoutines", view: "calendar" })}>{ICONS.schedule}</RailButton>
         <RailButton label={t("routines.logs")} active={routines && focus.section === "logs"} onClick={() => pick({ type: "showRoutines", section: "logs" })}>{ICONS.logs}</RailButton>
+        <RailButton label={t("workflows.title")} active={state.activeView === "workflow-console" && !overlay} onClick={() => pick({ type: "showWorkflowConsole" })}>{ICONS.workflows}</RailButton>
         <RailButton label={t("sidebar.nav.teamMap")} active={state.activeView === "team-map" && !overlay} onClick={() => pick({ type: "showTeamMap" })}>{ICONS.teamMap}</RailButton>
         {filesReady && <RailButton label={t("sidebar.nav.files")} active={state.activeView === "files" && !overlay} onClick={() => pick({ type: "showFiles" })}>{ICONS.files}</RailButton>}
         <RailButton label={t("settings.section.usage")} active={state.activeView === "usage" && !overlay} onClick={openUsage}>{ICONS.usage}</RailButton>
@@ -190,7 +191,6 @@ export function MimirRail() {
       <div className="mt-auto flex w-full flex-col items-center gap-1.5 pt-3">
         <NotificationsButton />
         {rings.map((provider) => <PlanRing key={provider.driver} provider={provider} onOpen={openUsage} />)}
-        <RailButton label="Workflow console" active={state.activeView === "workflow-console"} onClick={() => pick({ type: "showWorkflowConsole" })}>{ICONS.console}</RailButton>
         <RailButton label={t("sidebar.nav.apps")} active={state.pluginsOpen} onClick={() => pick({ type: "togglePlugins", open: true })}>{ICONS.apps}</RailButton>
         <RailButton label={t("sidebar.menu.help")} onClick={() => { void openExternalLink(HELP_CENTER_URL); setOpen(false); }}>{ICONS.help}</RailButton>
         <RailButton

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { Check, Copy, Loader2, Play, RotateCcw, Terminal } from "lucide-react";
+import { Check, Copy, Loader2, Play, RotateCcw, Terminal, ArrowLeft } from "lucide-react";
 
 import { cn } from "@/lib/cn";
 import { copyText } from "@/lib/copy-text";
@@ -116,7 +116,7 @@ function statusTone(status: number | "running" | "error" | undefined): string {
   return "bg-danger/12 text-danger";
 }
 
-export function WorkflowConsolePage() {
+export function WorkflowConsolePage({ onBack }: { onBack?: () => void } = {}) {
   const { state } = useStore();
   const { capabilities } = useDesktopCapabilities();
   const macInset = capabilities.windowChrome === "mac-inset";
@@ -263,6 +263,16 @@ export function WorkflowConsolePage() {
     <main className="flex h-full min-w-0 flex-1 flex-col bg-app animate-workspace-in">
       <header className="shrink-0 border-b border-hairline/35 bg-app py-3 pl-12 pr-4 md:pl-4" style={dragStyle}>
         <div className="flex flex-wrap items-center gap-2">
+          {onBack && (
+            <button
+              type="button"
+              onClick={onBack}
+              className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-[12.5px] font-medium text-ink-secondary hover:bg-raised hover:text-ink"
+            >
+              <ArrowLeft size={15} aria-hidden="true" />
+              Voltar
+            </button>
+          )}
           <Terminal size={18} className="text-accent-text" />
           <h1 className="text-[18px] font-semibold tracking-tight text-ink">Workflow · Console de rotas</h1>
           <span className="rounded-full bg-raised px-2 py-0.5 text-[11px] font-medium text-ink-secondary">ferramenta de teste</span>
