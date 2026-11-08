@@ -18,6 +18,8 @@ export interface WorkflowHostDeps {
   startTurn(botId: string, text: string, options: WorkflowTurnOptions): Promise<unknown>;
   broadcast(frame: Record<string, unknown>): void;
   interrupt?(botId: string, threadId: string): void;
+  /** Cards still waiting on a person in a step's conversation. */
+  openCards?(threadId: string): Array<{ id: string; question: string }>;
 }
 
 export function createWorkflowHost(deps: WorkflowHostDeps) {
@@ -34,6 +36,7 @@ export function createWorkflowHost(deps: WorkflowHostDeps) {
     createThread: (input) => deps.createTask(input.botId, input.title, input.cwd),
     broadcast: deps.broadcast,
     interrupt: deps.interrupt,
+    openCards: deps.openCards,
     now: deps.now,
     log: deps.log,
   });

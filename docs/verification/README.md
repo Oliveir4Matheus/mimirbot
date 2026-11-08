@@ -108,6 +108,10 @@ built-in browser panel, and updater UI—is still not proven by the harness. Use
 the relevant Electron/package smoke test and state that limitation. Add a map
 entry only after the shared control surface can really drive it.
 
+The [Workflow approval fixture](workflow-approval.md) pauses a Workflow run on
+a card and resumes it through the real server and the fake engine. `control-omb`
+has no Workflow verbs, so it drives the HTTP routes directly.
+
 The [switchable local environments recipe](local-environments.md) verifies
 creating, switching between and recovering named local environments by hand on
 a packaged desktop install; the control surface cannot drive it, so it is not

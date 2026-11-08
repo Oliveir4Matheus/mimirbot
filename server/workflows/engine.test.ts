@@ -37,7 +37,11 @@ const definition = (overrides: Record<string, unknown> = {}): WorkflowDefinition
 
 type TurnHandler = (botId: string, text: string, options: WorkflowTurnOptions) => Promise<void> | void;
 
-function setup(def: WorkflowDefinition = definition(), createThread?: (input: { botId: string; title: string; cwd: string }) => string | null) {
+function setup(
+  def: WorkflowDefinition = definition(),
+  createThread?: (input: { botId: string; title: string; cwd: string }) => string | null,
+  openCards?: (threadId: string) => Array<{ id: string; question: string }>,
+) {
   const store = createWorkflowStore({
     dataDir: join(root, "data"),
     env: { [WORKFLOWS_ROOT_ENV]: join(root, "runs") },
@@ -57,6 +61,7 @@ function setup(def: WorkflowDefinition = definition(), createThread?: (input: { 
     },
     createThread: createThread ?? ((input) => `thread-${input.botId}-${input.cwd.split(/[\\/]/).pop()}`),
     broadcast: (frame) => broadcasts.push(frame),
+    ...(openCards ? { openCards } : {}),
     now: () => NOW,
     log: () => {},
   });
@@ -191,6 +196,162 @@ describe("engine", () => {
     await engine.idle();
     expect(store.readRun(run.run.id)!.status).toBe("cancelled");
     expect(store.readRun(run.run.id)!.error).toBe("person stopped it");
+  });
+});
+
+describe("long approval", () => {
+  const asked = (store: WorkflowStore): TurnHandler =>
+    (_botId, _text, options) => {
+      if (options.workflowStep.stepId === "coletar") {
+        write(store, options, { "numbers.csv": "1,2,3\n" });
+        options.onSettled({ ok: true, text: "asked the person" });
+        return;
+      }
+      write(store, options, { "decision.json": JSON.stringify({ ok: true }) });
+      options.onSettled({ ok: true, text: "done" });
+    };
+
+  it("waits on the step's open card and finishes the step once the person answers", async () => {
+    let open: Array<{ id: string; question: string }> = [];
+    const { store, engine, definition: def, onTurn } = setup(definition(), undefined, () => open);
+    onTurn(asked(store));
+    open = [{ id: "card-1", question: "Posso enviar o relatório?" }];
+    const run = engine.start(def.id);
+    if (!run.ok) throw new Error(run.error);
+    await engine.idle();
+    const paused = store.readRun(run.run.id)!;
+    expect(paused.status).toBe("waiting_approval");
+    expect(paused.pause).toMatchObject({ stepId: "coletar", question: "Posso enviar o relatório?", cardIds: ["card-1"] });
+    expect(paused.steps[0]!.status).toBe("running");
+
+    open = [];
+    engine.turnSettled("thread-bot-a-step-1", "turn-1", { ok: true, text: "answered" });
+    await engine.idle();
+    const finished = store.readRun(run.run.id)!;
+    expect(finished.status).toBe("succeeded");
+    expect(finished.steps.map((step) => step.status)).toEqual(["succeeded", "succeeded"]);
+  });
+
+  it("pauses on the cards the host reports even when the conversation has none open", async () => {
+    const { store, engine, definition: def, onTurn } = setup();
+    onTurn((_botId, _text, options) => {
+      options.onSettled({ ok: true, text: "waiting", cards: { question: "connect Gmail", ids: ["m-1"] } });
+    });
+    const run = engine.start(def.id);
+    if (!run.ok) throw new Error(run.error);
+    await engine.idle();
+    const paused = store.readRun(run.run.id)!;
+    expect(paused.status).toBe("waiting_approval");
+    expect(paused.pause).toMatchObject({ cardIds: ["m-1"], question: "connect Gmail" });
+  });
+
+  it("resumes even when the answer arrives before the card is marked answered", async () => {
+    let open: Array<{ id: string; question: string }> = [];
+    const { store, engine, definition: def, onTurn } = setup(definition(), undefined, (threadId) => threadId.endsWith("step-1") ? open : []);
+    onTurn(asked(store));
+    open = [{ id: "card-1", question: "Posso enviar?" }];
+    const run = engine.start(def.id);
+    if (!run.ok) throw new Error(run.error);
+    await engine.idle();
+    expect(store.readRun(run.run.id)!.status).toBe("waiting_approval");
+
+    engine.turnSettled("thread-bot-a-step-1", "turn-1", { ok: true, text: "answered" });
+    await engine.idle();
+    expect(store.readRun(run.run.id)!.status).toBe("succeeded");
+  });
+
+  it("keeps waiting when the answer leaves another card open", async () => {
+    let open: Array<{ id: string; question: string }> = [];
+    const { store, engine, definition: def, onTurn } = setup(definition(), undefined, () => open);
+    onTurn(asked(store));
+    open = [{ id: "card-1", question: "first?" }];
+    const run = engine.start(def.id);
+    if (!run.ok) throw new Error(run.error);
+    await engine.idle();
+
+    open = [{ id: "card-2", question: "second?" }];
+    engine.turnSettled("thread-bot-a-step-1", "turn-1", { ok: true, text: "answered" });
+    await engine.idle();
+    const paused = store.readRun(run.run.id)!;
+    expect(paused.status).toBe("waiting_approval");
+    expect(paused.pause).toMatchObject({ cardIds: ["card-2"], question: "second?" });
+    expect(paused.steps[0]!.status).toBe("running");
+  });
+
+  it("cancels the run with the refusal reason when the person denies the card", async () => {
+    let open: Array<{ id: string; question: string }> = [];
+    const { store, engine, definition: def, onTurn } = setup(definition(), undefined, () => open);
+    onTurn(asked(store));
+    open = [{ id: "card-1", question: "Posso enviar?" }];
+    const run = engine.start(def.id);
+    if (!run.ok) throw new Error(run.error);
+    await engine.idle();
+
+    const other = engine.refuse("thread-bot-a-step-1", "card-9");
+    expect(other.ok).toBe(false);
+    expect(store.readRun(run.run.id)!.status).toBe("waiting_approval");
+
+    const refused = engine.refuse("thread-bot-a-step-1", "card-1");
+    expect(refused.ok).toBe(true);
+    await engine.idle();
+    const cancelled = store.readRun(run.run.id)!;
+    expect(cancelled.status).toBe("cancelled");
+    expect(cancelled.error).toBe("aprovação negada");
+    expect(cancelled.pause).toBeUndefined();
+  });
+
+  it("reports each turn once, so the host's cleanup settle cannot fail the step", async () => {
+    let open: Array<{ id: string; question: string }> = [];
+    const { store, engine, definition: def, onTurn } = setup(definition(), undefined, (threadId) => threadId.endsWith("step-1") ? open : []);
+    onTurn(asked(store));
+    open = [{ id: "card-1", question: "first?" }];
+    const run = engine.start(def.id);
+    if (!run.ok) throw new Error(run.error);
+    await engine.idle();
+
+    open = [{ id: "card-2", question: "second?" }];
+    engine.turnSettled("thread-bot-a-step-1", "g1", { ok: true, text: "answered" });
+    await engine.idle();
+    engine.turnSettled("thread-bot-a-step-1", "g1", { ok: false, text: "The coordinated turn was interrupted" });
+    await engine.idle();
+    const paused = store.readRun(run.run.id)!;
+    expect(paused.status).toBe("waiting_approval");
+    expect(paused.pause).toMatchObject({ cardIds: ["card-2"] });
+
+    open = [];
+    engine.turnSettled("thread-bot-a-step-1", "g2", { ok: true, text: "answered" });
+    await engine.idle();
+    expect(store.readRun(run.run.id)!.status).toBe("succeeded");
+  });
+
+  it("resumes a paused run from its step's conversation after a restart", async () => {
+    const { store, engine, definition: def } = setup();
+    const run = store.createRun(def);
+    writeFileSync(join(store.stepFolder(run, 0), "output", "numbers.csv"), "1,2,3\n");
+    store.writeRun({
+      ...run,
+      status: "waiting_approval",
+      startedAt: NOW,
+      steps: [{ id: "coletar", status: "running", attempts: 1, threadId: "t-1", startedAt: NOW }, run.steps[1]!],
+      pause: { stepId: "coletar", question: "ok?", cardIds: ["card-1"], askedAt: NOW },
+    });
+    engine.recover();
+    await engine.idle();
+    expect(store.readRun(run.id)!.status).toBe("waiting_approval");
+    expect(engine.ownsThread("t-1")).toBe(true);
+
+    engine.turnSettled("t-1", "turn-1", { ok: true, text: "answered" });
+    await engine.idle();
+    const resumed = store.readRun(run.id)!;
+    expect(resumed.steps[0]!.status).toBe("succeeded");
+    expect(resumed.currentStep).toBe(1);
+  });
+
+  it("ignores a settled turn that belongs to no run", async () => {
+    const { engine } = setup();
+    expect(engine.ownsThread("someone-else")).toBe(false);
+    engine.turnSettled("someone-else", "turn-1", { ok: true, text: "nothing" });
+    await engine.idle();
   });
 });
 

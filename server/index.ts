@@ -1117,6 +1117,8 @@ function cardAnswerRefusal(auth: RequestAuth, threadId: string, requestId: strin
   // A Cloud guest may read along but never answer: its words would reach the owner's turn and a lent Mac.
   if (CLOUD_PERSONAL) return cloudCardRefusal(auth);
   if (auth.scopes.includes("admin") || !sharedMembership()) return null;
+  // A Workflow step belongs to its department, not to the person who started the run: any member may answer it.
+  if (workflows.engine.ownsThread(threadId)) return null;
   const known = [threadStarters.get(threadId), cardRequesterKey(threadId, requestId)].filter((person): person is string => Boolean(person));
   if (!known.length || known.includes(personKey(auth.session))) return null;
   return "Only the person who started this conversation or sent this request, or a workspace admin, can answer this card.";
@@ -2012,6 +2014,17 @@ function resumableCards(threadId: string, since: number, memberId?: string): Arr
   return open;
 }
 
+/** Cards still waiting on a person in a step's conversation: the run waits on them, however long the answer takes. */
+function openWorkflowCards(threadId: string): Array<{ id: string; question: string }> {
+  const waiting: Array<{ id: string; question: string }> = [];
+  for (const message of store.messagesFor(threadId)) {
+    const card = message.card;
+    if (!card?.requestId || card.answered || card.dismissed || card.expired || card.autoApplied || card.quotaSwitch || card.outboundRequest) continue;
+    waiting.push({ id: message.id, question: card.title });
+  }
+  return waiting;
+}
+
 function turnRows(node: HandoffView): Message[] {
   const since = node.startedAt ?? node.createdAt;
   const rows = store.activePath(node.threadId).filter((message) => message.at >= since);
@@ -2084,6 +2097,7 @@ function settleDirectCoordination(generation: string | undefined, outcome: Direc
   directCoordinationSettlers.delete(generation);
   const node = coordinator.node(settler?.nodeId ?? generation);
   const result = hostTurnResult(node, generation, outcome);
+  if (node) workflows.engine.turnSettled(node.threadId, generation, result);
   if (settler) { settler.settle(result); return; }
   if (node && !node.parentId && (node.status === "source" || node.status === "running")) coordinator.endTurn(generation, result);
 }
@@ -2888,6 +2902,7 @@ const workflows = createWorkflowHost({
   startTurn: (botId, text, opts) => startTurn(botId, text, opts),
   broadcast: (frame) => broadcast(frame, { adminOnly: true }),
   interrupt: (botId, threadId) => { void interruptDirectThread(botId, threadId, "workflow cancelled"); },
+  openCards: (threadId) => openWorkflowCards(threadId),
 });
 ROUTES.push(workflows.routes);
 const { cloudLendingTurn, cloudLendingRefusalNotice, cloudLendingRefusal, cloudThreadStarters, cloudLendingView, cloudReportFromOthers, roomTurnStarted, roomTurnEnded } = createCloudLendingTurns({
@@ -4992,6 +5007,7 @@ async function answerRequest(
       decision: behavior === "allow" ? "user-approved" : "user-denied",
       source: "user",
     });
+    if (behavior === "deny") workflows.engine.refuse(threadId, cardMessage?.id);
   }
   if (outcome === "unavailable") {
     const messageId = askMessageByRequest.get(`${threadId}:${requestId}`);
