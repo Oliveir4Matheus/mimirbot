@@ -6,8 +6,8 @@ import { t } from "@/lib/i18n";
 import { isActiveStatus, relativeTime, runDurationLabel } from "@/lib/workflow-format";
 import { RunGlyph } from "./RunGlyph";
 
-function stepName(workflow: WorkflowDefinition | undefined, index: number): string {
-  return workflow?.steps[index]?.name ?? t("workflows.run.stepNumber", { number: index + 1 });
+function stepName(workflow: WorkflowDefinition | undefined, run: WorkflowRun, index: number): string {
+  return workflow?.steps[index]?.name ?? run.snapshot?.steps[index]?.name ?? t("workflows.run.stepNumber", { number: index + 1 });
 }
 
 export function RunList({ runs, workflows, selectedId, now, onSelect }: {
@@ -59,8 +59,8 @@ export function RunList({ runs, workflows, selectedId, now, onSelect }: {
               <RunGlyph status={run.status} />
               <div className="min-w-0 flex-1">
                 <div className="flex min-w-0 items-center gap-1.5 leading-[1.25]">
-                  <span className="min-w-0 flex-1 truncate text-[11.5px] font-semibold text-ink" title={workflow?.name ?? run.workflowId}>
-                    {workflow?.name ?? t("workflows.run.unknownWorkflow")}
+                  <span className="min-w-0 flex-1 truncate text-[11.5px] font-semibold text-ink" title={workflow?.name ?? run.snapshot?.name ?? run.workflowId}>
+                    {workflow?.name ?? run.snapshot?.name ?? t("workflows.run.unknownWorkflow")}
                   </span>
                   <span className="shrink-0 font-mono text-[9.5px] text-ink-tertiary">v{run.workflowVersion}</span>
                 </div>
@@ -77,7 +77,7 @@ export function RunList({ runs, workflows, selectedId, now, onSelect }: {
                       style={{ background: run.status === "waiting_approval" ? "#C5923A" : "#397EE7" }}
                     />
                     <span className="truncate">
-                      {t("workflows.run.stepOf", { current: Math.min(run.currentStep + 1, run.steps.length), total: run.steps.length, name: stepName(workflow, run.currentStep) })}
+                      {t("workflows.run.stepOf", { current: Math.min(run.currentStep + 1, run.steps.length), total: run.steps.length, name: stepName(workflow, run, run.currentStep) })}
                     </span>
                   </div>
                 )}

@@ -65,8 +65,10 @@ export function RunDetail({ run, workflow, now, botName, onCancel, onDelete, onR
 
   const active = isActiveStatus(run.status);
   const definitionStep = (id: string) => workflow?.steps.find((step) => step.id === id);
-  const nameOf = (step: WorkflowRunStep, index: number) => definitionStep(step.id)?.name ?? t("workflows.run.stepNumber", { number: index + 1 });
+  const snapshotStep = (id: string) => run.snapshot?.steps.find((step) => step.id === id);
+  const nameOf = (step: WorkflowRunStep, index: number) => definitionStep(step.id)?.name ?? snapshotStep(step.id)?.name ?? t("workflows.run.stepNumber", { number: index + 1 });
   const requester = run.requestedBy ? botName(run.requestedBy.botId) : undefined;
+  const trigger = run.triggeredBy?.routineName;
   const resultText = run.result === undefined ? "" : JSON.stringify(run.result, null, 2);
   const resultLines = resultText ? resultText.split("\n").length : 0;
   const showResult = run.result !== undefined && (resultOpen ?? resultLines <= 12);
@@ -112,7 +114,7 @@ export function RunDetail({ run, workflow, now, botName, onCancel, onDelete, onR
             <div className="flex flex-wrap items-center gap-2.5">
               <StatusChip status={run.status} />
               <h1 className="text-[21px] font-[650] leading-[1.3] tracking-[-0.5px] text-ink">
-                {workflow?.name ?? t("workflows.run.unknownWorkflow")} v{run.workflowVersion}
+                {workflow?.name ?? run.snapshot?.name ?? t("workflows.run.unknownWorkflow")} v{run.workflowVersion}
               </h1>
             </div>
             <div className="mt-2.5 flex items-center gap-1.5 text-[10.5px] text-ink-tertiary">
@@ -122,7 +124,9 @@ export function RunDetail({ run, workflow, now, botName, onCancel, onDelete, onR
               </button>
             </div>
             <div className="mt-2.5 text-[11px] text-ink-secondary">
-              {requester ? t("workflows.run.requestedBy", { name: requester }) : t("workflows.run.requestedByYou")}
+              {trigger
+                ? t("workflows.run.triggeredBy", { name: trigger })
+                : requester ? t("workflows.run.requestedBy", { name: requester }) : t("workflows.run.requestedByYou")}
               {" · "}
               {formatDateTime(run.startedAt ?? run.createdAt)}
               {" → "}
@@ -309,7 +313,7 @@ export function RunDetail({ run, workflow, now, botName, onCancel, onDelete, onR
           </section>
         )}
 
-        {!workflow && (
+        {!workflow && !run.snapshot && (
           <p className="mt-8 rounded-lg border border-dashed border-hairline p-4 text-[11px] leading-relaxed text-ink-tertiary">
             {t("workflows.run.definitionMissing")}
           </p>

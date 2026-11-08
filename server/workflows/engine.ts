@@ -29,6 +29,8 @@ export interface WorkflowEngineDeps {
   interrupt?(botId: string, threadId: string): void;
   /** Cards in a step's conversation still waiting on a person, in the order they were posted. */
   openCards?(threadId: string): Array<{ id: string; question: string }>;
+  /** Every persisted transition, for a trigger that mirrors the run's state. */
+  onRun?(run: WorkflowRun): void;
   now?: () => number;
   log?: (line: string) => void;
 }
@@ -36,7 +38,7 @@ export interface WorkflowEngineDeps {
 export type StartResult = { ok: true; run: WorkflowRun } | { ok: false; error: string };
 
 export interface WorkflowEngine {
-  start(workflowId: string, options?: { version?: number; requestedBy?: WorkflowRun["requestedBy"] }): StartResult;
+  start(workflowId: string, options?: { version?: number; requestedBy?: WorkflowRun["requestedBy"]; triggeredBy?: WorkflowRun["triggeredBy"] }): StartResult;
   status(runId: string): WorkflowRun | undefined;
   cancel(runId: string, reason?: string): RunTransition;
   /** A turn on a step's conversation settled: a run waiting on that step re-checks its outputs. */
@@ -89,6 +91,7 @@ export function createWorkflowEngine(deps: WorkflowEngineDeps): WorkflowEngine {
     }
     deps.store.writeRun(transition.run);
     deps.broadcast({ kind: "workflow.run", run: transition.run });
+    deps.onRun?.(transition.run);
     if (isTerminalRun(transition.run.status)) forgetRun(transition.run.id);
     return transition.run;
   };
@@ -220,8 +223,9 @@ export function createWorkflowEngine(deps: WorkflowEngineDeps): WorkflowEngine {
         return { ok: false, error: `no Workflow ${JSON.stringify(workflowId)}${options.version === undefined ? "" : ` version ${options.version}`}` };
       }
       try {
-        const run = deps.store.createRun(definition, { requestedBy: options.requestedBy });
+        const run = deps.store.createRun(definition, { requestedBy: options.requestedBy, triggeredBy: options.triggeredBy });
         deps.broadcast({ kind: "workflow.run", run });
+        deps.onRun?.(run);
         void enqueue(run.id, () => advance(run.id));
         return { ok: true, run };
       } catch (error) {

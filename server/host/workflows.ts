@@ -5,6 +5,7 @@ import { createWorkflowEngine, type WorkflowEngine, type WorkflowTurnOptions } f
 import { pruneWorkflowRuns, type RetentionResult } from "../workflows/retention.ts";
 import { createWorkflowStore } from "../workflows/store.ts";
 import { createWorkflowInternalRoutes, createWorkflowRoutes } from "../routes/workflows.ts";
+import type { WorkflowRun } from "../../shared/workflow.ts";
 
 export interface WorkflowHostDeps {
   dataDir: string;
@@ -20,6 +21,8 @@ export interface WorkflowHostDeps {
   interrupt?(botId: string, threadId: string): void;
   /** Cards still waiting on a person in a step's conversation. */
   openCards?(threadId: string): Array<{ id: string; question: string }>;
+  /** Every persisted transition, so a routine trigger can mirror the run's state. */
+  onRun?(run: WorkflowRun): void;
 }
 
 export function createWorkflowHost(deps: WorkflowHostDeps) {
@@ -37,6 +40,7 @@ export function createWorkflowHost(deps: WorkflowHostDeps) {
     broadcast: deps.broadcast,
     interrupt: deps.interrupt,
     openCards: deps.openCards,
+    onRun: deps.onRun,
     now: deps.now,
     log: deps.log,
   });

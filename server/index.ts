@@ -2903,6 +2903,7 @@ const workflows = createWorkflowHost({
   broadcast: (frame) => broadcast(frame, { adminOnly: true }),
   interrupt: (botId, threadId) => { void interruptDirectThread(botId, threadId, "workflow cancelled"); },
   openCards: (threadId) => openWorkflowCards(threadId),
+  onRun: (run) => routines?.noteWorkflowRun(run),
 });
 ROUTES.push(workflows.routes);
 const { cloudLendingTurn, cloudLendingRefusalNotice, cloudLendingRefusal, cloudThreadStarters, cloudLendingView, cloudReportFromOthers, roomTurnStarted, roomTurnEnded } = createCloudLendingTurns({
@@ -9073,6 +9074,19 @@ routines = new RoutineManager({
       goalCoordinatorBotId: coordinatorBotId,
       goalRunId: runId,
     });
+  },
+  startWorkflow: (routine) => {
+    if (!routine.workflowId) return { error: "The routine's Workflow is unavailable" };
+    const started = workflows.engine.start(routine.workflowId, {
+      triggeredBy: { routineId: routine.id, routineName: routine.name },
+    });
+    return started.ok ? { runId: started.run.id } : { error: started.error };
+  },
+  cancelWorkflow: (runId, reason) => { workflows.engine.cancel(runId, reason); },
+  workflowState: (workflowId) => workflowId && workflows.store.workflow(workflowId) ? "ready" : "missing",
+  workflowRunState: (runId) => {
+    const run = runId ? workflows.store.readRun(runId) : undefined;
+    return run ? { status: run.status, ...(run.error === undefined ? {} : { error: run.error }) } : undefined;
   },
   interruptTurn: async (botId, threadId) => {
     const bot = botForThread(botId, threadId);

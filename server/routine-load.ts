@@ -26,7 +26,12 @@ export function loadInstalledPackage(value: unknown): RoutinePackageStamp | unde
 }
 
 function loadTarget(value: unknown): RoutineTarget {
-  return value === "room-goal" ? "room-goal" : "bot";
+  return value === "room-goal" || value === "workflow" ? value : "bot";
+}
+
+function loadWorkflowRef(value: unknown, target: RoutineTarget): string | undefined {
+  if (target !== "workflow" || typeof value !== "string") return undefined;
+  return value.trim() || undefined;
 }
 
 const ROUTINE_GOAL_STATUSES = new Set<RoutineGoalStatus>([
@@ -83,6 +88,7 @@ export function loadRoutine(routine: Routine, now: number): Routine | null {
     schedule,
     target,
     groupId: loadGroupId(routine.groupId, target),
+    workflowId: loadWorkflowRef(routine.workflowId, target),
     runOn: routine.runOn ?? "maus",
     timeoutMinutes: loadTimeoutMinutes(routine.timeoutMinutes),
     attachments: loadAttachments(routine.attachments),
@@ -108,6 +114,8 @@ export function loadRun(run: RoutineRun): RoutineRun {
     target,
     goalStatus: loadGoalStatus(run.goalStatus, target),
     groupId: loadGroupId(run.groupId, target),
+    workflowId: loadWorkflowRef(run.workflowId, target),
+    workflowRunId: loadWorkflowRef(run.workflowRunId, target),
     runOn: run.runOn ?? "maus",
     timeoutMinutes: loadTimeoutMinutes(run.timeoutMinutes),
     attachments: loadAttachments(run.attachments),
@@ -117,5 +125,5 @@ export function loadRun(run: RoutineRun): RoutineRun {
     deliver: run.deliver === "brief" ? "brief" : undefined,
     checkKey: typeof run.checkKey === "string" && /^[\w-]{1,128}$/.test(run.checkKey) ? run.checkKey : undefined,
   };
-  return withoutUndefined(loaded, ["timeoutMinutes", "access", "deliver", "checkKey"]);
+  return withoutUndefined(loaded, ["timeoutMinutes", "access", "deliver", "checkKey", "workflowId", "workflowRunId"]);
 }

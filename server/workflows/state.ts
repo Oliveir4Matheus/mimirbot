@@ -19,12 +19,13 @@ export function isActiveRun(status: WorkflowRun["status"]): boolean {
 const clone = (run: WorkflowRun): WorkflowRun => structuredClone(run);
 
 export function createRun(input: {
-  definition: Pick<WorkflowDefinition, "id" | "version" | "department" | "steps">;
+  definition: Pick<WorkflowDefinition, "id" | "version" | "name" | "department" | "steps">;
   runId: string;
   now: number;
   requestedBy?: WorkflowRun["requestedBy"];
+  triggeredBy?: WorkflowRun["triggeredBy"];
 }): WorkflowRun {
-  const { definition, runId, now, requestedBy } = input;
+  const { definition, runId, now, requestedBy, triggeredBy } = input;
   return {
     id: runId,
     workflowId: definition.id,
@@ -36,6 +37,11 @@ export function createRun(input: {
     createdAt: now,
     updatedAt: now,
     ...(requestedBy ? { requestedBy } : {}),
+    ...(triggeredBy ? { triggeredBy } : {}),
+    snapshot: {
+      name: definition.name,
+      steps: definition.steps.map((step) => ({ id: step.id, name: step.name })),
+    },
   };
 }
 

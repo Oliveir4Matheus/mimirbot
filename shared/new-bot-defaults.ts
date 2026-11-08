@@ -20,7 +20,7 @@ export type BotDefaultsProfile = Partial<Pick<WireBot,
   helperModel?: boolean;
 };
 
-export type BotRoutineTemplate = Omit<RoutineInput, "botId" | "target" | "groupId" | "resultsThreadId">;
+export type BotRoutineTemplate = Omit<RoutineInput, "botId" | "target" | "groupId" | "workflowId" | "resultsThreadId">;
 export interface BotSkillTemplate {
   name: string;
   description: string;

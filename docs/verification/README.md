@@ -110,7 +110,9 @@ entry only after the shared control surface can really drive it.
 
 The [Workflow approval fixture](workflow-approval.md) pauses a Workflow run on
 a card and resumes it through the real server and the fake engine. `control-omb`
-has no Workflow verbs, so it drives the HTTP routes directly.
+has no Workflow verbs, so it drives the HTTP routes directly. The
+[Workflow trigger fixture](workflow-trigger.md) starts a run from a routine and
+checks the trigger as its origin.
 
 The [switchable local environments recipe](local-environments.md) verifies
 creating, switching between and recovering named local environments by hand on

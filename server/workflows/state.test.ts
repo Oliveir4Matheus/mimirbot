@@ -46,11 +46,20 @@ describe("createRun", () => {
     ]);
     expect(run.department).toBe("Financeiro");
     expect(run.workflowVersion).toBe(1);
+    expect(run.snapshot).toEqual({
+      name: "Contrato mensal",
+      steps: [{ id: "coletar", name: "Collect" }, { id: "revisar", name: "Review" }],
+    });
   });
 
   it("keeps who asked for a bot-started run", () => {
     const run = createRun({ definition: definition(), runId: "20261103-123456-abcdef", now: 10, requestedBy: { botId: "bot-a", threadId: "t-1" } });
     expect(run.requestedBy).toEqual({ botId: "bot-a", threadId: "t-1" });
+  });
+
+  it("keeps the routine that triggered the run", () => {
+    const run = createRun({ definition: definition(), runId: "20261103-123456-abcdef", now: 10, triggeredBy: { routineId: "r-1", routineName: "Nightly" } });
+    expect(run.triggeredBy).toEqual({ routineId: "r-1", routineName: "Nightly" });
   });
 });
 

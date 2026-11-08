@@ -156,6 +156,18 @@ export interface WorkflowRunPause {
   askedAt: number;
 }
 
+/** A routine started the run instead of a person or a bot conversation. */
+export interface WorkflowRunTrigger {
+  routineId: string;
+  routineName: string;
+}
+
+/** The names a run keeps after its Workflow is deleted or edited. */
+export interface WorkflowRunSnapshot {
+  name: string;
+  steps: Array<{ id: string; name: string }>;
+}
+
 export interface WorkflowRun {
   id: string;
   workflowId: string;
@@ -176,6 +188,10 @@ export interface WorkflowRun {
   error?: string;
   /** The bot conversation that asked for the run; only it may cancel a run started by a bot. */
   requestedBy?: { botId: string; threadId: string };
+  /** The routine that started the run, when a trigger did. */
+  triggeredBy?: WorkflowRunTrigger;
+  /** The Workflow and step names at run time, so the run stays readable after the Workflow is gone. */
+  snapshot?: WorkflowRunSnapshot;
 }
 
 const workflowRunStepSchema = z.object({
@@ -197,6 +213,14 @@ const workflowRunPauseSchema = z.object({
   askedAt: z.number().int().nonnegative(),
 });
 
+const workflowRunSnapshotSchema = z.object({
+  name: z.string().trim().min(1).max(80),
+  steps: z.array(z.object({
+    id: z.string().min(1).max(WORKFLOW_SLUG_MAX),
+    name: z.string().trim().min(1).max(120),
+  })).min(1).max(WORKFLOW_STEP_MAX),
+});
+
 /** `run.json` as the store reads it back: a hand-edited or half-written file never becomes a run. */
 export const workflowRunSchema: z.ZodType<WorkflowRun> = z.object({
   id: z.string().min(1).max(64),
@@ -214,6 +238,8 @@ export const workflowRunSchema: z.ZodType<WorkflowRun> = z.object({
   result: z.unknown().optional(),
   error: z.string().optional(),
   requestedBy: z.object({ botId: z.string().min(1), threadId: z.string().min(1) }).optional(),
+  triggeredBy: z.object({ routineId: z.string().min(1).max(200), routineName: z.string().min(1).max(80) }).optional(),
+  snapshot: workflowRunSnapshotSchema.optional(),
 });
 
 function sameJsonValue(left: unknown, right: unknown): boolean {
