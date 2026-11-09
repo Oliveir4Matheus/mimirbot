@@ -3,9 +3,51 @@ import { Eye, Link2, Pencil, StickyNote, X } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
+import { openExternalLink } from "@/lib/app-links";
 import { cn } from "@/lib/cn";
 import { t } from "@/lib/i18n";
 import type { StudioDraft } from "./studio-model";
+
+const REMARK_PLUGINS = [remarkGfm];
+
+function httpUrl(href: string | undefined): URL | null {
+  if (!href) return null;
+  try {
+    const url = new URL(href);
+    return url.protocol === "http:" || url.protocol === "https:" ? url : null;
+  } catch {
+    return null;
+  }
+}
+
+function StudioNoteLink({ href, children }: { href?: string; children?: React.ReactNode }) {
+  const url = httpUrl(href);
+  if (!url) return <>{children}</>;
+  return (
+    <a
+      href={url.href}
+      target="_blank"
+      rel="noreferrer"
+      onClick={(event) => event.preventDefault()}
+      onAuxClick={(event) => event.preventDefault()}
+      onDoubleClick={(event) => {
+        event.stopPropagation();
+        event.preventDefault();
+        void openExternalLink(url.href);
+      }}
+      onKeyDown={(event) => {
+        if (event.key !== "Enter" || event.repeat) return;
+        event.stopPropagation();
+        event.preventDefault();
+        void openExternalLink(url.href);
+      }}
+    >
+      {children}
+    </a>
+  );
+}
+
+const MARKDOWN_COMPONENTS = { a: StudioNoteLink };
 
 export function StudioNote({ draft, note, selected, editing, linkMenu, onSelect, onDragStart, onResizeStart, onEdit, onMarkdown, onDelete, onAnchor, onLinkMenu, onLink, onUnlink }: {
   draft: StudioDraft;
@@ -84,10 +126,7 @@ export function StudioNote({ draft, note, selected, editing, linkMenu, onSelect,
         <div className="studio-note-body" onDoubleClick={() => onEdit(true)}>
           {note.markdown.trim() ? (
             <div className="studio-note-md">
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
-                components={{ a: ({ href, children }) => <a href={href} target="_blank" rel="noreferrer">{children}</a> }}
-              >
+              <ReactMarkdown remarkPlugins={REMARK_PLUGINS} components={MARKDOWN_COMPONENTS}>
                 {note.markdown}
               </ReactMarkdown>
             </div>
