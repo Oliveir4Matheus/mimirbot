@@ -146,6 +146,44 @@ the verified files and the failure reason, and `step-N/input` and
 `step-N/output` carry the contract the engine checked. The watcher is the live
 view; the files are the evidence.
 
+## Step skills
+
+A bot step now declares `skills` and the turn receives only that selection. The
+fixture already sets `FAKE_CLAUDE_DUMP` to `<dataDir>/fake-claude-dump.json`, so
+the turn's `systemPrompt` is the evidence for the three origins.
+
+1. Create the bot and two own skills:
+
+   ```sh
+   curl -s -X POST http://127.0.0.1:PORT/api/bots -H 'content-type: application/json' \
+     -d '{"name":"Skills Bot","section":"Financeiro"}'
+   curl -s -X POST http://127.0.0.1:PORT/api/bots/BOT_ID/skill-template \
+     -H 'content-type: application/json' \
+     -d '{"name":"fixture-own-a","description":"A","source":"fixture/a","enabled":true,"text":"---\nname: fixture-own-a\ndescription: A\n---\n\nFollow it.\n"}'
+   ```
+
+   Repeat the template call for `fixture-own-b`. The options route must list
+   both: `GET /api/workflows/skill-options?botId=BOT_ID`.
+
+2. Save one Workflow per case and run it, reading the dump after each terminal
+   run:
+   - no `skills`: the prompt has no `Imported skills:`, no
+     `Skills from this computer:` and no `<openmaus-skill`;
+   - `skills: { bot: ["fixture-own-a"] }`: only that name appears;
+   - `skills: { bundled: ["create-bot"] }`: the prompt has
+     `<openmaus-skill id="create-bot"` even when the brief has no trigger term;
+   - `skills: { imported: ["fixture-imported"] }`: the prompt has
+     `Skills from this computer:` and only that name.
+
+3. Delete `fixture-own-a` after saving a Workflow that declares it, then start
+   the run: the run is `failed` and `steps[0].error` is
+   `skill "fixture-own-a" is not available for this Workflow step`; no turn
+   dump is written for that step.
+
+The imported fixture skill is one stored with `storeImportedSkills` under the
+fixture's `OMB_DATA_DIR`; the one imported link then appears under the task
+folder's `.claude/skills`, and the other runs do not get it.
+
 ## What this does not prove
 
 - The Studio's drag, resize, note and container geometry are visual checks; the

@@ -554,6 +554,7 @@ Versão  [v4 (atual) — 06/11/2026 18:42  ▾]
 4. **Saídas:** tabela de arquivos esperados e indicador de obrigatoriedade.
 5. **Resultado:** arquivo ou estrutura declarada como resultado.
 6. **Condições:** pares campo/valor exigido.
+7. **Skills:** grupos bot, bundled e imported com os nomes escolhidos, ou **Nenhuma skill** quando a etapa não declara nenhuma.
 
 ### 11.2 Padrões de conteúdo
 
@@ -1019,7 +1020,7 @@ Os itens abaixo servem como checklist de comparação com o protótipo de refer�
 - [ ] Conexões com seta e arquivos são legíveis.
 - [ ] Cards são somente leitura e não têm handles editáveis.
 - [ ] Clicar na etapa abre painel de 360 px no desktop.
-- [ ] Painel apresenta instruções, entradas, saídas, resultado e condições.
+- [ ] Painel apresenta instruções, entradas, saídas, resultado, condições e skills.
 
 ### Detalhe de Run
 

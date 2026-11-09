@@ -1,6 +1,6 @@
 # Progresso — Workflows (F1 + F2)
 
-Atualizado em 08/11/2026.
+Atualizado em 09/11/2026.
 
 ## Situação
 
@@ -17,6 +17,7 @@ Atualizado em 08/11/2026.
 | F3.2 | Fatia 1: modo Manual por etapa (pausa antes da etapa) | Concluída (09/11/2026) |
 | F3.2 | Fatia 3: Python/TypeScript no script | Concluída (09/11/2026) |
 | F3.2 | Fatia 4: condição E/OU no IF/Else | Concluída (09/11/2026) |
+| F3.2 | Skills por etapa de agente (bot, app e computador) | Concluída (09/11/2026, commit `55945294b`) |
 | F3.2 | Fatia 2: ferramentas por etapa | Adiada (§9.5 do handoff) |
 | F3.2 | Fatia 5: QA do canvas | Pendente |
 | F3.3 | Componente `kind: "loop"` (repetição estruturada) | Planejada |
@@ -263,6 +264,20 @@ Desvios deliberados do protótipo v0.5 nesta fatia:
 - Verificação: `pnpm typecheck`, `pnpm lint` e `pnpm i18n:check` passaram; `source-hashes.json` foi atualizado com `node scripts/generate-locale.mjs pt-br --accept`. Testes focados (`shared/workflow.test.ts`, `condition.test.ts`, `engine.test.ts`, `studio-model.test.ts`): **108 testes** passaram.
 - Fixture isolado (`OMB_PORT=41157`, `OMB_DATA_DIR`/`HOME` em `/tmp/opencode/f32-condition`, servidor real e scripts reais): com `{ ok: false, check: { total: 12 } }`, `any` seguiu **sim** e pulou **nao**; `all` seguiu **nao** e pulou **sim**; uma linha `gt` sobre texto falhou a etapa com `condition 2 ("total"): the gt operator needs two numbers; "total" is "12"`. Evidência em `/tmp/opencode/f32-condition/evidence/` (`README.txt`, `results.json`, `run-any.json`, `run-all.json`, `run-type-error.json`, `verify.mjs`, `verify-output.txt`, `run-json-index.json` e `server.log`).
 
+### F3.2 — skills por etapa de agente (09/11/2026)
+
+- Contrato: `skills?: { bot?: string[]; bundled?: string[]; imported?: string[] }` existe somente na etapa `kind: "bot"`. Cada grupo é independente, vazio/ausente significa desligado, e a ausência total do bloco é normalizada como vazia para não criar versão ao abrir/salvar sem mudar. Limites: 200 nomes do bot, 100 ids bundled e 200 nomes importados, com 64 caracteres por nome e nomes únicos.
+- Escopo: `bot` aceita apenas skills próprias + biblioteca atribuída ao bot; `bundled` usa o `manifest.id`; `imported` usa as skills descobertas neste computador. Não há curinga nem “all skills”: ligar um grupo grava o snapshot dos nomes disponíveis naquele momento.
+- Save: `server/routes/workflows.ts` valida cada etapa bot contra as opções daquele bot e recusa com 400 (`step "X": skill "x" is not available for this Workflow step`). A rota somente leitura `GET /api/workflows/skill-options?botId=...` devolve os três grupos com nome, descrição e disponibilidade.
+- Motor: `WorkflowTurnOptions` leva a seleção; antes de abrir o turno, `missingSkills` confere se todas as skills declaradas ainda existem e falha a etapa com `skill "x" is not available for this Workflow step`. Bundled declarada carrega sem depender das palavras-chave de gatilho, respeitando as capabilities exigidas.
+- Turno: em etapa de Workflow, o índice do bot/biblioteca e os imports do computador são filtrados pela seleção; sem seleção não há índice, import nem instrução de skill. Skills do bot continuam linkadas na pasta da tarefa (a restrição é de contexto, não sandbox). Turnos fora de Workflow não mudam.
+- Host: `skillsHost.skillsIndex` e `turnImports` aceitam allowlist; `workflowSkillOptions` lista bot e imports; `server/index.ts` acrescenta os bundled disponíveis para o engine do bot.
+- Studio: o card do Agente ganha a ramificação **Skills** com prévia (“Nenhuma skill”, “1 skill”, “N skills”). O balão tem os três grupos, toggle, **Selecionar todas as disponíveis**, checkboxes por skill, estado indisponível e aviso de que as importadas são desta máquina. `createStep` nasce sem skills; helpers puros fazem toggle, marcar todas, marcar uma, contar e validar. As opções são carregadas ao abrir o balão/trocar o bot, com cache por bot e erro visível.
+- F2: o painel da etapa mostra os grupos e nomes da seleção, ou **Nenhuma skill**.
+- Textos em `en.json`/`pt-br.json`; `source-hashes.json` atualizado com `node scripts/generate-locale.mjs pt-br --accept`.
+- Verificação: `pnpm typecheck`, `pnpm lint` e `pnpm i18n:check` passaram. Suíte focada (`shared/workflow.test.ts`, `server/workflows`, `server/routes/workflows.test.ts`, `src/components/studio`): **16 arquivos / 255 testes** passaram com Node 24 (`npx node@24 node_modules/vitest/vitest.mjs run ...`); o Node 22 local não roda os testes happy-dom por `node:sqlite` no setup.
+- Fixture isolado (`control-omb launch`, fake Claude, dados temporários): etapa sem skills terminou `succeeded` sem índice/import/bundled no prompt; 1 skill do bot carregou só ela; 1 bundled (`create-bot`) carregou sem gatilho; 1 imported carregou só ela e foi a única pasta importada no workspace; apagar a skill do bot depois do save fez a run falhar com `skill "fixture-own-a" is not available for this Workflow step`.
+
 Falhas que já existem na base, sem relação com esta entrega:
 
 - `server/drivers/codex.test.ts`: “passes the person's proxy settings…”.
@@ -293,7 +308,7 @@ Para a aprovação longa, a receita com o fixture isolado e o fake engine está 
 
 ## Próximo passo
 
-1. **F3.2:** fatias 1 (Manual), 3 (Python/TypeScript) e 4 (condição E/OU) concluídas. Falta só o **QA do canvas** (arraste de nota/container; minimapa fora da spec). A fatia 2 (ferramentas por etapa) foi adiada por decisão do dono e está registrada em `docs/superpowers/specs/2026-11-09-workflow-f32.md` §9.5.
+1. **F3.2:** fatias 1 (Manual), 3 (Python/TypeScript), 4 (condição E/OU) e skills por etapa de agente concluídas. Falta só o **QA do canvas** (arraste de nota/container; minimapa fora da spec). A fatia 2 (ferramentas por etapa) foi adiada por decisão do dono e está registrada em `docs/superpowers/specs/2026-11-09-workflow-f32.md` §9.5. O snapshot de skills e a pendência do modo “all skills” estão no §9.6.
 2. **F3.2.1:** replay a partir de uma etapa — pegar uma run já terminada e criar uma execução nova começando em `fromStep`. Hoje não existe; "Rodar de novo" sempre começa do zero. Decisões em aberto no handoff da F3.2.
 3. **record→promote** (transformar uma conversa ou sequência que deu certo em Workflow) — pulado por decisão do dono nesta rodada.
 4. **Team Cloud/VM** (F3).

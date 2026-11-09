@@ -116,7 +116,8 @@ checks the trigger as its origin. The [Workflow script fixture](workflow-script.
 runs a real Node script step, follows its `when` branch and checks the skipped
 step and the run snapshot. The [Workflow Studio fixture](workflow-studio.md)
 saves a Workflow from the editor, runs a condition step that reads the previous
-step's `result.json`, and checks the screen the F2 page draws.
+step's `result.json`, checks the screen the F2 page draws, and proves a bot
+step's skill selection against the fake engine's prompt dump.
 
 The [switchable local environments recipe](local-environments.md) verifies
 creating, switching between and recovering named local environments by hand on

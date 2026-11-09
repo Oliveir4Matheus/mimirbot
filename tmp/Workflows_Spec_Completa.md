@@ -425,7 +425,7 @@ O motor não escreve prompt novo. Ele usa o prompt que todo turno já monta em
 |---|---|---|
 | Identidade | `botPersona` do bot da etapa | não |
 | Instruções permanentes | `SOUL.md` do bot | não |
-| Skills | índice do bot, já no prompt | não |
+| Skills | seleção declarada pela etapa (`bot`, `bundled`, `imported`); vazio ou ausente = nenhuma | sim |
 | Regras fixas da etapa | parte volátil `workflow-step` (nova) | sim |
 | Tarefa | `instructions`, entradas e saídas na mensagem do usuário | sim |
 
@@ -438,8 +438,10 @@ delegado (`composeRootTurn`). Motivo: o Claude reusa o primeiro system prompt
 em `--resume` (`server/index.ts:3843`), então uma parte de sistema alterada
 pode não chegar quando a etapa retoma a mesma thread.
 
-O agente recebe a instrução como texto. Skill vem do bot, sem campo novo. Um
-campo de skill por etapa fica para depois, se o dono pedir.
+O agente recebe a instrução como texto. A etapa `bot` declara o bloco
+`skills` (`bot`, `bundled`, `imported`); sem o bloco, ou com todos os grupos
+vazios, nenhuma skill carrega. O motor valida a seleção antes de abrir o turno
+e falha a etapa se alguma skill declarada não estiver mais disponível.
 
 #### Ids
 
@@ -808,7 +810,7 @@ Decidido: o Workflow vive em `workflows.json`, no data dir (entra no backup).
 | Aprovação Longa (P16) | cartão do chat, toda a equipe pode responder, espera indefinida, recusa vira `cancelled` | F2 (feito) |
 | Política de Retry | adiado; qualquer erro falha de primeira sem retry automático | F2 |
 | Instrução da etapa | texto em `instructions`; corpo na mensagem do usuário; regras fixas na parte volátil `workflow-step` | F1 |
-| Skills | vêm do bot da etapa, sem campo novo | F1 |
+| Skills | a etapa `bot` declara `skills` (`bot`, `bundled`, `imported`); vazio ou ausente = nenhuma | F3.2 |
 | Agente e modelo | a etapa aponta só para `botId` | F1 |
 | Id da run | separado do Workflow: `AAAAMMDD-HHMMSS-hex6` | F1 |
 | Departamento na run | retrato do momento da criação; não acompanha o Workflow | F1 |
