@@ -355,13 +355,141 @@ describe("condition steps and the Studio canvas", () => {
     expect(condition.kind === "condition" && condition.whenFalse).toBe("corrigir");
   });
 
+  it("normalizes the legacy loose comparison into a group of one", () => {
+    const parsed = workflowDefinitionSchema.parse(withCondition());
+    const condition = parsed.steps[1]!;
+    expect(condition.kind === "condition" && condition.match).toBe("all");
+    expect(condition.kind === "condition" && condition.conditions).toEqual([{ field: "ok", op: "equals", value: true }]);
+    const record = condition as Record<string, unknown>;
+    expect(record.field).toBeUndefined();
+    expect(record.op).toBeUndefined();
+    expect(record.value).toBeUndefined();
+  });
+
+  it("accepts an explicit all or any group", () => {
+    const group = (match: string) => withCondition({
+      steps: [
+        { id: "revisar", name: "Review", botId: "bot-b", instructions: "Review.", outputs: [{ path: "decision.json" }], result: "decision.json" },
+        {
+          id: "checar",
+          kind: "condition",
+          name: "Check",
+          from: "revisar",
+          match,
+          conditions: [
+            { field: "ok", op: "equals", value: false },
+            { field: "check.total", op: "gte", value: 10 },
+          ],
+          whenTrue: "fechar",
+          whenFalse: "corrigir",
+        },
+        { id: "fechar", name: "Close", botId: "bot-a", instructions: "Close.", outputs: [{ path: "done.txt" }] },
+        { id: "corrigir", name: "Fix", botId: "bot-a", instructions: "Fix.", outputs: [{ path: "fixed.txt" }] },
+      ],
+    });
+    for (const match of ["all", "any"]) {
+      const parsed = workflowDefinitionSchema.parse(group(match));
+      const condition = parsed.steps[1]!;
+      expect(condition.kind === "condition" && condition.match).toBe(match);
+      expect(condition.kind === "condition" && condition.conditions).toHaveLength(2);
+    }
+  });
+
+  it("defaults an explicit group with no match to all", () => {
+    const workflow = withCondition({
+      steps: [
+        { id: "revisar", name: "Review", botId: "bot-b", instructions: "Review.", outputs: [{ path: "decision.json" }], result: "decision.json" },
+        {
+          id: "checar",
+          kind: "condition",
+          name: "Check",
+          from: "revisar",
+          conditions: [{ field: "ok", op: "equals", value: true }],
+          whenTrue: "fechar",
+          whenFalse: "corrigir",
+        },
+        { id: "fechar", name: "Close", botId: "bot-a", instructions: "Close.", outputs: [{ path: "done.txt" }] },
+        { id: "corrigir", name: "Fix", botId: "bot-a", instructions: "Fix.", outputs: [{ path: "fixed.txt" }] },
+      ],
+    });
+    const parsed = workflowDefinitionSchema.parse(workflow);
+    const condition = parsed.steps[1]!;
+    expect(condition.kind === "condition" && condition.match).toBe("all");
+  });
+
+  it("refuses an empty group and more than twenty comparisons", () => {
+    const empty = withCondition({
+      steps: [
+        { id: "revisar", name: "Review", botId: "bot-b", instructions: "Review.", outputs: [{ path: "decision.json" }], result: "decision.json" },
+        { id: "checar", kind: "condition", name: "Check", from: "revisar", match: "all", conditions: [], whenTrue: "fechar", whenFalse: "corrigir" },
+        { id: "fechar", name: "Close", botId: "bot-a", instructions: "Close.", outputs: [{ path: "done.txt" }] },
+        { id: "corrigir", name: "Fix", botId: "bot-a", instructions: "Fix.", outputs: [{ path: "fixed.txt" }] },
+      ],
+    });
+    expect(issues(empty)).toContain("steps.1.conditions");
+
+    const many = withCondition({
+      steps: [
+        { id: "revisar", name: "Review", botId: "bot-b", instructions: "Review.", outputs: [{ path: "decision.json" }], result: "decision.json" },
+        {
+          id: "checar",
+          kind: "condition",
+          name: "Check",
+          from: "revisar",
+          match: "all",
+          conditions: Array.from({ length: 21 }, () => ({ field: "ok", op: "equals", value: true })),
+          whenTrue: "fechar",
+          whenFalse: "corrigir",
+        },
+        { id: "fechar", name: "Close", botId: "bot-a", instructions: "Close.", outputs: [{ path: "done.txt" }] },
+        { id: "corrigir", name: "Fix", botId: "bot-a", instructions: "Fix.", outputs: [{ path: "fixed.txt" }] },
+      ],
+    });
+    expect(issues(many)).toContain("steps.1.conditions");
+  });
+
   it("requires a value for every operator except exists", () => {
-    const missing = withCondition();
-    (missing.steps[1] as Record<string, unknown>).value = undefined;
-    expect(issues(missing)).toContain("steps.1.value");
-    const exists = withCondition();
-    Object.assign(exists.steps[1] as Record<string, unknown>, { op: "exists", value: undefined });
+    for (const op of ["equals", "not_equals", "contains", "gt", "gte", "lt", "lte"]) {
+      const missing = withCondition({
+        steps: [
+          { id: "revisar", name: "Review", botId: "bot-b", instructions: "Review.", outputs: [{ path: "decision.json" }], result: "decision.json" },
+          { id: "checar", kind: "condition", name: "Check", from: "revisar", match: "all", conditions: [{ field: "ok", op }], whenTrue: "fechar", whenFalse: "corrigir" },
+          { id: "fechar", name: "Close", botId: "bot-a", instructions: "Close.", outputs: [{ path: "done.txt" }] },
+          { id: "corrigir", name: "Fix", botId: "bot-a", instructions: "Fix.", outputs: [{ path: "fixed.txt" }] },
+        ],
+      });
+      expect(issues(missing)).toContain("steps.1.conditions.0.value");
+    }
+    const exists = withCondition({
+      steps: [
+        { id: "revisar", name: "Review", botId: "bot-b", instructions: "Review.", outputs: [{ path: "decision.json" }], result: "decision.json" },
+        { id: "checar", kind: "condition", name: "Check", from: "revisar", match: "all", conditions: [{ field: "ok", op: "exists" }], whenTrue: "fechar", whenFalse: "corrigir" },
+        { id: "fechar", name: "Close", botId: "bot-a", instructions: "Close.", outputs: [{ path: "done.txt" }] },
+        { id: "corrigir", name: "Fix", botId: "bot-a", instructions: "Fix.", outputs: [{ path: "fixed.txt" }] },
+      ],
+    });
     expect(issues(exists)).toEqual([]);
+  });
+
+  it("refuses a compared value over the size limit", () => {
+    const workflow = withCondition({
+      steps: [
+        { id: "revisar", name: "Review", botId: "bot-b", instructions: "Review.", outputs: [{ path: "decision.json" }], result: "decision.json" },
+        {
+          id: "checar",
+          kind: "condition",
+          name: "Check",
+          from: "revisar",
+          match: "all",
+          conditions: [{ field: "ok", op: "equals", value: "x".repeat(4_097) }],
+          whenTrue: "fechar",
+          whenFalse: "corrigir",
+        },
+        { id: "fechar", name: "Close", botId: "bot-a", instructions: "Close.", outputs: [{ path: "done.txt" }] },
+        { id: "corrigir", name: "Fix", botId: "bot-a", instructions: "Fix.", outputs: [{ path: "fixed.txt" }] },
+      ],
+    });
+    expect(issues(workflow)).toContain("steps.1.conditions.0.value");
   });
 
   it("requires the source step to declare a result", () => {

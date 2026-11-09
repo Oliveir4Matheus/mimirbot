@@ -10,7 +10,7 @@ import { join } from "node:path";
 import { requireMismatch, type BotWorkflowStep, type ConditionWorkflowStep, type ScriptWorkflowStep, type WorkflowDefinition, type WorkflowRun, type WorkflowStep } from "../../shared/workflow.ts";
 import type { HostTurnResult } from "../coordinator.ts";
 import { stepBrief, stepThreadTitle } from "./brief.ts";
-import { evaluateCondition } from "./condition.ts";
+import { evaluateConditionGroup } from "./condition.ts";
 import { copyStepInputs, verifyStepOutputs, type OutputVerification } from "./files.ts";
 import { failureStepIndex, nextStepIndex, type StepFailureKind } from "./flow.ts";
 import { stepInputDir, stepOutputDir } from "./paths.ts";
@@ -283,7 +283,7 @@ export function createWorkflowEngine(deps: WorkflowEngineDeps): WorkflowEngine {
       failOrRoute(started, index, `condition ${JSON.stringify(step.id)} could not read step ${JSON.stringify(source.id)}: ${verification.error}`, definition);
       return;
     }
-    const outcome = evaluateCondition(verification.result, step.op, step.field, step.value);
+    const outcome = evaluateConditionGroup(verification.result, step);
     if (!outcome.ok) {
       failOrRoute(started, index, outcome.error, definition);
       return;

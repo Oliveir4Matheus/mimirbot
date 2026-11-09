@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import { workflowDefinitionSchema } from "../../../shared/workflow";
 import {
-  autoLayout, connect, containedBy, createStep, disconnect, draftProblem, fromDefinition, newDraft, removeStep,
-  toDefinition, updateNote, type StudioDraft,
+  addConditionLine, autoLayout, conditionLines, connect, containedBy, createStep, disconnect, draftProblem, fromDefinition,
+  newDraft, removeConditionLine, removeStep, toDefinition, updateConditionLine, updateConditionMatch, updateNote, type StudioDraft,
 } from "./studio-model";
 
 const step = (draft: StudioDraft, kind: "agent" | "script" | "condition", x: number, y: number, botId = "bot-a") =>
@@ -160,5 +160,43 @@ describe("studio model", () => {
     const connected = connect(draft, a!.id, "timeout", b!.id);
     if (!connected.ok) throw new Error(connected.key);
     expect(draftProblem({ ...connected.draft, name: "Test" }, new Set(["bot-a"]))?.key).toBe("studio.needTimeout");
+  });
+
+  it("starts a condition with one all line and adds, updates and removes lines", () => {
+    const first = step(newDraft("Financeiro"), "condition", 200, 200).draft;
+    const id = first.steps[0]!.id;
+    expect(conditionLines(first.steps[0]!)).toEqual([{ field: "ok", op: "equals", value: true }]);
+    expect(first.steps[0]!.kind === "condition" && first.steps[0]!.match).toBe("all");
+
+    const added = addConditionLine(first, id);
+    expect(conditionLines(added.steps[0]!)).toHaveLength(2);
+
+    const updated = updateConditionMatch(updateConditionLine(added, id, 1, { field: "total", op: "gt", value: 10 }), id, "any");
+    expect(updated.steps[0]!.kind === "condition" && updated.steps[0]!.match).toBe("any");
+    expect(conditionLines(updated.steps[0]!)[1]).toEqual({ field: "total", op: "gt", value: 10 });
+
+    const removed = removeConditionLine(updated, id, 0);
+    expect(conditionLines(removed.steps[0]!)).toEqual([{ field: "total", op: "gt", value: 10 }]);
+  });
+
+  it("stops adding condition lines at twenty", () => {
+    let draft = step(newDraft("Financeiro"), "condition", 200, 200).draft;
+    const id = draft.steps[0]!.id;
+    for (let index = 0; index < 25; index += 1) draft = addConditionLine(draft, id);
+    expect(conditionLines(draft.steps[0]!)).toHaveLength(20);
+  });
+
+  it("validates the condition group size and the value of every line", () => {
+    const base = step(newDraft("Financeiro"), "agent", 200, 200).draft;
+    const agent = base.steps[0]!;
+    const withCondition = step(base, "condition", 600, 200).draft;
+    const condition = withCondition.steps[1]!;
+    const connected = connect(withCondition, agent.id, "run", condition.id);
+    if (!connected.ok) throw new Error(connected.key);
+    const named = { ...connected.draft, name: "Test" };
+
+    expect(draftProblem({ ...named, steps: named.steps.map((candidate) => candidate.id === condition.id && candidate.kind === "condition" ? { ...candidate, conditions: [] } : candidate) }, new Set(["bot-a"]))?.key).toBe("studio.needCondition");
+    expect(draftProblem({ ...named, steps: named.steps.map((candidate) => candidate.id === condition.id && candidate.kind === "condition" ? { ...candidate, conditions: Array.from({ length: 21 }, () => ({ field: "ok", op: "equals" as const, value: true })) } : candidate) }, new Set(["bot-a"]))?.key).toBe("studio.needConditionMax");
+    expect(draftProblem({ ...named, steps: named.steps.map((candidate) => candidate.id === condition.id && candidate.kind === "condition" ? { ...candidate, conditions: [{ field: "ok", op: "equals" as const }] } : candidate) }, new Set(["bot-a"]))?.key).toBe("studio.needValue");
   });
 });

@@ -106,7 +106,12 @@ export function StudioCard({ draft, step, index, selected, botName, onSelect, on
       if (key === "timeout") return step.onTimeout ? nameOf(step.onTimeout) : t("studio.condition.none");
     }
     if (step.kind === "condition") {
-      if (key === "condition") return `${step.field} ${step.op}${step.value === undefined ? "" : ` ${JSON.stringify(step.value)}`}`;
+      if (key === "condition") {
+        const match = step.match === "any" ? t("studio.condition.any") : t("studio.condition.all");
+        if (step.conditions.length !== 1) return `${match} · ${t("studio.condition.count", { count: step.conditions.length })}`;
+        const line = step.conditions[0]!;
+        return `${match} · ${line.field} ${line.op}${line.value === undefined ? "" : ` ${JSON.stringify(line.value)}`}`;
+      }
       if (key === "run") return t("studio.condition.twoRoutes");
       if (key === "true") return step.whenTrue ? nameOf(step.whenTrue) : t("studio.condition.none");
       if (key === "false") return step.whenFalse ? nameOf(step.whenFalse) : t("studio.condition.none");

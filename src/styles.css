@@ -3387,6 +3387,30 @@ button:disabled.bg-danger {
   cursor: pointer;
 }
 .studio-upload span:first-of-type { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
+.studio-condition-lines { display: flex; flex-direction: column; gap: 10px; }
+.studio-condition-line { display: flex; flex-direction: column; gap: 10px; border: 1px solid #E9EDF0; border-radius: 9px; background: #FCFDFD; padding: 10px; }
+.studio-condition-head { display: flex; align-items: center; justify-content: space-between; }
+.studio-condition-label { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #8C949A; }
+.studio-condition-remove { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 6px; color: #8C949A; cursor: pointer; }
+.studio-condition-remove:hover { background: #F3F5F7; color: #141718; }
+.studio-condition-remove:disabled { opacity: 0.4; cursor: not-allowed; }
+.studio-condition-add {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  margin-top: 10px;
+  border: 1px dashed #CDD5D9;
+  border-radius: 9px;
+  background: #FBFCFC;
+  padding: 9px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #515D65;
+  cursor: pointer;
+}
+.studio-condition-add:hover { border-color: #9AA4AB; color: #141718; }
+.studio-condition-add:disabled { opacity: 0.45; cursor: not-allowed; }
 .studio-chips { display: flex; flex-wrap: wrap; gap: 5px; }
 .studio-chip { display: inline-flex; align-items: center; gap: 4px; border: 1px solid #E4E9EC; border-radius: 6px; background: #F9FAFB; padding: 3px 6px; font-size: 10.5px; color: #3F4A52; }
 .studio-chip button { display: grid; place-items: center; color: #8C949A; cursor: pointer; }

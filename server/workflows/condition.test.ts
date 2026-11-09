@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { evaluateCondition } from "./condition.ts";
+import { evaluateCondition, evaluateConditionGroup } from "./condition.ts";
 
 describe("evaluateCondition", () => {
   it("reads a dotted path and compares numbers", () => {
@@ -40,6 +40,39 @@ describe("evaluateCondition", () => {
     expect(evaluateCondition({ total: 12 }, "contains", "total", "1")).toEqual({
       ok: false,
       error: "the field \"total\" is neither text nor a list",
+    });
+  });
+});
+
+describe("evaluateConditionGroup", () => {
+  const lines = [
+    { field: "ok", op: "equals" as const, value: true },
+    { field: "check.total", op: "gte" as const, value: 10 },
+  ];
+
+  const [firstLine] = lines;
+
+  it("requires every line for all and one line for any", () => {
+    expect(evaluateConditionGroup({ ok: true, check: { total: 12 } }, { match: "all", conditions: lines })).toEqual({ ok: true, match: true });
+    expect(evaluateConditionGroup({ ok: false, check: { total: 5 } }, { match: "all", conditions: lines })).toEqual({ ok: true, match: false });
+    expect(evaluateConditionGroup({ ok: false, check: { total: 12 } }, { match: "any", conditions: lines })).toEqual({ ok: true, match: true });
+    expect(evaluateConditionGroup({ ok: true, check: { total: 5 } }, { match: "any", conditions: lines })).toEqual({ ok: true, match: true });
+    expect(evaluateConditionGroup({ ok: false, check: { total: 5 } }, { match: "any", conditions: lines })).toEqual({ ok: true, match: false });
+  });
+
+  it("stops at the first line that settles the answer", () => {
+    const failing = { field: "total", op: "gt" as const, value: 1 };
+    expect(evaluateConditionGroup({ ok: false, total: "12" }, { match: "all", conditions: [firstLine, failing] })).toEqual({ ok: true, match: false });
+    expect(evaluateConditionGroup({ ok: true, total: "12" }, { match: "any", conditions: [firstLine, failing] })).toEqual({ ok: true, match: true });
+  });
+
+  it("names the line and the field when a comparison has the wrong type", () => {
+    expect(evaluateConditionGroup({ ok: true, total: "12" }, {
+      match: "all",
+      conditions: [{ field: "ok", op: "equals", value: true }, { field: "total", op: "gt", value: 1 }],
+    })).toEqual({
+      ok: false,
+      error: "condition 2 (\"total\"): the gt operator needs two numbers; \"total\" is \"12\"",
     });
   });
 });

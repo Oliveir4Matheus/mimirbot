@@ -3,7 +3,10 @@
 // DOM, a disk or a server.
 import type { LocaleKey } from "@/locales";
 import {
+  WORKFLOW_CONDITION_ROWS_MAX,
   isWorkflowScriptName,
+  type ConditionLine,
+  type ConditionMatch,
   type ConditionOp,
   type WorkflowCanvas,
   type WorkflowDefinition,
@@ -149,7 +152,7 @@ export function createStep(draft: StudioDraft, kind: Exclude<StudioKind, "note" 
         id, kind: "script", name: baseName, run: `${id}.mjs`, timeoutMs: 60_000, mode: "auto",
         inputs: [], outputs: structuredClone(DEFAULT_OUTPUTS), result: "result.json",
       }
-      : { id, kind: "condition", name: baseName, from: "", field: "ok", op: "equals", value: true };
+      : { id, kind: "condition", name: baseName, from: "", match: "all", conditions: [{ field: "ok", op: "equals", value: true }] };
   return {
     draft: {
       ...draft,
@@ -157,6 +160,45 @@ export function createStep(draft: StudioDraft, kind: Exclude<StudioKind, "note" 
       canvas: { ...draft.canvas, nodes: { ...draft.canvas.nodes, [id]: { x: point.x - CARD_WIDTH / 2, y: point.y - CARD_HEIGHT / 2 } } },
     },
     stepId: id,
+  };
+}
+
+/** The comparisons a condition step holds; an empty list for every other kind. */
+export function conditionLines(step: WorkflowStep): ConditionLine[] {
+  return step.kind === "condition" ? step.conditions : [];
+}
+
+export function updateConditionLine(draft: StudioDraft, stepId: string, index: number, patch: Partial<ConditionLine>): StudioDraft {
+  return {
+    ...draft,
+    steps: draft.steps.map((step) => step.id === stepId && step.kind === "condition"
+      ? { ...step, conditions: step.conditions.map((line, lineIndex) => lineIndex === index ? { ...line, ...patch } : line) }
+      : step),
+  };
+}
+
+export function addConditionLine(draft: StudioDraft, stepId: string): StudioDraft {
+  return {
+    ...draft,
+    steps: draft.steps.map((step) => step.id !== stepId || step.kind !== "condition" || step.conditions.length >= WORKFLOW_CONDITION_ROWS_MAX
+      ? step
+      : { ...step, conditions: [...step.conditions, { field: "ok", op: "equals", value: true }] }),
+  };
+}
+
+export function removeConditionLine(draft: StudioDraft, stepId: string, index: number): StudioDraft {
+  return {
+    ...draft,
+    steps: draft.steps.map((step) => step.id === stepId && step.kind === "condition"
+      ? { ...step, conditions: step.conditions.filter((_line, lineIndex) => lineIndex !== index) }
+      : step),
+  };
+}
+
+export function updateConditionMatch(draft: StudioDraft, stepId: string, match: ConditionMatch): StudioDraft {
+  return {
+    ...draft,
+    steps: draft.steps.map((step) => step.id === stepId && step.kind === "condition" ? { ...step, match } : step),
   };
 }
 
@@ -392,7 +434,13 @@ export function draftProblem(draft: StudioDraft, botIds: ReadonlySet<string>): D
       if (!source || source.kind === "condition" || source.result === undefined) {
         return { key: "studio.needSourceResult", params: { name: step.name } };
       }
-      if (step.op !== "exists" && step.value === undefined) return { key: "studio.needValue", params: { name: step.name } };
+      if (step.conditions.length === 0) return { key: "studio.needCondition", params: { name: step.name } };
+      if (step.conditions.length > WORKFLOW_CONDITION_ROWS_MAX) {
+        return { key: "studio.needConditionMax", params: { name: step.name, max: WORKFLOW_CONDITION_ROWS_MAX } };
+      }
+      if (step.conditions.some((line) => line.op !== "exists" && line.value === undefined)) {
+        return { key: "studio.needValue", params: { name: step.name } };
+      }
     } else if (step.outputs.length === 0) {
       return { key: "studio.needOutput", params: { name: step.name } };
     }

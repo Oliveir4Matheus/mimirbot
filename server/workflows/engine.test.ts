@@ -132,6 +132,89 @@ describe("engine", () => {
     expect(calls.map((call) => call.options.workflowStep.stepId)).toEqual(["revisar", "corrigir"]);
   });
 
+  it("routes an all group by every line and an any group by one line", async () => {
+    const groupDefinition = (match: "all" | "any"): WorkflowDefinition => definition({
+      steps: [
+        { id: "revisar", name: "Review", botId: "bot-b", instructions: "Review.", outputs: [{ path: "decision.json" }], result: "decision.json" },
+        {
+          id: "checar",
+          kind: "condition",
+          name: "Check",
+          from: "revisar",
+          match,
+          conditions: [
+            { field: "ok", op: "equals", value: true },
+            { field: "check.total", op: "gte", value: 10 },
+          ],
+          whenTrue: "fechar",
+          whenFalse: "corrigir",
+        },
+        { id: "fechar", name: "Close", botId: "bot-a", instructions: "Close.", outputs: [{ path: "done.txt" }], onSuccess: null },
+        { id: "corrigir", name: "Fix", botId: "bot-a", instructions: "Fix.", outputs: [{ path: "fixed.txt" }], onSuccess: null },
+      ],
+    });
+    const runGroup = async (match: "all" | "any") => {
+      const def = groupDefinition(match);
+      const { store, engine, calls, onTurn } = setup(def);
+      onTurn((_botId, _text, options) => {
+        if (options.workflowStep.stepId === "revisar") {
+          write(store, options, { "decision.json": JSON.stringify({ ok: false, check: { total: 12 } }) });
+        } else {
+          write(store, options, { "done.txt": "done\n", "fixed.txt": "fixed\n" });
+        }
+        options.onSettled({ ok: true, text: "done" });
+      });
+      const run = engine.start(def.id);
+      if (!run.ok) throw new Error(run.error);
+      await engine.idle();
+      return { run: store.readRun(run.run.id)!, calls };
+    };
+
+    const all = await runGroup("all");
+    expect(all.run.status).toBe("succeeded");
+    expect(all.calls.map((call) => call.options.workflowStep.stepId)).toEqual(["revisar", "corrigir"]);
+
+    const any = await runGroup("any");
+    expect(any.run.status).toBe("succeeded");
+    expect(any.calls.map((call) => call.options.workflowStep.stepId)).toEqual(["revisar", "fechar"]);
+  });
+
+  it("fails the condition with the line and field when a comparison has the wrong type", async () => {
+    const def = definition({
+      steps: [
+        { id: "revisar", name: "Review", botId: "bot-b", instructions: "Review.", outputs: [{ path: "decision.json" }], result: "decision.json" },
+        {
+          id: "checar",
+          kind: "condition",
+          name: "Check",
+          from: "revisar",
+          match: "all",
+          conditions: [
+            { field: "ok", op: "equals", value: true },
+            { field: "total", op: "gt", value: 1 },
+          ],
+          whenTrue: "fechar",
+          whenFalse: "corrigir",
+        },
+        { id: "fechar", name: "Close", botId: "bot-a", instructions: "Close.", outputs: [{ path: "done.txt" }] },
+        { id: "corrigir", name: "Fix", botId: "bot-a", instructions: "Fix.", outputs: [{ path: "fixed.txt" }] },
+      ],
+    });
+    const { store, engine, calls, onTurn } = setup(def);
+    onTurn((_botId, _text, options) => {
+      write(store, options, { "decision.json": JSON.stringify({ ok: true, total: "12" }) });
+      options.onSettled({ ok: true, text: "done" });
+    });
+    const run = engine.start(def.id);
+    if (!run.ok) throw new Error(run.error);
+    await engine.idle();
+    const finished = store.readRun(run.run.id)!;
+    expect(finished.status).toBe("failed");
+    expect(finished.steps[1]!.status).toBe("failed");
+    expect(finished.steps[1]!.error).toContain("condition 2 (\"total\")");
+    expect(calls.map((call) => call.options.workflowStep.stepId)).toEqual(["revisar"]);
+  });
+
   it("copies a declared output into the next step's input/", async () => {
     const { store, engine, definition: def, onTurn } = setup();
     onTurn((_botId, _text, options) => {

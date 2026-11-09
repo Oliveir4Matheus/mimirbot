@@ -126,9 +126,12 @@ export function StepPanel({ workflow, step, index, botName, onClose }: {
         {condition && (
           <section className="mb-4">
             <div className={LABEL}>{t("workflows.step.condition")}</div>
+            <div className="mb-2 text-[10.5px] text-ink-secondary">
+              {t("workflows.step.conditionMatch")}: <span className="text-ink">{condition.match === "any" ? t("workflows.step.matchAny") : t("workflows.step.matchAll")}</span>
+            </div>
             <Table
               head={[t("workflows.step.conditionField"), t("workflows.step.conditionOperator"), t("workflows.step.conditionValue")]}
-              rows={[[condition.field, condition.op, condition.value === undefined ? "—" : JSON.stringify(condition.value)]]}
+              rows={condition.conditions.map((line) => [line.field, line.op, line.value === undefined ? "—" : JSON.stringify(line.value)])}
             />
           </section>
         )}

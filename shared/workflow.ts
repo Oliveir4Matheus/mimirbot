@@ -22,8 +22,11 @@ export const WORKFLOW_BRANCH_MAX = 8;
 export const WORKFLOW_CANVAS_NOTE_MAX = 30;
 export const WORKFLOW_CANVAS_CONTAINER_MAX = 20;
 export const WORKFLOW_CANVAS_MARKDOWN_MAX = 20_000;
-/** A condition compares one value from the source step's result.json. */
+/** A compared value, and the whole group's JSON, must stay small. */
 export const WORKFLOW_CONDITION_VALUE_MAX = 4_096;
+export const WORKFLOW_CONDITION_GROUP_MAX = 64 * 1024;
+/** How many comparisons one IF/Else step may hold. */
+export const WORKFLOW_CONDITION_ROWS_MAX = 20;
 
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const SCRIPT_NAME = /^[a-z0-9][a-z0-9-]{0,62}\.(?:mjs|js)$/;
@@ -178,17 +181,23 @@ const scriptStepSchema = stepBaseSchema.extend({
 
 export const conditionOps = ["equals", "not_equals", "exists", "contains", "gt", "gte", "lt", "lte"] as const;
 
+const conditionLineSchema = z.object({
+  /** Dotted path into the source result, e.g. `ok` or `check.total`. */
+  field: z.string().regex(RESULT_FIELD, { message: "must be a dotted path of letters, digits, _ or -" }),
+  op: z.enum(conditionOps),
+  /** Compared as JSON; required for every operator except `exists`. */
+  value: z.unknown().optional(),
+});
+
 const conditionStepSchema = z.object({
   id: stepIdSchema,
   kind: z.literal("condition"),
   name: z.string().trim().min(1).max(120),
   /** The step whose result.json this condition reads. It must declare a result. */
   from: stepIdSchema,
-  /** Dotted path into that result, e.g. `ok` or `check.total`. */
-  field: z.string().regex(RESULT_FIELD, { message: "must be a dotted path of letters, digits, _ or -" }),
-  op: z.enum(conditionOps),
-  /** Compared as JSON; required for every operator except `exists`. */
-  value: z.unknown().optional(),
+  /** Which comparisons must hold: all of them, or at least one. */
+  match: z.enum(["all", "any"]).default("all"),
+  conditions: z.array(conditionLineSchema).min(1).max(WORKFLOW_CONDITION_ROWS_MAX),
   /** Where each answer sends the run. Without one, that answer ends the run. */
   whenTrue: stepIdSchema.optional(),
   whenFalse: stepIdSchema.optional(),
@@ -197,8 +206,9 @@ const conditionStepSchema = z.object({
 
 const stepUnionSchema = z.discriminatedUnion("kind", [botStepSchema, scriptStepSchema, conditionStepSchema]);
 
-/** Older Workflows have no `kind` (a step without one was always a bot step)
- * and spell the success edge `next`; both are normalized here on read. */
+/** Older Workflows have no `kind` (a step without one was always a bot step),
+ * spell the success edge `next`, and keep one loose comparison on a condition;
+ * all three are normalized here on read. */
 export const workflowStepSchema = z.preprocess(
   (value) => {
     if (value === null || typeof value !== "object" || Array.isArray(value)) return value;
@@ -206,6 +216,14 @@ export const workflowStepSchema = z.preprocess(
     if (record.kind === undefined) record.kind = "bot";
     if (record.onSuccess === undefined && record.next !== undefined) record.onSuccess = record.next;
     delete record.next;
+    if (record.kind === "condition") {
+      if (record.conditions === undefined && record.field !== undefined) {
+        record.conditions = [{ field: record.field, op: record.op, value: record.value }];
+      }
+      delete record.field;
+      delete record.op;
+      delete record.value;
+    }
     return record;
   },
   stepUnionSchema,
@@ -246,11 +264,16 @@ export const workflowDefinitionSchema = z.object({
         context.addIssue({ code: "custom", path: ["steps", index, "from"], message: `step ${JSON.stringify(source.id)} must declare a result` });
       }
     }
-    if (step.op !== "exists" && step.value === undefined) {
-      context.addIssue({ code: "custom", path: ["steps", index, "value"], message: `the ${step.op} operator needs a value` });
-    }
-    if (step.value !== undefined && JSON.stringify(step.value).length > WORKFLOW_CONDITION_VALUE_MAX) {
-      context.addIssue({ code: "custom", path: ["steps", index, "value"], message: "the compared value must be small" });
+    step.conditions.forEach((line, lineIndex) => {
+      if (line.op !== "exists" && line.value === undefined) {
+        context.addIssue({ code: "custom", path: ["steps", index, "conditions", lineIndex, "value"], message: `the ${line.op} operator needs a value` });
+      }
+      if (line.value !== undefined && JSON.stringify(line.value).length > WORKFLOW_CONDITION_VALUE_MAX) {
+        context.addIssue({ code: "custom", path: ["steps", index, "conditions", lineIndex, "value"], message: "the compared value must be small" });
+      }
+    });
+    if (JSON.stringify(step.conditions).length > WORKFLOW_CONDITION_GROUP_MAX) {
+      context.addIssue({ code: "custom", path: ["steps", index, "conditions"], message: "the condition group must be small" });
     }
     for (const [field, target] of [["whenTrue", step.whenTrue], ["whenFalse", step.whenFalse], ["onFailure", step.onFailure]] as const) {
       if (target === undefined) continue;
@@ -337,6 +360,8 @@ export type StepInput = z.output<typeof stepInputSchema>;
 export type StepOutput = z.output<typeof stepOutputSchema>;
 export type BotWorkflowStep = z.output<typeof botStepSchema>;
 export type ScriptWorkflowStep = z.output<typeof scriptStepSchema>;
+export type ConditionLine = z.output<typeof conditionLineSchema>;
+export type ConditionMatch = "all" | "any";
 export type ConditionWorkflowStep = z.output<typeof conditionStepSchema>;
 export type ConditionOp = (typeof conditionOps)[number];
 export type WorkflowStep = z.output<typeof workflowStepSchema>;

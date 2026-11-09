@@ -15,7 +15,9 @@ Atualizado em 08/11/2026.
 | F3.1 | Editor visual Workflow Studio v0.5 | Concluída (08/11/2026) |
 | F3.1.1 | Correções do Studio: `onSuccess`, `onFailure`/`onTimeout` na UI, fim explícito e desconectar | Concluída (09/11/2026) |
 | F3.2 | Fatia 1: modo Manual por etapa (pausa antes da etapa) | Concluída (09/11/2026) |
-| F3.2 | Fatias 2–5: ferramentas por etapa, Python/TypeScript, condição E/OU e QA do canvas | Em andamento |
+| F3.2 | Fatia 3: Python/TypeScript no script | Working tree, sem commit (09/11/2026) |
+| F3.2 | Fatia 4: condição E/OU no IF/Else | Concluída no working tree (09/11/2026) |
+| F3.2 | Fatias 2 e 5: ferramentas por etapa e QA do canvas | Pendentes |
 | F3.3 | Componente `kind: "loop"` (repetição estruturada) | Planejada |
 | F3 | Editor visual e Team Cloud/VM | Em andamento |
 
@@ -241,6 +243,16 @@ Desvios deliberados do protótipo v0.5 nesta fatia:
 - Verificação: `pnpm typecheck`, `pnpm lint` e `pnpm i18n:check` passaram. Testes focados: `shared/workflow.test.ts`, `server/workflows/state.test.ts`, `engine.test.ts`, `retention.test.ts`, `server/routes/workflows.test.ts`, `server/routines.test.ts`, `src/components/studio/studio-model.test.ts` e `RoutineCalendarPage.simple.test.ts` — **360 testes** passaram.
 - Fixture isolado (`OMB_PORT=8931`, `OMB_DATA_DIR`/`HOME` temporários, servidor real e script real): a etapa manual parou a run em `waiting_manual` sem thread (`hold.step = 0`, etapa `pending`); `DELETE` respondeu 409; Continuar retomou e concluiu com `result.json`; o segundo clique respondeu 409; reiniciar o servidor manteve a run parada e o Continuar seguinte concluiu; rotina com primeira etapa manual foi recusada no `POST` e no `PATCH` (400). Evidência em `/tmp/opencode/f32-manual/evidence/`.
 
+### F3.2 — fatia 4: condição E/OU (09/11/2026)
+
+- Contrato: a etapa `condition` vira um grupo com `match: "all" | "any"` (default `"all"`) e `conditions` de 1..20 linhas `{ field, op, value? }`. O legado (`field`, `op`, `value` soltos) é normalizado no preprocess de `workflowStepSchema` para uma linha + `all`; o `conditionStepSchema` não foi envolvido em `z.preprocess` para preservar o `discriminatedUnion`. Cada valor continua limitado a 4 KB; o grupo inteiro, a 64 KB. Negação continua sendo trocar as rotas True/False.
+- Avaliador: `evaluateConditionGroup` combina as linhas com curto-circuito e mantém `evaluateCondition` exportado. Erro de tipo/caminho inclui a linha e o campo (`condition 2 ("total"): ...`). Sem expressão livre, eval, funções ou aritmética.
+- Motor: `runConditionStep` avalia o grupo. Erro segue `onFailure` ou para a run; a etapa continua sem timeout e segue `succeeded` com `verified: []` quando escolhe uma rota.
+- Studio: o balão **Condição** tem **Todas / Qualquer**, uma linha por comparação com Campo, Operador, Valor e remover, e **Adicionar condição** até 20. `createStep` nasce com uma linha `ok equals true`; helpers `conditionLines`, `updateConditionLine`, `addConditionLine`, `removeConditionLine` e `updateConditionMatch`; `draftProblem` valida 1..20 linhas e valor por linha. O resumo do card mostra `Todas`/`Qualquer` + a primeira linha ou **N condições**.
+- F2: o painel da etapa mostra `match` e todas as linhas (Campo, Operador, Valor).
+- Verificação: `pnpm typecheck`, `pnpm lint` e `pnpm i18n:check` passaram; `source-hashes.json` foi atualizado com `node scripts/generate-locale.mjs pt-br --accept`. Testes focados (`shared/workflow.test.ts`, `condition.test.ts`, `engine.test.ts`, `studio-model.test.ts`): **108 testes** passaram.
+- Fixture isolado (`OMB_PORT=41157`, `OMB_DATA_DIR`/`HOME` em `/tmp/opencode/f32-condition`, servidor real e scripts reais): com `{ ok: false, check: { total: 12 } }`, `any` seguiu **sim** e pulou **nao**; `all` seguiu **nao** e pulou **sim**; uma linha `gt` sobre texto falhou a etapa com `condition 2 ("total"): the gt operator needs two numbers; "total" is "12"`. Evidência em `/tmp/opencode/f32-condition/evidence/` (`README.txt`, `results.json`, `run-any.json`, `run-all.json`, `run-type-error.json`, `verify.mjs`, `verify-output.txt`, `run-json-index.json` e `server.log`).
+
 Falhas que já existem na base, sem relação com esta entrega:
 
 - `server/drivers/codex.test.ts`: “passes the person's proxy settings…”.
@@ -271,7 +283,7 @@ Para a aprovação longa, a receita com o fixture isolado e o fake engine está 
 
 ## Próximo passo
 
-1. **F3.2:** fatia 1 (modo Manual por etapa) concluída; faltam ferramentas restritas por etapa, Python/TypeScript, condição E/OU e o QA do canvas (arraste de nota/container; minimapa fora da spec).
+1. **F3.2:** fatias 1 (Manual) e 4 (condição E/OU) concluídas; a fatia 3 (Python/TypeScript) está no working tree. Faltam ferramentas restritas por etapa e o QA do canvas (arraste de nota/container; minimapa fora da spec).
 2. **F3.2.1:** replay a partir de uma etapa — pegar uma run já terminada e criar uma execução nova começando em `fromStep`. Hoje não existe; "Rodar de novo" sempre começa do zero. Decisões em aberto no handoff da F3.2.
 3. **record→promote** (transformar uma conversa ou sequência que deu certo em Workflow) — pulado por decisão do dono nesta rodada.
 4. **Team Cloud/VM** (F3).

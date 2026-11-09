@@ -1,7 +1,7 @@
-// A condition step reads one value out of the source step's result.json and
-// answers true or false. It never evaluates free-form expressions: the
-// operator is a closed list, so the answer is the same on every run.
-import { resultField, sameJsonValue, type ConditionOp } from "../../shared/workflow.ts";
+// A condition step reads values out of the source step's result.json and
+// combines closed comparisons. It never evaluates free-form expressions: the
+// operators are a closed list, so the answer is the same on every run.
+import { resultField, sameJsonValue, type ConditionLine, type ConditionMatch, type ConditionOp } from "../../shared/workflow.ts";
 
 export type ConditionOutcome = { ok: true; match: boolean } | { ok: false; error: string };
 
@@ -30,4 +30,20 @@ export function evaluateCondition(result: unknown, op: ConditionOp, field: strin
       : op === "lt" ? left < right
         : left <= right;
   return { ok: true, match };
+}
+
+/** Combine the group's lines with `all` or `any`, stopping at the first answer. */
+export function evaluateConditionGroup(
+  result: unknown,
+  group: { match: ConditionMatch; conditions: readonly ConditionLine[] },
+): ConditionOutcome {
+  for (const [index, line] of group.conditions.entries()) {
+    const outcome = evaluateCondition(result, line.op, line.field, line.value);
+    if (!outcome.ok) {
+      return { ok: false, error: `condition ${index + 1} (${JSON.stringify(line.field)}): ${outcome.error}` };
+    }
+    if (group.match === "all" && !outcome.match) return { ok: true, match: false };
+    if (group.match === "any" && outcome.match) return { ok: true, match: true };
+  }
+  return { ok: true, match: group.match === "all" };
 }

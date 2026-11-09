@@ -1,7 +1,7 @@
 import { useMemo, useRef, type ReactNode } from "react";
 import { Check, Upload, X } from "lucide-react";
 
-import type { ConditionOp, WorkflowStep } from "../../../shared/workflow";
+import { WORKFLOW_CONDITION_ROWS_MAX, type ConditionLine, type ConditionOp, type WorkflowStep } from "../../../shared/workflow";
 import type { LocaleKey } from "@/locales";
 import { Select } from "@/components/Select";
 import { t } from "@/lib/i18n";
@@ -382,57 +382,101 @@ function FileLinks({ step, earlier, onChange, help, label }: {
   );
 }
 
+const conditionFamily = (op: ConditionOp) =>
+  op === "exists" ? "exists" : op === "contains" ? "contains" : op === "equals" || op === "not_equals" ? "equals" : "compare";
+
+const conditionFamilyOps = (family: string): ConditionOp[] =>
+  family === "compare" ? ["gt", "gte", "lt", "lte"] : family === "equals" ? ["equals", "not_equals"] : family === "contains" ? ["contains"] : ["exists"];
+
 function ConditionFields({ step, onChange }: {
   step: Extract<WorkflowStep, { kind: "condition" }>;
   onChange: (patch: Partial<WorkflowStep>) => void;
 }) {
-  const family = step.op === "exists" ? "exists" : step.op === "contains" ? "contains" : step.op === "equals" || step.op === "not_equals" ? "equals" : "compare";
-  const familyOps: ConditionOp[] = family === "compare" ? ["gt", "gte", "lt", "lte"] : family === "equals" ? ["equals", "not_equals"] : family === "contains" ? ["contains"] : ["exists"];
-  const setFamily = (next: string) => {
-    const op: ConditionOp = next === "compare" ? "gt" : next === "equals" ? "equals" : next === "contains" ? "contains" : "exists";
-    onChange({ op, value: nextConditionValue(op) } as Partial<WorkflowStep>);
+  const setLine = (index: number, patch: Partial<ConditionLine>) => {
+    onChange({ conditions: step.conditions.map((line, lineIndex) => lineIndex === index ? { ...line, ...patch } : line) } as Partial<WorkflowStep>);
   };
-  const valueText = step.value === undefined ? "" : typeof step.value === "string" ? step.value : JSON.stringify(step.value);
-  const setValue = (text: string) => {
-    if (step.op === "gt" || step.op === "gte" || step.op === "lt" || step.op === "lte") {
-      onChange({ value: Number(text) } as Partial<WorkflowStep>);
+  const setFamily = (index: number, next: string) => {
+    const op: ConditionOp = next === "compare" ? "gt" : next === "equals" ? "equals" : next === "contains" ? "contains" : "exists";
+    setLine(index, { op, value: nextConditionValue(op) });
+  };
+  const setValue = (index: number, op: ConditionOp, text: string) => {
+    if (op === "gt" || op === "gte" || op === "lt" || op === "lte") {
+      setLine(index, { value: Number(text) });
       return;
     }
-    if (step.op === "contains") {
-      onChange({ value: text } as Partial<WorkflowStep>);
+    if (op === "contains") {
+      setLine(index, { value: text });
       return;
     }
     try {
-      onChange({ value: JSON.parse(text) } as Partial<WorkflowStep>);
+      setLine(index, { value: JSON.parse(text) });
     } catch {
-      onChange({ value: text } as Partial<WorkflowStep>);
+      setLine(index, { value: text });
     }
+  };
+  const add = () => {
+    if (step.conditions.length >= WORKFLOW_CONDITION_ROWS_MAX) return;
+    onChange({ conditions: [...step.conditions, { field: "ok", op: "equals", value: true }] } as Partial<WorkflowStep>);
+  };
+  const remove = (index: number) => {
+    onChange({ conditions: step.conditions.filter((_line, lineIndex) => lineIndex !== index) } as Partial<WorkflowStep>);
   };
   return (
     <>
-      <Field label={t("studio.condition.type")}>
-        <Select className="w-full" size="sm" value={family} onChange={(event) => setFamily(event.target.value)}>
-          <option value="compare">{t("studio.condition.compare")}</option>
-          <option value="equals">{t("studio.condition.equals")}</option>
-          <option value="exists">{t("studio.condition.exists")}</option>
-          <option value="contains">{t("studio.condition.contains")}</option>
+      <Field label={t("studio.condition.match")} help={t("studio.condition.matchHelp")}>
+        <Select className="w-full" size="sm" value={step.match} onChange={(event) => onChange({ match: event.target.value as "all" | "any" } as Partial<WorkflowStep>)}>
+          <option value="all">{t("studio.condition.all")}</option>
+          <option value="any">{t("studio.condition.any")}</option>
         </Select>
       </Field>
-      <Field label={t("studio.condition.field")} help={t("studio.condition.fieldHelp")}>
-        <input className="studio-input" value={step.field} onChange={(event) => onChange({ field: event.target.value } as Partial<WorkflowStep>)} />
-      </Field>
-      {family !== "exists" && family !== "contains" && (
-        <Field label={t("studio.condition.operator")}>
-          <Select className="w-full" size="sm" value={step.op} onChange={(event) => onChange({ op: event.target.value as ConditionOp } as Partial<WorkflowStep>)}>
-            {familyOps.map((op) => <option key={op} value={op}>{t(conditionOpLabel[op])}</option>)}
-          </Select>
-        </Field>
-      )}
-      {step.op !== "exists" && (
-        <Field label={t("studio.condition.value")} help={t("studio.condition.valueHelp")}>
-          <input className={cn("studio-input", step.op === "contains" && "font-mono")} value={valueText} onChange={(event) => setValue(event.target.value)} />
-        </Field>
-      )}
+      <div className="studio-condition-lines">
+        {step.conditions.map((line, index) => {
+          const family = conditionFamily(line.op);
+          const valueText = line.value === undefined ? "" : typeof line.value === "string" ? line.value : JSON.stringify(line.value);
+          return (
+            <div key={index} className="studio-condition-line">
+              <div className="studio-condition-head">
+                <span className="studio-condition-label">{t("studio.condition.line", { index: index + 1 })}</span>
+                <button
+                  type="button"
+                  className="studio-condition-remove"
+                  aria-label={t("studio.condition.remove", { index: index + 1 })}
+                  disabled={step.conditions.length <= 1}
+                  onClick={() => remove(index)}
+                >
+                  <X size={12} aria-hidden="true" />
+                </button>
+              </div>
+              <Field label={t("studio.condition.field")} help={t("studio.condition.fieldHelp")}>
+                <input className="studio-input" value={line.field} onChange={(event) => setLine(index, { field: event.target.value })} />
+              </Field>
+              <Field label={t("studio.condition.type")}>
+                <Select className="w-full" size="sm" value={family} onChange={(event) => setFamily(index, event.target.value)}>
+                  <option value="compare">{t("studio.condition.compare")}</option>
+                  <option value="equals">{t("studio.condition.equals")}</option>
+                  <option value="exists">{t("studio.condition.exists")}</option>
+                  <option value="contains">{t("studio.condition.contains")}</option>
+                </Select>
+              </Field>
+              {family !== "exists" && family !== "contains" && (
+                <Field label={t("studio.condition.operator")}>
+                  <Select className="w-full" size="sm" value={line.op} onChange={(event) => setLine(index, { op: event.target.value as ConditionOp })}>
+                    {conditionFamilyOps(family).map((op) => <option key={op} value={op}>{t(conditionOpLabel[op])}</option>)}
+                  </Select>
+                </Field>
+              )}
+              {line.op !== "exists" && (
+                <Field label={t("studio.condition.value")} help={t("studio.condition.valueHelp")}>
+                  <input className={cn("studio-input", line.op === "contains" && "font-mono")} value={valueText} onChange={(event) => setValue(index, line.op, event.target.value)} />
+                </Field>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <button type="button" className="studio-condition-add" disabled={step.conditions.length >= WORKFLOW_CONDITION_ROWS_MAX} onClick={add}>
+        {t("studio.condition.add")}
+      </button>
     </>
   );
 }
