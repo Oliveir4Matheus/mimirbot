@@ -511,7 +511,7 @@ import { computerFreeAfterText, computerParkedText, computerPersonAwayText, comp
 import { modelContextWindow } from "./model-context-window.ts";
 import { browserIsThePlace, chosenPin, cloudPlaceRefusal, computerSkippedNote, computerToolsRefusal, parseSurface, PlaceUnavailableError, placeUnavailable, resolveSurface, surfaceLabel, surfaceOfComputerKind, surfacePrompt, type ComputerWant, type PlaceSource, type Surface } from "./surface.ts";
 import { cloudRefusal, type PlaceRow } from "../shared/place-view.ts";
-import { workflowStartsManual } from "../shared/workflow.ts";
+import { workflowStartsManual, type WorkflowSkillOptions, type WorkflowStepSkills } from "../shared/workflow.ts";
 import {
   PendingTurnCancellations,
   ProviderTurnGenerationRegistry,
@@ -2905,6 +2905,10 @@ const workflows = createWorkflowHost({
   interrupt: (botId, threadId) => { void interruptDirectThread(botId, threadId, "workflow cancelled"); },
   openCards: (threadId) => openWorkflowCards(threadId),
   onRun: (run) => routines?.noteWorkflowRun(run),
+  skillOptions: (botId) => {
+    const bot = store.bot(botId);
+    return bot ? workflowSkillOptionsFor(bot) : undefined;
+  },
 });
 ROUTES.push(workflows.routes);
 const { cloudLendingTurn, cloudLendingRefusalNotice, cloudLendingRefusal, cloudThreadStarters, cloudLendingView, cloudReportFromOthers, roomTurnStarted, roomTurnEnded } = createCloudLendingTurns({
@@ -2921,6 +2925,22 @@ const creditMoves = cloudCredit && createCreditMoves({ credit: cloudCredit, stor
   defaults: () => [cfg.defaultModelSelection, cfg.newBotDefaults?.profile.modelSelection], engineName: id => registry.get(id)?.displayName ?? id,
   log: line => console.warn(line) });
 const skillsHost = createSkillsLibraryHost({ store, cfg, appendSkillRequestCard, engineConfig: (instanceId) => providerConfigs()[instanceId], instanceOf: (instanceId) => { const instance = registry.get(instanceId); return instance ? { instanceId, driverKind: instance.driverKind } : undefined; } });
+function workflowSkillOptionsFor(bot: BotRecord): WorkflowSkillOptions {
+  const instance = registry.get(bot.modelSelection.instanceId);
+  const capabilities = new Set<string>([
+    ...(instance?.adapter.capabilities.phoneMcp === true && !CLOUD_HOME && !HOSTED_WORKSPACE ? ["phoneMcp"] : []),
+    ...(instance?.adapter.capabilities.agentsMcp === true && skillAuthoringEnabled(cfg) ? ["skillAuthoring"] : []),
+  ]);
+  return {
+    ...skillsHost.workflowSkillOptions(bot),
+    bundled: availableSkills().map((skill) => ({
+      name: skill.manifest.id,
+      label: skill.manifest.name,
+      description: skill.manifest.description,
+      available: skill.manifest.requiredCapabilities.every((capability) => capabilities.has(capability)),
+    })),
+  };
+}
 const { listBotSkills, readBotSkillFile } = skillsHost; const cloudConnections = createCloudConnectionsHost({ cloudHome: CLOUD_HOME, config: () => cfg, environmentId: ENVIRONMENT_ID, mcpOAuth, highlevel, heldKeys, dataDir: DATA_DIR, engines: async () => selectableInstances(await registry.describe()).filter((instance) => readyToRun(instance, selectionContext)).map((instance) => instance.instanceId) });
 const highlevelHost = createHighLevelHost({ service: highlevel, dataDir: DATA_DIR, bot: (id) => store.bot(id),
   inRoom: (threadId) => Boolean(store.groupByThread(threadId)), appendMessage: (threadId, message) => { store.appendMessage(threadId, message as Parameters<typeof store.appendMessage>[1]); } });
@@ -7799,6 +7819,7 @@ async function startTurn(
     onSettled?: (outcome: HostTurnResult) => void;
     /** One step of a Workflow: fixed rules join the volatile half, the task travels in the user message. */
     workflowStep?: { runId: string; stepId: string };
+    skills?: WorkflowStepSkills;
     coordination?: { id: string; resumed: boolean; settle: (outcome: HostTurnResult) => void };
   },
 ) {
@@ -8084,7 +8105,7 @@ async function startTurn(
         createHash("sha256").update(JSON.stringify([...persistentConfig, soul])).digest("hex").slice(0, 16);
       const plannedConfig = sessionConfig(bot.soul);
       const skillAuthoring = skillAuthoringEnabled(cfg) && agentsMounted;
-      const skillCommandText = supportsWorkspaceFiles(instance.driverKind)
+      const skillCommandText = supportsWorkspaceFiles(instance.driverKind) && opts?.workflowStep === undefined
         ? skillsHost.expandSkillCommand(bot, threadId, providerText, instance)
         : providerText;
       const setupText = agentsMounted ? expandSetupTurnText(skillCommandText) : skillCommandText;
@@ -8145,14 +8166,16 @@ async function startTurn(
       const integrations: NonNullable<Parameters<typeof instance.adapter.sendTurn>[0]["integrations"]> = {};
       let browser: Awaited<ReturnType<typeof browserIntegration>> = null;
       const skills = availableSkills(), phoneOffered = usbPhoneOffered(instance, skills) && !proactive.fence.confines(threadId);
-      const selectedSkills = selectBundledSkills(
-        providerText,
-        [
-          ...(phoneOffered ? ["phoneMcp"] : []),
-          ...(skillAuthoring ? ["skillAuthoring"] : []),
-        ],
-        skills,
-      );
+      const skillCapabilities = [
+        ...(phoneOffered ? ["phoneMcp"] : []),
+        ...(skillAuthoring ? ["skillAuthoring"] : []),
+      ];
+      const selectedSkills = opts?.workflowStep === undefined
+        ? selectBundledSkills(providerText, skillCapabilities, skills)
+        : (opts.skills?.bundled ?? []).flatMap((id) => {
+          const skill = skills.find((candidate) => candidate.manifest.id === id);
+          return skill && skill.manifest.requiredCapabilities.every((capability) => skillCapabilities.includes(capability)) ? [skill] : [];
+        });
       if (phoneOffered) integrations.phone = phoneIntegration(bot.id, threadId, dispatchClaimId);
       if (bot.composio !== false && composio.configured(cfg) && instance.adapter.capabilities.composioMcp === true) {
         Object.assign(integrations, await teamConnections.appsIntegrations(bot, threadId, dispatchClaimId, instance.adapter.capabilities.mcpToolsFoundByName ? "dotted" : "plain"));
@@ -8168,7 +8191,10 @@ async function startTurn(
         ensureWorkspace(bot.id, appLanguage());
         if (bot.memoryEnabled !== false) beginMemoryTurn(teamHost.layer(bot.id, threadId), threadId); botBox.lend(bot.id, threadId, teamHost.layerDirs(bot.id, threadId));
       }
-      const privateWorkspace = worksInWorkspace ? ensureTaskWorkspaceWithSkills(bot.id, threadId, skillsHost.turnImports(bot, threadId, instance)) : undefined;
+      const privateWorkspace = worksInWorkspace
+        ? ensureTaskWorkspaceWithSkills(bot.id, threadId, skillsHost.turnImports(bot, threadId, instance,
+          opts?.workflowStep === undefined ? undefined : { imported: opts.skills?.imported ?? [] }))
+        : undefined;
       const skillInstructions = renderSkillInstructions(selectedSkills, {
         includeRoot: worksInWorkspace,
       });
@@ -8637,7 +8663,8 @@ async function startTurn(
         { id: "recent", label: "Recent work", text: recentWorkPrompt(recentWork(recentWorkSources(bot), bot, { userName: CLOUD_TEAM ? teamHost.personName(teamConversationPerson(threadId)) ?? "the team" : cfg.profile?.name?.trim() || "User", currentThreadId: threadId, ...recentWorkFilter(threadId) })) },
         { id: "memory", label: "Memory", text: memorySystemPrompt(teamHost.layer(bot.id, threadId), { managedWrites: Boolean(integrations.agents), fileTools: worksInWorkspace, enabled: bot.memoryEnabled !== false, writesRefused: notesRefused }) + teamHost.sharedNotesPrompt(bot.id, threadId) },
         // liveBot predates awaited setup work; an assignment PUT in that window must still reach this prompt.
-        { id: "skills", label: "Skills index", text: privateWorkspace ? skillsHost.skillsIndex(store.bot(bot.id) ?? bot, threadId, instance) : "" },
+        { id: "skills", label: "Skills index", text: privateWorkspace ? skillsHost.skillsIndex(store.bot(bot.id) ?? bot, threadId, instance,
+          opts?.workflowStep === undefined ? undefined : { bot: opts.skills?.bot ?? [], imported: opts.skills?.imported ?? [] }) : "" },
         { id: "skill-instructions", label: "Skill instructions", text: skillInstructions },
         { id: "playbooks", label: "Playbooks", text: packagePlaybooks },
         { id: "webhook", label: "Webhook provenance", text: opts?.automationSource === "webhook" ? WEBHOOK_PROMPT : "" },
@@ -8661,7 +8688,7 @@ async function startTurn(
       // Before sendTurn: an adapter may emit the whole turn before it resolves.
       handoffs.dispatching(threadId, dispatchClaimId, dispatchContext.handoff);
       const clock = takesTurnClock(userTurnText) ? turnClockLine(Date.now(), hostTimeZone()) + nearLimitNote(limitClock.limit(instanceId), engineName(instanceId), hostTimeZone()) : "";
-      const shareNote = skillsHost.shareNote(bot, threadId, Boolean(privateWorkspace));
+      const shareNote = skillsHost.shareNote(bot, threadId, Boolean(privateWorkspace) && opts?.workflowStep === undefined);
       const startupRecovery = (opts?.automaticRecoveryIndex ?? 0) < startupBackups(liveBot ?? bot, cfg.automaticRecovery).length;
       const held = limitTakeover.heldAtStart(bot, { instanceId, model }, startupRecovery); // a limit or a sign-out already known: straight to an AI that can carry on, with the reset only when one was named
       if (held) throw held.scope === "signed-out" ? new TurnAuthenticationRefusedError(`signed-out-${randomUUID()}`, `${engineName(instanceId)} is signed out.`, true) : new TurnUsageLimitRefusedError(`limit-${randomUUID()}`, `${engineName(instanceId)} is at its usage limit.`, held.resetsAt, held.scope, true);

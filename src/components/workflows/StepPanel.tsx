@@ -126,6 +126,29 @@ export function StepPanel({ workflow, step, index, botName, onClose }: {
           </section>
         )}
 
+        {step.kind === "bot" && (
+          <section className="mb-4">
+            <div className={LABEL}>{t("workflows.step.skills")}</div>
+            {(() => {
+              const groups = [
+                { key: "bot", label: t("studio.agent.skillsBot"), names: step.skills?.bot ?? [] },
+                { key: "bundled", label: t("studio.agent.skillsBundled"), names: step.skills?.bundled ?? [] },
+                { key: "imported", label: t("studio.agent.skillsImported"), names: step.skills?.imported ?? [] },
+              ].filter((group) => group.names.length > 0);
+              return groups.length === 0 ? <span className="text-[10.5px] text-ink-tertiary">{t("workflows.step.noSkills")}</span> : (
+                <div className="space-y-2">
+                  {groups.map((group) => (
+                    <div key={group.key}>
+                      <div className="text-[9.5px] uppercase tracking-[0.08em] text-ink-tertiary">{group.label}</div>
+                      <div className="text-[10.5px] text-ink-secondary">{group.names.join(", ")}</div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+          </section>
+        )}
+
         {condition && (
           <section className="mb-4">
             <div className={LABEL}>{t("workflows.step.condition")}</div>

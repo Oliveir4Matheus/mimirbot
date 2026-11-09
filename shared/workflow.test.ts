@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  WORKFLOW_SKILLS_BOT_MAX,
+  WORKFLOW_SKILLS_BUNDLED_MAX,
+  WORKFLOW_SKILLS_IMPORTED_MAX,
+  WORKFLOW_SKILL_NAME_MAX,
   WORKFLOW_STEP_MAX,
   isWorkflowRelativePath,
   isWorkflowSlug,
@@ -145,6 +149,56 @@ describe("workflowDefinitionSchema", () => {
     const workflow = definition();
     workflow.steps[0]!.outputs = [{ path: "numbers.csv", required: false }] as never;
     expect(issues(workflow)).toContain("steps.1.inputs.0.from.output");
+  });
+
+  it("reads an absent skills block and an empty one as the same: no skills", () => {
+    const absent = workflowDefinitionSchema.parse(definition());
+    expect(absent.steps[0]!.kind === "bot" && absent.steps[0]!.skills).toBeUndefined();
+    const empty = definition();
+    (empty.steps[0] as Record<string, unknown>).skills = { bot: [], bundled: [], imported: [] };
+    const parsed = workflowDefinitionSchema.parse(empty);
+    expect(parsed.steps[0]!.kind === "bot" && parsed.steps[0]!.skills).toBeUndefined();
+  });
+
+  it("keeps the three independent skill groups", () => {
+    const workflow = definition();
+    (workflow.steps[0] as Record<string, unknown>).skills = { bot: ["own"], bundled: ["create-bot"], imported: ["from-claude"] };
+    const step = workflowDefinitionSchema.parse(workflow).steps[0]!;
+    expect(step.kind === "bot" && step.skills).toEqual({ bot: ["own"], bundled: ["create-bot"], imported: ["from-claude"] });
+  });
+
+  it("refuses duplicate and oversized skill names", () => {
+    const duplicate = definition();
+    (duplicate.steps[0] as Record<string, unknown>).skills = { bot: ["own", "own"] };
+    expect(issues(duplicate)).toContain("steps.0.skills.bot.1");
+
+    const tooLong = definition();
+    (tooLong.steps[0] as Record<string, unknown>).skills = { bot: ["x".repeat(WORKFLOW_SKILL_NAME_MAX + 1)] };
+    expect(issues(tooLong)).toContain("steps.0.skills.bot.0");
+
+    const tooManyBot = definition();
+    (tooManyBot.steps[0] as Record<string, unknown>).skills = { bot: Array.from({ length: WORKFLOW_SKILLS_BOT_MAX + 1 }, (_, index) => `skill-${index}`) };
+    expect(issues(tooManyBot)).toContain("steps.0.skills.bot");
+
+    const tooManyBundled = definition();
+    (tooManyBundled.steps[0] as Record<string, unknown>).skills = { bundled: Array.from({ length: WORKFLOW_SKILLS_BUNDLED_MAX + 1 }, (_, index) => `skill-${index}`) };
+    expect(issues(tooManyBundled)).toContain("steps.0.skills.bundled");
+
+    const tooManyImported = definition();
+    (tooManyImported.steps[0] as Record<string, unknown>).skills = { imported: Array.from({ length: WORKFLOW_SKILLS_IMPORTED_MAX + 1 }, (_, index) => `skill-${index}`) };
+    expect(issues(tooManyImported)).toContain("steps.0.skills.imported");
+  });
+
+  it("does not give script or condition steps a skills field", () => {
+    const workflow = definition({
+      steps: [
+        { id: "run", kind: "script", name: "Run", run: "run.mjs", outputs: [{ path: "out.txt" }], result: "out.txt", skills: { bot: ["ignored"] } },
+        { id: "check", kind: "condition", name: "Check", from: "run", conditions: [{ field: "ok", op: "exists" }], skills: { bot: ["ignored"] } },
+      ],
+    });
+    const parsed = workflowDefinitionSchema.parse(workflow);
+    expect(parsed.steps[0]).not.toHaveProperty("skills");
+    expect(parsed.steps[1]).not.toHaveProperty("skills");
   });
 });
 

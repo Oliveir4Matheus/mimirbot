@@ -1,13 +1,16 @@
 import { useMemo, useRef, type ReactNode } from "react";
 import { Check, Upload, X } from "lucide-react";
 
-import { WORKFLOW_CONDITION_ROWS_MAX, type ConditionLine, type ConditionOp, type WorkflowStep } from "../../../shared/workflow";
+import { WORKFLOW_CONDITION_ROWS_MAX, type ConditionLine, type ConditionOp, type WorkflowSkillOptions, type WorkflowStep } from "../../../shared/workflow";
 import type { LocaleKey } from "@/locales";
 import { Select } from "@/components/Select";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/cn";
 import type { BranchKey } from "./StudioCard";
-import { conditionOpLabel, nextConditionValue, outputsOf, scriptLanguageOf, scriptNameForLanguage, type StudioBranch, type StudioDraft } from "./studio-model";
+import {
+  conditionOpLabel, nextConditionValue, outputsOf, scriptLanguageOf, scriptNameForLanguage, skillSelection, skillsWithGroup,
+  type StudioBranch, type StudioDraft, type StudioSkillGroup,
+} from "./studio-model";
 
 const MAX_PREVIEW = 512_000;
 
@@ -17,6 +20,7 @@ const BRANCH_TITLE: Record<BranchKey, LocaleKey> = {
   instructions: "studio.branch.instructions",
   context: "studio.branch.context",
   tools: "studio.branch.tools",
+  skills: "studio.branch.skills",
   return: "studio.branch.return",
   run: "studio.branch.run",
   input: "studio.branch.input",
@@ -31,13 +35,16 @@ const BRANCH_TITLE: Record<BranchKey, LocaleKey> = {
 
 export interface BalloonBot { id: string; name: string; section?: string }
 
-export function StudioBalloon({ draft, step, branch, anchor, bots, scripts, onChange, onScript, onRenameScript, onToast, onDisconnect, onClose }: {
+export function StudioBalloon({ draft, step, branch, anchor, bots, scripts, skillOptions, skillOptionsLoading, skillOptionsError, onChange, onScript, onRenameScript, onToast, onDisconnect, onClose }: {
   draft: StudioDraft;
   step: WorkflowStep;
   branch: BranchKey;
   anchor: DOMRect;
   bots: readonly BalloonBot[];
   scripts: Record<string, string>;
+  skillOptions?: WorkflowSkillOptions;
+  skillOptionsLoading?: boolean;
+  skillOptionsError?: string;
   onChange: (patch: Partial<WorkflowStep>) => void;
   onScript: (name: string, content: string) => void;
   onRenameScript: (from: string, to: string) => void;
@@ -134,6 +141,16 @@ export function StudioBalloon({ draft, step, branch, anchor, bots, scripts, onCh
           <Field label={t("studio.agent.tools")} help={t("studio.agent.toolsHelp")}>
             <div className="studio-info">{bots.find((bot) => bot.id === step.botId)?.name ?? t("studio.card.noBot")}</div>
           </Field>
+        )}
+
+        {step.kind === "bot" && branch === "skills" && (
+          <SkillsFields
+            step={step}
+            options={skillOptions}
+            loading={skillOptionsLoading}
+            error={skillOptionsError}
+            onChange={onChange}
+          />
         )}
 
         {step.kind === "bot" && branch === "return" && (
@@ -304,6 +321,94 @@ function Field({ label, help, children }: { label: string; help?: string; childr
       {children}
       {help && <div className="studio-help">{help}</div>}
     </div>
+  );
+}
+
+const SKILL_GROUPS: Record<StudioSkillGroup, { label: LocaleKey; help: LocaleKey }> = {
+  bot: { label: "studio.agent.skillsBot", help: "studio.agent.skillsBotHelp" },
+  bundled: { label: "studio.agent.skillsBundled", help: "studio.agent.skillsBundledHelp" },
+  imported: { label: "studio.agent.skillsImported", help: "studio.agent.skillsImportedHelp" },
+};
+
+function SkillsFields({ step, options, loading, error, onChange }: {
+  step: Extract<WorkflowStep, { kind: "bot" }>;
+  options?: WorkflowSkillOptions;
+  loading?: boolean;
+  error?: string;
+  onChange: (patch: Partial<WorkflowStep>) => void;
+}) {
+  const selection = skillSelection(step);
+  const setGroup = (group: StudioSkillGroup, values: readonly string[]) => {
+    onChange({ skills: skillsWithGroup(step, group, values) } as Partial<WorkflowStep>);
+  };
+  return (
+    <>
+      <Field label={t("studio.agent.skills")} help={t("studio.agent.skillsHelp")}>
+        {!step.botId && <div className="studio-info">{t("studio.agent.skillsNoBot")}</div>}
+        {step.botId && loading && <div className="studio-help">{t("studio.agent.skillsLoading")}</div>}
+        {step.botId && error && <div className="studio-help text-danger">{error}</div>}
+      </Field>
+      {step.botId && !options && !loading && !error && (
+        <div className="studio-info">{t("studio.agent.skillsNoOptions")}</div>
+      )}
+      {step.botId && options && (Object.keys(SKILL_GROUPS) as StudioSkillGroup[]).map((group) => {
+        const entries = options[group];
+        const available = entries.filter((option) => option.available).map((option) => option.name);
+        const selected = selection[group];
+        const on = selected.length > 0;
+        return (
+          <div key={group} className="studio-field">
+            <label className="studio-check">
+              <input
+                type="checkbox"
+                checked={on}
+                disabled={!on && available.length === 0}
+                onChange={() => setGroup(group, on ? [] : available)}
+              />
+              <span className="min-w-0">
+                <span className="block text-[11px] font-medium">{t(SKILL_GROUPS[group].label)}</span>
+                <span className="block text-[10px] text-ink-tertiary">{t(SKILL_GROUPS[group].help)}</span>
+              </span>
+            </label>
+            {on && available.length > 0 && (
+              <>
+                <label className="studio-check">
+                  <input
+                    type="checkbox"
+                    checked={selected.length === available.length && available.every((name) => selected.includes(name))}
+                    onChange={(event) => setGroup(group, event.target.checked ? available : [])}
+                  />
+                  <span className="text-[11px]">{t("studio.agent.skillsAll")}</span>
+                </label>
+                <div className="studio-check-list">
+                  {entries.map((option) => (
+                    <label key={option.name} className="studio-check">
+                      <input
+                        type="checkbox"
+                        disabled={!option.available}
+                        checked={selected.includes(option.name)}
+                        onChange={() => setGroup(group, selected.includes(option.name)
+                          ? selected.filter((name) => name !== option.name)
+                          : [...selected, option.name])}
+                      />
+                      <span className="min-w-0">
+                        <span className="block truncate text-[11px]">{option.label}</span>
+                        <span className="block truncate text-[10px] text-ink-tertiary">
+                          {option.available ? option.description : `${option.description} · ${t("studio.agent.skillsUnavailable")}`}
+                        </span>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </>
+            )}
+            {group === "imported" && on && (
+              <div className="studio-help">{t("studio.agent.skillsImportedWarning")}</div>
+            )}
+          </div>
+        );
+      })}
+    </>
   );
 }
 

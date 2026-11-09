@@ -10,7 +10,9 @@ import {
   type ConditionOp,
   type WorkflowCanvas,
   type WorkflowDefinition,
+  type WorkflowSkillOptions,
   type WorkflowStep,
+  type WorkflowStepSkills,
 } from "../../../shared/workflow";
 
 export type StudioKind = "agent" | "script" | "condition" | "note" | "container";
@@ -166,6 +168,76 @@ export function createStep(draft: StudioDraft, kind: Exclude<StudioKind, "note" 
 /** The comparisons a condition step holds; an empty list for every other kind. */
 export function conditionLines(step: WorkflowStep): ConditionLine[] {
   return step.kind === "condition" ? step.conditions : [];
+}
+
+export type StudioSkillGroup = keyof WorkflowSkillOptions;
+
+export function skillSelection(step: WorkflowStep): Required<WorkflowStepSkills> {
+  const skills = step.kind === "bot" ? step.skills : undefined;
+  return {
+    bot: [...(skills?.bot ?? [])],
+    bundled: [...(skills?.bundled ?? [])],
+    imported: [...(skills?.imported ?? [])],
+  };
+}
+
+function skillsFromGroups(groups: Required<WorkflowStepSkills>): WorkflowStepSkills | undefined {
+  const next = {
+    ...(groups.bot.length > 0 ? { bot: groups.bot } : {}),
+    ...(groups.bundled.length > 0 ? { bundled: groups.bundled } : {}),
+    ...(groups.imported.length > 0 ? { imported: groups.imported } : {}),
+  };
+  return Object.keys(next).length > 0 ? next : undefined;
+}
+
+export function skillsWithGroup(step: WorkflowStep, group: StudioSkillGroup, values: readonly string[]): WorkflowStepSkills | undefined {
+  if (step.kind !== "bot") return undefined;
+  return skillsFromGroups({ ...skillSelection(step), [group]: [...new Set(values)] });
+}
+
+function editSkills(draft: StudioDraft, stepId: string, change: (step: Extract<WorkflowStep, { kind: "bot" }>) => WorkflowStepSkills | undefined): StudioDraft {
+  return {
+    ...draft,
+    steps: draft.steps.map((step) => step.id === stepId && step.kind === "bot"
+      ? { ...step, skills: change(step) }
+      : step),
+  };
+}
+
+export function setSkillGroup(draft: StudioDraft, stepId: string, group: StudioSkillGroup, values: readonly string[]): StudioDraft {
+  return editSkills(draft, stepId, (step) => skillsWithGroup(step, group, values));
+}
+
+export function toggleSkillGroup(draft: StudioDraft, stepId: string, group: StudioSkillGroup, available: readonly string[]): StudioDraft {
+  return editSkills(draft, stepId, (step) => skillSelection(step)[group].length > 0
+    ? skillsWithGroup(step, group, [])
+    : skillsWithGroup(step, group, available));
+}
+
+export function selectAllSkills(draft: StudioDraft, stepId: string, group: StudioSkillGroup, available: readonly string[]): StudioDraft {
+  return setSkillGroup(draft, stepId, group, available);
+}
+
+export function toggleSkill(draft: StudioDraft, stepId: string, group: StudioSkillGroup, name: string): StudioDraft {
+  return editSkills(draft, stepId, (step) => {
+    const current = skillSelection(step)[group];
+    return skillsWithGroup(step, group, current.includes(name) ? current.filter((value) => value !== name) : [...current, name]);
+  });
+}
+
+export function skillCount(step: WorkflowStep): number {
+  const groups = skillSelection(step);
+  return groups.bot.length + groups.bundled.length + groups.imported.length;
+}
+
+export function skillSelectionProblem(step: WorkflowStep, options: WorkflowSkillOptions | undefined): DraftProblem | undefined {
+  if (step.kind !== "bot" || step.skills === undefined || options === undefined) return undefined;
+  for (const group of ["bot", "bundled", "imported"] as const) {
+    const allowed = new Set(options[group].filter((option) => option.available).map((option) => option.name));
+    const missing = (step.skills[group] ?? []).find((name) => !allowed.has(name));
+    if (missing !== undefined) return { key: "studio.skillUnavailable", params: { name: missing } };
+  }
+  return undefined;
 }
 
 export function updateConditionLine(draft: StudioDraft, stepId: string, index: number, patch: Partial<ConditionLine>): StudioDraft {
@@ -419,11 +491,15 @@ export interface DraftProblem {
 }
 
 /** What the Studio can check before the server's schema does. */
-export function draftProblem(draft: StudioDraft, botIds: ReadonlySet<string>): DraftProblem | undefined {
+export function draftProblem(draft: StudioDraft, botIds: ReadonlySet<string>, skillOptions: Record<string, WorkflowSkillOptions> = {}): DraftProblem | undefined {
   if (!draft.name.trim()) return { key: "studio.needName" };
   if (draft.steps.length === 0) return { key: "studio.needStep" };
   for (const step of draft.steps) {
     if (step.kind === "bot" && (!step.botId || !botIds.has(step.botId))) return { key: "studio.needBot", params: { name: step.name } };
+    if (step.kind === "bot") {
+      const skillProblem = skillSelectionProblem(step, skillOptions[step.botId]);
+      if (skillProblem) return skillProblem;
+    }
     if (step.kind === "script" && !isWorkflowScriptName(step.run)) return { key: "studio.needScriptName", params: { name: step.name } };
     if (step.kind !== "condition" && step.onTimeout !== undefined && step.timeoutMs <= 0) {
       return { key: "studio.needTimeout", params: { name: step.name } };

@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { workflowDefinitionSchema, type WorkflowDefinition } from "../../shared/workflow.ts";
+import { workflowDefinitionSchema, type WorkflowDefinition, type WorkflowSkillOptions } from "../../shared/workflow.ts";
 import { createWorkflowEngine } from "../workflows/engine.ts";
 import { WORKFLOWS_ROOT_ENV } from "../workflows/paths.ts";
 import { createWorkflowStore } from "../workflows/store.ts";
@@ -34,7 +34,7 @@ const definition = (overrides: Record<string, unknown> = {}): WorkflowDefinition
   ...overrides,
 });
 
-function harness(botSection = "Financeiro") {
+function harness(botSection = "Financeiro", skillOptions?: (botId: string) => WorkflowSkillOptions | undefined) {
   const store = createWorkflowStore({
     dataDir: join(root, "data"),
     env: { [WORKFLOWS_ROOT_ENV]: join(root, "runs") },
@@ -51,7 +51,12 @@ function harness(botSection = "Financeiro") {
     now: () => NOW,
     log: () => {},
   });
-  const deps = { store, engine, bot: (id: string) => id === "bot-a" ? { id, name: "A", section: botSection } : undefined };
+  const deps = {
+    store,
+    engine,
+    bot: (id: string) => id === "bot-a" ? { id, name: "A", section: botSection } : undefined,
+    ...(skillOptions ? { skillOptions } : {}),
+  };
   const publicRoutes = createWorkflowRoutes(deps);
   const internalRoutes = createWorkflowInternalRoutes(deps);
   const state = { status: 0, body: undefined as unknown };
@@ -61,11 +66,12 @@ function harness(botSection = "Financeiro") {
     state.body = body;
     res.writableEnded = true;
   }) as unknown as RouteContext["json"];
-  const call = (method: string, path: string, body?: unknown) => {
+  const call = (method: string, path: string, body?: unknown, query?: Record<string, string>) => {
     state.status = 0;
     state.body = undefined;
     res.writableEnded = false;
     const url = new URL(`http://127.0.0.1${path}`);
+    for (const [name, value] of Object.entries(query ?? {})) url.searchParams.set(name, value);
     return publicRoutes({
       req: {} as IncomingMessage, res: res as unknown as ServerResponse, url, path, method, auth: {} as RouteContext["auth"], json,
       readBody: (async () => body) as unknown as RouteContext["readBody"],
@@ -340,5 +346,47 @@ describe("Workflow scripts", () => {
     await call("PUT", `/api/workflows/${def.id}`, body);
     expect(state.status).toBe(200);
     expect((state.body as { workflow: { version: number } }).workflow.version).toBe(2);
+  });
+});
+
+describe("step skill options", () => {
+  const options: WorkflowSkillOptions = {
+    bot: [{ name: "own", label: "own", description: "Own skill", available: true }],
+    bundled: [{ name: "create-bot", label: "Create a Bot", description: "Bundled", available: true }],
+    imported: [{ name: "from-claude", label: "from-claude", description: "Imported", available: true }],
+  };
+  const withSkills = (def: WorkflowDefinition, skills: Record<string, string[]>) => ({
+    ...def,
+    steps: [{ ...def.steps[0]!, skills }],
+  });
+
+  it("lists the three groups for a bot", async () => {
+    const { call, state } = harness("Financeiro", () => options);
+    await call("GET", "/api/workflows/skill-options", undefined, { botId: "bot-a" });
+    expect(state.status).toBe(200);
+    expect((state.body as { options: WorkflowSkillOptions }).options).toEqual(options);
+  });
+
+  it("accepts a selection made only of skills the bot can use", async () => {
+    const { call, state, definition: def } = harness("Financeiro", () => options);
+    await call("PUT", `/api/workflows/${def.id}`, withSkills(def, { bot: ["own"], bundled: ["create-bot"], imported: ["from-claude"] }));
+    expect(state.status).toBe(200);
+    expect((state.body as { workflow: WorkflowDefinition }).workflow.version).toBe(2);
+  });
+
+  it("refuses a skill outside the bot's available groups", async () => {
+    const { call, state, definition: def, store } = harness("Financeiro", () => options);
+    await call("PUT", `/api/workflows/${def.id}`, withSkills(def, { bot: ["someone-else"] }));
+    expect(state.status).toBe(400);
+    expect((state.body as { error: string }).error).toContain('skill "someone-else" is not available for this Workflow step');
+    expect(store.versions(def.id)).toHaveLength(1);
+  });
+
+  it("saves an unchanged Workflow without creating a version when skills are absent or empty", async () => {
+    const { call, state, definition: def, store } = harness("Financeiro", () => options);
+    await call("PUT", `/api/workflows/${def.id}`, withSkills(def, { bot: [], bundled: [], imported: [] }));
+    expect(state.status).toBe(200);
+    expect((state.body as { workflow: WorkflowDefinition }).workflow.version).toBe(1);
+    expect(store.versions(def.id)).toHaveLength(1);
   });
 });

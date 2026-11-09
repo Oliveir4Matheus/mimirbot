@@ -7,7 +7,7 @@
 import { lstatSync } from "node:fs";
 import { join } from "node:path";
 
-import { requireMismatch, type BotWorkflowStep, type ConditionWorkflowStep, type ScriptWorkflowStep, type WorkflowDefinition, type WorkflowRun, type WorkflowStep } from "../../shared/workflow.ts";
+import { requireMismatch, type BotWorkflowStep, type ConditionWorkflowStep, type ScriptWorkflowStep, type WorkflowDefinition, type WorkflowRun, type WorkflowStep, type WorkflowStepSkills } from "../../shared/workflow.ts";
 import type { HostTurnResult } from "../coordinator.ts";
 import { stepBrief, stepThreadTitle } from "./brief.ts";
 import { evaluateConditionGroup } from "./condition.ts";
@@ -26,6 +26,7 @@ export const APPROVAL_REFUSED = "aprovação negada";
 export interface WorkflowTurnOptions {
   threadId: string;
   workflowStep: { runId: string; stepId: string };
+  skills?: WorkflowStepSkills;
   onSettled(outcome: HostTurnResult): void;
 }
 
@@ -39,6 +40,7 @@ export interface WorkflowEngineDeps {
   openCards?(threadId: string): Array<{ id: string; question: string }>;
   /** Every persisted transition, for a trigger that mirrors the run's state. */
   onRun?(run: WorkflowRun): void;
+  missingSkills?(botId: string, skills: WorkflowStepSkills | undefined): readonly string[];
   now?: () => number;
   log?: (line: string) => void;
 }
@@ -356,6 +358,13 @@ export function createWorkflowEngine(deps: WorkflowEngineDeps): WorkflowEngine {
       apply(holdRun(run, index, now()));
       return;
     }
+    if (step.kind === "bot") {
+      const missing = deps.missingSkills?.(step.botId, step.skills) ?? [];
+      if (missing.length > 0) {
+        failOrRoute(run, index, `skill ${JSON.stringify(missing[0])} is not available for this Workflow step`, definition);
+        return;
+      }
+    }
     const copied = copyStepInputs(deps.store.runDir(run), index, step, definition.steps);
     if (!copied.ok) {
       failOrRoute(run, index, copied.error, definition);
@@ -391,6 +400,7 @@ export function createWorkflowEngine(deps: WorkflowEngineDeps): WorkflowEngine {
       await deps.startTurn(step.botId, stepBrief({ workflowName: definition.name, step, index, total: definition.steps.length }), {
         threadId,
         workflowStep: { runId: run.id, stepId: step.id },
+        ...(step.skills === undefined ? {} : { skills: step.skills }),
         onSettled: (outcome) => {
           void enqueue(run.id, () => settle(run.id, index, outcome));
         },

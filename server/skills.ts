@@ -1258,9 +1258,9 @@ export function undoSkillWrite(
   return { undone: true };
 }
 
-export function skillsSystemPrompt(botId: string, assignedLibrary?: readonly string[], startedAt?: number): string {
+export function skillsSystemPrompt(botId: string, assignedLibrary?: readonly string[], startedAt?: number, allow?: ReadonlySet<string>): string {
   syncSkillLinks(botId);
-  const enabled = resolveBotSkills(botId, assignedLibrary).filter((skill) => skill.enabled);
+  const enabled = resolveBotSkills(botId, assignedLibrary).filter((skill) => skill.enabled && (allow === undefined || allow.has(skill.name)));
   if (!enabled.length) {
     loggedIndexOmissions.delete(botId);
     return "";

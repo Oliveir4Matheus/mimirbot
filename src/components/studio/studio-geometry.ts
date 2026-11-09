@@ -70,7 +70,7 @@ export function outputPoint(draft: StudioDraft, stepId: string, branch: StudioBr
     if (branch === "failure") return sidePoint(node, 2);
     return undefined;
   }
-  if (branch === "run") return runPoint(node, 5);
+  if (branch === "run") return runPoint(node, step.kind === "bot" ? 6 : 4);
   if (branch === "failure") return sidePoint(node, 0);
   if (branch === "timeout") return sidePoint(node, 1);
   return undefined;

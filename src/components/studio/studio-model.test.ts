@@ -3,7 +3,8 @@ import { describe, expect, it } from "vitest";
 import { workflowDefinitionSchema } from "../../../shared/workflow";
 import {
   addConditionLine, autoLayout, conditionLines, connect, containedBy, createStep, disconnect, draftProblem, fromDefinition,
-  newDraft, removeConditionLine, removeStep, renameScript, scriptLanguageOf, scriptNameForLanguage, toDefinition,
+  newDraft, removeConditionLine, removeStep, renameScript, scriptLanguageOf, scriptNameForLanguage, selectAllSkills,
+  setSkillGroup, skillCount, skillSelection, skillSelectionProblem, skillsWithGroup, toDefinition, toggleSkill, toggleSkillGroup,
   updateConditionLine, updateConditionMatch, updateNote, type StudioDraft,
 } from "./studio-model";
 
@@ -214,5 +215,66 @@ describe("studio model", () => {
     expect(draftProblem({ ...named, steps: named.steps.map((candidate) => candidate.id === condition.id && candidate.kind === "condition" ? { ...candidate, conditions: [] } : candidate) }, new Set(["bot-a"]))?.key).toBe("studio.needCondition");
     expect(draftProblem({ ...named, steps: named.steps.map((candidate) => candidate.id === condition.id && candidate.kind === "condition" ? { ...candidate, conditions: Array.from({ length: 21 }, () => ({ field: "ok", op: "equals" as const, value: true })) } : candidate) }, new Set(["bot-a"]))?.key).toBe("studio.needConditionMax");
     expect(draftProblem({ ...named, steps: named.steps.map((candidate) => candidate.id === condition.id && candidate.kind === "condition" ? { ...candidate, conditions: [{ field: "ok", op: "equals" as const }] } : candidate) }, new Set(["bot-a"]))?.key).toBe("studio.needValue");
+  });
+});
+
+describe("studio step skills", () => {
+  const options = {
+    bot: [
+      { name: "own", label: "own", description: "Own", available: true },
+      { name: "disabled", label: "disabled", description: "Disabled", available: false },
+    ],
+    bundled: [{ name: "create-bot", label: "Create a Bot", description: "Bundled", available: true }],
+    imported: [{ name: "from-claude", label: "from-claude", description: "Imported", available: true }],
+  };
+  const withAgent = () => {
+    const draft = step(newDraft("Financeiro"), "agent", 200, 200).draft;
+    return { draft, id: draft.steps[0]!.id };
+  };
+
+  it("starts with no skills and reads absent groups as empty", () => {
+    const { draft } = withAgent();
+    const agent = draft.steps[0]!;
+    expect(agent.kind === "bot" && agent.skills).toBeUndefined();
+    expect(skillSelection(agent)).toEqual({ bot: [], bundled: [], imported: [] });
+    expect(skillCount(agent)).toBe(0);
+    expect(skillsWithGroup(draft.steps[0]!, "bot", [])).toBeUndefined();
+  });
+
+  it("turns a group on with every available option and off with none", () => {
+    const { draft, id } = withAgent();
+    const on = toggleSkillGroup(draft, id, "bot", ["own", "disabled"]);
+    expect(skillSelection(on.steps[0]!).bot).toEqual(["own", "disabled"]);
+    const off = toggleSkillGroup(on, id, "bot", ["own", "disabled"]);
+    expect(off.steps[0]!.kind === "bot" && off.steps[0]!.skills).toBeUndefined();
+    expect(skillSelection(off.steps[0]!)).toEqual({ bot: [], bundled: [], imported: [] });
+  });
+
+  it("selects all, marks one and clears one", () => {
+    const { draft, id } = withAgent();
+    const all = selectAllSkills(draft, id, "bundled", ["create-bot"]);
+    expect(skillSelection(all.steps[0]!).bundled).toEqual(["create-bot"]);
+    const removed = toggleSkill(all, id, "bundled", "create-bot");
+    expect(removed.steps[0]!.kind === "bot" && removed.steps[0]!.skills).toBeUndefined();
+    const imported = toggleSkill(setSkillGroup(draft, id, "imported", ["from-claude"]), id, "imported", "from-claude");
+    expect(imported.steps[0]!.kind === "bot" && imported.steps[0]!.skills).toBeUndefined();
+  });
+
+  it("round-trips the selection through the definition and the schema", () => {
+    const { draft, id } = withAgent();
+    const selected = setSkillGroup(setSkillGroup(draft, id, "bot", ["own"]), id, "imported", ["from-claude"]);
+    const definition = toDefinition({ ...selected, name: "Test" });
+    const parsed = workflowDefinitionSchema.parse(definition);
+    expect(parsed.steps[0]!.kind === "bot" && parsed.steps[0]!.skills).toEqual({ bot: ["own"], imported: ["from-claude"] });
+    const restored = fromDefinition(parsed);
+    expect(restored.steps[0]!.kind === "bot" && restored.steps[0]!.skills).toEqual({ bot: ["own"], imported: ["from-claude"] });
+  });
+
+  it("reports an unavailable skill before saving", () => {
+    const { draft, id } = withAgent();
+    const selected = setSkillGroup(draft, id, "bot", ["disabled"]);
+    expect(skillSelectionProblem(selected.steps[0]!, options)?.key).toBe("studio.skillUnavailable");
+    expect(draftProblem({ ...selected, name: "Test" }, new Set(["bot-a"]), { "bot-a": options })?.params?.name).toBe("disabled");
+    expect(skillSelectionProblem(setSkillGroup(draft, id, "bot", ["own"]).steps[0]!, options)).toBeUndefined();
   });
 });

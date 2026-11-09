@@ -5,7 +5,7 @@
 import type { ServerResponse } from "node:http";
 
 import type { json as sendJson } from "../harness/http.ts";
-import { isWorkflowScriptName } from "../../shared/workflow.ts";
+import { isBotStep, isWorkflowScriptName, workflowDefinitionSchema, type WorkflowSkillOptions, type WorkflowStep } from "../../shared/workflow.ts";
 import type { WorkflowEngine } from "../workflows/engine.ts";
 import { isWorkflowId } from "../workflows/paths.ts";
 import { isActiveRun } from "../workflows/state.ts";
@@ -19,6 +19,7 @@ export interface WorkflowRoutesDeps {
   store: WorkflowStore;
   engine: WorkflowEngine;
   bot(id: string): { id: string; name: string; section?: string } | undefined;
+  skillOptions?(botId: string): WorkflowSkillOptions | undefined;
 }
 
 export interface WorkflowInternalContext {
@@ -38,6 +39,21 @@ const segments = (path: string, base: string): string[] => path.slice(base.lengt
 const sameDepartment = (left: string, right: string): boolean => left.trim().toLowerCase() === right.trim().toLowerCase();
 
 const departmentOf = (deps: WorkflowRoutesDeps, botId: string): string => deps.bot(botId)?.section?.trim() || "General";
+
+const missingStepSkill = (steps: readonly WorkflowStep[], deps: WorkflowRoutesDeps): string | undefined => {
+  for (const step of steps) {
+    if (!isBotStep(step) || step.skills === undefined) continue;
+    const options = deps.skillOptions?.(step.botId);
+    for (const group of ["bot", "bundled", "imported"] as const) {
+      const allowed = new Set((options?.[group] ?? []).filter((option) => option.available).map((option) => option.name));
+      const missing = (step.skills[group] ?? []).find((name) => !allowed.has(name));
+      if (missing !== undefined) {
+        return `step ${JSON.stringify(step.name)}: skill ${JSON.stringify(missing)} is not available for this Workflow step`;
+      }
+    }
+  }
+  return undefined;
+};
 
 export function createWorkflowRoutes(deps: WorkflowRoutesDeps): RouteHandler {
   const save = async (res: ServerResponse, json: typeof sendJson, body: unknown, id: string | undefined): Promise<void> => {
@@ -63,6 +79,16 @@ export function createWorkflowRoutes(deps: WorkflowRoutesDeps): RouteHandler {
         return void json(res, 409, { error: "this Workflow has active runs; cancel them before changing a script" });
       }
     }
+    const candidate = workflowDefinitionSchema.safeParse({
+      ...definition,
+      version: definition.version ?? 1,
+      createdAt: typeof definition.createdAt === "number" ? definition.createdAt : 0,
+      updatedAt: typeof definition.updatedAt === "number" ? definition.updatedAt : 0,
+    });
+    if (candidate.success) {
+      const missing = missingStepSkill(candidate.data.steps, deps);
+      if (missing) return void json(res, 400, { error: missing });
+    }
     const saved = deps.store.saveWorkflow(definition, uploads && uploads.length > 0 ? { scripts: uploads } : undefined);
     if (!saved.ok) return void json(res, 400, { error: saved.error });
     return void json(res, 200, { workflow: saved.workflow });
@@ -71,6 +97,15 @@ export function createWorkflowRoutes(deps: WorkflowRoutesDeps): RouteHandler {
   return async ({ req, res, path, method, url, json, readBody }) => {
     if (path !== BASE && !path.startsWith(`${BASE}/`)) return PASS;
     const parts = segments(path, BASE);
+
+    if (parts.length === 1 && parts[0] === "skill-options" && method === "GET") {
+      const botId = url.searchParams.get("botId")?.trim();
+      if (!botId) return void json(res, 400, { error: "give a bot id" });
+      if (!deps.bot(botId)) return void json(res, 404, { error: "no such bot" });
+      const options = deps.skillOptions?.(botId);
+      if (!options) return void json(res, 409, { error: "skills are not available for this bot" });
+      return void json(res, 200, { options });
+    }
 
     if (parts.length === 0) {
       if (method === "GET") return void json(res, 200, { workflows: deps.store.workflows() });

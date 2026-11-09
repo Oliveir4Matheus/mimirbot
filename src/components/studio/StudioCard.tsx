@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  AlertTriangle, ArrowDownToLine, ArrowUpFromLine, Check, Clock, Code2, CornerUpLeft, FileText, GitBranch, Layers, List, MoreHorizontal, Play, Plus, Sparkles, Wrench, X,
+  AlertTriangle, ArrowDownToLine, ArrowUpFromLine, BookOpen, Check, Clock, Code2, CornerUpLeft, FileText, GitBranch, Layers, List, MoreHorizontal, Play, Plus, Sparkles, Wrench, X,
 } from "lucide-react";
 
 import type { WorkflowStep } from "../../../shared/workflow";
@@ -8,7 +8,7 @@ import type { LocaleKey } from "@/locales";
 import { cn } from "@/lib/cn";
 import { t } from "@/lib/i18n";
 import { branchCenters, branchTop } from "./studio-geometry";
-import { CARD_HEIGHT, CARD_WIDTH, type StudioBranch, type StudioDraft } from "./studio-model";
+import { CARD_HEIGHT, CARD_WIDTH, skillCount, type StudioBranch, type StudioDraft } from "./studio-model";
 
 const CATEGORY = { bot: "AI AGENT", script: "CODE STEP", condition: "CONDITIONAL" } as const;
 
@@ -17,7 +17,7 @@ const clip = (text: string, max = 85) => {
   return flat.length > max ? `${flat.slice(0, max - 1)}…` : flat;
 };
 
-type BranchKey = "instructions" | "context" | "tools" | "return" | "run" | "input" | "output" | "script" | "condition" | "true" | "false" | "failure" | "timeout";
+type BranchKey = "instructions" | "context" | "tools" | "skills" | "return" | "run" | "input" | "output" | "script" | "condition" | "true" | "false" | "failure" | "timeout";
 
 interface BranchSpec {
   key: BranchKey;
@@ -31,6 +31,7 @@ const BOT_BRANCHES: BranchSpec[] = [
   { key: "instructions", label: "studio.branch.instructions", icon: FileText },
   { key: "context", label: "studio.branch.context", icon: Layers },
   { key: "tools", label: "studio.branch.tools", icon: Wrench },
+  { key: "skills", label: "studio.branch.skills", icon: BookOpen },
   { key: "return", label: "studio.branch.return", icon: CornerUpLeft },
   { key: "run", label: "studio.branch.run", icon: Play, port: "run" },
 ];
@@ -92,6 +93,10 @@ export function StudioCard({ draft, step, index, selected, botName, onSelect, on
       if (key === "instructions") return clip(step.instructions);
       if (key === "context") return step.inputs.length ? step.inputs.map((input) => input.as).join(", ") : t("studio.card.noContext");
       if (key === "tools") return botName(step.botId) || t("studio.card.noBot");
+      if (key === "skills") {
+        const count = skillCount(step);
+        return count === 0 ? t("studio.card.noSkills") : count === 1 ? t("studio.card.skillCountOne") : t("studio.card.skillCount", { count });
+      }
       if (key === "return") return step.result ?? t("studio.card.noResult");
       if (key === "run") return typeof step.onSuccess === "string" ? nameOf(step.onSuccess) : t("studio.card.end");
       if (key === "failure") return step.onFailure ? nameOf(step.onFailure) : t("studio.condition.none");

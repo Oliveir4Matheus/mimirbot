@@ -27,6 +27,10 @@ export const WORKFLOW_CONDITION_VALUE_MAX = 4_096;
 export const WORKFLOW_CONDITION_GROUP_MAX = 64 * 1024;
 /** How many comparisons one IF/Else step may hold. */
 export const WORKFLOW_CONDITION_ROWS_MAX = 20;
+export const WORKFLOW_SKILLS_BOT_MAX = 200;
+export const WORKFLOW_SKILLS_BUNDLED_MAX = 100;
+export const WORKFLOW_SKILLS_IMPORTED_MAX = 200;
+export const WORKFLOW_SKILL_NAME_MAX = 64;
 
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const SCRIPT_NAME = /^[a-z0-9][a-z0-9-]{0,62}\.(?:mjs|js|ts|py)$/;
@@ -160,6 +164,46 @@ const stepBaseSchema = z.object({
   when: z.array(whenSchema).min(1).max(WORKFLOW_BRANCH_MAX).optional(),
 });
 
+const skillNameSchema = z.string().trim().min(1).max(WORKFLOW_SKILL_NAME_MAX);
+
+const skillNamesSchema = (max: number) => z.array(skillNameSchema).max(max).superRefine((names, context) => {
+  const seen = new Set<string>();
+  names.forEach((name, index) => {
+    if (seen.has(name)) {
+      context.addIssue({ code: "custom", path: [index], message: `skill ${JSON.stringify(name)} is listed more than once` });
+    }
+    seen.add(name);
+  });
+});
+
+const stepSkillsSchema = z.object({
+  bot: skillNamesSchema(WORKFLOW_SKILLS_BOT_MAX).default([]),
+  bundled: skillNamesSchema(WORKFLOW_SKILLS_BUNDLED_MAX).default([]),
+  imported: skillNamesSchema(WORKFLOW_SKILLS_IMPORTED_MAX).default([]),
+}).transform((skills) => {
+  const normalized = {
+    ...(skills.bot.length > 0 ? { bot: skills.bot } : {}),
+    ...(skills.bundled.length > 0 ? { bundled: skills.bundled } : {}),
+    ...(skills.imported.length > 0 ? { imported: skills.imported } : {}),
+  };
+  return Object.keys(normalized).length > 0 ? normalized : undefined;
+});
+
+export type WorkflowStepSkills = NonNullable<z.output<typeof stepSkillsSchema>>;
+
+export interface WorkflowSkillOption {
+  name: string;
+  label: string;
+  description: string;
+  available: boolean;
+}
+
+export interface WorkflowSkillOptions {
+  bot: WorkflowSkillOption[];
+  bundled: WorkflowSkillOption[];
+  imported: WorkflowSkillOption[];
+}
+
 /** How an executable step starts: on its own, or only after a person continues it. */
 const stepModeSchema = z.enum(["auto", "manual"]).default("auto");
 
@@ -167,6 +211,7 @@ const botStepSchema = stepBaseSchema.extend({
   kind: z.literal("bot"),
   botId: z.string().min(1).max(200),
   instructions: z.string().trim().min(1).max(WORKFLOW_INSTRUCTIONS_MAX),
+  skills: stepSkillsSchema.optional(),
   /** 0 means the bot's turn has no limit. An approval pause stops the clock. */
   timeoutMs: z.number().int().min(0).max(WORKFLOW_STEP_TIMEOUT_MAX_MS).default(WORKFLOW_BOT_TIMEOUT_DEFAULT_MS),
   mode: stepModeSchema,

@@ -5,7 +5,7 @@ import { createWorkflowEngine, type WorkflowEngine, type WorkflowTurnOptions } f
 import { pruneWorkflowRuns, type RetentionResult } from "../workflows/retention.ts";
 import { createWorkflowStore } from "../workflows/store.ts";
 import { createWorkflowInternalRoutes, createWorkflowRoutes } from "../routes/workflows.ts";
-import type { WorkflowRun } from "../../shared/workflow.ts";
+import type { WorkflowRun, WorkflowSkillOptions, WorkflowStepSkills } from "../../shared/workflow.ts";
 
 export interface WorkflowHostDeps {
   dataDir: string;
@@ -23,6 +23,7 @@ export interface WorkflowHostDeps {
   openCards?(threadId: string): Array<{ id: string; question: string }>;
   /** Every persisted transition, so a routine trigger can mirror the run's state. */
   onRun?(run: WorkflowRun): void;
+  skillOptions?(botId: string): WorkflowSkillOptions | undefined;
 }
 
 export function createWorkflowHost(deps: WorkflowHostDeps) {
@@ -33,6 +34,22 @@ export function createWorkflowHost(deps: WorkflowHostDeps) {
     now: deps.now,
     log: deps.log,
   });
+  const missingSkills = (botId: string, skills: WorkflowStepSkills | undefined): readonly string[] => {
+    if (!skills) return [];
+    const options = deps.skillOptions?.(botId);
+    const declared = [...(skills.bot ?? []), ...(skills.bundled ?? []), ...(skills.imported ?? [])];
+    if (!options) return declared;
+    const available = (group: WorkflowSkillOptions["bot"]): Set<string> =>
+      new Set(group.filter((option) => option.available).map((option) => option.name));
+    const bot = available(options.bot);
+    const bundled = available(options.bundled);
+    const imported = available(options.imported);
+    return [
+      ...(skills.bot ?? []).filter((name) => !bot.has(name)),
+      ...(skills.bundled ?? []).filter((name) => !bundled.has(name)),
+      ...(skills.imported ?? []).filter((name) => !imported.has(name)),
+    ];
+  };
   const engine: WorkflowEngine = createWorkflowEngine({
     store,
     startTurn: deps.startTurn,
@@ -41,16 +58,18 @@ export function createWorkflowHost(deps: WorkflowHostDeps) {
     interrupt: deps.interrupt,
     openCards: deps.openCards,
     onRun: deps.onRun,
+    missingSkills,
     now: deps.now,
     log: deps.log,
   });
-  const routes = createWorkflowRoutes({ store, engine, bot: deps.bot });
+  const routes = createWorkflowRoutes({ store, engine, bot: deps.bot, skillOptions: deps.skillOptions });
   const internal = createWorkflowInternalRoutes({ store, engine, bot: deps.bot });
   return {
     store,
     engine,
     routes,
     internal,
+    missingSkills,
     retention: (): RetentionResult => pruneWorkflowRuns({ store, now: deps.now, log: deps.log }),
   };
 }

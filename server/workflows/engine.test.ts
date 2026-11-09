@@ -41,6 +41,7 @@ function setup(
   def: WorkflowDefinition = definition(),
   createThread?: (input: { botId: string; title: string; cwd: string }) => string | null,
   openCards?: (threadId: string) => Array<{ id: string; question: string }>,
+  missingSkills?: (botId: string, skills: WorkflowTurnOptions["skills"]) => readonly string[],
 ) {
   const store = createWorkflowStore({
     dataDir: join(root, "data"),
@@ -62,6 +63,7 @@ function setup(
     createThread: createThread ?? ((input) => `thread-${input.botId}-${input.cwd.split(/[\\/]/).pop()}`),
     broadcast: (frame) => broadcasts.push(frame),
     ...(openCards ? { openCards } : {}),
+    ...(missingSkills ? { missingSkills } : {}),
     now: () => NOW,
     log: () => {},
   });
@@ -818,5 +820,53 @@ describe("script steps and branching", () => {
     engine.turnSettled("thread-bot-a-step-1", "turn-1", { ok: true, text: "answered" });
     await engine.idle();
     expect(store.readRun(started.run.id)!.status).toBe("succeeded");
+  });
+});
+
+describe("step skills", () => {
+  const oneStep = (skills?: Record<string, string[]>) => definition({
+    steps: [{
+      id: "coletar", name: "Collect", botId: "bot-a", instructions: "Collect.",
+      ...(skills ? { skills } : {}),
+      outputs: [{ path: "numbers.csv" }],
+    }],
+  });
+
+  it("passes no selection when the step declares none", async () => {
+    const def = oneStep();
+    const { store, engine, calls, onTurn } = setup(def);
+    onTurn((_botId, _text, options) => {
+      write(store, options, { "numbers.csv": "1\n" });
+      options.onSettled({ ok: true, text: "done" });
+    });
+    const started = engine.start(def.id);
+    if (!started.ok) throw new Error(started.error);
+    await engine.idle();
+    expect(calls[0]!.options.skills).toBeUndefined();
+  });
+
+  it("passes exactly the declared groups to the turn", async () => {
+    const def = oneStep({ bot: ["own"], bundled: ["create-bot"], imported: ["from-claude"] });
+    const { store, engine, calls, onTurn } = setup(def);
+    onTurn((_botId, _text, options) => {
+      write(store, options, { "numbers.csv": "1\n" });
+      options.onSettled({ ok: true, text: "done" });
+    });
+    const started = engine.start(def.id);
+    if (!started.ok) throw new Error(started.error);
+    await engine.idle();
+    expect(calls[0]!.options.skills).toEqual({ bot: ["own"], bundled: ["create-bot"], imported: ["from-claude"] });
+  });
+
+  it("fails the step before its turn when a declared skill is gone", async () => {
+    const def = oneStep({ bot: ["gone"] });
+    const { store, engine, calls } = setup(def, undefined, undefined, (_botId, skills) => skills?.bot ?? []);
+    const started = engine.start(def.id);
+    if (!started.ok) throw new Error(started.error);
+    await engine.idle();
+    const run = store.readRun(started.run.id)!;
+    expect(run.status).toBe("failed");
+    expect(run.steps[0]!.error).toBe('skill "gone" is not available for this Workflow step');
+    expect(calls).toHaveLength(0);
   });
 });

@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Check, X } from "lucide-react";
 
-import { isScriptStep, type WorkflowStep } from "../../../shared/workflow";
+import { isBotStep, isScriptStep, type WorkflowSkillOptions, type WorkflowStep } from "../../../shared/workflow";
 import type { LocaleKey } from "@/locales";
 import { cn } from "@/lib/cn";
 import { t } from "@/lib/i18n";
 import { useStore } from "@/state/store";
-import { createWorkflow, listScripts, readScript, readWorkflow, updateWorkflow } from "@/lib/workflows-api";
+import { createWorkflow, listScripts, readScript, readWorkflow, readWorkflowSkillOptions, updateWorkflow } from "@/lib/workflows-api";
 import { StudioBalloon } from "./StudioBalloon";
 import { StudioCard, type BranchKey } from "./StudioCard";
 import { StudioContainer } from "./StudioContainer";
@@ -64,6 +64,11 @@ export function WorkflowStudioPage({ workflowId, department, onBack, onSaved }: 
   const [confirmBack, setConfirmBack] = useState(false);
   const [noteEditing, setNoteEditing] = useState<string | null>(null);
   const [noteLinkMenu, setNoteLinkMenu] = useState<string | null>(null);
+  const [skillOptions, setSkillOptions] = useState<Record<string, WorkflowSkillOptions>>({});
+  const [skillOptionsLoading, setSkillOptionsLoading] = useState<Record<string, boolean>>({});
+  const [skillOptionsError, setSkillOptionsError] = useState<Record<string, string>>({});
+  const skillOptionsCache = useRef(new Map<string, WorkflowSkillOptions>());
+  const skillOptionsPending = useRef(new Set<string>());
   const toastTimer = useRef<number | undefined>(undefined);
 
   const showToast = useCallback((text: string) => {
@@ -75,6 +80,33 @@ export function WorkflowStudioPage({ workflowId, department, onBack, onSaved }: 
   const edit = useCallback((updater: (current: StudioDraft) => StudioDraft) => {
     setDraft((current) => current ? updater(current) : current);
     setDirty(true);
+  }, []);
+
+  const loadSkillOptions = useCallback((botId: string) => {
+    if (!botId || skillOptionsCache.current.has(botId) || skillOptionsPending.current.has(botId)) return;
+    skillOptionsPending.current.add(botId);
+    setSkillOptionsLoading((current) => ({ ...current, [botId]: true }));
+    setSkillOptionsError((current) => {
+      if (!(botId in current)) return current;
+      const { [botId]: _removed, ...rest } = current;
+      return rest;
+    });
+    readWorkflowSkillOptions(botId)
+      .then((options) => {
+        skillOptionsCache.current.set(botId, options);
+        setSkillOptions((current) => ({ ...current, [botId]: options }));
+      })
+      .catch((cause) => {
+        setSkillOptionsError((current) => ({ ...current, [botId]: message(cause) }));
+      })
+      .finally(() => {
+        skillOptionsPending.current.delete(botId);
+        setSkillOptionsLoading((current) => {
+          if (!(botId in current)) return current;
+          const { [botId]: _removed, ...rest } = current;
+          return rest;
+        });
+      });
   }, []);
 
   const fit = useCallback((next: StudioDraft) => {
@@ -117,6 +149,9 @@ export function WorkflowStudioPage({ workflowId, department, onBack, onSaved }: 
           if (!alive) return;
           const next = fromDefinition(detail.workflow);
           setDraft(next);
+          for (const step of next.steps) {
+            if (isBotStep(step) && step.botId) loadSkillOptions(step.botId);
+          }
           const steps = next.steps.filter(isScriptStep);
           if (steps.length > 0) {
             const files = await listScripts(next.id);
@@ -134,7 +169,7 @@ export function WorkflowStudioPage({ workflowId, department, onBack, onSaved }: 
       requestAnimationFrame(() => fit(next));
     }
     return () => { alive = false; };
-  }, [workflowId, department, fit]);
+  }, [workflowId, department, fit, loadSkillOptions]);
 
   const canvasPoint = useCallback((clientX: number, clientY: number): Point => {
     const rect = canvasRef.current?.getBoundingClientRect();
@@ -323,8 +358,9 @@ export function WorkflowStudioPage({ workflowId, department, onBack, onSaved }: 
   }, [draft, bots, overCanvas, canvasPoint, center, edit, showToast]);
 
   const openBranch = useCallback((step: WorkflowStep, branch: BranchKey, anchor: DOMRect) => {
+    if (step.kind === "bot" && step.botId) loadSkillOptions(step.botId);
     setBalloon((current) => current && current.stepId === step.id && current.branch === branch ? null : { stepId: step.id, branch, anchor });
-  }, []);
+  }, [loadSkillOptions]);
 
   const startFlow = useCallback((stepId: string, branch: StudioBranch, event: React.PointerEvent) => {
     event.preventDefault();
@@ -335,7 +371,7 @@ export function WorkflowStudioPage({ workflowId, department, onBack, onSaved }: 
 
   const save = async () => {
     if (!draft) return;
-    const problem = draftProblem(draft, new Set(bots.map((bot) => bot.id)));
+    const problem = draftProblem(draft, new Set(bots.map((bot) => bot.id)), skillOptions);
     if (problem) {
       setError(t(problem.key as LocaleKey, problem.params));
       return;
@@ -596,7 +632,14 @@ export function WorkflowStudioPage({ workflowId, department, onBack, onSaved }: 
             anchor={balloon.anchor}
             bots={bots}
             scripts={scripts}
-            onChange={(patch) => edit((current) => updateStep(current, balloonStep.id, patch))}
+            skillOptions={balloonStep.kind === "bot" ? skillOptions[balloonStep.botId] : undefined}
+            skillOptionsLoading={balloonStep.kind === "bot" ? skillOptionsLoading[balloonStep.botId] : undefined}
+            skillOptionsError={balloonStep.kind === "bot" ? skillOptionsError[balloonStep.botId] : undefined}
+            onChange={(patch) => {
+              edit((current) => updateStep(current, balloonStep.id, patch));
+              const nextBotId = (patch as { botId?: unknown }).botId;
+              if (balloonStep.kind === "bot" && typeof nextBotId === "string") loadSkillOptions(nextBotId);
+            }}
             onScript={(name, content) => setScripts((current) => ({ ...current, [name]: content }))}
             onRenameScript={(from, to) => setScripts((current) => renameScript(current, from, to))}
             onToast={(key) => showToast(t(key))}

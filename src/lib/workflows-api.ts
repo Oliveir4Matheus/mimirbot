@@ -1,4 +1,4 @@
-import type { WorkflowDefinition, WorkflowRun, WorkflowRunStatus } from "../../shared/workflow";
+import type { WorkflowDefinition, WorkflowRun, WorkflowRunStatus, WorkflowSkillOptions } from "../../shared/workflow";
 import { api } from "@/state/api";
 
 export interface WorkflowDetail {
@@ -30,6 +30,11 @@ export function listRuns(limit = 200, options: RequestOptions = {}): Promise<Wor
 
 export function readWorkflow(id: string): Promise<WorkflowDetail> {
   return api<WorkflowDetail>(`/api/workflows/${encodeURIComponent(id)}`);
+}
+
+export function readWorkflowSkillOptions(botId: string): Promise<WorkflowSkillOptions> {
+  return api<{ options: WorkflowSkillOptions }>(`/api/workflows/skill-options?botId=${encodeURIComponent(botId)}`)
+    .then((answer) => answer.options);
 }
 
 export function readRun(id: string): Promise<WorkflowRun> {
