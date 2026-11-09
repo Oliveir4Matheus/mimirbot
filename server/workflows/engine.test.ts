@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { workflowDefinitionSchema, type WorkflowDefinition } from "../../shared/workflow.ts";
+import { workflowDefinitionSchema, type WorkflowDefinition, type WorkflowRun } from "../../shared/workflow.ts";
 import type { HostTurnResult } from "../coordinator.ts";
 import { createWorkflowEngine, type WorkflowTurnOptions } from "./engine.ts";
 import { WORKFLOWS_ROOT_ENV, workflowScriptsDir } from "./paths.ts";
@@ -53,6 +53,7 @@ function setup(
   if (!saved.ok) throw new Error(saved.error);
   const calls: Array<{ botId: string; text: string; options: WorkflowTurnOptions }> = [];
   const broadcasts: Array<Record<string, unknown>> = [];
+  const transitions: WorkflowRun[] = [];
   let handler: TurnHandler = () => {};
   const engine = createWorkflowEngine({
     store,
@@ -62,12 +63,13 @@ function setup(
     },
     createThread: createThread ?? ((input) => `thread-${input.botId}-${input.cwd.split(/[\\/]/).pop()}`),
     broadcast: (frame) => broadcasts.push(frame),
+    onRun: (run) => transitions.push(run),
     ...(openCards ? { openCards } : {}),
     ...(missingSkills ? { missingSkills } : {}),
     now: () => NOW,
     log: () => {},
   });
-  return { store, engine, calls, broadcasts, definition: saved.workflow, onTurn: (next: TurnHandler) => { handler = next; } };
+  return { store, engine, calls, broadcasts, transitions, definition: saved.workflow, onTurn: (next: TurnHandler) => { handler = next; } };
 }
 
 const stepIndex = (store: WorkflowStore, options: WorkflowTurnOptions): number => {
@@ -553,7 +555,7 @@ describe("manual steps", () => {
 
   it("keeps a manual run parked across a restart and resumes it afterwards", async () => {
     const def = manualFirst();
-    const { store, engine, calls, onTurn } = setup(def);
+    const { store, engine, calls, transitions, onTurn } = setup(def);
     const run = store.createRun(def);
     store.writeRun({ ...run, status: "waiting_manual", startedAt: NOW, hold: { step: 0, since: NOW } });
 
@@ -561,11 +563,26 @@ describe("manual steps", () => {
     await engine.idle();
     expect(store.readRun(run.id)!.status).toBe("waiting_manual");
     expect(calls).toHaveLength(0);
+    expect(transitions).toEqual([]);
 
     onTurn(happy(store));
     engine.resume(run.id);
     await engine.idle();
     expect(store.readRun(run.id)!.status).toBe("succeeded");
+  });
+
+  it("reports the waiting_manual transition once, and never again on recovery", async () => {
+    const def = manualFirst();
+    const { engine, transitions } = setup(def);
+    const started = engine.start(def.id);
+    if (!started.ok) throw new Error(started.error);
+    await engine.idle();
+
+    expect(transitions.filter((transition) => transition.status === "waiting_manual")).toHaveLength(1);
+
+    engine.recover();
+    await engine.idle();
+    expect(transitions.filter((transition) => transition.status === "waiting_manual")).toHaveLength(1);
   });
 
   it("does not spend the step's timeout while the person is deciding", async () => {

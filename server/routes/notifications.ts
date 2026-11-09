@@ -18,7 +18,7 @@ export function createNotificationRoutes(deps = {
   const visible = (auth: RequestAuth) => {
     const seen = shown(auth);
     const admin = ownerOrAdmin(auth);
-    return deps.recent().filter((entry) => (entry.kind !== "spend" || admin) && (!entry.threadId || seen(entry.threadId)) && reaches(auth, entry));
+    return deps.recent().filter((entry) => (entry.kind !== "spend" || admin) && (entry.kind !== "workflow-waiting" || admin) && (!entry.threadId || seen(entry.threadId)) && reaches(auth, entry));
   };
   return async ({ res, path, method, auth, json }) => {
     if (method === "GET" && path === "/api/notifications") {

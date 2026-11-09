@@ -29,7 +29,10 @@ export type NotifyKind =
   | "wait"
   /** Something MimirBot changed on its own that the person hears about
    * once: a tool turned off for the bots it doesn't start for. */
-  | "notice";
+  | "notice"
+  /** A Workflow run stopped before a manual step and waits for a person to
+   * continue it. Admins only, since Workflows are admin-only. */
+  | "workflow-waiting";
 
 export interface Notification {
   kind: NotifyKind;
@@ -45,6 +48,8 @@ export interface Notification {
    * already works off `threadId` alone; this is what lets a client say which
    * room, and stack a room's banners together instead of under the bot. */
   groupId?: string;
+  /** A Workflow run this notification opens, when it is not tied to a chat thread. */
+  workflowRunId?: string;
 }
 
 /** A `Notification` as the feed stores it: the live `notify` frame and `GET /api/notifications` carry the same entry. */

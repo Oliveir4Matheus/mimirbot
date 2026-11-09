@@ -20041,6 +20041,7 @@
       "notifications.status.failed": "031a8f0f659df890dfd53c92e45295b0f14c997185bae46e168831e403b273f7",
       "notifications.status.deferred": "1fc4d2e60ca80e29e9ac8f51f41bcb7380978e98d7fc035d4bdfe4ff44a4ed02",
       "notifications.status.spend": "85f3d558db120199accde070c0ff02514efb69af24c043f1f4f4d9d378cf81e9",
+      "notifications.status.workflowWaiting": "aaa4f79cd2c624aef1e085f4310dab42a29fdba04d88c433ed11953022329f14",
       "settings.roomTurns.title": "c9bef6f6fea47076662b32a16ce4cbc49aa5d11878ae78cd1cbcac59e91b2631",
       "settings.roomTurns.subtitle": "e01d23a0b8e66179219b5e771b4a92da4806664a61124fe0818220f645d35f60",
       "settings.roomTurns.label": "a4cbd683a165c30c7b9a84227259fa37f9dfd6f84fef48b7353bc16e7f290e09",

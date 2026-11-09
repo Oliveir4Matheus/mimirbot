@@ -12,6 +12,7 @@ import { cn } from "@/lib/cn";
 import { t } from "@/lib/i18n";
 import { useMediaQuery } from "@/lib/use-media-query";
 import { useShowThreads } from "@/lib/thread-preferences";
+import { resolveWorkflowFocus } from "@/lib/workflow-focus";
 import { isActiveStatus } from "@/lib/workflow-format";
 import { cancelRun, continueRun, deleteRun, deleteWorkflow, readWorkflow, startRun, type ActiveRunRef } from "@/lib/workflows-api";
 import { ConfirmDialog } from "./workflows/ConfirmDialog";
@@ -85,6 +86,7 @@ export function WorkflowsPage() {
   const [toast, setToast] = useState<ToastMessage | null>(null);
   const page = useRef<HTMLDivElement>(null);
   const dragging = useRef(false);
+  const skipAutoSelect = useRef(false);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -190,10 +192,47 @@ export function WorkflowsPage() {
   }, [wantedKey, versionsById]);
 
   useEffect(() => {
+    if (skipAutoSelect.current) {
+      skipAutoSelect.current = false;
+      return;
+    }
     if (compact) return;
     if (tab === "workflows" && !selectedWorkflowId && feed.workflows[0]) setSelectedWorkflowId(feed.workflows[0].id);
     if (tab === "runs" && !selectedRunId && feed.runs[0]) setSelectedRunId(feed.runs[0].id);
   }, [compact, tab, feed.workflows, feed.runs, selectedWorkflowId, selectedRunId]);
+
+  useEffect(() => {
+    const selection = resolveWorkflowFocus(
+      { runId: state.workflowFocusRunId, workflowId: state.workflowFocusWorkflowId },
+      feed.runs,
+      feed.loading,
+    );
+    if (!selection || selection.kind === "wait") return;
+    setStudio(null);
+    setConsoleOpen(false);
+    setTab("runs");
+    setSearch("");
+    setWorkflowFilters(defaultWorkflowFilters());
+    setRunFilters(defaultRunFilters());
+    setFilterOpen(false);
+    setMenuOpen(false);
+    setDialog(null);
+    setConflict(null);
+    setCancelReason("");
+    setSelectedStep(null);
+    setVisibleRuns(PAGE_SIZE);
+    if (selection.kind === "missing") {
+      skipAutoSelect.current = true;
+      setSelectedWorkflowId(undefined);
+      setSelectedRunId(undefined);
+      setMobileDetail(false);
+    } else {
+      setSelectedWorkflowId(selection.workflowId);
+      setSelectedRunId(selection.runId);
+      setMobileDetail(true);
+    }
+    dispatch({ type: "workflowFocusConsumed" });
+  }, [state.workflowFocusRunId, state.workflowFocusWorkflowId, feed.loading, feed.runs, dispatch]);
 
   const changeTab = (next: Tab) => {
     setTab(next);

@@ -1208,6 +1208,7 @@
   "notifications.status.failed": "Failed",
   "notifications.status.deferred": "Deferred",
   "notifications.status.spend": "Spend",
+  "notifications.status.workflowWaiting": "Workflow waiting",
   "notifications.status.brief": "Brief",
   "notifications.status.notice": "Notice",
   "settings.roomTurns.title": "Group turns",

@@ -32,6 +32,10 @@ export function openNotificationTarget(
   state: NotificationRoutingState,
   threadsShown: boolean,
 ) {
+  if (target.workflowRunId) {
+    dispatch({ type: "showWorkflowRun", runId: target.workflowRunId });
+    return;
+  }
   // A room notification carries the asker bot with the room's thread id; switching the bot to it would 404.
   const group = state.groups.find(
     (candidate) =>

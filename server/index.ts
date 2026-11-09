@@ -189,6 +189,7 @@ import {
 import { serveStatic } from "./static-files.ts";
 import { startUpkeep } from "./host/start-upkeep.ts";
 import { createWorkflowHost } from "./host/workflows.ts";
+import { createWorkflowHoldNotifier } from "./workflows/hold-notifier.ts";
 import { ComputerControl } from "./computer-control.ts";
 import { resetPathCache } from "./env-path.ts";
 import { registerEnginesBinDir } from "./engine-install.ts";
@@ -2904,11 +2905,19 @@ const workflows = createWorkflowHost({
   broadcast: (frame) => broadcast(frame, { adminOnly: true }),
   interrupt: (botId, threadId) => { void interruptDirectThread(botId, threadId, "workflow cancelled"); },
   openCards: (threadId) => openWorkflowCards(threadId),
-  onRun: (run) => routines?.noteWorkflowRun(run),
+  onRun: (run) => { routines?.noteWorkflowRun(run); notifyWorkflowHold(run); },
   skillOptions: (botId) => {
     const bot = store.bot(botId);
     return bot ? workflowSkillOptionsFor(bot) : undefined;
   },
+});
+const notifyWorkflowHold = createWorkflowHoldNotifier({
+  bot: (id) => {
+    const bot = store.bot(id);
+    return bot ? { ...bot, threadId: botMainThread(id) ?? bot.threadId } : undefined;
+  },
+  workflow: (id, version) => workflows.store.workflow(id, version),
+  send: (notification, options) => notify(notification, options),
 });
 ROUTES.push(workflows.routes);
 const { cloudLendingTurn, cloudLendingRefusalNotice, cloudLendingRefusal, cloudThreadStarters, cloudLendingView, cloudReportFromOthers, roomTurnStarted, roomTurnEnded } = createCloudLendingTurns({
@@ -5141,9 +5150,12 @@ const providerLabel = (provider: string): string => {
 const quietTurnThreads = new Set<string>();
 const QUIET_TURN_NEWS: ReadonlySet<Notification["kind"]> = new Set(["done", "turn-failed", "incident"]);
 
-function notify(notification: Notification | null) {
+function notify(notification: Notification | null, options: { adminOnly?: boolean } = {}) {
   if (notification && QUIET_TURN_NEWS.has(notification.kind) && quietTurnThreads.has(notification.threadId)) return;
-  if (notification) { broadcast({ kind: "notify", notification: logNotification(notification) }); teamOwners.notified(notification); }
+  if (notification) {
+    broadcast({ kind: "notify", notification: logNotification(notification) }, options);
+    if (!options.adminOnly) teamOwners.notified(notification);
+  }
 }
 
 const roomTurnLevels = createRoomTurnLevels();

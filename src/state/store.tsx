@@ -591,6 +591,8 @@ export interface AppState {
   routineRuns: RoutineRun[];
   routinesLoadState: "loading" | "ready" | "error";
   routinesFocus: { section?: "schedule" | "logs"; view?: "calendar" | "list"; botId?: string; routineId?: string; runStatus?: RoutineRunStatusFilter; nonce: number };
+  workflowFocusRunId?: string;
+  workflowFocusWorkflowId?: string;
   webhooks: WebhookTrigger[];
   webhookAttempts: WebhookAttempt[];
   webhookIngress: WebhookIngressStatus | null;
@@ -669,6 +671,8 @@ export type Action =
   | { type: "showRoutines"; section?: "schedule" | "logs"; view?: "calendar" | "list"; botId?: string; routineId?: string; runStatus?: RoutineRunStatusFilter }
   | { type: "showTeamMap" } | { type: "showWebPanel"; id: string }
   | { type: "showWorkflowConsole" }
+  | { type: "showWorkflowRun"; runId: string; workflowId?: string }
+  | { type: "workflowFocusConsumed" }
   | { type: "showFiles"; suggest?: string[] }
   | { type: "showUsage" }
   | { type: "showChat" }
@@ -1010,6 +1014,24 @@ export function reducer(state: AppState, action: Action): AppState {
         appSettingsOpen: false,
         pluginsOpen: false,
       };
+    case "showWorkflowRun":
+      return {
+        ...state,
+        activeView: "workflow-console",
+        workflowFocusRunId: action.runId,
+        workflowFocusWorkflowId: action.workflowId,
+        settingsOpen: false,
+        computerOpen: false,
+        inspectorOpen: false,
+        activityOpen: false,
+        notificationsOpen: false,
+        appSettingsOpen: false,
+        pluginsOpen: false,
+      };
+    case "workflowFocusConsumed":
+      return state.workflowFocusRunId === undefined && state.workflowFocusWorkflowId === undefined
+        ? state
+        : { ...state, workflowFocusRunId: undefined, workflowFocusWorkflowId: undefined };
     case "showChat":
       return state.activeView === "chat" ? state : { ...state, activeView: "chat" };
     case "showTeamMap":
@@ -2331,7 +2353,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     };
 
     const wrapped: React.Dispatch<Action> = (action) => {
-      if (["select", "newTask", "switchTask", "newGroupTask", "switchGroupTask", "showChat", "showRoutines", "showTeamMap", "showFiles", "showUsage", "showWebPanel", "showWorkflowConsole"].includes(action.type)) selectionRevision.current++;
+      if (["select", "newTask", "switchTask", "newGroupTask", "switchGroupTask", "showChat", "showRoutines", "showTeamMap", "showFiles", "showUsage", "showWebPanel", "showWorkflowConsole", "showWorkflowRun"].includes(action.type)) selectionRevision.current++;
       // Pin before any await or optimistic state change.
       action = pinBotThreadAction(action, stateRef.current.bots);
       if (action.type === "taskSwitched") action = { ...action, bot: withTaskWrites(action.bot) as Bot };
