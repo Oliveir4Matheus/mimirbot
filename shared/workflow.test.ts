@@ -301,10 +301,20 @@ describe("script steps and flow edges", () => {
   });
 
   it("rejects a script name that is a path or another extension", () => {
-    for (const run of ["../validar.mjs", "sub/validar.mjs", "validar.sh", "Validar.mjs", ""]) {
+    for (const run of ["../validar.mjs", "sub/validar.mjs", "validar.sh", "validar.rb", "validar.pyc", "Validar.mjs", ""]) {
       const workflow = branchWorkflow();
       (workflow.steps[1] as Record<string, unknown>).run = run;
       expect(issues(workflow)).toContain("steps.1.run");
+    }
+  });
+
+  it("accepts JavaScript, TypeScript and Python script names", () => {
+    for (const run of ["validar.mjs", "validar.js", "validar.ts", "validar.py"]) {
+      const workflow = branchWorkflow();
+      (workflow.steps[1] as Record<string, unknown>).run = run;
+      expect(issues(workflow)).toEqual([]);
+      const parsed = workflowDefinitionSchema.parse(workflow);
+      expect(parsed.steps[1]!.kind === "script" && parsed.steps[1]!.run).toBe(run);
     }
   });
 

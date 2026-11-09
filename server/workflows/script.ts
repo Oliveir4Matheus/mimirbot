@@ -1,5 +1,6 @@
-// Runs one script step. The script is a local Node process with the step folder
-// as cwd: no shell, a closed environment, a hard timeout and captured output.
+// Runs one script step as a local process with the step folder as cwd: no
+// shell, a closed environment, a hard timeout and captured output. The file
+// extension picks the runtime (Node, Node with type stripping, or Python).
 // It gets the same user permissions as the app; this is not a sandbox.
 import { spawn, type ChildProcess } from "node:child_process";
 
@@ -24,6 +25,17 @@ export interface WorkflowScriptHandle {
 
 const OUTPUT_KEEP = 8 * 1024;
 const ERROR_KEEP = 2_000;
+
+/** The interpreter and arguments for a script, chosen by its extension. */
+export function workflowScriptCommand(scriptPath: string): { command: string; args: string[] } {
+  const lower = scriptPath.toLowerCase();
+  if (lower.endsWith(".py")) {
+    const python = process.env.WORKFLOW_PYTHON || (process.platform === "win32" ? "python" : "python3");
+    return { command: python, args: [scriptPath] };
+  }
+  if (lower.endsWith(".ts")) return { command: process.execPath, args: ["--experimental-strip-types", scriptPath] };
+  return { command: process.execPath, args: [scriptPath] };
+}
 
 function scriptEnv(options: WorkflowScriptOptions): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = {
@@ -50,9 +62,10 @@ const tail = (value: string): string => value.trim().slice(-ERROR_KEEP);
 
 export function runWorkflowScript(options: WorkflowScriptOptions): WorkflowScriptHandle {
   const timeoutMs = Math.min(Math.max(options.timeoutMs, 1_000), WORKFLOW_SCRIPT_TIMEOUT_MAX_MS);
+  const { command, args } = workflowScriptCommand(options.scriptPath);
   let child: ChildProcess;
   try {
-    child = spawn(process.execPath, [options.scriptPath], {
+    child = spawn(command, args, {
       cwd: options.stepDir,
       env: scriptEnv(options),
       shell: false,
@@ -105,7 +118,13 @@ export function runWorkflowScript(options: WorkflowScriptOptions): WorkflowScrip
       stderr = appendCapped(stderr, chunk, ERROR_KEEP);
     });
     child.on("error", (error) => {
-      settle({ ok: false, error: `could not start the script: ${error.message}` });
+      const missing = (error as NodeJS.ErrnoException).code === "ENOENT";
+      settle({
+        ok: false,
+        error: missing
+          ? `could not find ${command} on PATH to run this script`
+          : `could not start the script: ${error.message}`,
+      });
     });
     child.on("close", (code, signal) => {
       if (timedOut) {

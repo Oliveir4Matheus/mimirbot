@@ -448,6 +448,29 @@ export function draftProblem(draft: StudioDraft, botIds: ReadonlySet<string>): D
   return undefined;
 }
 
+export type ScriptLanguage = "javascript" | "typescript" | "python";
+
+/** The Studio language a script file name points at. */
+export function scriptLanguageOf(run: string): ScriptLanguage {
+  if (run.endsWith(".py")) return "python";
+  if (run.endsWith(".ts")) return "typescript";
+  return "javascript";
+}
+
+/** The same script under another language, keeping its base name. */
+export function scriptNameForLanguage(run: string, language: ScriptLanguage): string {
+  const extension = language === "python" ? "py" : language === "typescript" ? "ts" : "mjs";
+  return `${run.replace(/\.(mjs|js|ts|py)$/, "")}.${extension}`;
+}
+
+/** Move a script's content to its new file name, leaving no stale copy behind. */
+export function renameScript(scripts: Record<string, string>, from: string, to: string): Record<string, string> {
+  if (from === to) return scripts;
+  const next = { ...scripts, [to]: scripts[from] ?? DEFAULT_SCRIPT };
+  delete next[from];
+  return next;
+}
+
 export function resultOf(step: WorkflowStep): string | undefined {
   return step.kind === "condition" ? undefined : step.result;
 }

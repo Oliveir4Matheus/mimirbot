@@ -16,7 +16,7 @@ import { bezier, entryHit, noteAnchor, noteLinkTarget, outputPoint, type Point }
 import {
   CARD_HEIGHT, CARD_WIDTH, DEFAULT_SCRIPT, containedBy, connect, createContainer, createNote, createStep,
   disconnect, draftProblem, fromDefinition, moveContainer, moveNode, moveNote, newDraft,
-  removeContainer, removeNote, removeStep, renameContainer, resizeContainer, resizeNote,
+  removeContainer, removeNote, removeStep, renameContainer, renameScript, resizeContainer, resizeNote,
   toDefinition, updateNote, updateStep, type StudioBranch, type StudioDraft, type StudioKind, type StudioSelection,
 } from "./studio-model";
 
@@ -598,6 +598,7 @@ export function WorkflowStudioPage({ workflowId, department, onBack, onSaved }: 
             scripts={scripts}
             onChange={(patch) => edit((current) => updateStep(current, balloonStep.id, patch))}
             onScript={(name, content) => setScripts((current) => ({ ...current, [name]: content }))}
+            onRenameScript={(from, to) => setScripts((current) => renameScript(current, from, to))}
             onToast={(key) => showToast(t(key))}
             onDisconnect={(branch) => edit((current) => disconnect(current, balloonStep.id, branch))}
             onClose={() => setBalloon(null)}

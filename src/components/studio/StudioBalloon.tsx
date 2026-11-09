@@ -7,11 +7,11 @@ import { Select } from "@/components/Select";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/cn";
 import type { BranchKey } from "./StudioCard";
-import { conditionOpLabel, nextConditionValue, outputsOf, type StudioBranch, type StudioDraft } from "./studio-model";
+import { conditionOpLabel, nextConditionValue, outputsOf, scriptLanguageOf, scriptNameForLanguage, type StudioBranch, type StudioDraft } from "./studio-model";
 
 const MAX_PREVIEW = 512_000;
 
-const READ = { instructions: [".txt", ".md", ".json"], context: [".txt", ".md", ".json", ".csv"], script: [".js", ".mjs", ".txt"] };
+const READ = { instructions: [".txt", ".md", ".json"], context: [".txt", ".md", ".json", ".csv"], script: [".js", ".mjs", ".ts", ".py", ".txt"] };
 
 const BRANCH_TITLE: Record<BranchKey, LocaleKey> = {
   instructions: "studio.branch.instructions",
@@ -31,7 +31,7 @@ const BRANCH_TITLE: Record<BranchKey, LocaleKey> = {
 
 export interface BalloonBot { id: string; name: string; section?: string }
 
-export function StudioBalloon({ draft, step, branch, anchor, bots, scripts, onChange, onScript, onToast, onDisconnect, onClose }: {
+export function StudioBalloon({ draft, step, branch, anchor, bots, scripts, onChange, onScript, onRenameScript, onToast, onDisconnect, onClose }: {
   draft: StudioDraft;
   step: WorkflowStep;
   branch: BranchKey;
@@ -40,6 +40,7 @@ export function StudioBalloon({ draft, step, branch, anchor, bots, scripts, onCh
   scripts: Record<string, string>;
   onChange: (patch: Partial<WorkflowStep>) => void;
   onScript: (name: string, content: string) => void;
+  onRenameScript: (from: string, to: string) => void;
   onToast: (key: LocaleKey) => void;
   onDisconnect: (branch: StudioBranch) => void;
   onClose: () => void;
@@ -176,8 +177,20 @@ export function StudioBalloon({ draft, step, branch, anchor, bots, scripts, onCh
         {step.kind === "script" && branch === "script" && (
           <>
             <Field label={t("studio.script.language")}>
-              <Select className="w-full" size="sm" value="javascript" disabled>
+              <Select
+                className="w-full"
+                size="sm"
+                value={scriptLanguageOf(step.run)}
+                onChange={(event) => {
+                  const next = scriptNameForLanguage(step.run, event.target.value as "javascript" | "typescript" | "python");
+                  if (next === step.run) return;
+                  onRenameScript(step.run, next);
+                  onChange({ run: next } as Partial<WorkflowStep>);
+                }}
+              >
                 <option value="javascript">JavaScript</option>
+                <option value="typescript">TypeScript</option>
+                <option value="python">Python</option>
               </Select>
             </Field>
             <Field label={t("studio.script.code")} help={t("studio.script.codeHelp")}>

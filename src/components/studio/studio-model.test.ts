@@ -3,7 +3,8 @@ import { describe, expect, it } from "vitest";
 import { workflowDefinitionSchema } from "../../../shared/workflow";
 import {
   addConditionLine, autoLayout, conditionLines, connect, containedBy, createStep, disconnect, draftProblem, fromDefinition,
-  newDraft, removeConditionLine, removeStep, toDefinition, updateConditionLine, updateConditionMatch, updateNote, type StudioDraft,
+  newDraft, removeConditionLine, removeStep, renameScript, scriptLanguageOf, scriptNameForLanguage, toDefinition,
+  updateConditionLine, updateConditionMatch, updateNote, type StudioDraft,
 } from "./studio-model";
 
 const step = (draft: StudioDraft, kind: "agent" | "script" | "condition", x: number, y: number, botId = "bot-a") =>
@@ -160,6 +161,21 @@ describe("studio model", () => {
     const connected = connect(draft, a!.id, "timeout", b!.id);
     if (!connected.ok) throw new Error(connected.key);
     expect(draftProblem({ ...connected.draft, name: "Test" }, new Set(["bot-a"]))?.key).toBe("studio.needTimeout");
+  });
+
+  it("maps a script extension to a language and keeps the base name", () => {
+    expect(scriptLanguageOf("validar.mjs")).toBe("javascript");
+    expect(scriptLanguageOf("validar.js")).toBe("javascript");
+    expect(scriptLanguageOf("validar.ts")).toBe("typescript");
+    expect(scriptLanguageOf("validar.py")).toBe("python");
+    expect(scriptNameForLanguage("validar.mjs", "typescript")).toBe("validar.ts");
+    expect(scriptNameForLanguage("validar.ts", "python")).toBe("validar.py");
+    expect(scriptNameForLanguage("validar.py", "javascript")).toBe("validar.mjs");
+  });
+
+  it("moves the script content when the language renames the file", () => {
+    expect(renameScript({ "validar.mjs": "const ok = true;" }, "validar.mjs", "validar.py")).toEqual({ "validar.py": "const ok = true;" });
+    expect(renameScript({ "validar.mjs": "same" }, "validar.mjs", "validar.mjs")).toEqual({ "validar.mjs": "same" });
   });
 
   it("starts a condition with one all line and adds, updates and removes lines", () => {

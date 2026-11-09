@@ -10,7 +10,7 @@ export const WORKFLOW_INSTRUCTIONS_MAX = 12_000;
 export const WORKFLOW_PATH_MAX = 200;
 export const WORKFLOW_RETENTION_DEFAULT_DAYS = 90;
 export const WORKFLOW_RETENTION_MAX_DAYS = 3_650;
-/** A script the Workflow can reference: flat name, Node runtime only. */
+/** A script the Workflow can reference: a flat name; the extension picks the runtime. */
 export const WORKFLOW_SCRIPT_MAX_BYTES = 256 * 1024;
 export const WORKFLOW_SCRIPT_TIMEOUT_DEFAULT_MS = 60_000;
 export const WORKFLOW_SCRIPT_TIMEOUT_MAX_MS = 300_000;
@@ -29,7 +29,7 @@ export const WORKFLOW_CONDITION_GROUP_MAX = 64 * 1024;
 export const WORKFLOW_CONDITION_ROWS_MAX = 20;
 
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-const SCRIPT_NAME = /^[a-z0-9][a-z0-9-]{0,62}\.(?:mjs|js)$/;
+const SCRIPT_NAME = /^[a-z0-9][a-z0-9-]{0,62}\.(?:mjs|js|ts|py)$/;
 const RESULT_FIELD = /^[A-Za-z0-9_-]{1,64}(?:\.[A-Za-z0-9_-]{1,64})*$/;
 
 /** C0 controls and DEL: never in a folder or file name the engine writes. */
@@ -45,7 +45,8 @@ export function isWorkflowSlug(value: string): boolean {
   return value.length >= 1 && value.length <= WORKFLOW_SLUG_MAX && SLUG.test(value);
 }
 
-/** The file name a script step points at inside the Workflow's `scripts/` folder. */
+/** The file name a script step points at inside the Workflow's `scripts/` folder.
+ * The extension picks the runtime: `.mjs`/`.js` Node, `.ts` Node strip-types, `.py` Python. */
 export function isWorkflowScriptName(value: string): boolean {
   return value.length <= 67 && SCRIPT_NAME.test(value);
 }
@@ -174,7 +175,7 @@ const botStepSchema = stepBaseSchema.extend({
 const scriptStepSchema = stepBaseSchema.extend({
   kind: z.literal("script"),
   /** A file name inside the Workflow's `scripts/` folder, never a path. */
-  run: z.string().refine(isWorkflowScriptName, { message: "must be a flat .mjs or .js file name" }),
+  run: z.string().refine(isWorkflowScriptName, { message: "must be a flat .mjs, .js, .ts or .py file name" }),
   timeoutMs: z.number().int().min(1_000).max(WORKFLOW_SCRIPT_TIMEOUT_MAX_MS).default(WORKFLOW_SCRIPT_TIMEOUT_DEFAULT_MS),
   mode: stepModeSchema,
 });

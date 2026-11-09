@@ -15,9 +15,10 @@ Atualizado em 08/11/2026.
 | F3.1 | Editor visual Workflow Studio v0.5 | Concluída (08/11/2026) |
 | F3.1.1 | Correções do Studio: `onSuccess`, `onFailure`/`onTimeout` na UI, fim explícito e desconectar | Concluída (09/11/2026) |
 | F3.2 | Fatia 1: modo Manual por etapa (pausa antes da etapa) | Concluída (09/11/2026) |
-| F3.2 | Fatia 3: Python/TypeScript no script | Working tree, sem commit (09/11/2026) |
-| F3.2 | Fatia 4: condição E/OU no IF/Else | Concluída no working tree (09/11/2026) |
-| F3.2 | Fatias 2 e 5: ferramentas por etapa e QA do canvas | Pendentes |
+| F3.2 | Fatia 3: Python/TypeScript no script | Concluída (09/11/2026) |
+| F3.2 | Fatia 4: condição E/OU no IF/Else | Concluída (09/11/2026) |
+| F3.2 | Fatia 2: ferramentas por etapa | Adiada (§9.5 do handoff) |
+| F3.2 | Fatia 5: QA do canvas | Pendente |
 | F3.3 | Componente `kind: "loop"` (repetição estruturada) | Planejada |
 | F3 | Editor visual e Team Cloud/VM | Em andamento |
 
@@ -243,6 +244,15 @@ Desvios deliberados do protótipo v0.5 nesta fatia:
 - Verificação: `pnpm typecheck`, `pnpm lint` e `pnpm i18n:check` passaram. Testes focados: `shared/workflow.test.ts`, `server/workflows/state.test.ts`, `engine.test.ts`, `retention.test.ts`, `server/routes/workflows.test.ts`, `server/routines.test.ts`, `src/components/studio/studio-model.test.ts` e `RoutineCalendarPage.simple.test.ts` — **360 testes** passaram.
 - Fixture isolado (`OMB_PORT=8931`, `OMB_DATA_DIR`/`HOME` temporários, servidor real e script real): a etapa manual parou a run em `waiting_manual` sem thread (`hold.step = 0`, etapa `pending`); `DELETE` respondeu 409; Continuar retomou e concluiu com `result.json`; o segundo clique respondeu 409; reiniciar o servidor manteve a run parada e o Continuar seguinte concluiu; rotina com primeira etapa manual foi recusada no `POST` e no `PATCH` (400). Evidência em `/tmp/opencode/f32-manual/evidence/`.
 
+### F3.2 — fatia 3: Python/TypeScript (09/11/2026)
+
+- Contrato: `isWorkflowScriptName` aceita `.mjs`, `.js`, `.ts` e `.py`; nenhum campo novo, a extensão é o contrato. O schema recusa caminho e qualquer outra extensão.
+- Executor: `workflowScriptCommand` escolhe o runtime pela extensão. `.mjs`/`.js` usam `process.execPath`; `.ts` usa `process.execPath --experimental-strip-types`; `.py` usa `WORKFLOW_PYTHON` ou `python3` (`python` no Windows). O ambiente, o `cwd` da etapa e o timeout continuam os mesmos; no Electron, `ELECTRON_RUN_AS_NODE=1` continua sendo aplicado. Um Python ausente falha com `could not find <comando> on PATH to run this script`.
+- Studio: o seletor **Linguagem** ficou habilitado para JavaScript, TypeScript e Python. Trocar a linguagem renomeia `run` mantendo o nome base e move o conteúdo do editor para o novo arquivo (`renameScript`), sem deixar cópia no nome antigo.
+- F2: o painel da etapa mostra o runtime derivado da extensão.
+- Verificação: `pnpm typecheck`, `pnpm lint` e `pnpm i18n:check` passaram. Testes: `shared/workflow.test.ts` (aceita as quatro extensões e recusa as demais), `server/workflows/script.test.ts` (executa `.ts` e `.py` reais, escolhe o comando por extensão e nomeia o Python ausente) e `src/components/studio/studio-model.test.ts` (linguagem, nome base e conteúdo preservado no rename) — **76 testes** no conjunto focado.
+- Fixture isolado (`OMB_PORT=35645`, `OMB_DATA_DIR`/`HOME` em `/tmp/opencode/f32-script`, servidor real): um Workflow com `preparar.ts` seguido de `fechar.py` terminou `succeeded`; as duas etapas gravaram e tiveram seus `result.json` verificados. Evidência em `/tmp/opencode/f32-script/evidence/` (`README.txt`, `results.json`, `run.json`, `output/preparar.json`, `output/fechar.json`, `verify.mjs`, `verify-output.txt` e `server.log`).
+
 ### F3.2 — fatia 4: condição E/OU (09/11/2026)
 
 - Contrato: a etapa `condition` vira um grupo com `match: "all" | "any"` (default `"all"`) e `conditions` de 1..20 linhas `{ field, op, value? }`. O legado (`field`, `op`, `value` soltos) é normalizado no preprocess de `workflowStepSchema` para uma linha + `all`; o `conditionStepSchema` não foi envolvido em `z.preprocess` para preservar o `discriminatedUnion`. Cada valor continua limitado a 4 KB; o grupo inteiro, a 64 KB. Negação continua sendo trocar as rotas True/False.
@@ -283,7 +293,7 @@ Para a aprovação longa, a receita com o fixture isolado e o fake engine está 
 
 ## Próximo passo
 
-1. **F3.2:** fatias 1 (Manual) e 4 (condição E/OU) concluídas; a fatia 3 (Python/TypeScript) está no working tree. Faltam ferramentas restritas por etapa e o QA do canvas (arraste de nota/container; minimapa fora da spec).
+1. **F3.2:** fatias 1 (Manual), 3 (Python/TypeScript) e 4 (condição E/OU) concluídas. Falta só o **QA do canvas** (arraste de nota/container; minimapa fora da spec). A fatia 2 (ferramentas por etapa) foi adiada por decisão do dono e está registrada em `docs/superpowers/specs/2026-11-09-workflow-f32.md` §9.5.
 2. **F3.2.1:** replay a partir de uma etapa — pegar uma run já terminada e criar uma execução nova começando em `fromStep`. Hoje não existe; "Rodar de novo" sempre começa do zero. Decisões em aberto no handoff da F3.2.
 3. **record→promote** (transformar uma conversa ou sequência que deu certo em Workflow) — pulado por decisão do dono nesta rodada.
 4. **Team Cloud/VM** (F3).

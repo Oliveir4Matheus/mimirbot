@@ -96,7 +96,10 @@ export function StepPanel({ workflow, step, index, botName, onClose }: {
                 <span className="font-mono">{step.run}</span>
               </div>
               <div className="mt-1.5 text-[10px] text-ink-tertiary">
-                {t("workflows.step.scriptRuntime", { seconds: Math.round(step.timeoutMs / 1000) })}
+                {t("workflows.step.scriptRuntime", {
+                  runtime: step.run.endsWith(".py") ? "Python" : step.run.endsWith(".ts") ? "TypeScript" : "Node",
+                  seconds: Math.round(step.timeoutMs / 1000),
+                })}
               </div>
               <div className="mt-1.5 text-[10px] text-ink-tertiary">
                 {t("workflows.step.mode")}: {step.mode === "manual" ? t("workflows.step.modeManual") : t("workflows.step.modeAuto")}
