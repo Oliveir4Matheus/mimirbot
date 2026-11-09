@@ -368,12 +368,12 @@ export function EventEditor({
   };
   const [routineTarget, setRoutineTarget] = useState<RoutineTarget>(existingRoutine?.target ?? "bot");
   const [workflowId, setWorkflowId] = useState(existingRoutine?.workflowId ?? "");
-  const [workflowOptions, setWorkflowOptions] = useState<Array<{ id: string; name: string; version: number; department: string }>>([]);
+  const [workflowOptions, setWorkflowOptions] = useState<Array<{ id: string; name: string; version: number; department: string; steps?: Array<{ kind?: string; mode?: string }> }>>([]);
   const [workflowOptionsError, setWorkflowOptionsError] = useState("");
   useEffect(() => {
     if (routineTarget !== "workflow" || workflowOptions.length > 0) return;
     let live = true;
-    api<{ workflows: Array<{ id: string; name: string; version: number; department: string }> }>("/api/workflows")
+    api<{ workflows: Array<{ id: string; name: string; version: number; department: string; steps?: Array<{ kind?: string; mode?: string }> }> }>("/api/workflows")
       .then((data) => { if (live) setWorkflowOptions(data.workflows); })
       .catch(() => { if (live) setWorkflowOptionsError(t("routines.editor.workflowsUnavailable")); });
     return () => { live = false; };
@@ -395,6 +395,12 @@ export function EventEditor({
   const roomMembers = selectedRoom ? activeRoomMembers(selectedRoom, state.bots) : bots;
   const isRoomGoal = kind === "routine" && routineTarget === "room-goal";
   const isWorkflow = kind === "routine" && routineTarget === "workflow";
+  const chosenWorkflow = workflowOptions.find((workflow) => workflow.id === workflowId);
+  const firstWorkflowStep = chosenWorkflow?.steps?.[0];
+  const workflowStartsManual = isWorkflow
+    && firstWorkflowStep !== undefined
+    && firstWorkflowStep.kind !== "condition"
+    && firstWorkflowStep.mode === "manual";
   const cloudHome = state.config?.cloudHome === true;
   const at = fromLocalDateAndTime(date, startTime, existingRoutine || existingCall ? initialAt : undefined);
   const endAt = at + durationMinutes * 60_000;
@@ -568,6 +574,7 @@ export function EventEditor({
     name.trim()
     && (kind === "call" || description.trim() || isWorkflow)
     && (!isWorkflow || Boolean(workflowId))
+    && !workflowStartsManual
     && (!lockedBotId || botIds[0] === lockedBotId)
     && (kind === "call"
       ? botIds.length > 0
@@ -637,6 +644,7 @@ export function EventEditor({
                       <option key={workflow.id} value={workflow.id}>{workflow.name} · v{workflow.version} · {workflow.department}</option>
                     ))}
                   </Select>
+                  {workflowStartsManual && <div className="mt-2 text-[11.5px] text-warning">{t("routines.editor.workflowManualFirst")}</div>}
                   {workflowOptionsError && <div className="mt-2 text-[11.5px] text-warning">{workflowOptionsError}</div>}
                 </div>
               )}

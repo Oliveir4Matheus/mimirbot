@@ -156,12 +156,16 @@ const stepBaseSchema = z.object({
   when: z.array(whenSchema).min(1).max(WORKFLOW_BRANCH_MAX).optional(),
 });
 
+/** How an executable step starts: on its own, or only after a person continues it. */
+const stepModeSchema = z.enum(["auto", "manual"]).default("auto");
+
 const botStepSchema = stepBaseSchema.extend({
   kind: z.literal("bot"),
   botId: z.string().min(1).max(200),
   instructions: z.string().trim().min(1).max(WORKFLOW_INSTRUCTIONS_MAX),
   /** 0 means the bot's turn has no limit. An approval pause stops the clock. */
   timeoutMs: z.number().int().min(0).max(WORKFLOW_STEP_TIMEOUT_MAX_MS).default(WORKFLOW_BOT_TIMEOUT_DEFAULT_MS),
+  mode: stepModeSchema,
 });
 
 const scriptStepSchema = stepBaseSchema.extend({
@@ -169,6 +173,7 @@ const scriptStepSchema = stepBaseSchema.extend({
   /** A file name inside the Workflow's `scripts/` folder, never a path. */
   run: z.string().refine(isWorkflowScriptName, { message: "must be a flat .mjs or .js file name" }),
   timeoutMs: z.number().int().min(1_000).max(WORKFLOW_SCRIPT_TIMEOUT_MAX_MS).default(WORKFLOW_SCRIPT_TIMEOUT_DEFAULT_MS),
+  mode: stepModeSchema,
 });
 
 export const conditionOps = ["equals", "not_equals", "exists", "contains", "gt", "gte", "lt", "lte"] as const;
@@ -349,7 +354,13 @@ export function isConditionStep(step: WorkflowStep): step is ConditionWorkflowSt
   return step.kind === "condition";
 }
 
-export type WorkflowRunStatus = "queued" | "running" | "waiting_approval" | "succeeded" | "failed" | "cancelled";
+/** Whether a person must continue the Workflow before its first step can run. A routine cannot start such a Workflow. */
+export function workflowStartsManual(definition: Pick<WorkflowDefinition, "steps">): boolean {
+  const first = definition.steps[0];
+  return first !== undefined && first.kind !== "condition" && first.mode === "manual";
+}
+
+export type WorkflowRunStatus = "queued" | "running" | "waiting_manual" | "waiting_approval" | "succeeded" | "failed" | "cancelled";
 export type WorkflowStepStatus = "pending" | "running" | "succeeded" | "failed" | "skipped";
 
 export interface WorkflowRunStep {
@@ -371,6 +382,12 @@ export interface WorkflowRunPause {
   question: string;
   cardIds: string[];
   askedAt: number;
+}
+
+/** Where a manual step holds the run: the step index, and when the person was asked to continue. */
+export interface WorkflowRunHold {
+  step: number;
+  since: number;
 }
 
 /** A routine started the run instead of a person or a bot conversation. */
@@ -399,6 +416,8 @@ export interface WorkflowRun {
   startedAt?: number;
   finishedAt?: number;
   pause?: WorkflowRunPause;
+  /** Set while a manual step waits for a person to continue it. */
+  hold?: WorkflowRunHold;
   /** The last step's parsed result.json, when it declared one. */
   result?: unknown;
   /** Why the run stopped: the verified failure, or the person's cancellation reason. */
@@ -430,6 +449,11 @@ const workflowRunPauseSchema = z.object({
   askedAt: z.number().int().nonnegative(),
 });
 
+const workflowRunHoldSchema = z.object({
+  step: z.number().int().nonnegative(),
+  since: z.number().int().nonnegative(),
+});
+
 const workflowRunSnapshotSchema = z.object({
   name: z.string().trim().min(1).max(80),
   steps: z.array(z.object({
@@ -444,7 +468,7 @@ export const workflowRunSchema: z.ZodType<WorkflowRun> = z.object({
   workflowId: z.uuid(),
   workflowVersion: z.number().int().min(1),
   department: z.string().trim().min(1).max(60),
-  status: z.enum(["queued", "running", "waiting_approval", "succeeded", "failed", "cancelled"]),
+  status: z.enum(["queued", "running", "waiting_manual", "waiting_approval", "succeeded", "failed", "cancelled"]),
   currentStep: z.number().int().nonnegative(),
   steps: z.array(workflowRunStepSchema).min(1).max(WORKFLOW_STEP_MAX),
   createdAt: z.number().int().nonnegative(),
@@ -452,6 +476,7 @@ export const workflowRunSchema: z.ZodType<WorkflowRun> = z.object({
   startedAt: z.number().int().nonnegative().optional(),
   finishedAt: z.number().int().nonnegative().optional(),
   pause: workflowRunPauseSchema.optional(),
+  hold: workflowRunHoldSchema.optional(),
   result: z.unknown().optional(),
   error: z.string().optional(),
   requestedBy: z.object({ botId: z.string().min(1), threadId: z.string().min(1) }).optional(),

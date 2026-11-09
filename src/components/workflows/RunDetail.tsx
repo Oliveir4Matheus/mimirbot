@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, ArrowLeft, ArrowRight, Check, ChevronDown, Copy, FileText, Hourglass, RotateCcw, Trash2, X } from "lucide-react";
+import { AlertTriangle, ArrowLeft, ArrowRight, Check, ChevronDown, Copy, FileText, Hourglass, Pause, Play, RotateCcw, Trash2, X } from "lucide-react";
 
 import type { WorkflowDefinition, WorkflowRun, WorkflowRunStep, WorkflowStepStatus } from "../../../shared/workflow";
 import { copyText } from "@/lib/copy-text";
@@ -8,12 +8,13 @@ import { t } from "@/lib/i18n";
 import { formatDateTime, formatDuration, isActiveStatus, relativeTime, runDurationLabel, stepStatusLabel } from "@/lib/workflow-format";
 import { StatusChip } from "./StatusChip";
 
-type DisplayStatus = WorkflowStepStatus | "waiting_approval";
+type DisplayStatus = WorkflowStepStatus | "waiting_manual" | "waiting_approval";
 
 function StepIcon({ status }: { status: DisplayStatus }) {
   if (status === "succeeded") return <Check size={13} strokeWidth={2.4} aria-hidden="true" />;
   if (status === "failed") return <X size={13} strokeWidth={2.4} aria-hidden="true" />;
   if (status === "skipped") return <span className="text-[13px] leading-none">/</span>;
+  if (status === "waiting_manual") return <Pause size={12} strokeWidth={2.6} aria-hidden="true" />;
   if (status === "waiting_approval") return <Hourglass size={12} aria-hidden="true" />;
   if (status === "running") return <span className="size-2 animate-pulse rounded-full bg-current" aria-hidden="true" />;
   return <span className="size-[7px] rounded-full border border-current" aria-hidden="true" />;
@@ -25,6 +26,7 @@ const STEP_TONE: Record<DisplayStatus, string> = {
   succeeded: "border-[#D0ECD9] bg-[#EAF8F0] text-[#35A16E]",
   failed: "border-[#F5D6D9] bg-[#FFF0F0] text-[#CB5C63]",
   skipped: "border-hairline bg-raised/30 text-ink-tertiary",
+  waiting_manual: "border-[#F2E4C6] bg-[#FFF7DE] text-[#AA8D47]",
   waiting_approval: "border-[#F2E4C6] bg-[#FFF7DE] text-[#AA8D47]",
 };
 
@@ -35,6 +37,7 @@ function stepTiming(step: WorkflowRunStep, now: number): string {
 }
 
 function stepMeta(step: WorkflowRunStep, status: DisplayStatus, timing: string): string {
+  if (status === "waiting_manual") return t("workflows.run.manualWaitingStart");
   if (status === "waiting_approval") return t("workflows.status.waitingApproval");
   if (status === "running") return `${t("workflows.step.running")}${timing ? ` · ${timing}` : ""}`;
   if (status === "pending" || status === "skipped") return stepStatusLabel(status);
@@ -43,12 +46,13 @@ function stepMeta(step: WorkflowRunStep, status: DisplayStatus, timing: string):
   return timing;
 }
 
-export function RunDetail({ run, workflow, now, botName, onCancel, onDelete, onRerun, onOpenConversation, onBack }: {
+export function RunDetail({ run, workflow, now, botName, onCancel, onContinue, onDelete, onRerun, onOpenConversation, onBack }: {
   run: WorkflowRun;
   workflow?: WorkflowDefinition;
   now: number;
   botName: (botId: string) => string;
   onCancel: () => void;
+  onContinue: () => void;
   onDelete: () => void;
   onRerun: () => void;
   onOpenConversation: (botId: string, threadId: string) => void;
@@ -98,6 +102,8 @@ export function RunDetail({ run, workflow, now, botName, onCancel, onDelete, onR
     return botId ? { botId, threadId: step.threadId } : null;
   };
 
+  const holdIndex = run.hold?.step ?? run.currentStep;
+  const holdStep = run.steps[holdIndex];
   const pausedStep = run.pause
     ? run.steps.find((step) => step.id === run.pause!.stepId) ?? run.steps[run.currentStep]
     : undefined;
@@ -173,6 +179,35 @@ export function RunDetail({ run, workflow, now, botName, onCancel, onDelete, onR
       </header>
 
       <div className="mx-auto w-full max-w-[930px] px-6 pb-[90px] pt-[35px] min-[1101px]:px-12 max-[620px]:px-4">
+        {run.status === "waiting_manual" && (
+          <section className="mb-[30px] rounded-[11px] border border-[#F2E4C6] bg-[#FFFAF0] px-[18px] py-[17px]">
+            <div className="flex items-center gap-2 text-[11px] font-semibold text-[#8A6524]">
+              <Pause size={13} aria-hidden="true" />
+              {t("workflows.run.manualTitle")}
+            </div>
+            <div className="mt-1.5 text-[10.5px] text-[#7A6633]">
+              {t("workflows.run.manualStep", {
+                number: holdIndex + 1,
+                name: holdStep ? nameOf(holdStep, holdIndex) : t("workflows.run.stepNumber", { number: holdIndex + 1 }),
+              })}
+            </div>
+            <p className="mt-3 text-[12px] leading-relaxed text-[#6E5C34]">{t("workflows.run.manualHelp")}</p>
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+              <span className="text-[10.5px] text-[#7A6633]">
+                {t("workflows.run.manualSince", { time: relativeTime(run.hold?.since ?? run.updatedAt, now) })}
+              </span>
+              <button
+                type="button"
+                onClick={onContinue}
+                className="flex h-8 items-center gap-1.5 rounded-[8px] bg-[#8A6524] px-3 text-[11px] font-semibold text-white hover:bg-[#74551D]"
+              >
+                <Play size={12} aria-hidden="true" />
+                {t("workflows.run.continue")}
+              </button>
+            </div>
+          </section>
+        )}
+
         {run.status === "waiting_approval" && run.pause && (
           <section className="mb-[30px] rounded-[11px] border border-[#F2E4C6] bg-[#FFFAF0] px-[18px] py-[17px]">
             <div className="flex items-center gap-2 text-[11px] font-semibold text-[#8A6524]">
@@ -221,7 +256,9 @@ export function RunDetail({ run, workflow, now, botName, onCancel, onDelete, onR
             const name = nameOf(step, index);
             const timing = stepTiming(step, now);
             const conversation = conversationFor(step);
-            const status: DisplayStatus = run.status === "waiting_approval" && run.pause?.stepId === step.id ? "waiting_approval" : step.status;
+            const status: DisplayStatus = run.status === "waiting_manual" && index === holdIndex
+              ? "waiting_manual"
+              : run.status === "waiting_approval" && run.pause?.stepId === step.id ? "waiting_approval" : step.status;
             return (
               <div key={`${step.id}-${index}`} className="relative grid grid-cols-[32px_1fr] gap-3 pb-[22px] last:pb-0">
                 {index < run.steps.length - 1 && <span aria-hidden="true" className="absolute bottom-[2px] left-[12px] top-[26px] border-l border-hairline" />}

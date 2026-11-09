@@ -5,6 +5,7 @@ import {
   isWorkflowRelativePath,
   isWorkflowSlug,
   workflowDefinitionSchema,
+  workflowStartsManual,
   requireMatches,
   requireMismatch,
   resultField,
@@ -220,11 +221,36 @@ describe("script steps and flow edges", () => {
     const parsed = workflowDefinitionSchema.parse(branchWorkflow());
     expect(parsed.steps[0]!.kind).toBe("bot");
     expect(parsed.steps[0]!.kind === "bot" && parsed.steps[0]!.timeoutMs).toBe(0);
+    expect(parsed.steps[0]!.kind === "bot" && parsed.steps[0]!.mode).toBe("auto");
     const script = parsed.steps[1]!;
     expect(script.kind).toBe("script");
     if (script.kind !== "script") throw new Error("expected a script step");
     expect(script.run).toBe("validar.mjs");
     expect(script.timeoutMs).toBe(60_000);
+    expect(script.mode).toBe("auto");
+  });
+
+  it("keeps a manual mode on bot and script steps", () => {
+    const workflow = branchWorkflow();
+    (workflow.steps[0] as Record<string, unknown>).mode = "manual";
+    (workflow.steps[1] as Record<string, unknown>).mode = "manual";
+    const parsed = workflowDefinitionSchema.parse(workflow);
+    expect(parsed.steps[0]!.kind === "bot" && parsed.steps[0]!.mode).toBe("manual");
+    expect(parsed.steps[1]!.kind === "script" && parsed.steps[1]!.mode).toBe("manual");
+    expect(workflowStartsManual(parsed)).toBe(true);
+  });
+
+  it("does not give a condition a mode", () => {
+    const workflow = definition({
+      steps: [
+        { id: "revisar", name: "Review", botId: "bot-b", instructions: "Review.", outputs: [{ path: "decision.json" }], result: "decision.json" },
+        { id: "checar", kind: "condition", name: "Check", from: "revisar", field: "ok", op: "equals", value: true, mode: "manual" },
+      ],
+    });
+    const parsed = workflowDefinitionSchema.parse(workflow);
+    expect(parsed.steps[1]!.kind).toBe("condition");
+    expect(parsed.steps[1] !== undefined && "mode" in parsed.steps[1]).toBe(false);
+    expect(workflowStartsManual(parsed)).toBe(false);
   });
 
   it("treats a step without kind as a bot step", () => {

@@ -39,7 +39,7 @@ const definition = (overrides: Record<string, unknown> = {}): WorkflowDefinition
   ...overrides,
 });
 
-const makeRun = (workflow: WorkflowDefinition, status: "succeeded" | "running" | "queued" | "waiting_approval", finishedAgo?: number) => {
+const makeRun = (workflow: WorkflowDefinition, status: "succeeded" | "running" | "queued" | "waiting_manual" | "waiting_approval", finishedAgo?: number) => {
   const run = store.createRun(workflow);
   const finishedAt = finishedAgo === undefined ? undefined : NOW - finishedAgo;
   store.writeRun({
@@ -64,16 +64,17 @@ describe("pruneWorkflowRuns", () => {
     expect(store.readRun(recent)).toBeDefined();
   });
 
-  it("never touches a running, queued or paused run, however old", () => {
+  it("never touches a running, queued, manual or paused run, however old", () => {
     const workflow = store.saveWorkflow(definition({ retentionDays: 1 }));
     if (!workflow.ok) throw new Error(workflow.error);
     const running = makeRun(workflow.workflow, "running");
     const queued = makeRun(workflow.workflow, "queued");
+    const manual = makeRun(workflow.workflow, "waiting_manual", 400 * DAY);
     const paused = makeRun(workflow.workflow, "waiting_approval", 400 * DAY);
     const result = pruneWorkflowRuns({ store, now: () => NOW });
     expect(result.removed).toEqual([]);
-    expect(result.kept).toBe(3);
-    for (const id of [running, queued, paused]) expect(store.readRun(id)).toBeDefined();
+    expect(result.kept).toBe(4);
+    for (const id of [running, queued, manual, paused]) expect(store.readRun(id)).toBeDefined();
   });
 
   it("uses the 90-day default for a Workflow whose definition is gone", () => {

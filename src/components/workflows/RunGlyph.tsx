@@ -1,4 +1,4 @@
-import { Ban, Check, Clock, Hourglass, Play, Workflow, X } from "lucide-react";
+import { Ban, Check, Clock, Hourglass, Pause, Play, Workflow, X } from "lucide-react";
 
 import type { WorkflowRunStatus } from "../../../shared/workflow";
 import { runStatusLabel } from "@/lib/workflow-format";
@@ -11,6 +11,7 @@ interface Tone {
 const TONE: Record<WorkflowRunStatus, Tone> = {
   queued: { accent: "#8795AC", soft: "#F0F3F8" },
   running: { accent: "#397EE7", soft: "#EAF2FF" },
+  waiting_manual: { accent: "#C5923A", soft: "#FFF7E5" },
   waiting_approval: { accent: "#C5923A", soft: "#FFF7E5" },
   succeeded: { accent: "#2EA574", soft: "#EAF8EF" },
   failed: { accent: "#D35E68", soft: "#FFF0F1" },
@@ -21,6 +22,7 @@ function BadgeIcon({ status }: { status: WorkflowRunStatus }) {
   switch (status) {
     case "queued": return <Clock size={9} strokeWidth={2.7} aria-hidden="true" />;
     case "running": return <Play size={9} strokeWidth={2.7} aria-hidden="true" />;
+    case "waiting_manual": return <Pause size={9} strokeWidth={3} aria-hidden="true" />;
     case "waiting_approval": return <Hourglass size={9} strokeWidth={2.7} aria-hidden="true" />;
     case "succeeded": return <Check size={9} strokeWidth={3} aria-hidden="true" />;
     case "failed": return <X size={9} strokeWidth={3} aria-hidden="true" />;

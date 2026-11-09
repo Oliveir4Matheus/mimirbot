@@ -8,11 +8,12 @@ import { Select } from "@/components/Select";
 import { t } from "@/lib/i18n";
 import type { RunFilters, RunPeriod, Tab, WorkflowFilters, WorkflowSituation, WorkflowSort } from "./types";
 
-const RUN_STATUSES: WorkflowRunStatus[] = ["queued", "running", "waiting_approval", "succeeded", "failed", "cancelled"];
+const RUN_STATUSES: WorkflowRunStatus[] = ["queued", "running", "waiting_manual", "waiting_approval", "succeeded", "failed", "cancelled"];
 
 const statusText = {
   queued: "workflows.status.queued",
   running: "workflows.status.running",
+  waiting_manual: "workflows.status.waitingManual",
   waiting_approval: "workflows.status.waitingApproval",
   succeeded: "workflows.status.succeeded",
   failed: "workflows.status.failed",

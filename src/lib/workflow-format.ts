@@ -2,13 +2,14 @@ import type { WorkflowRunStatus, WorkflowStepStatus } from "../../shared/workflo
 import { activeLocale, t } from "@/lib/i18n";
 
 export function isActiveStatus(status: WorkflowRunStatus): boolean {
-  return status === "queued" || status === "running" || status === "waiting_approval";
+  return status === "queued" || status === "running" || status === "waiting_manual" || status === "waiting_approval";
 }
 
 export function runStatusLabel(status: WorkflowRunStatus): string {
   switch (status) {
     case "queued": return t("workflows.status.queued");
     case "running": return t("workflows.status.running");
+    case "waiting_manual": return t("workflows.status.waitingManual");
     case "waiting_approval": return t("workflows.status.waitingApproval");
     case "succeeded": return t("workflows.status.succeeded");
     case "failed": return t("workflows.status.failed");

@@ -222,6 +222,33 @@ describe("the person's routes", () => {
     expect(state.status).toBe(404);
   });
 
+  it("continues a waiting manual run once, and refuses a second click or a missing run", async () => {
+    const { call, state, store } = harness();
+    const manual = definition({
+      id: "11111111-2222-4333-8444-555555555555",
+      steps: [{ id: "coletar", name: "Collect", botId: "bot-a", instructions: "Collect.", mode: "manual", outputs: [{ path: "numbers.csv" }] }],
+    });
+    const saved = store.saveWorkflow(manual);
+    if (!saved.ok) throw new Error(saved.error);
+    const run = store.createRun(saved.workflow);
+    store.writeRun({ ...run, status: "waiting_manual", startedAt: NOW, hold: { step: 0, since: NOW } });
+
+    await call("DELETE", `/api/workflows/runs/${run.id}`);
+    expect(state.status).toBe(409);
+    await call("DELETE", `/api/workflows/${saved.workflow.id}`);
+    expect(state.status).toBe(409);
+
+    await call("POST", `/api/workflows/runs/${run.id}/continue`);
+    expect(state.status).toBe(200);
+    expect((state.body as { run: { status: string } }).run.status).toBe("running");
+
+    await call("POST", `/api/workflows/runs/${run.id}/continue`);
+    expect(state.status).toBe(409);
+
+    await call("POST", "/api/workflows/runs/missing-run/continue");
+    expect(state.status).toBe(404);
+  });
+
   it("passes a path that is not its own", async () => {
     const { call } = harness();
     expect(await call("GET", "/api/bots")).toBe(PASS);

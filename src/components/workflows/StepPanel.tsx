@@ -84,6 +84,9 @@ export function StepPanel({ workflow, step, index, botName, onClose }: {
                   {t("workflows.step.botRuntime", { seconds: Math.round(step.timeoutMs / 1000) })}
                 </div>
               )}
+              <div className="mt-1.5 text-[10px] text-ink-tertiary">
+                {t("workflows.step.mode")}: {step.mode === "manual" ? t("workflows.step.modeManual") : t("workflows.step.modeAuto")}
+              </div>
             </>
           ) : step.kind === "script" ? (
             <>
@@ -94,6 +97,9 @@ export function StepPanel({ workflow, step, index, botName, onClose }: {
               </div>
               <div className="mt-1.5 text-[10px] text-ink-tertiary">
                 {t("workflows.step.scriptRuntime", { seconds: Math.round(step.timeoutMs / 1000) })}
+              </div>
+              <div className="mt-1.5 text-[10px] text-ink-tertiary">
+                {t("workflows.step.mode")}: {step.mode === "manual" ? t("workflows.step.modeManual") : t("workflows.step.modeAuto")}
               </div>
             </>
           ) : (

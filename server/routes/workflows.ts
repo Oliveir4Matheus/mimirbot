@@ -103,6 +103,13 @@ export function createWorkflowRoutes(deps: WorkflowRoutesDeps): RouteHandler {
         }
         return void json(res, 200, { removed: deps.store.deleteRun(run.id) });
       }
+      if (parts.length === 3 && parts[2] === "continue" && method === "POST") {
+        const resumed = deps.engine.resume(runId);
+        if (!resumed.ok) {
+          return void json(res, resumed.error === "no such run" ? 404 : 409, { error: resumed.error });
+        }
+        return void json(res, 200, { run: resumed.run });
+      }
       if (parts.length === 3 && parts[2] === "cancel" && method === "POST") {
         const body = await readBody(req);
         const cancelled = deps.engine.cancel(runId, isRecord(body) && typeof body.reason === "string" ? body.reason : undefined);

@@ -409,6 +409,103 @@ describe("recover", () => {
   });
 });
 
+describe("manual steps", () => {
+  const manualFirst = () => definition({
+    steps: [
+      { id: "coletar", name: "Collect", botId: "bot-a", instructions: "Collect.", mode: "manual", outputs: [{ path: "numbers.csv" }] },
+      { id: "revisar", name: "Review", botId: "bot-b", instructions: "Review.", inputs: [{ as: "numbers.csv", from: { step: "coletar", output: "numbers.csv" } }], outputs: [{ path: "decision.json" }], result: "decision.json", require: { ok: true } },
+    ],
+  });
+
+  it("parks before a manual step without opening a thread, then resumes once", async () => {
+    const def = manualFirst();
+    const { store, engine, calls, onTurn } = setup(def);
+    onTurn(happy(store));
+    const started = engine.start(def.id);
+    if (!started.ok) throw new Error(started.error);
+    await engine.idle();
+
+    const held = store.readRun(started.run.id)!;
+    expect(held.status).toBe("waiting_manual");
+    expect(held.hold).toEqual({ step: 0, since: NOW });
+    expect(held.steps[0]).toMatchObject({ status: "pending" });
+    expect(held.steps[0]!.threadId).toBeUndefined();
+    expect(calls).toHaveLength(0);
+
+    const resumed = engine.resume(started.run.id);
+    expect(resumed.ok).toBe(true);
+    expect(engine.resume(started.run.id).ok).toBe(false);
+
+    await engine.idle();
+    expect(store.readRun(started.run.id)!.status).toBe("succeeded");
+    expect(calls.map((call) => call.options.workflowStep.stepId)).toEqual(["coletar", "revisar"]);
+  });
+
+  it("holds before a later manual step and keeps the earlier step running normally", async () => {
+    const def = definition({
+      steps: [
+        { id: "coletar", name: "Collect", botId: "bot-a", instructions: "Collect.", outputs: [{ path: "numbers.csv" }] },
+        { id: "revisar", name: "Review", botId: "bot-b", instructions: "Review.", mode: "manual", inputs: [{ as: "numbers.csv", from: { step: "coletar", output: "numbers.csv" } }], outputs: [{ path: "decision.json" }], result: "decision.json", require: { ok: true } },
+      ],
+    });
+    const { store, engine, calls, onTurn } = setup(def);
+    onTurn(happy(store));
+    const started = engine.start(def.id);
+    if (!started.ok) throw new Error(started.error);
+    await engine.idle();
+
+    const held = store.readRun(started.run.id)!;
+    expect(held.status).toBe("waiting_manual");
+    expect(held.hold?.step).toBe(1);
+    expect(held.steps.map((step) => step.status)).toEqual(["succeeded", "pending"]);
+    expect(calls.map((call) => call.options.workflowStep.stepId)).toEqual(["coletar"]);
+
+    engine.resume(started.run.id);
+    await engine.idle();
+    expect(store.readRun(started.run.id)!.status).toBe("succeeded");
+    expect(calls.map((call) => call.options.workflowStep.stepId)).toEqual(["coletar", "revisar"]);
+  });
+
+  it("keeps a manual run parked across a restart and resumes it afterwards", async () => {
+    const def = manualFirst();
+    const { store, engine, calls, onTurn } = setup(def);
+    const run = store.createRun(def);
+    store.writeRun({ ...run, status: "waiting_manual", startedAt: NOW, hold: { step: 0, since: NOW } });
+
+    engine.recover();
+    await engine.idle();
+    expect(store.readRun(run.id)!.status).toBe("waiting_manual");
+    expect(calls).toHaveLength(0);
+
+    onTurn(happy(store));
+    engine.resume(run.id);
+    await engine.idle();
+    expect(store.readRun(run.id)!.status).toBe("succeeded");
+  });
+
+  it("does not spend the step's timeout while the person is deciding", async () => {
+    const def = definition({
+      steps: [
+        { id: "coletar", name: "Collect", botId: "bot-a", instructions: "Collect.", mode: "manual", timeoutMs: 20, outputs: [{ path: "numbers.csv" }] },
+        { id: "revisar", name: "Review", botId: "bot-b", instructions: "Review.", inputs: [{ as: "numbers.csv", from: { step: "coletar", output: "numbers.csv" } }], outputs: [{ path: "decision.json" }], result: "decision.json", require: { ok: true } },
+      ],
+    });
+    const { store, engine, onTurn } = setup(def);
+    onTurn(happy(store));
+    const started = engine.start(def.id);
+    if (!started.ok) throw new Error(started.error);
+    await engine.idle();
+    expect(store.readRun(started.run.id)!.status).toBe("waiting_manual");
+
+    await new Promise((resolve) => setTimeout(resolve, 80));
+    expect(store.readRun(started.run.id)!.status).toBe("waiting_manual");
+
+    engine.resume(started.run.id);
+    await engine.idle();
+    expect(store.readRun(started.run.id)!.status).toBe("succeeded");
+  });
+});
+
 describe("script steps and branching", () => {
   const scriptDefinition = (overrides: Record<string, unknown> = {}): WorkflowDefinition => workflowDefinitionSchema.parse({
     id: "8a5b1c2d-3e4f-4a5b-8c9d-0e1f2a3b4c5d",

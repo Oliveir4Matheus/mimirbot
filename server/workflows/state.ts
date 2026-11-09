@@ -13,7 +13,7 @@ export function isTerminalRun(status: WorkflowRun["status"]): boolean {
 
 /** A run that still owns a step or a turn: deleting its Workflow or the run itself must wait. */
 export function isActiveRun(status: WorkflowRun["status"]): boolean {
-  return status === "queued" || status === "running" || status === "waiting_approval";
+  return status === "queued" || status === "running" || status === "waiting_manual" || status === "waiting_approval";
 }
 
 const clone = (run: WorkflowRun): WorkflowRun => structuredClone(run);
@@ -196,6 +196,7 @@ export function cancelRun(run: WorkflowRun, reason: string | undefined, now: num
   next.finishedAt = now;
   next.updatedAt = now;
   next.pause = undefined;
+  next.hold = undefined;
   return { ok: true, run: next };
 }
 
@@ -213,6 +214,30 @@ export function resumeRun(run: WorkflowRun, now: number): RunTransition {
   const next = clone(run);
   next.status = "running";
   next.pause = undefined;
+  next.updatedAt = now;
+  return { ok: true, run: next };
+}
+
+/** Parks a run before a manual step; the step stays pending until a person continues it. */
+export function holdRun(run: WorkflowRun, index: number, now: number): RunTransition {
+  if (run.status !== "running") return { ok: false, error: `a ${run.status} run cannot wait for a person` };
+  if (index !== run.currentStep) return { ok: false, error: `step ${index + 1} is not the current step` };
+  const step = run.steps[index];
+  if (!step) return { ok: false, error: `the run has no step ${index + 1}` };
+  if (step.status !== "pending") return { ok: false, error: `step ${index + 1} is already ${step.status}` };
+  const next = clone(run);
+  next.status = "waiting_manual";
+  next.hold = { step: index, since: now };
+  next.updatedAt = now;
+  return { ok: true, run: next };
+}
+
+/** The person continued the manual step: the run may advance it once. */
+export function releaseRun(run: WorkflowRun, now: number): RunTransition {
+  if (run.status !== "waiting_manual") return { ok: false, error: `a ${run.status} run is not waiting for a person` };
+  const next = clone(run);
+  next.status = "running";
+  next.hold = undefined;
   next.updatedAt = now;
   return { ok: true, run: next };
 }

@@ -13,7 +13,7 @@ import { t } from "@/lib/i18n";
 import { useMediaQuery } from "@/lib/use-media-query";
 import { useShowThreads } from "@/lib/thread-preferences";
 import { isActiveStatus } from "@/lib/workflow-format";
-import { cancelRun, deleteRun, deleteWorkflow, readWorkflow, startRun, type ActiveRunRef } from "@/lib/workflows-api";
+import { cancelRun, continueRun, deleteRun, deleteWorkflow, readWorkflow, startRun, type ActiveRunRef } from "@/lib/workflows-api";
 import { ConfirmDialog } from "./workflows/ConfirmDialog";
 import { DIALOG_BUTTON, Dialog } from "./workflows/Dialog";
 import { FilterPopover, defaultRunFilters, defaultWorkflowFilters } from "./workflows/FilterPopover";
@@ -243,6 +243,15 @@ export function WorkflowsPage() {
     }
   };
 
+  const continueRunNow = async (runId: string) => {
+    try {
+      const run = await continueRun(runId);
+      feed.mergeRun(run);
+    } catch (error) {
+      showToast(errorText(error));
+    }
+  };
+
   const confirmCancel = async () => {
     if (dialog?.kind !== "cancel") return;
     setBusy(true);
@@ -417,6 +426,7 @@ export function WorkflowsPage() {
         now={now}
         botName={botName}
         onCancel={() => { setCancelReason(""); setDialog({ kind: "cancel", runId: selectedRun.id }); }}
+        onContinue={() => void continueRunNow(selectedRun.id)}
         onDelete={() => setDialog({ kind: "deleteRun", runId: selectedRun.id })}
         onRerun={() => { setConflict(null); setDialog({ kind: "run", workflowId: selectedRun.workflowId, version: selectedRun.workflowVersion }); }}
         onOpenConversation={openConversation}

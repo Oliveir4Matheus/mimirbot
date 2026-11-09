@@ -14,6 +14,8 @@ Atualizado em 08/11/2026.
 | F2 | Etapa de script, condição e repetição | Concluída |
 | F3.1 | Editor visual Workflow Studio v0.5 | Concluída (08/11/2026) |
 | F3.1.1 | Correções do Studio: `onSuccess`, `onFailure`/`onTimeout` na UI, fim explícito e desconectar | Concluída (09/11/2026) |
+| F3.2 | Fatia 1: modo Manual por etapa (pausa antes da etapa) | Concluída (09/11/2026) |
+| F3.2 | Fatias 2–5: ferramentas por etapa, Python/TypeScript, condição E/OU e QA do canvas | Em andamento |
 | F3.3 | Componente `kind: "loop"` (repetição estruturada) | Planejada |
 | F3 | Editor visual e Team Cloud/VM | Em andamento |
 
@@ -226,6 +228,19 @@ Desvios deliberados do protótipo v0.5 nesta fatia:
 - Script aceita apenas JavaScript/Node, como decidido no F2;
 - o rodapé do balão diz **Rascunho local**, não “alterações salvas no protótipo”.
 
+### F3.2 — fatia 1: modo Manual por etapa (09/11/2026)
+
+- Contrato: `mode: "auto" | "manual"` (default `"auto"`) nas etapas `bot` e `script`; `condition` não tem modo. `workflowStartsManual` centraliza a regra usada pela rotina.
+- Run: status `waiting_manual` e `hold: { step, since }` no `run.json`. `isActiveRun` inclui o estado, então retenção, `DELETE` de Workflow/run, cancelamento e polling da F2 o tratam como ativo.
+- Motor: `advance` para antes de copiar `input/` ou abrir thread quando a etapa é manual e não foi liberada; nenhum turno, thread ou script inicia antes do Continuar. `engine.resume` libera uma única vez (memória do processo) e segue o fluxo normal; dois cliques respondem 409. O reinício não retoma a run parada.
+- Timeout: a espera manual não consome o `timeoutMs`; o relógio só começa quando a etapa inicia, como na pausa de aprovação.
+- Rota: `POST /api/workflows/runs/:id/continue` (404 inexistente, 409 fora de `waiting_manual`), exposta por `server/host/workflows.ts` via `engine.resume`.
+- Rotina: `workflowStartsWithManual` bloqueia no editor e em `RoutineManager.create/update` (400); a run da rotina espelha `waiting` com `attention: "Waiting for you to continue"`.
+- Studio: balão **Execução** ganha **Modo de execução** (Automático/Manual) para Agente e Script; `createStep` nasce `auto` e o save grava `mode`.
+- F2: bloco **Aguardando você continuar** (etapa, tempo parado, **Continuar**), ícone âmbar de pausa, status/detalhe, timeline com **Aguardando início**, painel com **Manual**, filtros/contadores e textos em `en.json`/`pt-br.json`.
+- Verificação: `pnpm typecheck`, `pnpm lint` e `pnpm i18n:check` passaram. Testes focados: `shared/workflow.test.ts`, `server/workflows/state.test.ts`, `engine.test.ts`, `retention.test.ts`, `server/routes/workflows.test.ts`, `server/routines.test.ts`, `src/components/studio/studio-model.test.ts` e `RoutineCalendarPage.simple.test.ts` — **360 testes** passaram.
+- Fixture isolado (`OMB_PORT=8931`, `OMB_DATA_DIR`/`HOME` temporários, servidor real e script real): a etapa manual parou a run em `waiting_manual` sem thread (`hold.step = 0`, etapa `pending`); `DELETE` respondeu 409; Continuar retomou e concluiu com `result.json`; o segundo clique respondeu 409; reiniciar o servidor manteve a run parada e o Continuar seguinte concluiu; rotina com primeira etapa manual foi recusada no `POST` e no `PATCH` (400). Evidência em `/tmp/opencode/f32-manual/evidence/`.
+
 Falhas que já existem na base, sem relação com esta entrega:
 
 - `server/drivers/codex.test.ts`: “passes the person's proxy settings…”.
@@ -256,9 +271,10 @@ Para a aprovação longa, a receita com o fixture isolado e o fake engine está 
 
 ## Próximo passo
 
-1. **F3.2:** modo Manual (pausa antes da etapa), ferramentas restritas por etapa, Python/TypeScript e polimento do editor (arraste de nota/container, minimapa fora da spec).
-2. **record→promote** (transformar uma conversa ou sequência que deu certo em Workflow) — pulado por decisão do dono nesta rodada.
-3. **Team Cloud/VM** (F3).
+1. **F3.2:** fatia 1 (modo Manual por etapa) concluída; faltam ferramentas restritas por etapa, Python/TypeScript, condição E/OU e o QA do canvas (arraste de nota/container; minimapa fora da spec).
+2. **F3.2.1:** replay a partir de uma etapa — pegar uma run já terminada e criar uma execução nova começando em `fromStep`. Hoje não existe; "Rodar de novo" sempre começa do zero. Decisões em aberto no handoff da F3.2.
+3. **record→promote** (transformar uma conversa ou sequência que deu certo em Workflow) — pulado por decisão do dono nesta rodada.
+4. **Team Cloud/VM** (F3).
 
 O retry automático continua adiado: qualquer erro falha a execução de imediato, salvo quando a etapa declara `onFailure`.
 

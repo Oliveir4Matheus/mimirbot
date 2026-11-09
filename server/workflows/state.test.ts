@@ -10,8 +10,11 @@ import {
   failRun,
   failStep,
   failStepTo,
+  holdRun,
+  isActiveRun,
   isTerminalRun,
   pauseRun,
+  releaseRun,
   resumeRun,
 } from "./state.ts";
 
@@ -158,6 +161,33 @@ describe("approval pauses", () => {
     if (!resumed.ok) throw new Error(resumed.error);
     expect(resumed.run.status).toBe("running");
     expect(resumed.run.pause).toBeUndefined();
+  });
+});
+
+describe("manual holds", () => {
+  it("parks a running run before its pending step and releases it once", () => {
+    const held = holdRun(running(), 0, 30);
+    if (!held.ok) throw new Error(held.error);
+    expect(held.run.status).toBe("waiting_manual");
+    expect(held.run.hold).toEqual({ step: 0, since: 30 });
+    expect(held.run.steps[0]!.status).toBe("pending");
+    expect(isActiveRun(held.run.status)).toBe(true);
+    expect(holdRun(held.run, 0, 40).ok).toBe(false);
+
+    const released = releaseRun(held.run, 50);
+    if (!released.ok) throw new Error(released.error);
+    expect(released.run.status).toBe("running");
+    expect(released.run.hold).toBeUndefined();
+    expect(releaseRun(released.run, 60).ok).toBe(false);
+  });
+
+  it("clears the hold when the run is cancelled", () => {
+    const held = holdRun(running(), 0, 30);
+    if (!held.ok) throw new Error(held.error);
+    const cancelled = cancelRun(held.run, "stop", 40);
+    if (!cancelled.ok) throw new Error(cancelled.error);
+    expect(cancelled.run.status).toBe("cancelled");
+    expect(cancelled.run.hold).toBeUndefined();
   });
 });
 

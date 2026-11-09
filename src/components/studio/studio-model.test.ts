@@ -77,6 +77,17 @@ describe("studio model", () => {
     expect(definition.canvas?.notes[0]!.link).toBeUndefined();
   });
 
+  it("defaults a new step to automatic and keeps a manual mode when saved", () => {
+    const draft = step(newDraft("Financeiro"), "agent", 200, 200).draft;
+    expect(draft.steps[0]!.kind === "bot" && draft.steps[0]!.mode).toBe("auto");
+    const manual: StudioDraft = {
+      ...draft,
+      steps: draft.steps.map((candidate) => candidate.kind === "bot" ? { ...candidate, mode: "manual" } : candidate),
+    };
+    const saved = toDefinition(manual);
+    expect(saved.steps[0]!.kind === "bot" && saved.steps[0]!.mode).toBe("manual");
+  });
+
   it("reports a condition without a source and a bot without a bot", () => {
     const draft = { ...step(newDraft("Financeiro"), "condition", 200, 200).draft, name: "Test" };
     expect(draftProblem(draft, new Set(["bot-a"]))?.key).toBe("studio.needFrom");

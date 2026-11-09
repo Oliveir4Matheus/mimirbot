@@ -96,6 +96,7 @@ function renderAssignmentStatus(r: Json, id: string): string {
 const WORKFLOW_RUN_STATUS: Record<string, string> = {
   queued: "queued, not started yet",
   running: "running",
+  waiting_manual: "waiting for a person to continue",
   waiting_approval: "waiting for approval",
   succeeded: "succeeded",
   failed: "failed",
@@ -114,6 +115,7 @@ function renderWorkflowRun(body: Json): string {
     const error = typeof step.error === "string" && step.error.trim() ? ` — ${step.error.trim()}` : "";
     lines.push(`${index + 1}. ${String(step.id ?? "?")}: ${String(step.status ?? "?")}${verified}${error}`);
   }
+  if (run.status === "waiting_manual") lines.push("It waits for a person to continue before the next step starts; tell them and check again later rather than waiting in this turn.");
   if (run.status === "running" || run.status === "queued") lines.push("It is still running; its steps start on their own. Check again later rather than waiting in this turn.");
   return lines.join("\n");
 }

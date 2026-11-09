@@ -33,6 +33,7 @@ function harness(start = new Date(2026, 7, 17, 8, 0, 0).getTime()) {
   let bot: "ready" | "busy" | "missing" = "ready";
   let goal: "ready" | "busy" | "missing" = "ready";
   let workflow: "ready" | "missing" = "ready";
+  let workflowStartsWithManual = false;
   let workflowRun: Pick<WorkflowRun, "status" | "error"> | undefined;
   let workflowSequence = 0;
   let task = 0;
@@ -69,6 +70,7 @@ function harness(start = new Date(2026, 7, 17, 8, 0, 0).getTime()) {
     botState: () => bot,
     goalState: () => goal,
     workflowState: () => workflow,
+    workflowStartsWithManual: () => workflowStartsWithManual,
     workflowRunState: () => workflowRun,
     startWorkflow: (routine) => {
       const runId = `wrun-${++workflowSequence}`;
@@ -126,6 +128,7 @@ function harness(start = new Date(2026, 7, 17, 8, 0, 0).getTime()) {
     setBot: (value: typeof bot) => (bot = value),
     setGoal: (value: typeof goal) => (goal = value),
     setWorkflow: (value: typeof workflow) => (workflow = value),
+    setWorkflowStartsWithManual: (value: boolean) => (workflowStartsWithManual = value),
     setWorkflowRun: (value: typeof workflowRun) => (workflowRun = value),
   };
 }
@@ -4017,6 +4020,9 @@ describe("workflow trigger", () => {
     expect(h.startedWorkflows).toEqual([{ routineId: expect.any(String), runId: "wrun-1", name: "Nightly" }]);
     expect(h.manager.listRuns()[0]).toMatchObject({ target: "workflow", status: "running", workflowId, workflowRunId: "wrun-1" });
 
+    h.manager.noteWorkflowRun(workflowRun("waiting_manual"));
+    expect(h.manager.listRuns()[0]).toMatchObject({ status: "waiting", attention: "Waiting for you to continue" });
+
     h.manager.noteWorkflowRun(workflowRun("waiting_approval"));
     expect(h.manager.listRuns()[0]).toMatchObject({ status: "waiting", attention: "Waiting for approval" });
 
@@ -4090,6 +4096,15 @@ describe("workflow trigger", () => {
     expect(new RoutineManager(active.options).listRuns()[0]).toMatchObject({ status: "running", workflowRunId: "wrun-1" });
   });
 
+  it("keeps a restart run waiting when the Workflow waits for a person", async () => {
+    const h = harness(start);
+    h.manager.create(input());
+    h.setNow(at);
+    await h.manager.tick();
+    h.setWorkflowRun({ status: "waiting_manual" });
+    expect(new RoutineManager(h.options).listRuns()[0]).toMatchObject({ status: "waiting", attention: "Waiting for you to continue" });
+  });
+
   it("finishes a run a restart left active when the Workflow already ended", async () => {
     const h = harness(start);
     h.manager.create(input());
@@ -4097,5 +4112,17 @@ describe("workflow trigger", () => {
     await h.manager.tick();
     h.setWorkflowRun({ status: "succeeded" });
     expect(new RoutineManager(h.options).listRuns()[0]).toMatchObject({ status: "completed", workflowRunId: "wrun-1" });
+  });
+
+  it("refuses to save a routine whose Workflow starts with a manual step", () => {
+    const h = harness(start);
+    h.setWorkflowStartsWithManual(true);
+    expect(() => h.manager.create(input())).toThrow(/waits for a person before its first step/);
+    expect(h.manager.listRoutines()).toEqual([]);
+
+    const other = harness(start);
+    const routine = other.manager.create(input());
+    other.setWorkflowStartsWithManual(true);
+    expect(() => other.manager.update(routine.id, { name: "Renamed" })).toThrow(/waits for a person before its first step/);
   });
 });

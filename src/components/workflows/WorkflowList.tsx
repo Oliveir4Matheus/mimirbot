@@ -8,6 +8,7 @@ import { isActiveStatus, relativeTime, runStatusLabel } from "@/lib/workflow-for
 const DOT: Record<string, string> = {
   queued: "#5283D9",
   running: "#5283D9",
+  waiting_manual: "#C99B45",
   waiting_approval: "#C99B45",
   succeeded: "#49AA78",
   failed: "#D86E74",

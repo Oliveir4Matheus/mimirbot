@@ -141,12 +141,12 @@ export function createStep(draft: StudioDraft, kind: Exclude<StudioKind, "note" 
   const id = uniqueId(slugify(baseName), taken);
   const step: WorkflowStep = kind === "agent"
     ? {
-      id, kind: "bot", name: baseName, botId: botId ?? FALLBACK_BOT, timeoutMs: 0,
+      id, kind: "bot", name: baseName, botId: botId ?? FALLBACK_BOT, timeoutMs: 0, mode: "auto",
       instructions: DEFAULT_INSTRUCTIONS, inputs: [], outputs: structuredClone(DEFAULT_OUTPUTS), result: "result.json",
     }
     : kind === "script"
       ? {
-        id, kind: "script", name: baseName, run: `${id}.mjs`, timeoutMs: 60_000,
+        id, kind: "script", name: baseName, run: `${id}.mjs`, timeoutMs: 60_000, mode: "auto",
         inputs: [], outputs: structuredClone(DEFAULT_OUTPUTS), result: "result.json",
       }
       : { id, kind: "condition", name: baseName, from: "", field: "ok", op: "equals", value: true };

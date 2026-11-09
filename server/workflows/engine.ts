@@ -16,7 +16,7 @@ import { failureStepIndex, nextStepIndex, type StepFailureKind } from "./flow.ts
 import { stepInputDir, stepOutputDir } from "./paths.ts";
 import { runWorkflowScript, type WorkflowScriptHandle } from "./script.ts";
 import {
-  beginRun, beginStep, cancelRun, completeStep, failRun, failStep, failStepTo, isTerminalRun, pauseRun, resumeRun, type RunTransition,
+  beginRun, beginStep, cancelRun, completeStep, failRun, failStep, failStepTo, holdRun, isTerminalRun, pauseRun, releaseRun, resumeRun, type RunTransition,
 } from "./state.ts";
 import type { WorkflowStore } from "./store.ts";
 
@@ -49,6 +49,8 @@ export interface WorkflowEngine {
   start(workflowId: string, options?: { version?: number; requestedBy?: WorkflowRun["requestedBy"]; triggeredBy?: WorkflowRun["triggeredBy"] }): StartResult;
   status(runId: string): WorkflowRun | undefined;
   cancel(runId: string, reason?: string): RunTransition;
+  /** The person continued a manual step: release it once and resume the same run. */
+  resume(runId: string): RunTransition;
   /** A turn on a step's conversation settled: a run waiting on that step re-checks its outputs. */
   turnSettled(threadId: string, generation: string, outcome: HostTurnResult): void;
   /** The person refused the card a waiting run paused on; the run is cancelled. */
@@ -75,6 +77,8 @@ export function createWorkflowEngine(deps: WorkflowEngineDeps): WorkflowEngine {
   const scripts = new Map<string, WorkflowScriptHandle>();
   /** The running bot step's timeout clock, one per run: a pause stops it and it never restarts. */
   const timers = new Map<string, ReturnType<typeof setTimeout>>();
+  /** A manual step a person just released. Process memory only, so a restart leaves the run parked. */
+  const released = new Set<string>();
 
   const clearTimer = (runId: string): void => {
     const timer = timers.get(runId);
@@ -114,6 +118,7 @@ export function createWorkflowEngine(deps: WorkflowEngineDeps): WorkflowEngine {
     if (isTerminalRun(transition.run.status)) {
       forgetRun(transition.run.id);
       clearTimer(transition.run.id);
+      released.delete(transition.run.id);
     }
     return transition.run;
   };
@@ -347,6 +352,10 @@ export function createWorkflowEngine(deps: WorkflowEngineDeps): WorkflowEngine {
       runConditionStep(run, index, step, definition);
       return;
     }
+    if (step.mode === "manual" && !released.delete(run.id)) {
+      apply(holdRun(run, index, now()));
+      return;
+    }
     const copied = copyStepInputs(deps.store.runDir(run), index, step, definition.steps);
     if (!copied.ok) {
       failOrRoute(run, index, copied.error, definition);
@@ -410,6 +419,16 @@ export function createWorkflowEngine(deps: WorkflowEngineDeps): WorkflowEngine {
     status(runId) {
       return deps.store.readRun(runId);
     },
+    resume(runId) {
+      const run = deps.store.readRun(runId);
+      if (!run) return { ok: false, error: "no such run" };
+      const releasedRun = releaseRun(run, now());
+      if (!releasedRun.ok) return releasedRun;
+      released.add(runId);
+      const applied = apply(releasedRun);
+      if (applied) void enqueue(runId, () => advance(runId));
+      return releasedRun;
+    },
     turnSettled(threadId, generation, outcome) {
       const entry = stepThreads.get(threadId);
       if (!entry) return;
@@ -446,6 +465,7 @@ export function createWorkflowEngine(deps: WorkflowEngineDeps): WorkflowEngine {
       const cancelled = cancelRun(run, reason, now());
       if (!cancelled.ok) return cancelled;
       clearTimer(runId);
+      released.delete(runId);
       apply(cancelled);
       scripts.get(runId)?.kill();
       const current = run.steps[run.currentStep];
@@ -466,6 +486,7 @@ export function createWorkflowEngine(deps: WorkflowEngineDeps): WorkflowEngine {
       for (const runId of timers.keys()) clearTimer(runId);
       stepThreads.clear();
       reportedTurns.clear();
+      released.clear();
       for (const run of deps.store.listRuns(everything)) {
         if (run.status === "running" || run.status === "waiting_approval") {
           const threadId = run.steps[run.currentStep]?.threadId;

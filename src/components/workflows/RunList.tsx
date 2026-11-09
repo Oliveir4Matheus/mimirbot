@@ -74,7 +74,7 @@ export function RunList({ runs, workflows, selectedId, now, onSelect }: {
                     <span
                       aria-hidden="true"
                       className="size-[5px] shrink-0 rounded-full"
-                      style={{ background: run.status === "waiting_approval" ? "#C5923A" : "#397EE7" }}
+                      style={{ background: run.status === "waiting_approval" || run.status === "waiting_manual" ? "#C5923A" : "#397EE7" }}
                     />
                     <span className="truncate">
                       {t("workflows.run.stepOf", { current: Math.min(run.currentStep + 1, run.steps.length), total: run.steps.length, name: stepName(workflow, run, run.currentStep) })}

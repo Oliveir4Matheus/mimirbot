@@ -511,6 +511,7 @@ import { computerFreeAfterText, computerParkedText, computerPersonAwayText, comp
 import { modelContextWindow } from "./model-context-window.ts";
 import { browserIsThePlace, chosenPin, cloudPlaceRefusal, computerSkippedNote, computerToolsRefusal, parseSurface, PlaceUnavailableError, placeUnavailable, resolveSurface, surfaceLabel, surfaceOfComputerKind, surfacePrompt, type ComputerWant, type PlaceSource, type Surface } from "./surface.ts";
 import { cloudRefusal, type PlaceRow } from "../shared/place-view.ts";
+import { workflowStartsManual } from "../shared/workflow.ts";
 import {
   PendingTurnCancellations,
   ProviderTurnGenerationRegistry,
@@ -9084,6 +9085,10 @@ routines = new RoutineManager({
   },
   cancelWorkflow: (runId, reason) => { workflows.engine.cancel(runId, reason); },
   workflowState: (workflowId) => workflowId && workflows.store.workflow(workflowId) ? "ready" : "missing",
+  workflowStartsWithManual: (workflowId) => {
+    const definition = workflowId ? workflows.store.workflow(workflowId) : undefined;
+    return definition !== undefined && workflowStartsManual(definition);
+  },
   workflowRunState: (runId) => {
     const run = runId ? workflows.store.readRun(runId) : undefined;
     return run ? { status: run.status, ...(run.error === undefined ? {} : { error: run.error }) } : undefined;

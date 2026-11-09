@@ -246,6 +246,19 @@ export function StudioBalloon({ draft, step, branch, anchor, bots, scripts, onCh
                 <DisconnectRow label={t("studio.disconnect")} onClick={() => onDisconnect("run")} />
               )}
             </Field>
+            {step.kind !== "condition" && (
+              <Field label={t("studio.step.mode")} help={t("studio.step.modeHelp")}>
+                <Select
+                  className="w-full"
+                  size="sm"
+                  value={step.mode}
+                  onChange={(event) => onChange({ mode: event.target.value as "auto" | "manual" } as Partial<WorkflowStep>)}
+                >
+                  <option value="auto">{t("studio.step.modeAuto")}</option>
+                  <option value="manual">{t("studio.step.modeManual")}</option>
+                </Select>
+              </Field>
+            )}
             {step.kind === "bot" && (
               <Field label={t("studio.agent.timeout")} help={t("studio.agent.timeoutHelp")}>
                 <input

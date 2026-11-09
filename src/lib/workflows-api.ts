@@ -41,6 +41,11 @@ export function startRun(id: string, version?: number): Promise<WorkflowRun> {
     .then((answer) => answer.run);
 }
 
+export function continueRun(id: string): Promise<WorkflowRun> {
+  return api<{ run: WorkflowRun }>(`/api/workflows/runs/${encodeURIComponent(id)}/continue`, json({}))
+    .then((answer) => answer.run);
+}
+
 export function cancelRun(id: string, reason?: string): Promise<WorkflowRun> {
   return api<{ run: WorkflowRun }>(`/api/workflows/runs/${encodeURIComponent(id)}/cancel`, json(reason?.trim() ? { reason: reason.trim() } : {}))
     .then((answer) => answer.run);
