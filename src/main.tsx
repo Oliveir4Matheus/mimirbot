@@ -8,6 +8,7 @@ import { bootstrapBrand } from "./lib/brand";
 import { applySkin, readSkin } from "./lib/skins";
 import { applyChatWidth, readChatWidth } from "./lib/chat-width";
 import { applyFont, readFont } from "./lib/fonts";
+import { applySoftwareRendering } from "./lib/software-rendering";
 import { settleAdvancedModeDefault } from "./lib/interface-mode";
 import { BrowserSignInPage } from "./pair/BrowserSignInPage";
 import { PairPage } from "./pair/PairPage";
@@ -19,6 +20,7 @@ import "./styles.css";
 settleAdvancedModeDefault();
 applySkin(readSkin());
 applyFont(readFont());
+applySoftwareRendering();
 applyChatWidth(readChatWidth());
 
 async function chooseRoot(): Promise<React.ReactNode> {

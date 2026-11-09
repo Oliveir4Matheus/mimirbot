@@ -10,7 +10,7 @@ import { startCua, stopCua, registerCuaIpc, requestComputerUse, setCuaStateListe
 import { createAndroidDeviceController } from "./android-device.mjs";
 import { finishSpeech, startSpeech, stopSpeech } from "./speech.mjs";
 import { openBlankTerminal } from "./terminal-launch.mjs";
-import { linuxDisablesGpu } from "./linux-gpu.mjs";
+import { linuxDisablesGpu, SOFTWARE_RENDERING_ARG } from "./linux-gpu.mjs";
 import { pasteMenuItem } from "./paste-menu-item.mjs";
 import { attachUpdaterWindow, startUpdater, registerUpdaterIpc, sendUpdaterState } from "./updater.mjs";
 import {
@@ -227,10 +227,9 @@ function applyUnreadBadge(win = mainWindow) {
 }
 
 // GNOME groups the window with its desktop entry only when both identities match; set before ready.
-if (process.platform === "linux") {
-  if (linuxDisablesGpu()) app.disableHardwareAcceleration();
-  app.setDesktopName("com.mimirbot.app.desktop");
-}
+const linuxSoftwareRendering = process.platform === "linux" && linuxDisablesGpu();
+if (linuxSoftwareRendering) app.disableHardwareAcceleration();
+if (process.platform === "linux") app.setDesktopName("com.mimirbot.app.desktop");
 
 if (!app.requestSingleInstanceLock()) {
   console.log("[desktop] MimirBot is already running — focusing that window");
@@ -2067,7 +2066,7 @@ function createWindow({ deferNavigation = false } = {}) {
       contextIsolation: true,
       preload: path.join(__dirname, "preload.cjs"),
       additionalArguments: [...desktopCompanionRendererArguments(rendererOrigin(), desktopRemoteAccess),
-        ...(app.isPackaged && !desktopRemoteAccess ? ["--omb-company-desktop=1"] : []), `--omb-app-version=${app.getVersion()}`],
+        ...(app.isPackaged && !desktopRemoteAccess ? ["--omb-company-desktop=1"] : []), `--omb-app-version=${app.getVersion()}`, ...(linuxSoftwareRendering ? [SOFTWARE_RENDERING_ARG] : [])],
     },
   });
   mainWindow = win; hiddenStart = false;
