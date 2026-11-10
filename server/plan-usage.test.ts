@@ -443,7 +443,7 @@ describe("plan usage fetcher", () => {
       api: { driver: "grok", displayName: "Grok API" },
       antigravity: { driver: "antigravityAgent" },
     })).toEqual([
-      { id: "claude", name: "Personal Claude", driver: "claude", environment: {}, configDir: "/tmp/claude" },
+      { id: "claude", name: "Personal Claude", driver: "claude", environment: {}, configDir: "/tmp/claude", noUsage: true },
       { id: "codex", name: "Codex", driver: "codex", environment: {} },
       { id: "grok", name: "Grok", driver: "grok", environment: { GROK_HOME: "/tmp/grok" } },
       { id: "antigravity", name: "Antigravity", driver: "antigravity", environment: {} },
@@ -603,4 +603,22 @@ describe("OpenCode plan usage", () => {
     expect(refused.providers[0]).toMatchObject({ ok: false, error: "OpenCode refused the saved credentials" });
   });
 
+  it("never reads a Claude Code login, on any Claude instance, and still reads the other engines", async () => {
+    const accounts = planAccountsFromInstances({
+      claude: { driver: "claudeAgent" },
+      work: { driver: "claudeAgent", displayName: "Work", config: { configDir: "/tmp/claude-work" } },
+      codex: { driver: "codex" },
+    });
+    // Still listed, so a refused turn's hold names the account and fails over.
+    expect(accounts).toEqual([
+      { id: "claude", name: "Claude", driver: "claude", environment: {}, noUsage: true },
+      { id: "work", name: "Work", driver: "claude", environment: {}, configDir: "/tmp/claude-work", noUsage: true },
+      { id: "codex", name: "Codex", driver: "codex", environment: {} },
+    ]);
+    const read = vi.fn((_account: PlanAccount) => ({ token: SECRET, accountId: null, expired: false }));
+    const fetchImpl = vi.fn<PlanFetch>(async () => jsonResponse({ rate_limit: { primary_window: { used_percent: 10 } } }));
+    const report = await fetchPlanUsage(accounts, { fetch: fetchImpl, now: () => NOW, credentials: { read } });
+    expect(read.mock.calls.map(([account]) => account.id)).toEqual(["codex"]);
+    expect(report.providers.map((row) => row.id)).toEqual(["codex"]);
+  });
 });

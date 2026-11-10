@@ -71,6 +71,8 @@ export interface PlanAccount {
   configDir?: string;
   /** The Antigravity runtime path from the instance's config. */
   cli?: string;
+  /** No usage reading: a Claude Code login is never read, since Anthropic's credential policy covers that token for Claude Code alone (a refused turn still fails over). */
+  noUsage?: true;
 }
 
 export interface PlanCredential {
@@ -164,6 +166,7 @@ export function planAccountsFromInstances(instances: InstanceConfigMap): PlanAcc
       environment: { ...entry.environment },
       ...(configDir ? { configDir } : {}),
       ...(cli ? { cli } : {}),
+      ...(driver === "claude" ? { noUsage: true as const } : {}),
     });
   }
   return accounts;
@@ -290,7 +293,7 @@ export function defaultCredentialReader(env: NodeJS.ProcessEnv = process.env): C
 
 export async function fetchPlanUsage(accounts: PlanAccount[], deps: PlanUsageDeps): Promise<PlanUsageReport> {
   const now = deps.now?.() ?? Date.now();
-  const providers = await Promise.all(accounts.map((account) => fetchProvider(account, deps)));
+  const providers = await Promise.all(accounts.filter((account) => !account.noUsage).map((account) => fetchProvider(account, deps)));
   return { fetchedAt: new Date(now).toISOString(), providers };
 }
 
@@ -615,7 +618,7 @@ function planUsageCacheKey(accounts: PlanAccount[]): string {
       .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
       .map(([name, value]) => `${name}=${value}`)
       .join("\n");
-    return [account.id, account.driver, account.name, account.configDir ?? "", environment].join("\u0000");
+    return [account.id, account.driver, account.name, account.configDir ?? "", environment, account.noUsage ? "no-usage" : "usage"].join("\u0000");
   }).join("\n");
 }
 
