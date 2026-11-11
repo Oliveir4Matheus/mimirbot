@@ -85,6 +85,7 @@ export function createFillLoginTurn(deps: FillLoginTurnDeps) {
       }, {
         ...deps.loginInput(session, spec, env),
         remember: deps.remember,
+        turnActive: () => deps.turnActive?.(capability) !== false,
       }), deps.stepContext(current, capability));
       if (outcome.ok && outcome.loginId) deps.logins.markUsed(outcome.loginId);
       return { ok: outcome.ok, text: outcome.text };
