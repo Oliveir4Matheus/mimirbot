@@ -3555,6 +3555,7 @@
   "botPanel.conversations.search": "Search conversations",
   "botPanel.conversations.searchPlaceholder": "Search {name}'s conversations",
   "botPanel.conversations.new": "New conversation",
+  "botPanel.avatar.bodyEverywhere": "Give this body to the other bots ({count})",
   "botPanel.avatar.edit": "Edit avatar",
   "botPanel.avatar.tabBot": "Bot",
   "botPanel.avatar.tabGenerate": "Generate",
