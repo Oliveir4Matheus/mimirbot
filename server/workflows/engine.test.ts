@@ -514,7 +514,7 @@ describe("manual steps", () => {
 
     const held = store.readRun(started.run.id)!;
     expect(held.status).toBe("waiting_manual");
-    expect(held.hold).toEqual({ step: 0, since: NOW });
+    expect(held.hold).toEqual({ path: [0], step: 0, since: NOW });
     expect(held.steps[0]).toMatchObject({ status: "pending" });
     expect(held.steps[0]!.threadId).toBeUndefined();
     expect(calls).toHaveLength(0);

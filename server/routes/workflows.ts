@@ -5,7 +5,7 @@
 import type { ServerResponse } from "node:http";
 
 import type { json as sendJson } from "../harness/http.ts";
-import { isBotStep, isWorkflowScriptName, workflowDefinitionSchema, type WorkflowSkillOptions, type WorkflowStep } from "../../shared/workflow.ts";
+import { isBotStep, isWorkflowScriptName, workflowAllSteps, workflowDefinitionSchema, type WorkflowSkillOptions, type WorkflowStep } from "../../shared/workflow.ts";
 import type { WorkflowEngine } from "../workflows/engine.ts";
 import { isWorkflowId } from "../workflows/paths.ts";
 import { isActiveRun } from "../workflows/state.ts";
@@ -41,7 +41,7 @@ const sameDepartment = (left: string, right: string): boolean => left.trim().toL
 const departmentOf = (deps: WorkflowRoutesDeps, botId: string): string => deps.bot(botId)?.section?.trim() || "General";
 
 const missingStepSkill = (steps: readonly WorkflowStep[], deps: WorkflowRoutesDeps): string | undefined => {
-  for (const step of steps) {
+  for (const step of workflowAllSteps({ steps })) {
     if (!isBotStep(step) || step.skills === undefined) continue;
     const options = deps.skillOptions?.(step.botId);
     for (const group of ["bot", "bundled", "imported"] as const) {

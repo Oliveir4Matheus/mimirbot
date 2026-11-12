@@ -2934,6 +2934,7 @@ button:disabled.bg-danger {
 .studio-node-bot { --studio-accent: #6254D6; --studio-accent-soft: #F2F0FF; }
 .studio-node-script { --studio-accent: #247B8A; --studio-accent-soft: #EAF6F7; }
 .studio-node-condition { --studio-accent: #C08023; --studio-accent-soft: #FFF6E8; }
+.studio-node-loop { --studio-accent: #B97818; --studio-accent-soft: #FFF1DA; }
 
 .studio-card {
   position: relative;
@@ -2954,12 +2955,15 @@ button:disabled.bg-danger {
 .studio-card-category { font-size: 10.5px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: #8C949A; }
 .studio-card-menu-button { display: grid; place-items: center; width: 22px; height: 22px; flex-shrink: 0; border-radius: 6px; color: #8C949A; cursor: pointer; }
 .studio-card-menu-button:hover { background: #F3F5F7; color: #141718; }
+.studio-card-expand { display: grid; place-items: center; width: 22px; height: 22px; flex-shrink: 0; border-radius: 6px; color: #B97818; cursor: pointer; }
+.studio-card-expand:hover { background: #FFF1DA; color: #8A5610; }
 .studio-card-divider { height: 1px; background: #EFF1F2; margin: 12px 0 9px; }
 .studio-card-foot { display: flex; align-items: center; gap: 6px; }
 .studio-status-dot { width: 6px; height: 6px; border-radius: 999px; background: #C7CCD0; }
 .studio-status-bot { background: #C7CCD0; }
 .studio-status-script { background: #C7CCD0; }
 .studio-status-condition { background: #C7CCD0; }
+.studio-status-loop { background: #C7CCD0; }
 .studio-card-status { font-size: 11px; color: #858E95; }
 .studio-card-id { margin-left: auto; font-size: 10px; font-weight: 700; letter-spacing: 0.08em; color: #BBC1C5; }
 .studio-rename { width: 100%; min-width: 0; border: 1px solid #807AE3; border-radius: 5px; padding: 1px 4px; font-size: 13px; font-weight: 650; color: #141718; }
@@ -3422,6 +3426,81 @@ button:disabled.bg-danger {
 .studio-check:hover { background: #F9FAFB; }
 .studio-check input { accent-color: #6254D6; }
 
+.studio-loop-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  background: rgba(15, 18, 20, 0.46);
+}
+.studio-loop-modal {
+  display: flex;
+  width: 80vw;
+  height: 70vh;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid #D9E0E3;
+  border-radius: 14px;
+  background: #FFFFFF;
+  box-shadow: 0 28px 70px rgba(10, 14, 16, 0.35);
+  outline: none;
+}
+.studio-loop-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid #EDF0F2;
+  padding: 12px 16px;
+}
+.studio-loop-title { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: #1B2125; }
+.studio-loop-title svg { color: #B97818; }
+.studio-loop-close { display: grid; width: 26px; height: 26px; place-items: center; border-radius: 7px; color: #8C949A; cursor: pointer; }
+.studio-loop-close:hover { background: #F3F5F7; color: #141718; }
+.studio-loop-canvas { flex: 1; min-height: 0; }
+.studio-loop-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 1px solid #EDF0F2;
+  padding: 10px 16px;
+}
+.studio-loop-hint { font-size: 10.5px; color: #8C949A; }
+.studio-loop-done {
+  display: flex;
+  height: 32px;
+  align-items: center;
+  gap: 6px;
+  border-radius: 8px;
+  background: #28282D;
+  padding: 0 13px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #FFFFFF;
+  cursor: pointer;
+}
+.studio-loop-done:hover { background: #414148; }
+.studio-loop-marker {
+  position: absolute;
+  transform: translateX(-50%);
+  border: 1px dashed #C9A15A;
+  border-radius: 999px;
+  background: #FFF9EC;
+  padding: 4px 12px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #8A6524;
+  white-space: nowrap;
+}
+@media (max-width: 650px) {
+  .studio-loop-backdrop { padding: 12px; }
+  .studio-loop-modal { width: calc(100vw - 24px); height: calc(100vh - 24px); }
+}
 @media (max-width: 650px) {
   .studio-palette { bottom: 15px; width: calc(100vw - 26px); height: 88px; }
   .studio-palette-label { font-size: 10px; }

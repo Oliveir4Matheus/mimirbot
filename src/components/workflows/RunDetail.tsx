@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, ArrowLeft, ArrowRight, Check, ChevronDown, Copy, FileText, Hourglass, Pause, Play, RotateCcw, Trash2, X } from "lucide-react";
+import { AlertTriangle, ArrowLeft, ArrowRight, Check, ChevronDown, Copy, FileText, Hourglass, Pause, Play, Repeat, RotateCcw, Trash2, X } from "lucide-react";
 
 import type { WorkflowDefinition, WorkflowRun, WorkflowRunStep, WorkflowStepStatus } from "../../../shared/workflow";
 import { copyText } from "@/lib/copy-text";
@@ -61,17 +61,44 @@ export function RunDetail({ run, workflow, now, botName, onCancel, onContinue, o
   const [copied, setCopied] = useState(false);
   const [resultOpen, setResultOpen] = useState<boolean | null>(null);
   const [filesOpen, setFilesOpen] = useState(false);
+  const [expandedRounds, setExpandedRounds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     setCopied(false);
     setResultOpen(null);
     setFilesOpen(false);
+    setExpandedRounds(new Set());
   }, [run.id]);
 
   const active = isActiveStatus(run.status);
   const definitionStep = (id: string) => workflow?.steps.find((step) => step.id === id);
   const snapshotStep = (id: string) => run.snapshot?.steps.find((step) => step.id === id);
   const nameOf = (step: WorkflowRunStep, index: number) => definitionStep(step.id)?.name ?? snapshotStep(step.id)?.name ?? t("workflows.run.stepNumber", { number: index + 1 });
+  const bodyName = (loopId: string, bodyId: string) => {
+    const loop = definitionStep(loopId);
+    const fromDefinition = loop?.kind === "loop" ? loop.body.find((step) => step.id === bodyId)?.name : undefined;
+    return fromDefinition ?? snapshotStep(loopId)?.body?.find((step) => step.id === bodyId)?.name ?? bodyId;
+  };
+  const pathState = (path: number[] | undefined) => {
+    if (!path || path.length === 0) return undefined;
+    const top = run.steps[path[0]!];
+    if (!top) return undefined;
+    if (path.length === 1) {
+      const topDefinition = definitionStep(top.id);
+      return { step: top, name: nameOf(top, path[0]!), botId: topDefinition?.kind === "bot" ? topDefinition.botId : undefined };
+    }
+    const body = top.iterations?.[path[1]!]?.steps[path[2]!];
+    if (!body) return undefined;
+    const loop = definitionStep(top.id);
+    const bodyStep = loop?.kind === "loop" ? loop.body[path[2]!] : undefined;
+    return {
+      step: body,
+      name: bodyName(top.id, body.id),
+      botId: bodyStep?.kind === "bot" ? bodyStep.botId : undefined,
+    };
+  };
+  const holdPath = run.hold?.path ?? (run.hold?.step === undefined ? undefined : [run.hold.step]);
+  const pausePath = run.pause?.path;
   const requester = run.requestedBy ? botName(run.requestedBy.botId) : undefined;
   const trigger = run.triggeredBy?.routineName;
   const resultText = run.result === undefined ? "" : JSON.stringify(run.result, null, 2);
@@ -95,19 +122,25 @@ export function RunDetail({ run, workflow, now, botName, onCancel, onContinue, o
     setTimeout(() => setCopied(false), 1_500);
   };
 
-  const conversationFor = (step: WorkflowRunStep) => {
+  const conversationFor = (step: WorkflowRunStep, path?: number[]) => {
     if (!step.threadId) return null;
     const definition = definitionStep(step.id);
-    const botId = (definition?.kind === "bot" ? definition.botId : undefined) ?? run.requestedBy?.botId;
+    const atPath = pathState(path);
+    const botId = atPath?.botId
+      ?? (definition?.kind === "bot" ? definition.botId : undefined)
+      ?? run.requestedBy?.botId;
     return botId ? { botId, threadId: step.threadId } : null;
   };
 
-  const holdIndex = run.hold?.step ?? run.currentStep;
+  const holdIndex = holdPath?.[0] ?? run.currentStep;
   const holdStep = run.steps[holdIndex];
-  const pausedStep = run.pause
-    ? run.steps.find((step) => step.id === run.pause!.stepId) ?? run.steps[run.currentStep]
-    : undefined;
-  const approvalConversation = (pausedStep ? conversationFor(pausedStep) : null)
+  const holdTarget = pathState(holdPath) ?? (holdStep ? { step: holdStep, name: nameOf(holdStep, holdIndex), botId: undefined } : undefined);
+  const pausedPath = pausePath ?? (run.pause ? (() => {
+    const index = run.steps.findIndex((step) => step.id === run.pause!.stepId);
+    return index >= 0 ? [index] : undefined;
+  })() : undefined);
+  const pausedTarget = run.pause ? pathState(pausedPath) : undefined;
+  const approvalConversation = (pausedTarget ? conversationFor(pausedTarget.step, pausedPath) : null)
     ?? (run.requestedBy ? { botId: run.requestedBy.botId, threadId: run.requestedBy.threadId } : null);
 
   return (
@@ -188,7 +221,9 @@ export function RunDetail({ run, workflow, now, botName, onCancel, onContinue, o
             <div className="mt-1.5 text-[10.5px] text-[#7A6633]">
               {t("workflows.run.manualStep", {
                 number: holdIndex + 1,
-                name: holdStep ? nameOf(holdStep, holdIndex) : t("workflows.run.stepNumber", { number: holdIndex + 1 }),
+                name: holdPath && holdPath.length === 3 && holdStep
+                  ? `${nameOf(holdStep, holdIndex)} · ${holdTarget?.name ?? ""}`
+                  : holdTarget?.name ?? t("workflows.run.stepNumber", { number: holdIndex + 1 }),
               })}
             </div>
             <p className="mt-3 text-[12px] leading-relaxed text-[#6E5C34]">{t("workflows.run.manualHelp")}</p>
@@ -215,7 +250,10 @@ export function RunDetail({ run, workflow, now, botName, onCancel, onContinue, o
               {t("workflows.run.approvalTitle")}
             </div>
             <div className="mt-1.5 text-[10.5px] text-[#7A6633]">
-              {t("workflows.run.approvalStep", { number: run.currentStep + 1, name: definitionStep(run.pause.stepId)?.name ?? t("workflows.run.stepNumber", { number: run.currentStep + 1 }) })}
+              {t("workflows.run.approvalStep", {
+                number: (pausedPath?.[0] ?? run.currentStep) + 1,
+                name: pausedTarget?.name ?? t("workflows.run.stepNumber", { number: (pausedPath?.[0] ?? run.currentStep) + 1 }),
+              })}
             </div>
             <p className="mt-3 text-[12px] leading-relaxed text-[#6E5C34]">“{run.pause.question || t("workflows.run.approvalQuestionFallback")}”</p>
             <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
@@ -259,6 +297,8 @@ export function RunDetail({ run, workflow, now, botName, onCancel, onContinue, o
             const status: DisplayStatus = run.status === "waiting_manual" && index === holdIndex
               ? "waiting_manual"
               : run.status === "waiting_approval" && run.pause?.stepId === step.id ? "waiting_approval" : step.status;
+            const iterations = step.iterations ?? [];
+            const roundsOpen = expandedRounds.has(step.id);
             return (
               <div key={`${step.id}-${index}`} className="relative grid grid-cols-[32px_1fr] gap-3 pb-[22px] last:pb-0">
                 {index < run.steps.length - 1 && <span aria-hidden="true" className="absolute bottom-[2px] left-[12px] top-[26px] border-l border-hairline" />}
@@ -267,7 +307,8 @@ export function RunDetail({ run, workflow, now, botName, onCancel, onContinue, o
                 </span>
                 <div className="min-w-0 pt-0.5">
                   <div className="flex items-start justify-between gap-4">
-                    <span className={cn("text-[12px] font-semibold text-ink", status === "skipped" && "text-ink-tertiary line-through")}>
+                    <span className={cn("flex items-center gap-1.5 text-[12px] font-semibold text-ink", status === "skipped" && "text-ink-tertiary line-through")}>
+                      {iterations.length > 0 && <Repeat size={12} className="shrink-0 text-[#B97818]" aria-hidden="true" />}
                       {index + 1} &nbsp;{name}
                     </span>
                     <span className="shrink-0 text-right text-[10px] text-ink-tertiary">
@@ -295,6 +336,107 @@ export function RunDetail({ run, workflow, now, botName, onCancel, onContinue, o
                       {t("workflows.run.openConversation")}
                       <ArrowRight size={11} aria-hidden="true" />
                     </button>
+                  )}
+                  {iterations.length > 0 && (
+                    <div className="mt-2">
+                      <button
+                        type="button"
+                        aria-expanded={roundsOpen}
+                        onClick={() => setExpandedRounds((current) => {
+                          const next = new Set(current);
+                          if (next.has(step.id)) next.delete(step.id);
+                          else next.add(step.id);
+                          return next;
+                        })}
+                        className="flex items-center gap-1.5 text-[10.5px] font-medium text-ink-secondary hover:text-ink"
+                      >
+                        <ChevronDown size={12} aria-hidden="true" className={cn("transition-transform", roundsOpen && "rotate-180")} />
+                        {roundsOpen ? t("workflows.run.closeIterations") : t("workflows.run.openIterations")}
+                        {" · "}
+                        {iterations.length === 1 ? t("workflows.run.iterationsOne") : t("workflows.run.iterationsOther", { count: iterations.length })}
+                      </button>
+                      {roundsOpen && (
+                        <ol className="mt-2 space-y-2">
+                          {iterations.map((iteration, iterationIndex) => {
+                            const condition = iteration.condition
+                              ? `${iteration.condition.field} ${iteration.condition.op}${iteration.condition.value === undefined ? "" : ` ${JSON.stringify(iteration.condition.value)}`}`
+                              : undefined;
+                            const loopDefinition = definitionStep(step.id);
+                            const limit = loopDefinition?.kind === "loop" ? loopDefinition.maxIterations : undefined;
+                            return (
+                              <li key={`${iteration.index}-${iterationIndex}`} className="rounded-lg border border-hairline bg-raised/20 px-3 py-2">
+                                <div className="flex flex-wrap items-center justify-between gap-2 text-[10.5px]">
+                                  <span className="font-semibold text-ink">{t("workflows.run.iteration", { index: iteration.index })}</span>
+                                  <span className={cn(
+                                    "rounded-md px-1.5 py-0.5 text-[9.5px]",
+                                    iteration.status === "succeeded" && "bg-[#EAF8F0] text-[#35A16E]",
+                                    iteration.status === "failed" && "bg-[#FFF0F0] text-[#CB5C63]",
+                                    iteration.status === "running" && "bg-[#EDF3FF] text-[#5B84D2]",
+                                    iteration.status === "skipped" && "bg-raised/40 text-ink-tertiary",
+                                  )}>
+                                    {stepStatusLabel(iteration.status)}
+                                  </span>
+                                </div>
+                                <div className="mt-1 text-[10px] text-ink-tertiary">
+                                  {iteration.failureKind === "limit"
+                                    ? t("workflows.run.iterationLimit", { count: limit ?? "?" })
+                                    : iteration.conditionMatched && condition
+                                      ? t("workflows.run.iterationStopped", { condition })
+                                      : iteration.conditionMatched === false
+                                        ? t("workflows.run.iterationCondition")
+                                        : ""}
+                                </div>
+                                {iteration.error && <div className="mt-1 text-[10px] leading-relaxed text-danger">{iteration.error}</div>}
+                                <div className="mt-1.5 space-y-1">
+                                  {iteration.steps.map((body, bodyIndex) => {
+                                    const bodyTiming = stepTiming(body, now);
+                                    const bodyConversation = conversationFor(body, [index, iterationIndex, bodyIndex]);
+                                    return (
+                                      <div key={`${body.id}-${bodyIndex}`} className="text-[10px] text-ink-secondary">
+                                        <div className="flex items-center justify-between gap-2">
+                                          <span className="flex min-w-0 items-center gap-1.5">
+                                            <span className={cn(
+                                              "inline-block size-1.5 shrink-0 rounded-full",
+                                              body.status === "succeeded" && "bg-[#35A16E]",
+                                              body.status === "failed" && "bg-[#CB5C63]",
+                                              body.status === "running" && "bg-[#5B84D2]",
+                                              body.status === "skipped" && "bg-[#C7CCD0]",
+                                              body.status === "pending" && "bg-[#C7CCD0]",
+                                            )} />
+                                            <span className="truncate">{bodyName(step.id, body.id)}</span>
+                                          </span>
+                                          <span className="shrink-0 text-ink-tertiary">{bodyTiming}</span>
+                                        </div>
+                                        {body.error && <div className="mt-0.5 text-danger">{body.error}</div>}
+                                        {(body.verified?.length ?? 0) > 0 && (
+                                          <div className="mt-0.5 flex flex-wrap gap-1">
+                                            {body.verified!.map((file) => (
+                                              <span key={file} className="flex items-center gap-1 rounded border border-hairline bg-white px-1 py-0.5 text-[9px]">
+                                                <FileText size={9} aria-hidden="true" />
+                                                {file}
+                                              </span>
+                                            ))}
+                                          </div>
+                                        )}
+                                        {bodyConversation && (
+                                          <button
+                                            type="button"
+                                            onClick={() => onOpenConversation(bodyConversation.botId, bodyConversation.threadId)}
+                                            className="mt-0.5 text-[9.5px] font-medium text-accent-text hover:underline"
+                                          >
+                                            {t("workflows.run.openConversation")}
+                                          </button>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </li>
+                            );
+                          })}
+                        </ol>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>

@@ -1,7 +1,15 @@
 import { useMemo, useRef, type ReactNode } from "react";
 import { Check, Upload, X } from "lucide-react";
 
-import { WORKFLOW_CONDITION_ROWS_MAX, type ConditionLine, type ConditionOp, type WorkflowSkillOptions, type WorkflowStep } from "../../../shared/workflow";
+import {
+  WORKFLOW_CONDITION_ROWS_MAX,
+  type ConditionLine,
+  type ConditionMatch,
+  type ConditionOp,
+  type StepOutput,
+  type WorkflowSkillOptions,
+  type WorkflowStep,
+} from "../../../shared/workflow";
 import type { LocaleKey } from "@/locales";
 import { Select } from "@/components/Select";
 import { t } from "@/lib/i18n";
@@ -234,7 +242,18 @@ export function StudioBalloon({ draft, step, branch, anchor, bots, scripts, skil
         )}
 
         {step.kind === "condition" && branch === "condition" && (
-          <ConditionFields step={step} onChange={onChange} />
+          <ConditionFields
+            match={step.match}
+            conditions={step.conditions}
+            onChange={(patch) => onChange(patch as Partial<WorkflowStep>)}
+          />
+        )}
+
+        {step.kind === "loop" && branch === "condition" && (
+          <LoopConditionFields
+            step={step}
+            onChange={onChange}
+          />
         )}
 
         {step.kind === "condition" && (branch === "true" || branch === "false") && (
@@ -255,10 +274,10 @@ export function StudioBalloon({ draft, step, branch, anchor, bots, scripts, skil
             <div className="studio-info">
               {branch === "failure"
                 ? (step.onFailure ? nameOf(step.onFailure) : t("studio.condition.none"))
-                : (step.kind !== "condition" && step.onTimeout ? nameOf(step.onTimeout) : t("studio.condition.none"))}
+                : ((step.kind === "bot" || step.kind === "script") && step.onTimeout ? nameOf(step.onTimeout) : t("studio.condition.none"))}
             </div>
             {((branch === "failure" && step.onFailure !== undefined)
-              || (branch === "timeout" && step.kind !== "condition" && step.onTimeout !== undefined)) && (
+              || (branch === "timeout" && (step.kind === "bot" || step.kind === "script") && step.onTimeout !== undefined)) && (
               <DisconnectRow label={t("studio.disconnect")} onClick={() => onDisconnect(branch)} />
             )}
           </Field>
@@ -276,7 +295,7 @@ export function StudioBalloon({ draft, step, branch, anchor, bots, scripts, skil
                 <DisconnectRow label={t("studio.disconnect")} onClick={() => onDisconnect("run")} />
               )}
             </Field>
-            {step.kind !== "condition" && (
+            {(step.kind === "bot" || step.kind === "script") && (
               <Field label={t("studio.step.mode")} help={t("studio.step.modeHelp")}>
                 <Select
                   className="w-full"
@@ -506,12 +525,13 @@ const conditionFamily = (op: ConditionOp) =>
 const conditionFamilyOps = (family: string): ConditionOp[] =>
   family === "compare" ? ["gt", "gte", "lt", "lte"] : family === "equals" ? ["equals", "not_equals"] : family === "contains" ? ["contains"] : ["exists"];
 
-function ConditionFields({ step, onChange }: {
-  step: Extract<WorkflowStep, { kind: "condition" }>;
-  onChange: (patch: Partial<WorkflowStep>) => void;
+function ConditionFields({ match, conditions, onChange }: {
+  match: ConditionMatch;
+  conditions: readonly ConditionLine[];
+  onChange: (patch: { conditions?: ConditionLine[]; match?: ConditionMatch }) => void;
 }) {
   const setLine = (index: number, patch: Partial<ConditionLine>) => {
-    onChange({ conditions: step.conditions.map((line, lineIndex) => lineIndex === index ? { ...line, ...patch } : line) } as Partial<WorkflowStep>);
+    onChange({ conditions: conditions.map((line, lineIndex) => lineIndex === index ? { ...line, ...patch } : line) });
   };
   const setFamily = (index: number, next: string) => {
     const op: ConditionOp = next === "compare" ? "gt" : next === "equals" ? "equals" : next === "contains" ? "contains" : "exists";
@@ -533,22 +553,22 @@ function ConditionFields({ step, onChange }: {
     }
   };
   const add = () => {
-    if (step.conditions.length >= WORKFLOW_CONDITION_ROWS_MAX) return;
-    onChange({ conditions: [...step.conditions, { field: "ok", op: "equals", value: true }] } as Partial<WorkflowStep>);
+    if (conditions.length >= WORKFLOW_CONDITION_ROWS_MAX) return;
+    onChange({ conditions: [...conditions, { field: "ok", op: "equals", value: true }] });
   };
   const remove = (index: number) => {
-    onChange({ conditions: step.conditions.filter((_line, lineIndex) => lineIndex !== index) } as Partial<WorkflowStep>);
+    onChange({ conditions: conditions.filter((_line, lineIndex) => lineIndex !== index) });
   };
   return (
     <>
       <Field label={t("studio.condition.match")} help={t("studio.condition.matchHelp")}>
-        <Select className="w-full" size="sm" value={step.match} onChange={(event) => onChange({ match: event.target.value as "all" | "any" } as Partial<WorkflowStep>)}>
+        <Select className="w-full" size="sm" value={match} onChange={(event) => onChange({ match: event.target.value as ConditionMatch })}>
           <option value="all">{t("studio.condition.all")}</option>
           <option value="any">{t("studio.condition.any")}</option>
         </Select>
       </Field>
       <div className="studio-condition-lines">
-        {step.conditions.map((line, index) => {
+        {conditions.map((line, index) => {
           const family = conditionFamily(line.op);
           const valueText = line.value === undefined ? "" : typeof line.value === "string" ? line.value : JSON.stringify(line.value);
           return (
@@ -559,7 +579,7 @@ function ConditionFields({ step, onChange }: {
                   type="button"
                   className="studio-condition-remove"
                   aria-label={t("studio.condition.remove", { index: index + 1 })}
-                  disabled={step.conditions.length <= 1}
+                  disabled={conditions.length <= 1}
                   onClick={() => remove(index)}
                 >
                   <X size={12} aria-hidden="true" />
@@ -592,9 +612,85 @@ function ConditionFields({ step, onChange }: {
           );
         })}
       </div>
-      <button type="button" className="studio-condition-add" disabled={step.conditions.length >= WORKFLOW_CONDITION_ROWS_MAX} onClick={add}>
+      <button type="button" className="studio-condition-add" disabled={conditions.length >= WORKFLOW_CONDITION_ROWS_MAX} onClick={add}>
         {t("studio.condition.add")}
       </button>
+    </>
+  );
+}
+
+function LoopConditionFields({ step, onChange }: {
+  step: Extract<WorkflowStep, { kind: "loop" }>;
+  onChange: (patch: Partial<WorkflowStep>) => void;
+}) {
+  const sources = step.body.filter((candidate): candidate is Exclude<WorkflowStep, { kind: "condition" | "loop" }> =>
+    candidate.kind !== "condition" && candidate.result !== undefined);
+  const declared = step.body.flatMap((bodyStep): Array<StepOutput & { stepName: string }> =>
+    bodyStep.kind === "condition" ? [] : bodyStep.outputs.map((output) => ({ ...output, stepName: bodyStep.name })));
+  const toggleOutput = (output: StepOutput) => {
+    const exists = step.outputs.some((candidate) => candidate.path === output.path);
+    const outputs = exists
+      ? step.outputs.filter((candidate) => candidate.path !== output.path)
+      : [...step.outputs, { path: output.path, required: output.required }];
+    onChange({
+      outputs,
+      ...(step.result !== undefined && !outputs.some((candidate) => candidate.path === step.result) ? { result: undefined } : {}),
+    } as Partial<WorkflowStep>);
+  };
+  return (
+    <>
+      <Field label={t("studio.loop.from")} help={t("studio.loop.fromHelp")}>
+        <Select className="w-full" size="sm" value={step.from} onChange={(event) => onChange({ from: event.target.value } as Partial<WorkflowStep>)}>
+          <option value="">{t("studio.loop.pickFrom")}</option>
+          {sources.map((source) => <option key={source.id} value={source.id}>{source.name}</option>)}
+        </Select>
+        {sources.length === 0 && <div className="studio-help">{t("studio.loop.noFrom")}</div>}
+      </Field>
+      <ConditionFields
+        match={step.match}
+        conditions={step.conditions}
+        onChange={(patch) => onChange(patch as Partial<WorkflowStep>)}
+      />
+      <Field label={t("studio.loop.maxIterations")} help={t("studio.loop.maxHelp")}>
+        <input
+          type="number"
+          min={1}
+          step={1}
+          className="studio-input"
+          value={step.maxIterations}
+          onChange={(event) => onChange({ maxIterations: Math.max(1, Math.trunc(Number(event.target.value) || 1)) } as Partial<WorkflowStep>)}
+        />
+      </Field>
+      <Field label={t("studio.loop.outputs")} help={t("studio.loop.outputsHelp")}>
+        {declared.length === 0 ? <div className="studio-info">{t("studio.loop.noOutputs")}</div> : (
+          <div className="studio-check-list">
+            {declared.map((output) => (
+              <label key={`${output.stepName}:${output.path}`} className="studio-check">
+                <input
+                  type="checkbox"
+                  checked={step.outputs.some((candidate) => candidate.path === output.path)}
+                  onChange={() => toggleOutput(output)}
+                />
+                <span className="min-w-0">
+                  <span className="block truncate font-mono text-[11px]">{output.path}</span>
+                  <span className="block truncate text-[10px] text-ink-tertiary">{output.stepName}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+        )}
+      </Field>
+      <Field label={t("studio.loop.result")} help={t("studio.loop.resultHelp")}>
+        <Select
+          className="w-full"
+          size="sm"
+          value={step.result ?? ""}
+          onChange={(event) => onChange({ result: event.target.value || undefined } as Partial<WorkflowStep>)}
+        >
+          <option value="">{t("studio.agent.resultNone")}</option>
+          {step.outputs.map((output) => <option key={output.path} value={output.path}>{output.path}</option>)}
+        </Select>
+      </Field>
     </>
   );
 }

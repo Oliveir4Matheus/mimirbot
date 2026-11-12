@@ -1,5 +1,5 @@
 import { Fragment } from "react";
-import { ChevronRight, Code, FileText, GitBranch } from "lucide-react";
+import { ChevronRight, Code, FileText, GitBranch, Repeat } from "lucide-react";
 
 import type { WorkflowDefinition } from "../../../shared/workflow";
 import { cn } from "@/lib/cn";
@@ -9,7 +9,7 @@ import { BotAvatar } from "./BotAvatar";
 function connectorLabels(workflow: WorkflowDefinition, index: number): string[] {
   const step = workflow.steps[index];
   if (!step || step.kind === "condition") return [];
-  if (step.inputs.length > 0) return step.inputs.map((input) => input.as);
+  if (step.kind !== "loop" && step.inputs.length > 0) return step.inputs.map((input) => input.as);
   const previous = workflow.steps[index - 1];
   return previous && previous.kind !== "condition" && previous.outputs[0] ? [previous.outputs[0].path] : [];
 }
@@ -53,9 +53,16 @@ export function WorkflowSteps({ workflow, botName, activeStep, selectedStep, onS
           const selected = selectedStep === index;
           const outputs = step.kind === "condition"
             ? t("workflows.detail.conditionRoutes")
-            : step.outputs.length === 1
-              ? t("workflows.detail.outputsOne")
-              : t("workflows.detail.outputsOther", { count: step.outputs.length });
+            : step.kind === "loop"
+              ? t("workflows.detail.loopCondition", {
+                condition: step.conditions[0]
+                  ? `${step.conditions[0].field} ${step.conditions[0].op}${step.conditions[0].value === undefined ? "" : ` ${JSON.stringify(step.conditions[0].value)}`}`
+                  : t("workflows.detail.condition"),
+                count: step.maxIterations,
+              })
+              : step.outputs.length === 1
+                ? t("workflows.detail.outputsOne")
+                : t("workflows.detail.outputsOther", { count: step.outputs.length });
           return (
             <Fragment key={step.id}>
               {index > 0 && <Connector labels={connectorLabels(workflow, index)} />}
@@ -78,16 +85,29 @@ export function WorkflowSteps({ workflow, botName, activeStep, selectedStep, onS
                       ? <BotAvatar name={name!} />
                       : step.kind === "script"
                         ? <Code size={12} className="shrink-0" aria-hidden="true" />
-                        : <GitBranch size={12} className="shrink-0" aria-hidden="true" />}
-                    <span className="truncate">
-                      {step.kind === "bot"
-                        ? t("workflows.detail.bot", { name: name! })
-                        : step.kind === "script"
-                          ? t("workflows.detail.script", { file: step.run })
-                          : t("workflows.detail.condition")}
-                      {" · "}{outputs}
+                        : step.kind === "loop"
+                          ? <Repeat size={12} className="shrink-0" aria-hidden="true" />
+                          : <GitBranch size={12} className="shrink-0" aria-hidden="true" />}
+                    <span className="block truncate">
+                      {step.kind === "loop"
+                        ? outputs
+                        : (
+                          <>
+                            {step.kind === "bot"
+                              ? t("workflows.detail.bot", { name: name! })
+                              : step.kind === "script"
+                                ? t("workflows.detail.script", { file: step.run })
+                                : t("workflows.detail.condition")}
+                            {" · "}{outputs}
+                          </>
+                        )}
                     </span>
                   </span>
+                  {step.kind === "loop" && (
+                    <span className="mt-0.5 block truncate text-[9.5px] text-[#A0A2A7]">
+                      {t("workflows.detail.loopBody", { count: step.body.length, names: step.body.slice(0, 3).map((bodyStep) => bodyStep.name).join(", ") })}
+                    </span>
+                  )}
                 </span>
                 {running && (
                   <span className="shrink-0 rounded-md bg-[#EAF2FF] px-1.5 py-0.5 text-[9.5px] font-semibold text-[#397EE7]">

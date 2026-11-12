@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Code, GitBranch, X } from "lucide-react";
+import { Code, GitBranch, Repeat, X } from "lucide-react";
 
 import type { WorkflowDefinition, WorkflowStep } from "../../../shared/workflow";
 import { cn } from "@/lib/cn";
@@ -48,13 +48,16 @@ export function StepPanel({ workflow, step, index, botName, onClose }: {
   const name = step.kind === "bot" ? botName(step.botId) : undefined;
   const sourceName = (id: string) => workflow.steps.find((candidate) => candidate.id === id)?.name ?? id;
   const condition = step.kind === "condition" ? step : undefined;
-  const fileStep = step.kind === "condition" ? undefined : step;
-  const successTarget = fileStep === undefined
+  const loop = step.kind === "loop" ? step : undefined;
+  const loopSourceName = (id: string) => loop?.body.find((candidate) => candidate.id === id)?.name ?? sourceName(id);
+  const fileStep = step.kind === "bot" || step.kind === "script" ? step : undefined;
+  const outputStep = step.kind === "condition" ? undefined : step;
+  const successTarget = outputStep === undefined
     ? undefined
-    : typeof fileStep.onSuccess === "string" ? fileStep.onSuccess
-      : fileStep.onSuccess === null ? undefined
+    : typeof outputStep.onSuccess === "string" ? outputStep.onSuccess
+      : outputStep.onSuccess === null ? undefined
         : workflow.steps[index + 1]?.id;
-  const conditions = Object.entries(fileStep?.require ?? {});
+  const conditions = Object.entries(outputStep?.require ?? {});
 
   return (
     <aside aria-label={t("workflows.step.panel")} className="flex max-h-[620px] w-[360px] shrink-0 flex-col overflow-hidden rounded-[13px] border border-hairline bg-app shadow-sm max-[1100px]:w-[300px] max-[900px]:w-full">
@@ -103,6 +106,17 @@ export function StepPanel({ workflow, step, index, botName, onClose }: {
               </div>
               <div className="mt-1.5 text-[10px] text-ink-tertiary">
                 {t("workflows.step.mode")}: {step.mode === "manual" ? t("workflows.step.modeManual") : t("workflows.step.modeAuto")}
+              </div>
+            </>
+          ) : loop ? (
+            <>
+              <div className={LABEL}>{t("workflows.step.loop")}</div>
+              <div className="flex items-center gap-2 text-[11.5px] font-medium text-ink">
+                <Repeat size={14} aria-hidden="true" />
+                {t("workflows.step.loopBody", { count: loop.body.length })}
+              </div>
+              <div className="mt-1.5 text-[10px] text-ink-tertiary">
+                {t("workflows.step.maxIterations")}: {loop.maxIterations}
               </div>
             </>
           ) : (
@@ -162,6 +176,39 @@ export function StepPanel({ workflow, step, index, botName, onClose }: {
           </section>
         )}
 
+        {loop && (
+          <>
+            <section className="mb-4">
+              <div className={LABEL}>{t("workflows.step.body")}</div>
+              <ol className="space-y-1.5 text-[10.5px] text-ink-secondary">
+                {loop.body.map((bodyStep, bodyIndex) => (
+                  <li key={bodyStep.id} className="flex items-center gap-2">
+                    <span className="w-3 text-right text-ink-tertiary">{bodyIndex + 1}</span>
+                    {bodyStep.kind === "bot" ? <BotAvatar name={botName(bodyStep.botId)} size={16} />
+                      : bodyStep.kind === "script" ? <Code size={12} aria-hidden="true" />
+                        : <GitBranch size={12} aria-hidden="true" />}
+                    <span className="truncate">{bodyStep.name}</span>
+                  </li>
+                ))}
+              </ol>
+            </section>
+            <section className="mb-4">
+              <div className={LABEL}>{t("workflows.step.condition")}</div>
+              <div className="mb-2 text-[10.5px] text-ink-secondary">
+                {t("workflows.step.conditionFrom", { name: loopSourceName(loop.from) })}
+              </div>
+              <div className="mb-2 text-[10.5px] text-ink-secondary">
+                {t("workflows.step.conditionMatch")}: <span className="text-ink">{loop.match === "any" ? t("workflows.step.matchAny") : t("workflows.step.matchAll")}</span>
+                {" · "}{t("workflows.step.maxIterations")}: <span className="text-ink">{loop.maxIterations}</span>
+              </div>
+              <Table
+                head={[t("workflows.step.conditionField"), t("workflows.step.conditionOperator"), t("workflows.step.conditionValue")]}
+                rows={loop.conditions.map((line) => [line.field, line.op, line.value === undefined ? "—" : JSON.stringify(line.value)])}
+              />
+            </section>
+          </>
+        )}
+
         {fileStep && (
           <section className="mb-4">
             <div className={LABEL}>{t("workflows.step.inputs")}</div>
@@ -174,24 +221,24 @@ export function StepPanel({ workflow, step, index, botName, onClose }: {
           </section>
         )}
 
-        {fileStep && (
+        {outputStep && (
           <section className="mb-4">
             <div className={LABEL}>{t("workflows.step.outputs")}</div>
             <Table
               head={[t("workflows.step.outputFile"), t("workflows.step.outputRequired")]}
-              rows={fileStep.outputs.map((output) => [output.path, output.required])}
+              rows={outputStep.outputs.map((output) => [output.path, output.required])}
             />
           </section>
         )}
 
-        {fileStep && (
+        {outputStep && (
           <section className="mb-4">
             <div className={LABEL}>{t("workflows.step.result")}</div>
-            {fileStep.result ? <span className="font-mono text-[10.5px] text-ink-secondary">{fileStep.result}</span> : <None />}
+            {outputStep.result ? <span className="font-mono text-[10.5px] text-ink-secondary">{outputStep.result}</span> : <None />}
           </section>
         )}
 
-        {fileStep && (
+        {outputStep && (
           <section className="mb-4">
             <div className={LABEL}>{t("workflows.step.conditions")}</div>
             {conditions.length === 0 ? <None /> : (
@@ -216,6 +263,17 @@ export function StepPanel({ workflow, step, index, botName, onClose }: {
               {condition.onFailure && (
                 <div className="text-[10.5px] text-ink-secondary">
                   {t("workflows.step.onFailure")}: <span className="text-ink">{sourceName(condition.onFailure)}</span>
+                </div>
+              )}
+            </div>
+          ) : loop ? (
+            <div className="space-y-2">
+              <div className="text-[10.5px] text-ink-secondary">
+                {t("workflows.step.onSuccess")}: <span className="text-ink">{successTarget ? sourceName(successTarget) : t("workflows.step.timeoutEnd")}</span>
+              </div>
+              {loop.onFailure && (
+                <div className="text-[10.5px] text-ink-secondary">
+                  {t("workflows.step.onFailure")}: <span className="text-ink">{sourceName(loop.onFailure)}</span>
                 </div>
               )}
             </div>

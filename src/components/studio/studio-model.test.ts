@@ -2,10 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import { workflowDefinitionSchema } from "../../../shared/workflow";
 import {
-  addConditionLine, autoLayout, conditionLines, connect, containedBy, createStep, disconnect, draftProblem, fromDefinition,
+  addConditionLine, allDraftSteps, autoLayout, bodyDraft, conditionLines, connect, containedBy, createStep, disconnect, draftProblem, duplicateLoop, fromDefinition,
   newDraft, removeConditionLine, removeStep, renameScript, scriptLanguageOf, scriptNameForLanguage, selectAllSkills,
   setSkillGroup, skillCount, skillSelection, skillSelectionProblem, skillsWithGroup, toDefinition, toggleSkill, toggleSkillGroup,
-  updateConditionLine, updateConditionMatch, updateNote, type StudioDraft,
+  updateConditionLine, updateConditionMatch, updateNote, withBodyDraft, type StudioDraft,
 } from "./studio-model";
 
 const step = (draft: StudioDraft, kind: "agent" | "script" | "condition", x: number, y: number, botId = "bot-a") =>
@@ -100,7 +100,7 @@ describe("studio model", () => {
   it("keeps saved positions and fills the steps that have none", () => {
     const draft = step(newDraft("Financeiro"), "agent", 200, 200).draft;
     const definition = toDefinition(draft);
-    const restored = fromDefinition({ ...definition, canvas: { nodes: { [draft.steps[0]!.id]: { x: 900, y: 700 } }, notes: [], containers: [] } });
+    const restored = fromDefinition({ ...definition, canvas: { nodes: { [draft.steps[0]!.id]: { x: 900, y: 700 } }, notes: [], containers: [], loops: {} } });
     expect(restored.canvas.nodes[draft.steps[0]!.id]).toEqual({ x: 900, y: 700 });
   });
 
@@ -276,5 +276,104 @@ describe("studio step skills", () => {
     expect(skillSelectionProblem(selected.steps[0]!, options)?.key).toBe("studio.skillUnavailable");
     expect(draftProblem({ ...selected, name: "Test" }, new Set(["bot-a"]), { "bot-a": options })?.params?.name).toBe("disabled");
     expect(skillSelectionProblem(setSkillGroup(draft, id, "bot", ["own"]).steps[0]!, options)).toBeUndefined();
+  });
+});
+
+describe("Do While in the Studio", () => {
+  const withLoop = () => {
+    let draft = { ...newDraft("Financeiro"), name: "Lote" };
+    const created = createStep(draft, "loop", { x: 300, y: 300 });
+    draft = created.draft;
+    const loopId = created.stepId;
+    let body = bodyDraft(draft, loopId)!;
+    const bodyStep = createStep(body, "script", { x: 120, y: 120 });
+    body = bodyStep.draft;
+    const bodyId = bodyStep.stepId;
+    draft = withBodyDraft(draft, loopId, body);
+    draft = {
+      ...draft,
+      steps: draft.steps.map((step) => step.id === loopId && step.kind === "loop"
+        ? { ...step, from: bodyId, outputs: [{ path: "result.json", required: true }], result: "result.json" }
+        : step),
+    };
+    return { draft, loopId, bodyId };
+  };
+
+  it("creates a loop card with an empty body and its own sub-canvas", () => {
+    const created = createStep({ ...newDraft("Financeiro"), name: "Lote" }, "loop", { x: 300, y: 300 });
+    const loop = created.draft.steps[0]!;
+    expect(loop.kind).toBe("loop");
+    expect(loop.kind === "loop" && loop.body).toEqual([]);
+    expect(created.draft.canvas.loops[created.stepId]).toEqual({ nodes: {}, notes: [], containers: [] });
+  });
+
+  it("keeps a body step id unique against the main canvas", () => {
+    let draft = { ...newDraft("Financeiro"), name: "Lote" };
+    const topScript = createStep(draft, "script", { x: 120, y: 120 });
+    draft = topScript.draft;
+    const created = createStep(draft, "loop", { x: 500, y: 300 });
+    draft = created.draft;
+    const body = bodyDraft(draft, created.stepId)!;
+    const globalIds = new Set(allDraftSteps(draft).map((step) => step.id));
+    const bodyStep = createStep(body, "script", { x: 120, y: 120 }, "bot-a", globalIds);
+    expect(bodyStep.stepId).not.toBe(topScript.stepId);
+    expect(globalIds.has(bodyStep.stepId)).toBe(false);
+  });
+
+  it("asks for a body before saving an empty loop", () => {
+    const created = createStep({ ...newDraft("Financeiro"), name: "Lote" }, "loop", { x: 300, y: 300 });
+    expect(draftProblem(created.draft, new Set())).toEqual({ key: "studio.loop.needBody", params: { name: expect.any(String) } });
+  });
+
+  it("edits the body through the same draft model and saves a valid definition", () => {
+    const { draft, loopId, bodyId } = withLoop();
+    expect(draftProblem(draft, new Set(["bot-a"]))).toBeUndefined();
+    const definition = toDefinition(draft);
+    expect(workflowDefinitionSchema.safeParse(definition).success).toBe(true);
+    const loop = definition.steps.find((step) => step.id === loopId);
+    expect(loop?.kind === "loop" && loop.body[0]?.id).toBe(bodyId);
+    expect(definition.canvas?.loops[loopId]?.nodes[bodyId]).toBeDefined();
+    const restored = fromDefinition(definition);
+    expect(restored.steps.find((step) => step.id === loopId)?.kind).toBe("loop");
+    expect(restored.canvas.loops[loopId]?.nodes[bodyId]).toBeDefined();
+  });
+
+  it("duplicates the body and the sub-canvas with fresh ids", () => {
+    const { draft, loopId } = withLoop();
+    const copy = duplicateLoop(draft, loopId, { x: 900, y: 400 });
+    if (!copy) throw new Error("no copy");
+    const original = draft.steps.find((step) => step.id === loopId);
+    const clone = copy.draft.steps.find((step) => step.id === copy.stepId);
+    if (original?.kind !== "loop" || clone?.kind !== "loop") throw new Error("not a loop");
+    expect(clone.id).not.toBe(original.id);
+    expect(clone.body[0]!.id).not.toBe(original.body[0]!.id);
+    expect(clone.from).toBe(clone.body[0]!.id);
+    expect(copy.draft.canvas.loops[copy.stepId]?.nodes[clone.body[0]!.id]).toBeDefined();
+    expect(clone.onSuccess).toBeUndefined();
+  });
+
+  it("removes the sub-canvas with the loop card", () => {
+    const { draft, loopId } = withLoop();
+    const removed = removeStep(draft, loopId);
+    expect(removed.steps).toHaveLength(0);
+    expect(removed.canvas.loops[loopId]).toBeUndefined();
+  });
+
+  it("refuses a loop output declared twice or required from an optional body output", () => {
+    const { draft, loopId } = withLoop();
+    const twice = {
+      ...draft,
+      steps: draft.steps.map((step) => step.id === loopId && step.kind === "loop"
+        ? { ...step, outputs: [{ path: "result.json", required: true }, { path: "result.json", required: true }] }
+        : step),
+    };
+    expect(draftProblem(twice, new Set(["bot-a"]))?.key).toMatch(/studio.loop.needOutput|studio.loop.outputAmbiguous/);
+    const optionalBody = {
+      ...draft,
+      steps: draft.steps.map((step) => step.id === loopId && step.kind === "loop"
+        ? { ...step, body: step.body.map((bodyStep) => bodyStep.kind === "script" ? { ...bodyStep, outputs: [{ path: "result.json", required: false }] } : bodyStep) }
+        : step),
+    };
+    expect(draftProblem(optionalBody, new Set(["bot-a"]))?.key).toBe("studio.loop.outputOptional");
   });
 });

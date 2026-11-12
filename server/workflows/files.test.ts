@@ -3,8 +3,17 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import type { BotWorkflowStep, StepOutput } from "../../shared/workflow.ts";
-import { WORKFLOW_RESULT_MAX_BYTES, copyStepInputs, prepareRunDirectories, safeWorkflowPath, verifyStepOutputs } from "./files.ts";
+import type { BotWorkflowStep, LoopWorkflowStep, StepOutput } from "../../shared/workflow.ts";
+import {
+  WORKFLOW_RESULT_MAX_BYTES,
+  copyBodyStepInputs,
+  copyStepInputs,
+  prepareIterationDirectories,
+  prepareRunDirectories,
+  projectLoopOutputs,
+  safeWorkflowPath,
+  verifyStepOutputs,
+} from "./files.ts";
 
 let root: string;
 
@@ -277,3 +286,68 @@ describe("copyStepInputs", () => {
     });
   });
 });
+
+describe("Do While folders", () => {
+  const bodyStep = (overrides: Partial<BotWorkflowStep> = {}): BotWorkflowStep => step(overrides);
+  const loop = (body: LoopWorkflowStep["body"], outputs: StepOutput[] = required("result.json")): LoopWorkflowStep => ({
+    id: "laco",
+    kind: "loop",
+    name: "Loop",
+    body,
+    from: body[0]!.id,
+    match: "all",
+    conditions: [{ field: "restantes", op: "lte", value: 0 }],
+    maxIterations: 3,
+    outputs,
+    result: "result.json",
+    onSuccess: undefined,
+  } as LoopWorkflowStep);
+
+  it("creates one input/output pair per body step in a round", () => {
+    const made = prepareIterationDirectories(root, 2, [bodyStep({ id: "prepara" }), bodyStep({ id: "atualiza" })]);
+    expect(made).toEqual([
+      join(root, "iterations", "iter-2", "step-prepara"),
+      join(root, "iterations", "iter-2", "step-atualiza"),
+    ]);
+    for (const dir of made) {
+      expect(statSync(join(dir, "input")).isDirectory()).toBe(true);
+      expect(statSync(join(dir, "output")).isDirectory()).toBe(true);
+    }
+  });
+
+  it("projects only the last round's declared outputs into the loop folder", () => {
+    const step1 = bodyStep({ id: "atualiza", outputs: required("registros.json") });
+    const loopValue = loop([step1], required("registros.json"));
+    const source = join(iterationDirFor(1), "step-atualiza", "output");
+    mkdirSync(source, { recursive: true });
+    writeFileSync(join(source, "registros.json"), "{\"ok\":true}\n");
+    const projected = projectLoopOutputs(root, 0, 1, loopValue);
+    expect(projected).toEqual({ ok: true, verified: ["registros.json"] });
+    expect(readFileSync(join(root, "step-1", "output", "registros.json"), "utf8")).toBe("{\"ok\":true}\n");
+  });
+
+  it("fails a required projection but skips an optional one", () => {
+    const loopValue = loop([bodyStep({ id: "atualiza", outputs: required("result.json") })], required("result.json"));
+    expect(projectLoopOutputs(root, 0, 1, loopValue)).toEqual({
+      ok: false,
+      error: expect.stringContaining("missing required output"),
+    });
+    const optional = loop([bodyStep({ id: "atualiza", outputs: [{ path: "result.json", required: false }] })], [{ path: "result.json", required: false }]);
+    expect(projectLoopOutputs(root, 0, 1, optional)).toEqual({ ok: true, verified: [] });
+  });
+
+  it("copies a body input from an earlier body step of the same round", () => {
+    const source = bodyStep({ id: "coleta", outputs: required("dados.csv") });
+    const target = bodyStep({ id: "atualiza", inputs: [{ as: "dados.csv", from: { step: "coleta", output: "dados.csv" } }] });
+    const sourceDir = join(iterationDirFor(1), "step-coleta", "output");
+    mkdirSync(sourceDir, { recursive: true });
+    writeFileSync(join(sourceDir, "dados.csv"), "id\n1\n");
+    const copied = copyBodyStepInputs(root, 0, 1, 1, target, [source, target], []);
+    expect(copied).toEqual({ ok: true, copied: ["dados.csv"] });
+    expect(readFileSync(join(root, "iterations", "iter-1", "step-atualiza", "input", "dados.csv"), "utf8")).toBe("id\n1\n");
+  });
+});
+
+function iterationDirFor(number: number): string {
+  return join(root, "iterations", `iter-${number}`);
+}

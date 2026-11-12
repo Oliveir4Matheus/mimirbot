@@ -204,3 +204,90 @@ describe("runs", () => {
     expect(store.retentionDays(custom.id)).toBe(7);
   });
 });
+
+describe("Do While persistence", () => {
+  const loopDefinition = (overrides: Record<string, unknown> = {}): WorkflowDefinition => workflowDefinitionSchema.parse({
+    ...definition(),
+    steps: [{
+      id: "laco",
+      kind: "loop",
+      name: "Loop",
+      body: [{ id: "atualiza", kind: "bot", name: "Update", botId: "bot-a", instructions: "Update.", outputs: [{ path: "result.json" }], result: "result.json" }],
+      from: "atualiza",
+      conditions: [{ field: "restantes", op: "lte", value: 0 }],
+      maxIterations: 3,
+      outputs: [{ path: "result.json" }],
+      result: "result.json",
+    }],
+    ...overrides,
+  });
+
+  it("stores canvas.loops and does not create a version when only the body layout moves", () => {
+    const store = makeStore();
+    const first = saved(store, loopDefinition());
+    const moved = saved(store, {
+      ...first,
+      canvas: {
+        nodes: { laco: { x: 10, y: 20 } },
+        notes: [],
+        containers: [],
+        loops: { laco: { nodes: { atualiza: { x: 50, y: 60 } }, notes: [], containers: [] } },
+      },
+    });
+    expect(moved.version).toBe(1);
+    expect(store.workflow(first.id)?.canvas?.loops.laco?.nodes.atualiza).toEqual({ x: 50, y: 60 });
+  });
+
+  it("creates a version when the body changes", () => {
+    const store = makeStore();
+    saved(store, loopDefinition());
+    const changed = loopDefinition();
+    const loop = changed.steps[0];
+    if (loop?.kind !== "loop") throw new Error("not a loop");
+    loop.conditions = [{ field: "restantes", op: "lte", value: 2 }];
+    const second = saved(store, changed);
+    expect(second.version).toBe(2);
+  });
+
+  it("writes and reads a run with iterations, snapshot body and hold path", () => {
+    const store = makeStore();
+    const workflow = saved(store, loopDefinition());
+    const run = store.createRun(workflow);
+    expect(run.steps[0]).toMatchObject({ id: "laco", kind: "loop", iterations: [] });
+    expect(run.snapshot?.steps[0]?.body).toEqual([{ id: "atualiza", name: "Update" }]);
+    store.writeRun({
+      ...run,
+      status: "waiting_manual",
+      startedAt: 2,
+      currentStep: 0,
+      hold: { path: [0, 0, 0], since: 2 },
+      steps: [{
+        id: "laco",
+        kind: "loop",
+        status: "running",
+        startedAt: 2,
+        iterations: [{
+          index: 1,
+          status: "running",
+          startedAt: 2,
+          conditionMatched: false,
+          steps: [{ id: "atualiza", status: "pending" }],
+        }],
+      }],
+    });
+    const read = store.readRun(run.id)!;
+    expect(read.status).toBe("waiting_manual");
+    expect(read.hold?.path).toEqual([0, 0, 0]);
+    expect(read.steps[0]!.iterations![0]!.steps[0]!.id).toBe("atualiza");
+  });
+
+  it("still reads a run written before iterations and hold.path existed", () => {
+    const store = makeStore();
+    const workflow = saved(store);
+    const run = store.createRun(workflow);
+    store.writeRun({ ...run, status: "waiting_manual", startedAt: 2, hold: { step: 0, since: 2 } });
+    const read = store.readRun(run.id)!;
+    expect(read.hold).toEqual({ step: 0, since: 2 });
+    expect(read.steps[0]!.iterations).toBeUndefined();
+  });
+});

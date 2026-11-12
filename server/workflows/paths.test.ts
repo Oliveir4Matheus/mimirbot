@@ -10,6 +10,10 @@ import {
   stepDir,
   stepInputDir,
   stepOutputDir,
+  iterationDir,
+  iterationStepDir,
+  iterationStepInputDir,
+  iterationStepOutputDir,
 } from "./paths.ts";
 
 const HOME = "/home/ana";
@@ -120,5 +124,17 @@ describe("step folders", () => {
 
   it("refuses a number no workflow can have", () => {
     for (const number of [0, -1, 41, 1.5]) expect(() => stepDir("/runs/one", number)).toThrow();
+  });
+
+  it("numbers Do While rounds from one and names each body step folder", () => {
+    expect(iterationDir("/runs/one", 1)).toBe("/runs/one/iterations/iter-1");
+    expect(iterationStepDir("/runs/one", 2, "atualiza")).toBe("/runs/one/iterations/iter-2/step-atualiza");
+    expect(iterationStepInputDir("/runs/one", 3, "atualiza")).toBe("/runs/one/iterations/iter-3/step-atualiza/input");
+    expect(iterationStepOutputDir("/runs/one", 3, "atualiza")).toBe("/runs/one/iterations/iter-3/step-atualiza/output");
+  });
+
+  it("refuses a round number or body id that could leave the run folder", () => {
+    for (const number of [0, -1, 1.5]) expect(() => iterationDir("/runs/one", number)).toThrow();
+    for (const id of ["../escape", "A", "", "com espaço"]) expect(() => iterationStepDir("/runs/one", 1, id)).toThrow();
   });
 });

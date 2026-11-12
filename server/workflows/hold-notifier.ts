@@ -12,14 +12,21 @@ export function createWorkflowHoldNotifier(deps: WorkflowHoldNotifierDeps): (run
   const notified = new Set<string>();
   return (run) => {
     if (run.status !== "waiting_manual" || !run.hold) return;
-    const key = `${run.id}:${run.hold.step}`;
+    const path = run.hold.path ?? (run.hold.step === undefined ? undefined : [run.hold.step]);
+    if (!path) return;
+    const key = `${run.id}:${path.join(".")}`;
     if (notified.has(key)) return;
-    const step = deps.workflow(run.workflowId, run.workflowVersion)?.steps[run.hold.step];
+    const definition = deps.workflow(run.workflowId, run.workflowVersion);
+    const top = definition?.steps[path[0]!];
+    const step = path.length === 1 ? top : top?.kind === "loop" ? top.body[path[2]!] : undefined;
     if (!step || step.kind !== "bot") return;
     const bot = deps.bot(step.botId);
     if (!bot) return;
     const workflowName = run.snapshot?.name ?? run.workflowId;
-    const stepName = run.snapshot?.steps[run.hold.step]?.name ?? run.steps[run.hold.step]?.id ?? step.id;
+    const snapshotTop = run.snapshot?.steps[path[0]!];
+    const stepName = path.length === 1
+      ? snapshotTop?.name ?? run.steps[path[0]!]?.id ?? step.id
+      : snapshotTop?.body?.[path[2]!]?.name ?? step.id;
     const body = `Workflow "${workflowName}" · step "${stepName}" is waiting to continue.`;
     const notification = buildNotification("workflow-waiting", bot, bot.threadId, body, { avatarUrl: bot.avatarUrl });
     if (!notification) return;

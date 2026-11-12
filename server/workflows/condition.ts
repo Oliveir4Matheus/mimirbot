@@ -47,3 +47,18 @@ export function evaluateConditionGroup(
   }
   return { ok: true, match: group.match === "all" };
 }
+
+/** The line to name in the timeline when the group stopped a Do While. */
+export function matchedConditionLine(
+  result: unknown,
+  group: { match: ConditionMatch; conditions: readonly ConditionLine[] },
+): ConditionLine | undefined {
+  if (group.conditions.length === 0) return undefined;
+  if (group.match === "any") {
+    return group.conditions.find((line) => {
+      const outcome = evaluateCondition(result, line.op, line.field, line.value);
+      return outcome.ok && outcome.match;
+    });
+  }
+  return group.conditions[0];
+}

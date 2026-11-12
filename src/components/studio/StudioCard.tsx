@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  AlertTriangle, ArrowDownToLine, ArrowUpFromLine, BookOpen, Check, Clock, Code2, CornerUpLeft, FileText, GitBranch, Layers, List, MoreHorizontal, Play, Plus, Sparkles, Wrench, X,
+  AlertTriangle, ArrowDownToLine, ArrowUpFromLine, BookOpen, Check, Clock, Code2, CornerUpLeft, FileText, GitBranch, Layers, List, Maximize2, MoreHorizontal, Play, Plus, Repeat, Sparkles, Wrench, X,
 } from "lucide-react";
 
 import type { WorkflowStep } from "../../../shared/workflow";
@@ -10,7 +10,7 @@ import { t } from "@/lib/i18n";
 import { branchCenters, branchTop } from "./studio-geometry";
 import { CARD_HEIGHT, CARD_WIDTH, skillCount, type StudioBranch, type StudioDraft } from "./studio-model";
 
-const CATEGORY = { bot: "AI AGENT", script: "CODE STEP", condition: "CONDITIONAL" } as const;
+const CATEGORY = { bot: "AI AGENT", script: "CODE STEP", condition: "CONDITIONAL", loop: "DO WHILE" } as const;
 
 const clip = (text: string, max = 85) => {
   const flat = text.replace(/\s+/g, " ").trim();
@@ -48,12 +48,17 @@ const CONDITION_BRANCHES: BranchSpec[] = [
   { key: "condition", label: "studio.branch.condition", icon: List },
 ];
 
+const LOOP_BRANCHES: BranchSpec[] = [
+  { key: "condition", label: "studio.branch.condition", icon: List },
+  { key: "run", label: "studio.branch.run", icon: Play, port: "run" },
+];
+
 const TRUE_BRANCH: BranchSpec = { key: "true", label: "studio.branch.true", icon: Check, color: "#39876D", port: "true" };
 const FALSE_BRANCH: BranchSpec = { key: "false", label: "studio.branch.false", icon: X, color: "#BC655C", port: "false" };
 const FAILURE_BRANCH: BranchSpec = { key: "failure", label: "studio.branch.failure", icon: AlertTriangle, color: "#BC655C", port: "failure" };
 const TIMEOUT_BRANCH: BranchSpec = { key: "timeout", label: "studio.branch.timeout", icon: Clock, color: "#C08023", port: "timeout" };
 
-export function StudioCard({ draft, step, index, selected, botName, onSelect, onDragStart, onEntry, onBranch, onPort, onRename, onDuplicate, onDelete }: {
+export function StudioCard({ draft, step, index, selected, botName, onSelect, onDragStart, onEntry, onBranch, onPort, onRename, onDuplicate, onDelete, onExpand }: {
   draft: StudioDraft;
   step: WorkflowStep;
   index: number;
@@ -67,6 +72,7 @@ export function StudioCard({ draft, step, index, selected, botName, onSelect, on
   onRename: (name: string) => void;
   onDuplicate: () => void;
   onDelete: () => void;
+  onExpand?: () => void;
 }) {
   const node = draft.canvas.nodes[step.id] ?? { x: 0, y: 0 };
   const [menu, setMenu] = useState(false);
@@ -122,16 +128,35 @@ export function StudioCard({ draft, step, index, selected, botName, onSelect, on
       if (key === "false") return step.whenFalse ? nameOf(step.whenFalse) : t("studio.condition.none");
       if (key === "failure") return step.onFailure ? nameOf(step.onFailure) : t("studio.condition.none");
     }
+    if (step.kind === "loop") {
+      if (key === "condition") {
+        const line = step.conditions[0];
+        const condition = line
+          ? `${line.field} ${line.op}${line.value === undefined ? "" : ` ${JSON.stringify(line.value)}`}`
+          : t("studio.condition.count", { count: step.conditions.length });
+        return `${t("studio.loop.stopWhen", { condition })} · ${t("studio.loop.max", { count: step.maxIterations })}`;
+      }
+      if (key === "run") return typeof step.onSuccess === "string" ? nameOf(step.onSuccess) : t("studio.card.end");
+      if (key === "failure") return step.onFailure ? nameOf(step.onFailure) : t("studio.condition.none");
+    }
     return "";
   };
 
   const category = CATEGORY[step.kind];
-  const icon = step.kind === "bot" ? <Sparkles size={21} strokeWidth={1.8} /> : step.kind === "script" ? <Code2 size={21} strokeWidth={1.8} /> : <GitBranch size={21} strokeWidth={1.8} />;
-  const accent = step.kind === "bot" ? "#6254D6" : step.kind === "script" ? "#247B8A" : "#C08023";
-  const accentSoft = step.kind === "bot" ? "#F2F0FF" : step.kind === "script" ? "#EAF6F7" : "#FFF6E8";
-  const waiting = step.kind === "bot" ? t("studio.card.waitingAgent") : step.kind === "script" ? t("studio.card.waitingScript") : t("studio.card.waitingCondition");
-  const branches = step.kind === "bot" ? BOT_BRANCHES : step.kind === "script" ? SCRIPT_BRANCHES : CONDITION_BRANCHES;
-  const sideBranches = step.kind === "condition" ? [TRUE_BRANCH, FALSE_BRANCH, FAILURE_BRANCH] : [FAILURE_BRANCH, TIMEOUT_BRANCH];
+  const icon = step.kind === "bot" ? <Sparkles size={21} strokeWidth={1.8} />
+    : step.kind === "script" ? <Code2 size={21} strokeWidth={1.8} />
+      : step.kind === "loop" ? <Repeat size={21} strokeWidth={1.8} />
+        : <GitBranch size={21} strokeWidth={1.8} />;
+  const accent = step.kind === "bot" ? "#6254D6" : step.kind === "script" ? "#247B8A" : step.kind === "loop" ? "#B97818" : "#C08023";
+  const accentSoft = step.kind === "bot" ? "#F2F0FF" : step.kind === "script" ? "#EAF6F7" : step.kind === "loop" ? "#FFF1DA" : "#FFF6E8";
+  const waiting = step.kind === "bot" ? t("studio.card.waitingAgent")
+    : step.kind === "script" ? t("studio.card.waitingScript")
+      : step.kind === "loop" ? t("studio.loop.bodyCount", { count: step.body.length })
+        : t("studio.card.waitingCondition");
+  const branches = step.kind === "bot" ? BOT_BRANCHES : step.kind === "script" ? SCRIPT_BRANCHES : step.kind === "loop" ? LOOP_BRANCHES : CONDITION_BRANCHES;
+  const sideBranches = step.kind === "condition" ? [TRUE_BRANCH, FALSE_BRANCH, FAILURE_BRANCH]
+    : step.kind === "loop" ? [FAILURE_BRANCH]
+      : [FAILURE_BRANCH, TIMEOUT_BRANCH];
   const centers = step.kind === "condition" ? [79, 161] : branchCenters(branches.length);
   const width = step.kind === "condition" ? 340 : CARD_WIDTH;
 
@@ -178,6 +203,18 @@ export function StudioCard({ draft, step, index, selected, botName, onSelect, on
             )}
             <span className="studio-card-category">{category}</span>
           </span>
+          {step.kind === "loop" && onExpand && (
+            <button
+              type="button"
+              aria-label={t("studio.loop.expand")}
+              title={t("studio.loop.expand")}
+              className="studio-card-expand"
+              onClick={(event) => { event.stopPropagation(); onExpand(); }}
+              onPointerDown={(event) => event.stopPropagation()}
+            >
+              <Maximize2 size={14} aria-hidden="true" />
+            </button>
+          )}
           <button
             type="button"
             aria-label={t("studio.menu.more")}

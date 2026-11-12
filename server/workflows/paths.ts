@@ -5,7 +5,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 
-import { hasControlCharacter, WORKFLOW_STEP_MAX } from "../../shared/workflow.ts";
+import { hasControlCharacter, isWorkflowSlug, WORKFLOW_STEP_MAX } from "../../shared/workflow.ts";
 
 export const WORKFLOWS_ROOT_ENV = "OMB_WORKFLOWS_ROOT";
 export const WORKFLOWS_ROOT_NAME = "MimirBot";
@@ -110,4 +110,26 @@ export function stepInputDir(runDir: string, stepNumber: number): string {
 
 export function stepOutputDir(runDir: string, stepNumber: number): string {
   return join(stepDir(runDir, stepNumber), "output");
+}
+
+/** `runs/<runId>/step-<loopIndex>/iterations/iter-<n>`, 1-based. */
+export function iterationDir(runDir: string, iterationNumber: number): string {
+  if (!Number.isInteger(iterationNumber) || iterationNumber < 1) {
+    throw new Error(`invalid iteration number ${String(iterationNumber)}`);
+  }
+  return join(runDir, "iterations", `iter-${iterationNumber}`);
+}
+
+/** A body step's own folder inside one round: `iterations/iter-N/step-<bodyId>`. */
+export function iterationStepDir(runDir: string, iterationNumber: number, bodyStepId: string): string {
+  if (!isWorkflowSlug(bodyStepId)) throw new Error(`invalid body step id ${JSON.stringify(bodyStepId)}`);
+  return join(iterationDir(runDir, iterationNumber), `step-${bodyStepId}`);
+}
+
+export function iterationStepInputDir(runDir: string, iterationNumber: number, bodyStepId: string): string {
+  return join(iterationStepDir(runDir, iterationNumber, bodyStepId), "input");
+}
+
+export function iterationStepOutputDir(runDir: string, iterationNumber: number, bodyStepId: string): string {
+  return join(iterationStepDir(runDir, iterationNumber, bodyStepId), "output");
 }

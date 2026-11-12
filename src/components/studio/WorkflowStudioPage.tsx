@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Check, X } from "lucide-react";
 
-import { isBotStep, isScriptStep, type WorkflowSkillOptions, type WorkflowStep } from "../../../shared/workflow";
+import { isBotStep, isScriptStep, workflowAllSteps, type WorkflowSkillOptions, type WorkflowStep } from "../../../shared/workflow";
 import type { LocaleKey } from "@/locales";
 import { cn } from "@/lib/cn";
 import { t } from "@/lib/i18n";
@@ -10,12 +10,13 @@ import { createWorkflow, listScripts, readScript, readWorkflow, readWorkflowSkil
 import { StudioBalloon } from "./StudioBalloon";
 import { StudioCard, type BranchKey } from "./StudioCard";
 import { StudioContainer } from "./StudioContainer";
+import { StudioLoopModal } from "./StudioLoopModal";
 import { StudioNote } from "./StudioNote";
 import { StudioPalette } from "./StudioPalette";
 import { bezier, entryHit, noteAnchor, noteLinkTarget, outputPoint, type Point } from "./studio-geometry";
 import {
-  CARD_HEIGHT, CARD_WIDTH, DEFAULT_SCRIPT, containedBy, connect, createContainer, createNote, createStep,
-  disconnect, draftProblem, fromDefinition, moveContainer, moveNode, moveNote, newDraft,
+  CARD_HEIGHT, CARD_WIDTH, DEFAULT_SCRIPT, allDraftSteps, containedBy, connect, createContainer, createNote, createStep,
+  disconnect, draftProblem, duplicateLoop, fromDefinition, moveContainer, moveNode, moveNote, newDraft,
   removeContainer, removeNote, removeStep, renameContainer, renameScript, resizeContainer, resizeNote,
   toDefinition, updateNote, updateStep, type StudioBranch, type StudioDraft, type StudioKind, type StudioSelection,
 } from "./studio-model";
@@ -64,6 +65,7 @@ export function WorkflowStudioPage({ workflowId, department, onBack, onSaved }: 
   const [confirmBack, setConfirmBack] = useState(false);
   const [noteEditing, setNoteEditing] = useState<string | null>(null);
   const [noteLinkMenu, setNoteLinkMenu] = useState<string | null>(null);
+  const [editingLoop, setEditingLoop] = useState<string | null>(null);
   const [skillOptions, setSkillOptions] = useState<Record<string, WorkflowSkillOptions>>({});
   const [skillOptionsLoading, setSkillOptionsLoading] = useState<Record<string, boolean>>({});
   const [skillOptionsError, setSkillOptionsError] = useState<Record<string, string>>({});
@@ -149,10 +151,10 @@ export function WorkflowStudioPage({ workflowId, department, onBack, onSaved }: 
           if (!alive) return;
           const next = fromDefinition(detail.workflow);
           setDraft(next);
-          for (const step of next.steps) {
+          for (const step of allDraftSteps(next)) {
             if (isBotStep(step) && step.botId) loadSkillOptions(step.botId);
           }
-          const steps = next.steps.filter(isScriptStep);
+          const steps = allDraftSteps(next).filter(isScriptStep);
           if (steps.length > 0) {
             const files = await listScripts(next.id);
             const entries = await Promise.all(files
@@ -380,7 +382,7 @@ export function WorkflowStudioPage({ workflowId, department, onBack, onSaved }: 
     setError(null);
     try {
       const definition = toDefinition(draft);
-      const uploads = definition.steps.filter(isScriptStep).map((step) => ({ name: step.run, content: scripts[step.run] ?? DEFAULT_SCRIPT }));
+      const uploads = workflowAllSteps(definition).filter(isScriptStep).map((step) => ({ name: step.run, content: scripts[step.run] ?? DEFAULT_SCRIPT }));
       const saved = draft.version ? await updateWorkflow(definition, uploads) : await createWorkflow(definition, uploads);
       setDraft(fromDefinition(saved));
       setDirty(false);
@@ -432,7 +434,7 @@ export function WorkflowStudioPage({ workflowId, department, onBack, onSaved }: 
         const to = draft.canvas.nodes[step.onFailure];
         if (from && to) links.push({ key: `${step.id}-failure`, path: bezier(from, { x: to.x, y: to.y + 57 }), color: "#BC655C" });
       }
-      if (step.onTimeout) {
+      if (step.kind !== "loop" && step.onTimeout) {
         const from = outputPoint(draft, step.id, "timeout");
         const to = draft.canvas.nodes[step.onTimeout];
         if (from && to) links.push({ key: `${step.id}-timeout`, path: bezier(from, { x: to.x, y: to.y + 57 }), color: "#C08023" });
@@ -541,8 +543,20 @@ export function WorkflowStudioPage({ workflowId, department, onBack, onSaved }: 
               }}
               onBranch={(branch, anchor) => openBranch(step, branch, anchor)}
               onPort={(branch, event) => startFlow(step.id, branch, event)}
+              onExpand={step.kind === "loop" ? () => setEditingLoop(step.id) : undefined}
               onRename={(name) => edit((current) => updateStep(current, step.id, { name } as Partial<WorkflowStep>))}
               onDuplicate={() => {
+                if (step.kind === "loop") {
+                  const node = draft.canvas.nodes[step.id];
+                  const copy = duplicateLoop(draft, step.id, {
+                    x: (node?.x ?? 0) + CARD_WIDTH / 2 + 46,
+                    y: (node?.y ?? 0) + CARD_HEIGHT / 2 + 220,
+                  });
+                  if (!copy) return;
+                  edit(() => copy.draft);
+                  setSelection({ kind: "step", id: copy.stepId });
+                  return;
+                }
                 const created = createStep(draft, step.kind === "bot" ? "agent" : step.kind, {
                   x: (draft.canvas.nodes[step.id]?.x ?? 0) + CARD_WIDTH / 2 + 46,
                   y: (draft.canvas.nodes[step.id]?.y ?? 0) + CARD_HEIGHT / 2 + 220,
@@ -648,6 +662,23 @@ export function WorkflowStudioPage({ workflowId, department, onBack, onSaved }: 
           />
         )}
 
+        {editingLoop && (
+          <StudioLoopModal
+            draft={draft}
+            loopId={editingLoop}
+            bots={bots}
+            scripts={scripts}
+            skillOptions={skillOptions}
+            skillOptionsLoading={skillOptionsLoading}
+            skillOptionsError={skillOptionsError}
+            onEdit={edit}
+            onScript={(name, content) => setScripts((current) => ({ ...current, [name]: content }))}
+            onRenameScript={(from, to) => setScripts((current) => renameScript(current, from, to))}
+            onToast={(key, params) => showToast(t(key, params))}
+            onClose={() => setEditingLoop(null)}
+          />
+        )}
+
         {toast && <div className="studio-toast" role="status">{toast}</div>}
 
         {confirmBack && (
@@ -690,11 +721,15 @@ function targetName(draft: StudioDraft, target: { kind: "step" | "container"; id
 function nearestFreeOutput(draft: StudioDraft, point: Point, radius: number): { from: string; branch: StudioBranch } | undefined {
   let best: { from: string; branch: StudioBranch; distance: number } | undefined;
   for (const step of draft.steps) {
-    const branches: StudioBranch[] = step.kind === "condition" ? ["true", "false", "failure"] : ["run", "failure", "timeout"];
+    const branches: StudioBranch[] = step.kind === "condition" ? ["true", "false", "failure"]
+      : step.kind === "loop" ? ["run", "failure"]
+        : ["run", "failure", "timeout"];
     for (const branch of branches) {
       const taken = step.kind === "condition"
         ? (branch === "true" ? step.whenTrue !== undefined : branch === "false" ? step.whenFalse !== undefined : step.onFailure !== undefined)
-        : branch === "run" ? typeof step.onSuccess === "string" : branch === "failure" ? step.onFailure !== undefined : step.onTimeout !== undefined;
+        : branch === "run" ? typeof step.onSuccess === "string"
+          : branch === "failure" ? step.onFailure !== undefined
+            : step.kind !== "loop" && step.onTimeout !== undefined;
       if (taken) continue;
       const output = outputPoint(draft, step.id, branch);
       if (!output) continue;

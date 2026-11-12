@@ -25,8 +25,10 @@ export const WORKFLOW_CANVAS_MARKDOWN_MAX = 20_000;
 /** A compared value, and the whole group's JSON, must stay small. */
 export const WORKFLOW_CONDITION_VALUE_MAX = 4_096;
 export const WORKFLOW_CONDITION_GROUP_MAX = 64 * 1024;
-/** How many comparisons one IF/Else step may hold. */
+/** How many comparisons one IF/Else step or Do While may hold. */
 export const WORKFLOW_CONDITION_ROWS_MAX = 20;
+/** How many steps one Do While body may hold; nested loops are not part of the contract. */
+export const WORKFLOW_LOOP_BODY_MAX = 20;
 export const WORKFLOW_SKILLS_BOT_MAX = 200;
 export const WORKFLOW_SKILLS_BUNDLED_MAX = 100;
 export const WORKFLOW_SKILLS_IMPORTED_MAX = 200;
@@ -107,12 +109,13 @@ const canvasContainerSchema = z.object({
   name: z.string().trim().max(64).default("Container"),
 });
 
-/** The Studio's visual state: positions, notes and containers. The engine never reads it. */
-export const workflowCanvasSchema = z.object({
+const canvasContentShape = {
   nodes: z.record(z.string(), canvasPointSchema).default({}),
   notes: z.array(canvasNoteSchema).max(WORKFLOW_CANVAS_NOTE_MAX).default([]),
   containers: z.array(canvasContainerSchema).max(WORKFLOW_CANVAS_CONTAINER_MAX).default([]),
-}).superRefine((canvas, context) => {
+};
+
+function validateCanvasContent(canvas: { notes: Array<{ id: string }>; containers: Array<{ id: string }> }, context: z.RefinementCtx): void {
   const noteIds = new Set<string>();
   canvas.notes.forEach((note, index) => {
     if (noteIds.has(note.id)) {
@@ -127,8 +130,18 @@ export const workflowCanvasSchema = z.object({
     }
     containerIds.add(container.id);
   });
-});
+}
 
+/** The layout of one Do While body: the same visual grammar as the main canvas, without another loop. */
+export const workflowSubcanvasSchema = z.object(canvasContentShape).superRefine(validateCanvasContent);
+
+/** The Studio's visual state: positions, notes and containers. The engine never reads it. */
+export const workflowCanvasSchema = z.object({
+  ...canvasContentShape,
+  loops: z.record(z.string(), workflowSubcanvasSchema).default({}),
+}).superRefine(validateCanvasContent);
+
+export type WorkflowSubcanvas = z.output<typeof workflowSubcanvasSchema>;
 export type WorkflowCanvas = z.output<typeof workflowCanvasSchema>;
 
 const requireSchema = z.record(z.string().min(1).max(64), z.unknown()).refine(
@@ -244,36 +257,62 @@ const conditionStepSchema = z.object({
   /** Which comparisons must hold: all of them, or at least one. */
   match: z.enum(["all", "any"]).default("all"),
   conditions: z.array(conditionLineSchema).min(1).max(WORKFLOW_CONDITION_ROWS_MAX),
-  /** Where each answer sends the run. Without one, that answer ends the run. */
-  whenTrue: stepIdSchema.optional(),
-  whenFalse: stepIdSchema.optional(),
+  /** Where each answer sends the run. Without one, that answer ends the run or the Do While round. */
+  whenTrue: stepIdSchema.nullable().optional(),
+  whenFalse: stepIdSchema.nullable().optional(),
   onFailure: stepIdSchema.optional(),
 });
 
-const stepUnionSchema = z.discriminatedUnion("kind", [botStepSchema, scriptStepSchema, conditionStepSchema]);
+const bodyStepUnionSchema = z.discriminatedUnion("kind", [botStepSchema, scriptStepSchema, conditionStepSchema]);
+
+const loopStepSchema = z.object({
+  id: stepIdSchema,
+  kind: z.literal("loop"),
+  name: z.string().trim().min(1).max(120),
+  /** The steps of one round, in execution order. A Do While cannot hold another one. */
+  body: z.array(bodyStepUnionSchema).min(1).max(WORKFLOW_LOOP_BODY_MAX),
+  /** The body step whose result.json the stop condition reads. */
+  from: stepIdSchema,
+  match: z.enum(["all", "any"]).default("all"),
+  conditions: z.array(conditionLineSchema).min(1).max(WORKFLOW_CONDITION_ROWS_MAX),
+  /** Integer at least 1; there is no product maximum. It is not a timeout. */
+  maxIterations: z.number().int().min(1).default(1),
+  /** Projected from the last round; each path belongs to exactly one body step. */
+  outputs: z.array(stepOutputSchema).min(1).max(50),
+  result: workflowPath.optional(),
+  require: requireSchema.optional(),
+  onSuccess: stepIdSchema.nullable().optional(),
+  onFailure: stepIdSchema.optional(),
+}).strict();
+
+const stepUnionSchema = z.discriminatedUnion("kind", [botStepSchema, scriptStepSchema, conditionStepSchema, loopStepSchema]);
 
 /** Older Workflows have no `kind` (a step without one was always a bot step),
  * spell the success edge `next`, and keep one loose comparison on a condition;
- * all three are normalized here on read. */
-export const workflowStepSchema = z.preprocess(
-  (value) => {
-    if (value === null || typeof value !== "object" || Array.isArray(value)) return value;
-    const record = { ...(value as Record<string, unknown>) };
-    if (record.kind === undefined) record.kind = "bot";
-    if (record.onSuccess === undefined && record.next !== undefined) record.onSuccess = record.next;
-    delete record.next;
-    if (record.kind === "condition") {
-      if (record.conditions === undefined && record.field !== undefined) {
-        record.conditions = [{ field: record.field, op: record.op, value: record.value }];
-      }
-      delete record.field;
-      delete record.op;
-      delete record.value;
+ * all three are normalized here on read, including inside a Do While body. */
+function normalizeStepRecord(value: unknown): unknown {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) return value;
+  const record = { ...(value as Record<string, unknown>) };
+  if (record.kind === undefined) record.kind = "bot";
+  if (record.onSuccess === undefined && record.next !== undefined) record.onSuccess = record.next;
+  delete record.next;
+  if (record.kind === "condition") {
+    if (record.conditions === undefined && record.field !== undefined) {
+      record.conditions = [{ field: record.field, op: record.op, value: record.value }];
     }
-    return record;
-  },
-  stepUnionSchema,
-);
+    delete record.field;
+    delete record.op;
+    delete record.value;
+  }
+  if (record.kind === "loop" && Array.isArray(record.body)) {
+    record.body = record.body.map(normalizeStepRecord);
+  }
+  return record;
+}
+
+export const workflowBodyStepSchema = z.preprocess(normalizeStepRecord, bodyStepUnionSchema);
+
+export const workflowStepSchema = z.preprocess(normalizeStepRecord, stepUnionSchema);
 
 export const workflowDefinitionSchema = z.object({
   id: z.uuid(),
@@ -295,6 +334,195 @@ export const workflowDefinitionSchema = z.object({
       positions.set(step.id, index);
     }
   });
+
+  const validateConditionGroup = (conditions: readonly ConditionLine[], path: Array<string | number>, message: string): void => {
+    conditions.forEach((line, lineIndex) => {
+      if (line.op !== "exists" && line.value === undefined) {
+        context.addIssue({ code: "custom", path: [...path, lineIndex, "value"], message: `the ${line.op} operator needs a value` });
+      }
+      if (line.value !== undefined && JSON.stringify(line.value).length > WORKFLOW_CONDITION_VALUE_MAX) {
+        context.addIssue({ code: "custom", path: [...path, lineIndex, "value"], message: "the compared value must be small" });
+      }
+    });
+    if (JSON.stringify(conditions).length > WORKFLOW_CONDITION_GROUP_MAX) {
+      context.addIssue({ code: "custom", path, message: `${message}: the condition group must be small` });
+    }
+  };
+
+  let totalSteps = definition.steps.length;
+  const takenIds = new Set(positions.keys());
+  definition.steps.forEach((step, loopIndex) => {
+    if (step.kind !== "loop") return;
+    totalSteps += step.body.length;
+    const bodyPositions = new Map<string, number>();
+    step.body.forEach((bodyStep, bodyIndex) => {
+      if (takenIds.has(bodyStep.id) || bodyPositions.has(bodyStep.id)) {
+        context.addIssue({
+          code: "custom",
+          path: ["steps", loopIndex, "body", bodyIndex, "id"],
+          message: `step id ${JSON.stringify(bodyStep.id)} is used more than once`,
+        });
+      }
+      bodyPositions.set(bodyStep.id, bodyIndex);
+      takenIds.add(bodyStep.id);
+    });
+
+    const bodyOutputs = new Map<string, Array<{ required: boolean; stepId: string }>>();
+    const bodyStepOutputs = new Map<string, Map<string, z.output<typeof stepOutputSchema>>>();
+    step.body.forEach((bodyStep, bodyIndex) => {
+      if (bodyStep.kind === "condition") {
+        const sourceIndex = bodyPositions.get(bodyStep.from);
+        if (sourceIndex === undefined) {
+          context.addIssue({ code: "custom", path: ["steps", loopIndex, "body", bodyIndex, "from"], message: `source step ${JSON.stringify(bodyStep.from)} is not in the body` });
+        } else if (sourceIndex >= bodyIndex) {
+          context.addIssue({ code: "custom", path: ["steps", loopIndex, "body", bodyIndex, "from"], message: "a condition must read an earlier body step" });
+        } else {
+          const source = step.body[sourceIndex]!;
+          if (source.kind === "condition") {
+            context.addIssue({ code: "custom", path: ["steps", loopIndex, "body", bodyIndex, "from"], message: "a condition must read a bot or script step" });
+          } else if (source.result === undefined) {
+            context.addIssue({ code: "custom", path: ["steps", loopIndex, "body", bodyIndex, "from"], message: `step ${JSON.stringify(source.id)} must declare a result` });
+          }
+        }
+        validateConditionGroup(
+          bodyStep.conditions,
+          ["steps", loopIndex, "body", bodyIndex, "conditions"],
+          `condition ${JSON.stringify(bodyStep.id)}`,
+        );
+        for (const [field, target] of [["whenTrue", bodyStep.whenTrue], ["whenFalse", bodyStep.whenFalse], ["onFailure", bodyStep.onFailure]] as const) {
+          if (target === undefined || target === null) continue;
+          const targetIndex = bodyPositions.get(target);
+          if (targetIndex === undefined) {
+            context.addIssue({ code: "custom", path: ["steps", loopIndex, "body", bodyIndex, field], message: `${field} step ${JSON.stringify(target)} is not in the body` });
+          } else if (targetIndex <= bodyIndex) {
+            context.addIssue({ code: "custom", path: ["steps", loopIndex, "body", bodyIndex, field], message: `${field} step ${JSON.stringify(target)} must come after this step` });
+          }
+        }
+        return;
+      }
+
+      const own = new Map<string, z.output<typeof stepOutputSchema>>();
+      bodyStep.outputs.forEach((output, outputIndex) => {
+        if (own.has(output.path)) {
+          context.addIssue({ code: "custom", path: ["steps", loopIndex, "body", bodyIndex, "outputs", outputIndex, "path"], message: `output ${JSON.stringify(output.path)} is declared more than once` });
+        }
+        own.set(output.path, output);
+        const declared = bodyOutputs.get(output.path) ?? [];
+        declared.push({ required: output.required, stepId: bodyStep.id });
+        bodyOutputs.set(output.path, declared);
+      });
+      if (bodyStep.result !== undefined && !own.has(bodyStep.result)) {
+        context.addIssue({ code: "custom", path: ["steps", loopIndex, "body", bodyIndex, "result"], message: "result must be one of this step's outputs" });
+      }
+      if (bodyStep.require !== undefined && bodyStep.result === undefined) {
+        context.addIssue({ code: "custom", path: ["steps", loopIndex, "body", bodyIndex, "require"], message: "require needs a declared result" });
+      }
+      if (bodyStep.when !== undefined && bodyStep.result === undefined) {
+        context.addIssue({ code: "custom", path: ["steps", loopIndex, "body", bodyIndex, "when"], message: "when needs a declared result" });
+      }
+      for (const [field, target] of [["onSuccess", bodyStep.onSuccess], ["onFailure", bodyStep.onFailure], ["onTimeout", bodyStep.onTimeout]] as const) {
+        if (target === undefined || target === null) continue;
+        const targetIndex = bodyPositions.get(target);
+        if (targetIndex === undefined) {
+          context.addIssue({ code: "custom", path: ["steps", loopIndex, "body", bodyIndex, field], message: `${field} step ${JSON.stringify(target)} is not in the body` });
+        } else if (targetIndex <= bodyIndex) {
+          context.addIssue({ code: "custom", path: ["steps", loopIndex, "body", bodyIndex, field], message: `${field} step ${JSON.stringify(target)} must come after this step` });
+        }
+      }
+      if (bodyStep.onTimeout !== undefined && bodyStep.timeoutMs <= 0) {
+        context.addIssue({ code: "custom", path: ["steps", loopIndex, "body", bodyIndex, "onTimeout"], message: "onTimeout needs a timeoutMs greater than 0" });
+      }
+      bodyStep.when?.forEach((branch, branchIndex) => {
+        const targetIndex = bodyPositions.get(branch.next);
+        if (targetIndex === undefined) {
+          context.addIssue({ code: "custom", path: ["steps", loopIndex, "body", bodyIndex, "when", branchIndex, "next"], message: `next step ${JSON.stringify(branch.next)} is not in the body` });
+        } else if (targetIndex <= bodyIndex) {
+          context.addIssue({ code: "custom", path: ["steps", loopIndex, "body", bodyIndex, "when", branchIndex, "next"], message: `next step ${JSON.stringify(branch.next)} must come after this step` });
+        }
+      });
+      const names = new Set<string>();
+      bodyStep.inputs.forEach((input, inputIndex) => {
+        if (names.has(input.as)) {
+          context.addIssue({ code: "custom", path: ["steps", loopIndex, "body", bodyIndex, "inputs", inputIndex, "as"], message: `input ${JSON.stringify(input.as)} is declared more than once` });
+        }
+        names.add(input.as);
+        const bodySource = bodyPositions.get(input.from.step);
+        const topSource = positions.get(input.from.step);
+        const bodySourceIndex = bodySource ?? -1;
+        const topBeforeLoop = topSource !== undefined && topSource < loopIndex;
+        if (!(bodySource !== undefined && bodySourceIndex < bodyIndex) && !topBeforeLoop) {
+          context.addIssue({ code: "custom", path: ["steps", loopIndex, "body", bodyIndex, "inputs", inputIndex, "from", "step"], message: "an input may only come from an earlier body step or an earlier top-level step" });
+          return;
+        }
+        const bodySourceOutput = bodySource !== undefined
+          ? bodyStepOutputs.get(input.from.step)?.get(input.from.output)
+          : undefined;
+        const topSourceStep = topBeforeLoop ? definition.steps[topSource!]! : undefined;
+        const topSourceOutput = topSourceStep !== undefined && topSourceStep.kind !== "condition"
+          ? topSourceStep.outputs.find((output) => output.path === input.from.output)
+          : undefined;
+        const resolved = bodySource !== undefined ? bodySourceOutput : topSourceOutput;
+        if (!resolved) {
+          context.addIssue({ code: "custom", path: ["steps", loopIndex, "body", bodyIndex, "inputs", inputIndex, "from", "output"], message: "the source step does not declare that output" });
+        } else if (!resolved.required) {
+          context.addIssue({ code: "custom", path: ["steps", loopIndex, "body", bodyIndex, "inputs", inputIndex, "from", "output"], message: "an input may only come from a required output" });
+        }
+      });
+      bodyStepOutputs.set(bodyStep.id, own);
+    });
+
+    const fromIndex = bodyPositions.get(step.from);
+    if (fromIndex === undefined) {
+      context.addIssue({ code: "custom", path: ["steps", loopIndex, "from"], message: `source step ${JSON.stringify(step.from)} is not in the body` });
+    } else {
+      const source = step.body[fromIndex]!;
+      if (source.kind === "condition") {
+        context.addIssue({ code: "custom", path: ["steps", loopIndex, "from"], message: "a Do While must read a bot or script step" });
+      } else if (source.result === undefined) {
+        context.addIssue({ code: "custom", path: ["steps", loopIndex, "from"], message: `step ${JSON.stringify(source.id)} must declare a result` });
+      }
+    }
+    validateConditionGroup(step.conditions, ["steps", loopIndex, "conditions"], `Do While ${JSON.stringify(step.id)}`);
+
+    const declaredOutputs = new Map<string, { required: boolean; count: number }>();
+    for (const [path, declarations] of bodyOutputs) {
+      declaredOutputs.set(path, { required: declarations.every((entry) => entry.required), count: declarations.length });
+    }
+    const loopOutputPaths = new Set<string>();
+    step.outputs.forEach((output, outputIndex) => {
+      if (loopOutputPaths.has(output.path)) {
+        context.addIssue({ code: "custom", path: ["steps", loopIndex, "outputs", outputIndex, "path"], message: `output ${JSON.stringify(output.path)} is declared more than once` });
+      }
+      loopOutputPaths.add(output.path);
+      const declaration = declaredOutputs.get(output.path);
+      if (!declaration) {
+        context.addIssue({ code: "custom", path: ["steps", loopIndex, "outputs", outputIndex, "path"], message: `no body step declares output ${JSON.stringify(output.path)}` });
+      } else if (declaration.count > 1) {
+        context.addIssue({ code: "custom", path: ["steps", loopIndex, "outputs", outputIndex, "path"], message: `more than one body step declares output ${JSON.stringify(output.path)}` });
+      } else if (output.required && !declaration.required) {
+        context.addIssue({ code: "custom", path: ["steps", loopIndex, "outputs", outputIndex, "path"], message: `output ${JSON.stringify(output.path)} is required by the Do While but optional in the body` });
+      }
+    });
+    if (step.result !== undefined && !loopOutputPaths.has(step.result)) {
+      context.addIssue({ code: "custom", path: ["steps", loopIndex, "result"], message: "result must be one of the Do While's outputs" });
+    }
+    if (step.require !== undefined && step.result === undefined) {
+      context.addIssue({ code: "custom", path: ["steps", loopIndex, "require"], message: "require needs a declared result" });
+    }
+    for (const [field, target] of [["onSuccess", step.onSuccess], ["onFailure", step.onFailure]] as const) {
+      if (target === undefined || target === null) continue;
+      const targetIndex = positions.get(target);
+      if (targetIndex === undefined) {
+        context.addIssue({ code: "custom", path: ["steps", loopIndex, field], message: `${field} step ${JSON.stringify(target)} does not exist` });
+      } else if (targetIndex <= loopIndex) {
+        context.addIssue({ code: "custom", path: ["steps", loopIndex, field], message: `${field} step ${JSON.stringify(target)} must come after this step` });
+      }
+    }
+  });
+  if (totalSteps > WORKFLOW_STEP_MAX) {
+    context.addIssue({ code: "custom", path: ["steps"], message: `a Workflow may have at most ${WORKFLOW_STEP_MAX} steps including Do While bodies` });
+  }
+
   definition.steps.forEach((step, index) => {
     if (step.kind !== "condition") return;
     const sourceIndex = positions.get(step.from);
@@ -306,23 +534,15 @@ export const workflowDefinitionSchema = z.object({
       const source = definition.steps[sourceIndex]!;
       if (source.kind === "condition") {
         context.addIssue({ code: "custom", path: ["steps", index, "from"], message: "a condition must read a bot or script step" });
+      } else if (source.kind === "loop") {
+        context.addIssue({ code: "custom", path: ["steps", index, "from"], message: "a condition must read a bot or script step" });
       } else if (source.result === undefined) {
         context.addIssue({ code: "custom", path: ["steps", index, "from"], message: `step ${JSON.stringify(source.id)} must declare a result` });
       }
     }
-    step.conditions.forEach((line, lineIndex) => {
-      if (line.op !== "exists" && line.value === undefined) {
-        context.addIssue({ code: "custom", path: ["steps", index, "conditions", lineIndex, "value"], message: `the ${line.op} operator needs a value` });
-      }
-      if (line.value !== undefined && JSON.stringify(line.value).length > WORKFLOW_CONDITION_VALUE_MAX) {
-        context.addIssue({ code: "custom", path: ["steps", index, "conditions", lineIndex, "value"], message: "the compared value must be small" });
-      }
-    });
-    if (JSON.stringify(step.conditions).length > WORKFLOW_CONDITION_GROUP_MAX) {
-      context.addIssue({ code: "custom", path: ["steps", index, "conditions"], message: "the condition group must be small" });
-    }
+    validateConditionGroup(step.conditions, ["steps", index, "conditions"], `condition ${JSON.stringify(step.id)}`);
     for (const [field, target] of [["whenTrue", step.whenTrue], ["whenFalse", step.whenFalse], ["onFailure", step.onFailure]] as const) {
-      if (target === undefined) continue;
+      if (target === undefined || target === null) continue;
       const targetIndex = positions.get(target);
       if (targetIndex === undefined) {
         context.addIssue({ code: "custom", path: ["steps", index, field], message: `${field} step ${JSON.stringify(target)} does not exist` });
@@ -331,6 +551,7 @@ export const workflowDefinitionSchema = z.object({
       }
     }
   });
+
   const outputs = new Map<string, Map<string, z.output<typeof stepOutputSchema>>>();
   definition.steps.forEach((step, index) => {
     if (step.kind === "condition") return;
@@ -347,31 +568,45 @@ export const workflowDefinitionSchema = z.object({
     if (step.require !== undefined && step.result === undefined) {
       context.addIssue({ code: "custom", path: ["steps", index, "require"], message: "require needs a declared result" });
     }
-    if (step.when !== undefined && step.result === undefined) {
-      context.addIssue({ code: "custom", path: ["steps", index, "when"], message: "when needs a declared result" });
+    if (step.kind === "bot" || step.kind === "script") {
+      if (step.when !== undefined && step.result === undefined) {
+        context.addIssue({ code: "custom", path: ["steps", index, "when"], message: "when needs a declared result" });
+      }
+      for (const [field, target] of [["onSuccess", step.onSuccess], ["onFailure", step.onFailure], ["onTimeout", step.onTimeout]] as const) {
+        if (target === undefined || target === null) continue;
+        const targetIndex = positions.get(target);
+        if (targetIndex === undefined) {
+          context.addIssue({ code: "custom", path: ["steps", index, field], message: `${field} step ${JSON.stringify(target)} does not exist` });
+        } else if (targetIndex <= index) {
+          context.addIssue({ code: "custom", path: ["steps", index, field], message: `${field} step ${JSON.stringify(target)} must come after this step` });
+        }
+      }
+      if (step.onTimeout !== undefined && step.timeoutMs <= 0) {
+        context.addIssue({ code: "custom", path: ["steps", index, "onTimeout"], message: "onTimeout needs a timeoutMs greater than 0" });
+      }
+      step.when?.forEach((branch, branchIndex) => {
+        const targetIndex = positions.get(branch.next);
+        if (targetIndex === undefined) {
+          context.addIssue({ code: "custom", path: ["steps", index, "when", branchIndex, "next"], message: `next step ${JSON.stringify(branch.next)} does not exist` });
+        } else if (targetIndex <= index) {
+          context.addIssue({ code: "custom", path: ["steps", index, "when", branchIndex, "next"], message: `next step ${JSON.stringify(branch.next)} must come after this step` });
+        }
+      });
     }
-    for (const [field, target] of [["onSuccess", step.onSuccess], ["onFailure", step.onFailure], ["onTimeout", step.onTimeout]] as const) {
-      if (target === undefined || target === null) continue;
-      const targetIndex = positions.get(target);
-      if (targetIndex === undefined) {
-        context.addIssue({ code: "custom", path: ["steps", index, field], message: `${field} step ${JSON.stringify(target)} does not exist` });
-      } else if (targetIndex <= index) {
-        context.addIssue({ code: "custom", path: ["steps", index, field], message: `${field} step ${JSON.stringify(target)} must come after this step` });
+    if (step.kind === "loop") {
+      for (const [field, target] of [["onSuccess", step.onSuccess], ["onFailure", step.onFailure]] as const) {
+        if (target === undefined || target === null) continue;
+        const targetIndex = positions.get(target);
+        if (targetIndex === undefined) {
+          context.addIssue({ code: "custom", path: ["steps", index, field], message: `${field} step ${JSON.stringify(target)} does not exist` });
+        } else if (targetIndex <= index) {
+          context.addIssue({ code: "custom", path: ["steps", index, field], message: `${field} step ${JSON.stringify(target)} must come after this step` });
+        }
       }
     }
-    if (step.onTimeout !== undefined && step.timeoutMs <= 0) {
-      context.addIssue({ code: "custom", path: ["steps", index, "onTimeout"], message: "onTimeout needs a timeoutMs greater than 0" });
-    }
-    step.when?.forEach((branch, branchIndex) => {
-      const targetIndex = positions.get(branch.next);
-      if (targetIndex === undefined) {
-        context.addIssue({ code: "custom", path: ["steps", index, "when", branchIndex, "next"], message: `next step ${JSON.stringify(branch.next)} does not exist` });
-      } else if (targetIndex <= index) {
-        context.addIssue({ code: "custom", path: ["steps", index, "when", branchIndex, "next"], message: `next step ${JSON.stringify(branch.next)} must come after this step` });
-      }
-    });
     const names = new Set<string>();
-    step.inputs.forEach((input, inputIndex) => {
+    const inputs = step.kind === "loop" ? [] : step.inputs;
+    inputs.forEach((input, inputIndex) => {
       if (names.has(input.as)) {
         context.addIssue({ code: "custom", path: ["steps", index, "inputs", inputIndex, "as"], message: `input ${JSON.stringify(input.as)} is declared more than once` });
       }
@@ -399,6 +634,27 @@ export const workflowDefinitionSchema = z.object({
         context.addIssue({ code: "custom", path: ["canvas", "notes", index, "link", "id"], message: "the linked element does not exist" });
       }
     });
+    for (const [loopId, subcanvas] of Object.entries(definition.canvas.loops)) {
+      const loop = definition.steps.find((step) => step.id === loopId);
+      if (!loop || loop.kind !== "loop") {
+        context.addIssue({ code: "custom", path: ["canvas", "loops", loopId], message: `there is no Do While ${JSON.stringify(loopId)}` });
+        continue;
+      }
+      const bodyIds = new Set(loop.body.map((step) => step.id));
+      const bodyContainers = new Set(subcanvas.containers.map((container) => container.id));
+      subcanvas.notes.forEach((note, index) => {
+        if (!note.link) return;
+        const exists = note.link.kind === "step" ? bodyIds.has(note.link.id) : bodyContainers.has(note.link.id);
+        if (!exists) {
+          context.addIssue({ code: "custom", path: ["canvas", "loops", loopId, "notes", index, "link", "id"], message: "the linked element is not in this Do While body" });
+        }
+      });
+      for (const nodeId of Object.keys(subcanvas.nodes)) {
+        if (!bodyIds.has(nodeId)) {
+          context.addIssue({ code: "custom", path: ["canvas", "loops", loopId, "nodes", nodeId], message: "the position names no step in this Do While body" });
+        }
+      }
+    }
   }
 });
 
@@ -410,6 +666,8 @@ export type ConditionLine = z.output<typeof conditionLineSchema>;
 export type ConditionMatch = "all" | "any";
 export type ConditionWorkflowStep = z.output<typeof conditionStepSchema>;
 export type ConditionOp = (typeof conditionOps)[number];
+export type WorkflowBodyStep = BotWorkflowStep | ScriptWorkflowStep | ConditionWorkflowStep;
+export type LoopWorkflowStep = z.output<typeof loopStepSchema>;
 export type WorkflowStep = z.output<typeof workflowStepSchema>;
 export type WorkflowDefinition = z.output<typeof workflowDefinitionSchema>;
 
@@ -425,14 +683,25 @@ export function isConditionStep(step: WorkflowStep): step is ConditionWorkflowSt
   return step.kind === "condition";
 }
 
+export function isLoopStep(step: WorkflowStep): step is LoopWorkflowStep {
+  return step.kind === "loop";
+}
+
+/** Every step the definition holds, top level first, then each Do While body in order. */
+export function workflowAllSteps(definition: { steps: readonly WorkflowStep[] }): WorkflowStep[] {
+  return definition.steps.flatMap((step) => step.kind === "loop" ? [step, ...step.body] : [step]);
+}
+
 /** Whether a person must continue the Workflow before its first step can run. A routine cannot start such a Workflow. */
 export function workflowStartsManual(definition: Pick<WorkflowDefinition, "steps">): boolean {
   const first = definition.steps[0];
-  return first !== undefined && first.kind !== "condition" && first.mode === "manual";
+  return first !== undefined && (first.kind === "bot" || first.kind === "script") && first.mode === "manual";
 }
 
 export type WorkflowRunStatus = "queued" | "running" | "waiting_manual" | "waiting_approval" | "succeeded" | "failed" | "cancelled";
 export type WorkflowStepStatus = "pending" | "running" | "succeeded" | "failed" | "skipped";
+
+export type WorkflowRunFailureKind = "failure" | "timeout" | "limit";
 
 export interface WorkflowRunStep {
   id: string;
@@ -442,10 +711,30 @@ export interface WorkflowRunStep {
   startedAt?: number;
   finishedAt?: number;
   error?: string;
-  /** Whether the step stopped as a plain failure or as a timeout; absent means failure. */
-  failureKind?: "failure" | "timeout";
+  /** Whether the step stopped as a plain failure, a timeout or the Do While's iteration limit; absent means failure. */
+  failureKind?: WorkflowRunFailureKind;
   /** The declared outputs the engine found, in declaration order. */
   verified?: string[];
+  /** Marks a Do While among the top-level steps. */
+  kind?: "loop";
+  /** One entry per round; only a Do While has them. */
+  iterations?: WorkflowRunIteration[];
+}
+
+export interface WorkflowRunIteration {
+  /** 1-based, as shown in F2. */
+  index: number;
+  status: "running" | "succeeded" | "failed" | "skipped";
+  startedAt?: number;
+  finishedAt?: number;
+  steps: WorkflowRunStep[];
+  /** Whether the stop condition was satisfied after this round. */
+  conditionMatched?: boolean;
+  /** The comparison that stopped the Do While, for the timeline. */
+  condition?: ConditionLine;
+  result?: unknown;
+  error?: string;
+  failureKind?: WorkflowRunFailureKind;
 }
 
 export interface WorkflowRunPause {
@@ -453,12 +742,27 @@ export interface WorkflowRunPause {
   question: string;
   cardIds: string[];
   askedAt: number;
+  /** The step's path in the run; a body step is [loopIndex, iterationArrayIndex, bodyIndex]. */
+  path?: number[];
 }
 
-/** Where a manual step holds the run: the step index, and when the person was asked to continue. */
+/** Where a manual step holds the run: the step path, and when the person was asked to continue.
+ * `step` is the legacy top-level index that older run.json files still carry. */
 export interface WorkflowRunHold {
-  step: number;
+  path?: number[];
+  step?: number;
   since: number;
+}
+
+/** The index a legacy or current hold names, for UI and recovery code that only needs the top step. */
+export function workflowHoldTopIndex(hold: WorkflowRunHold, fallback: number): number {
+  return hold.path?.[0] ?? hold.step ?? fallback;
+}
+
+/** The full path a hold names; a legacy hold only knows its top-level step. */
+export function workflowHoldPath(hold: WorkflowRunHold): number[] | undefined {
+  if (hold.path) return [...hold.path];
+  return hold.step === undefined ? undefined : [hold.step];
 }
 
 /** A routine started the run instead of a person or a bot conversation. */
@@ -470,7 +774,7 @@ export interface WorkflowRunTrigger {
 /** The names a run keeps after its Workflow is deleted or edited. */
 export interface WorkflowRunSnapshot {
   name: string;
-  steps: Array<{ id: string; name: string }>;
+  steps: Array<{ id: string; name: string; body?: Array<{ id: string; name: string }> }>;
 }
 
 export interface WorkflowRun {
@@ -501,7 +805,22 @@ export interface WorkflowRun {
   snapshot?: WorkflowRunSnapshot;
 }
 
-const workflowRunStepSchema = z.object({
+const runPathSchema = z.array(z.number().int().nonnegative()).min(1).max(3);
+
+const workflowRunIterationSchema: z.ZodType<WorkflowRunIteration> = z.lazy(() => z.object({
+  index: z.number().int().min(1),
+  status: z.enum(["running", "succeeded", "failed", "skipped"]),
+  startedAt: z.number().int().nonnegative().optional(),
+  finishedAt: z.number().int().nonnegative().optional(),
+  steps: z.array(workflowRunStepSchema).min(1).max(WORKFLOW_LOOP_BODY_MAX),
+  conditionMatched: z.boolean().optional(),
+  condition: conditionLineSchema.optional(),
+  result: z.unknown().optional(),
+  error: z.string().optional(),
+  failureKind: z.enum(["failure", "timeout", "limit"]).optional(),
+}));
+
+const workflowRunStepSchema: z.ZodType<WorkflowRunStep> = z.lazy(() => z.object({
   id: z.string().min(1).max(WORKFLOW_SLUG_MAX),
   status: z.enum(["pending", "running", "succeeded", "failed", "skipped"]),
   assignmentId: z.string().min(1).optional(),
@@ -509,20 +828,28 @@ const workflowRunStepSchema = z.object({
   startedAt: z.number().int().nonnegative().optional(),
   finishedAt: z.number().int().nonnegative().optional(),
   error: z.string().optional(),
-  failureKind: z.enum(["failure", "timeout"]).optional(),
+  failureKind: z.enum(["failure", "timeout", "limit"]).optional(),
   verified: z.array(z.string()).optional(),
-});
+  kind: z.literal("loop").optional(),
+  iterations: z.array(workflowRunIterationSchema).optional(),
+}));
 
 const workflowRunPauseSchema = z.object({
   stepId: z.string().min(1).max(WORKFLOW_SLUG_MAX),
   question: z.string(),
   cardIds: z.array(z.string()),
   askedAt: z.number().int().nonnegative(),
+  path: runPathSchema.optional(),
 });
 
 const workflowRunHoldSchema = z.object({
-  step: z.number().int().nonnegative(),
+  path: runPathSchema.optional(),
+  step: z.number().int().nonnegative().optional(),
   since: z.number().int().nonnegative(),
+}).superRefine((hold, context) => {
+  if (hold.path === undefined && hold.step === undefined) {
+    context.addIssue({ code: "custom", path: ["path"], message: "a hold needs a step path" });
+  }
 });
 
 const workflowRunSnapshotSchema = z.object({
@@ -530,6 +857,10 @@ const workflowRunSnapshotSchema = z.object({
   steps: z.array(z.object({
     id: z.string().min(1).max(WORKFLOW_SLUG_MAX),
     name: z.string().trim().min(1).max(120),
+    body: z.array(z.object({
+      id: z.string().min(1).max(WORKFLOW_SLUG_MAX),
+      name: z.string().trim().min(1).max(120),
+    })).max(WORKFLOW_LOOP_BODY_MAX).optional(),
   })).min(1).max(WORKFLOW_STEP_MAX),
 });
 

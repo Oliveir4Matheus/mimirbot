@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Box, Code2, GitBranch, Sparkles, StickyNote } from "lucide-react";
+import { Box, Code2, GitBranch, Repeat, Sparkles, StickyNote } from "lucide-react";
 
 import type { LocaleKey } from "@/locales";
 import { t } from "@/lib/i18n";
@@ -18,14 +18,18 @@ const ITEMS: PaletteItem[] = [
   { kind: "agent", label: "studio.palette.agent", hint: "studio.palette.agentHint", icon: Sparkles, color: "#6254D6", background: "#F2F0FF" },
   { kind: "script", label: "studio.palette.script", hint: "studio.palette.scriptHint", icon: Code2, color: "#247B8A", background: "#EAF6F7" },
   { kind: "condition", label: "studio.palette.condition", hint: "studio.palette.conditionHint", icon: GitBranch, color: "#C08023", background: "#FFF6E8" },
+  { kind: "loop", label: "studio.palette.loop", hint: "studio.palette.loopHint", icon: Repeat, color: "#B97818", background: "#FFF1DA" },
   { kind: "note", label: "studio.palette.note", hint: "studio.palette.noteHint", icon: StickyNote, color: "#A37A29", background: "#FFF5D6" },
   { kind: "container", label: "studio.palette.container", hint: "studio.palette.containerHint", icon: Box, color: "#6688A0", background: "#E9F2F9" },
 ];
 
-export function StudioPalette({ onActivate, onDrop }: {
+export function StudioPalette({ onActivate, onDrop, kinds }: {
   onActivate: (kind: StudioKind) => void;
   onDrop: (kind: StudioKind, clientX: number, clientY: number) => void;
+  /** The substudio leaves Do While out: nesting is not part of the contract. */
+  kinds?: readonly StudioKind[];
 }) {
+  const items = kinds ? ITEMS.filter((item) => kinds.includes(item.kind)) : ITEMS;
   const [ghost, setGhost] = useState<{ kind: StudioKind; x: number; y: number } | null>(null);
   const pending = useRef<{ kind: StudioKind; x: number; y: number; moved: boolean } | null>(null);
 
@@ -56,7 +60,7 @@ export function StudioPalette({ onActivate, onDrop }: {
   return (
     <>
       <div className="studio-palette" role="toolbar" aria-label={t("studio.palette.title")}>
-        {ITEMS.map((item) => {
+        {items.map((item) => {
           const Icon = item.icon;
           return (
             <button
@@ -86,7 +90,7 @@ export function StudioPalette({ onActivate, onDrop }: {
       {ghost && (
         <div className="studio-ghost" style={{ left: ghost.x + 14, top: ghost.y + 14 }}>
           {(() => {
-            const item = ITEMS.find((candidate) => candidate.kind === ghost.kind)!;
+            const item = items.find((candidate) => candidate.kind === ghost.kind)!;
             const Icon = item.icon;
             return (
               <>

@@ -9,6 +9,7 @@ import {
   WORKFLOW_SCRIPT_MAX_BYTES,
   isScriptStep,
   isWorkflowScriptName,
+  workflowAllSteps,
   workflowDefinitionSchema,
   workflowRunSchema,
   type WorkflowDefinition,
@@ -243,7 +244,7 @@ export function createWorkflowStore(options: WorkflowStoreOptions): WorkflowStor
           }
         }
       }
-      const invalidScript = parsed.data.steps.find((step) => {
+      const invalidScript = workflowAllSteps(parsed.data).find((step) => {
         if (!isScriptStep(step)) return false;
         const file = join(workflowScriptsDir({ department: parsed.data.department, workflowId: id, home, env }), step.run);
         try {

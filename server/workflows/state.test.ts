@@ -169,7 +169,7 @@ describe("manual holds", () => {
     const held = holdRun(running(), 0, 30);
     if (!held.ok) throw new Error(held.error);
     expect(held.run.status).toBe("waiting_manual");
-    expect(held.run.hold).toEqual({ step: 0, since: 30 });
+    expect(held.run.hold).toEqual({ path: [0], step: 0, since: 30 });
     expect(held.run.steps[0]!.status).toBe("pending");
     expect(isActiveRun(held.run.status)).toBe(true);
     expect(holdRun(held.run, 0, 40).ok).toBe(false);

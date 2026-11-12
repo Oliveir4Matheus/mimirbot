@@ -1,6 +1,6 @@
 # Progresso — Workflows (F1 + F2)
 
-Atualizado em 09/11/2026.
+Atualizado em 12/11/2026.
 
 ## Situação
 
@@ -20,7 +20,7 @@ Atualizado em 09/11/2026.
 | F3.2 | Skills por etapa de agente (bot, app e computador) | Concluída (09/11/2026, commit `55945294b`) |
 | F3.2 | Fatia 2: ferramentas por etapa | Adiada (§9.5 do handoff) |
 | F3.2 | Fatia 5: QA do canvas | Pendente |
-| F3.3 | Componente `kind: "loop"` (repetição estruturada) | Planejada |
+| F3.3 | Componente `kind: "loop"` (Do While, repetição estruturada) | Concluída (12/11/2026) — contrato, motor, Studio, F2, testes e QA criando do zero |
 | F3 | Editor visual e Team Cloud/VM | Em andamento |
 
 A tela F2 foi mergeada em `feat/workflow-f1` (commit `6c9f98fdc`). As mudanças
@@ -305,6 +305,50 @@ Os dados de demonstração ficam em `/tmp/opencode/workflow-f2-data` e
 
 Para a aprovação longa, a receita com o fixture isolado e o fake engine está em
 `docs/verification/workflow-approval.md`.
+
+## F3.3 — Do While (`kind: "loop"`)
+
+**Estado:** concluída em 12/11/2026. Não há pendência de implementação dentro do
+escopo da spec; o que ficou de fora está na §12 da spec (loop aninhado,
+timeout do componente, modo manual do componente, paralelismo, retry, Team
+Cloud/VM, notificação de script manual e ferramentas por etapa).
+
+- Contrato fechado: `body` (1..20, sem loop), `from`, `match`/`conditions`,
+  `maxIterations` (default 1), `outputs`, `result`/`require`,
+  `onSuccess`/`onFailure`; `canvas.loops`; `failureKind: "limit"`;
+  `hold.path`/`pause.path`; snapshot com os nomes do corpo.
+- Compatibilidade: workflows sem loop, runs antigas sem `iterations`/
+  `snapshot.body`/`hold.path`, `hold.step` legado e `canvas.loops` ausente
+  continuam válidos. Nenhuma migração de `workflows.json` ou de runs.
+- Motor: uma volta por vez, condição depois da volta, verdadeiro = parar,
+  projeção da última volta, pastas `iterations/iter-N/step-<bodyId>`, manual e
+  aprovação com caminho, cancelamento, reinício e `onFailure`.
+- Studio: sexto item da paleta, card com prévia e expandir, substudio
+  modal 80% × 70% com paleta sem Do While, condição/máximo/saídas no balão,
+  duplicar/excluir com sub-canvas.
+- F2: linha do Do While expansível por volta, condição, limite, arquivos,
+  espera manual/aprovação no corpo e nomes vindos do snapshot.
+- Testes: contrato, motor (inclui script real de 3 voltas), arquivos, pastas,
+  store, rotas, modelo do Studio, card/substudio e hold-notifier. Suíte focada:
+  **272** testes de workflow/rotas + **47** testes de Studio. `pnpm typecheck`,
+  `pnpm lint`, `pnpm i18n:check` e `pnpm build` passaram.
+- Bug encontrado pelo E2E e corrigido: o substudio podia gerar uma etapa de
+  corpo com o mesmo id de uma etapa de topo (`script-1`). `createStep` agora
+  recebe os ids globais; teste em `studio-model.test.ts` cobre o caso.
+- QA de criação do zero: o subagente abriu **Workflows vazio**, criou Script,
+  Agente, IF/Else e Do While pelo Studio, editou os scripts, conectou as etapas,
+  abriu o substudio, configurou o loop, salvou e executou pela UI. Workflow
+  `51916e22-f9fa-49aa-ba36-b1e68ce2d597`, run
+  `20261112-224321-e17e49`, 4 etapas, 3 voltas (`restantes` 2/1/0).
+- Vídeo e screenshots: `QA/qa-do-zero.mp4` (45,12 s) e
+  `QA/qa-do-zero.webm`; imagens em `/tmp/opencode/loop-qa2/evidence/01…10`.
+  A pasta `QA/` fica no `.gitignore`.
+- Nota do fixture: o fake engine não escreve arquivos; o primeiro script grava
+  também o `result.json` declarado pela etapa de bot seguinte para que a etapa
+  de bot rode de verdade com o contrato verificado.
+- Ambiente: Node atualizado para **v24.22.3** (LTS Krypton), com `node -v`,
+  `npm -v 11.19.1` e `pnpm 10.33.0`; isso também destravou os testes
+  `happy-dom` do Studio.
 
 ## Próximo passo
 

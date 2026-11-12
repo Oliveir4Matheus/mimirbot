@@ -135,6 +135,47 @@ describe("workflow hold notifier", () => {
     expect(send).not.toHaveBeenCalled();
   });
 
+  it("resolves a manual body step through hold.path and the snapshot body", () => {
+    const loopDefinition = workflowDefinitionSchema.parse({
+      ...definition,
+      steps: [{
+        id: "laco",
+        kind: "loop",
+        name: "Loop",
+        body: [{
+          id: "atualiza",
+          kind: "bot",
+          name: "Update the batch",
+          botId: "bot-a",
+          instructions: "Update.",
+          mode: "manual",
+          outputs: [{ path: "result.json" }],
+          result: "result.json",
+        }],
+        from: "atualiza",
+        conditions: [{ field: "restantes", op: "lte", value: 0 }],
+        maxIterations: 3,
+        outputs: [{ path: "result.json" }],
+      }],
+    });
+    const { note, send } = setup({ workflow: () => loopDefinition });
+    note(run({
+      id: "run-loop",
+      hold: { path: [0, 0, 0], since: 2 },
+      steps: [{
+        id: "laco",
+        kind: "loop",
+        status: "running",
+        iterations: [{ index: 1, status: "running", steps: [{ id: "atualiza", status: "pending" }] }],
+      }],
+      snapshot: { name: loopDefinition.name, steps: [{ id: "laco", name: "Loop", body: [{ id: "atualiza", name: "Update the batch" }] }] },
+    }));
+    expect(send).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
+      body: 'Workflow "Monthly review" · step "Update the batch" is waiting to continue.',
+      workflowRunId: "run-loop",
+    }), { adminOnly: true });
+  });
+
   it("falls back to the run and step ids when the snapshot is gone", () => {
     const { note, send } = setup();
 

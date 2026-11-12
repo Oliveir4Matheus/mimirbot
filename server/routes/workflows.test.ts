@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { workflowDefinitionSchema, type WorkflowDefinition, type WorkflowSkillOptions } from "../../shared/workflow.ts";
+import { workflowDefinitionSchema, type WorkflowDefinition, type WorkflowRun, type WorkflowSkillOptions } from "../../shared/workflow.ts";
 import { createWorkflowEngine } from "../workflows/engine.ts";
 import { WORKFLOWS_ROOT_ENV } from "../workflows/paths.ts";
 import { createWorkflowStore } from "../workflows/store.ts";
@@ -346,6 +346,204 @@ describe("Workflow scripts", () => {
     await call("PUT", `/api/workflows/${def.id}`, body);
     expect(state.status).toBe(200);
     expect((state.body as { workflow: { version: number } }).workflow.version).toBe(2);
+  });
+});
+
+describe("Do While routes", () => {
+  const loopDefinition = (overrides: Record<string, unknown> = {}) => definition({
+    steps: [{
+      id: "laco",
+      kind: "loop",
+      name: "Loop",
+      body: [{ id: "atualiza", kind: "bot", name: "Update", botId: "bot-a", instructions: "Update.", outputs: [{ path: "result.json" }], result: "result.json" }],
+      from: "atualiza",
+      conditions: [{ field: "restantes", op: "lte", value: 0 }],
+      maxIterations: 3,
+      outputs: [{ path: "result.json" }],
+      result: "result.json",
+    }],
+    ...overrides,
+  });
+
+  it("saves the loop, its sub-canvas and a body script together", async () => {
+    const { call, state, definition: def, store } = harness();
+    const looped = loopDefinition({
+      steps: [{
+        id: "laco",
+        kind: "loop",
+        name: "Loop",
+        body: [{
+          id: "atualiza", kind: "script", name: "Update", run: "atualiza.mjs", timeoutMs: 60_000,
+          outputs: [{ path: "result.json" }], result: "result.json",
+        }],
+        from: "atualiza",
+        conditions: [{ field: "restantes", op: "lte", value: 0 }],
+        maxIterations: 3,
+        outputs: [{ path: "result.json" }],
+      }],
+      canvas: {
+        nodes: { laco: { x: 10, y: 20 } },
+        notes: [],
+        containers: [],
+        loops: { laco: { nodes: { atualiza: { x: 40, y: 60 } }, notes: [], containers: [] } },
+      },
+    });
+    await call("PUT", `/api/workflows/${def.id}`, {
+      ...looped,
+      id: def.id,
+      scripts: [{ name: "atualiza.mjs", content: "console.log('ok')\n" }],
+    });
+    expect(state.status).toBe(200);
+    expect(store.readScript(def.id, "atualiza.mjs")?.content).toBe("console.log('ok')\n");
+    expect(store.workflow(def.id)?.canvas?.loops.laco?.nodes.atualiza).toEqual({ x: 40, y: 60 });
+  });
+
+  it("refuses a nested loop, an ambiguous output and a missing source", async () => {
+    const { call, state, definition: def } = harness();
+    const valid = loopDefinition();
+    const nested = {
+      ...valid,
+      steps: [{
+        id: "laco", kind: "loop", name: "Loop",
+        body: [{
+          id: "inner", kind: "loop", name: "Inner",
+          body: [{ id: "atualiza", kind: "bot", name: "Update", botId: "bot-a", instructions: "Update.", outputs: [{ path: "result.json" }], result: "result.json" }],
+          from: "atualiza", conditions: [{ field: "ok", op: "equals", value: true }], maxIterations: 1, outputs: [{ path: "result.json" }],
+        }],
+        from: "atualiza", conditions: [{ field: "ok", op: "equals", value: true }], maxIterations: 1, outputs: [{ path: "result.json" }],
+      }],
+    };
+    await call("PUT", `/api/workflows/${def.id}`, { ...nested, id: def.id });
+    expect(state.status).toBe(400);
+
+    const ambiguous = {
+      ...valid,
+      steps: [{
+        id: "laco", kind: "loop", name: "Loop",
+        body: [
+          { id: "a", kind: "bot", name: "A", botId: "bot-a", instructions: "A.", outputs: [{ path: "result.json" }], result: "result.json" },
+          { id: "b", kind: "bot", name: "B", botId: "bot-a", instructions: "B.", outputs: [{ path: "result.json" }], result: "result.json" },
+        ],
+        from: "a", conditions: [{ field: "ok", op: "equals", value: true }], maxIterations: 1, outputs: [{ path: "result.json" }],
+      }],
+    };
+    await call("PUT", `/api/workflows/${def.id}`, { ...ambiguous, id: def.id });
+    expect(state.status).toBe(400);
+
+    const missingSource = {
+      ...valid,
+      steps: [{
+        id: "laco", kind: "loop", name: "Loop",
+        body: [{ id: "a", kind: "bot", name: "A", botId: "bot-a", instructions: "A.", outputs: [{ path: "result.json" }], result: "result.json" }],
+        from: "sumiu", conditions: [{ field: "ok", op: "equals", value: true }], maxIterations: 1, outputs: [{ path: "result.json" }],
+      }],
+    };
+    await call("PUT", `/api/workflows/${def.id}`, { ...missingSource, id: def.id });
+    expect(state.status).toBe(400);
+    expect((state.body as { error: string }).error).toContain("is not in the body");
+  });
+
+  it("starts a run with the loop and returns its rounds", async () => {
+    const { call, state, definition: def, store } = harness();
+    const looped = loopDefinition();
+    await call("PUT", `/api/workflows/${def.id}`, { ...looped, id: def.id });
+    expect(state.status).toBe(200);
+    await call("POST", `/api/workflows/${def.id}/run`, {});
+    expect(state.status).toBe(202);
+    const started = (state.body as { run: WorkflowRun }).run;
+    expect(started.steps[0]).toMatchObject({ id: "laco", kind: "loop", iterations: [] });
+
+    const run = store.readRun(started.id)!;
+    store.writeRun({
+      ...run,
+      status: "running",
+      startedAt: NOW,
+      currentStep: 0,
+      steps: [{
+        id: "laco", kind: "loop", status: "running", startedAt: NOW,
+        iterations: [{ index: 1, status: "running", startedAt: NOW, steps: [{ id: "atualiza", status: "running", startedAt: NOW }] }],
+      }],
+    });
+    await call("GET", `/api/workflows/runs/${run.id}`);
+    expect(state.status).toBe(200);
+    expect((state.body as { run: WorkflowRun }).run.steps[0]!.iterations).toHaveLength(1);
+  });
+
+  it("cancels a running round and marks the body step and loop skipped", async () => {
+    const { call, engine, definition: def, store } = harness();
+    const looped = loopDefinition();
+    await call("PUT", `/api/workflows/${def.id}`, { ...looped, id: def.id });
+    const run = store.createRun(store.workflow(def.id)!);
+    store.writeRun({
+      ...run,
+      status: "running",
+      startedAt: NOW,
+      currentStep: 0,
+      steps: [{
+        id: "laco", kind: "loop", status: "running", startedAt: NOW,
+        iterations: [{ index: 1, status: "running", startedAt: NOW, steps: [{ id: "atualiza", status: "running", startedAt: NOW }] }],
+      }],
+    });
+    const cancelled = engine.cancel(run.id, "stop");
+    expect(cancelled.ok).toBe(true);
+    const stored = store.readRun(run.id)!;
+    expect(stored.status).toBe("cancelled");
+    expect(stored.steps[0]!.status).toBe("skipped");
+    expect(stored.steps[0]!.iterations![0]!.status).toBe("skipped");
+  });
+
+  it("continues a manual body step through its hold.path", async () => {
+    const { call, state, engine, definition: def, store } = harness();
+    const manual = definition({
+      steps: [{
+        id: "laco",
+        kind: "loop",
+        name: "Loop",
+        body: [{
+          id: "atualiza", kind: "bot", name: "Update", botId: "bot-a", instructions: "Update.",
+          mode: "manual", outputs: [{ path: "result.json" }], result: "result.json",
+        }],
+        from: "atualiza",
+        conditions: [{ field: "restantes", op: "lte", value: 0 }],
+        maxIterations: 3,
+        outputs: [{ path: "result.json" }],
+      }],
+    });
+    await call("PUT", `/api/workflows/${def.id}`, { ...manual, id: def.id });
+    expect(state.status).toBe(200);
+    const run = store.createRun(store.workflow(def.id)!);
+    store.writeRun({
+      ...run,
+      status: "waiting_manual",
+      startedAt: NOW,
+      currentStep: 0,
+      hold: { path: [0, 0, 0], since: NOW },
+      steps: [{
+        id: "laco", kind: "loop", status: "running", startedAt: NOW,
+        iterations: [{ index: 1, status: "running", startedAt: NOW, steps: [{ id: "atualiza", status: "pending" }] }],
+      }],
+    });
+    await call("POST", `/api/workflows/runs/${run.id}/continue`, {});
+    expect(state.status).toBe(200);
+    expect((state.body as { run: WorkflowRun }).run.status).toBe("running");
+    await engine.idle();
+    const resumed = store.readRun(run.id)!;
+    expect(resumed.hold).toBeUndefined();
+    expect(resumed.steps[0]!.iterations![0]!.steps[0]!.status).toBe("running");
+    expect(resumed.steps[0]!.iterations![0]!.steps[0]!.threadId).toBe("thread-1");
+  });
+
+  it("refuses a new body script while a run is active", async () => {
+    const { call, state, definition: def, store } = harness();
+    const looped = loopDefinition();
+    await call("PUT", `/api/workflows/${def.id}`, { ...looped, id: def.id });
+    store.createRun(store.workflow(def.id)!);
+    await call("PUT", `/api/workflows/${def.id}`, {
+      ...looped,
+      id: def.id,
+      scripts: [{ name: "atualiza.mjs", content: "x" }],
+    });
+    expect(state.status).toBe(409);
   });
 });
 

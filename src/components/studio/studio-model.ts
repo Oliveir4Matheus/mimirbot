@@ -8,14 +8,16 @@ import {
   type ConditionLine,
   type ConditionMatch,
   type ConditionOp,
+  type WorkflowBodyStep,
   type WorkflowCanvas,
   type WorkflowDefinition,
   type WorkflowSkillOptions,
   type WorkflowStep,
   type WorkflowStepSkills,
+  type WorkflowSubcanvas,
 } from "../../../shared/workflow";
 
-export type StudioKind = "agent" | "script" | "condition" | "note" | "container";
+export type StudioKind = "agent" | "script" | "condition" | "loop" | "note" | "container";
 export type StudioBranch = "run" | "failure" | "timeout" | "true" | "false";
 export type StudioSelection = { kind: "step" | "note" | "container"; id: string } | null;
 
@@ -68,7 +70,42 @@ export function uniqueId(base: string, taken: ReadonlySet<string>): string {
 }
 
 export function emptyCanvas(): WorkflowCanvas {
+  return { nodes: {}, notes: [], containers: [], loops: {} };
+}
+
+export function emptySubcanvas(): WorkflowSubcanvas {
   return { nodes: {}, notes: [], containers: [] };
+}
+
+/** Every step a draft holds, top level first, then each Do While body. */
+export function allDraftSteps(draft: StudioDraft): WorkflowStep[] {
+  return draft.steps.flatMap((step) => step.kind === "loop" ? [step, ...step.body] : [step]);
+}
+
+/** A Do While body seen through the same draft shape the Studio edits. */
+export function bodyDraft(draft: StudioDraft, loopId: string): StudioDraft | undefined {
+  const loop = draft.steps.find((step) => step.id === loopId);
+  if (!loop || loop.kind !== "loop") return undefined;
+  const subcanvas = draft.canvas.loops[loopId] ?? emptySubcanvas();
+  return {
+    ...draft,
+    steps: loop.body,
+    canvas: { ...emptyCanvas(), ...structuredClone(subcanvas) },
+  };
+}
+
+/** Writes an edited Do While body back into the main draft, keeping the main canvas. */
+export function withBodyDraft(draft: StudioDraft, loopId: string, body: StudioDraft): StudioDraft {
+  return {
+    ...draft,
+    steps: draft.steps.map((step) => step.id === loopId && step.kind === "loop"
+      ? { ...step, body: body.steps.filter((candidate): candidate is WorkflowBodyStep => candidate.kind !== "loop") }
+      : step),
+    canvas: {
+      ...draft.canvas,
+      loops: { ...draft.canvas.loops, [loopId]: { nodes: body.canvas.nodes, notes: body.canvas.notes, containers: body.canvas.containers } },
+    },
+  };
 }
 
 export function autoLayout(steps: readonly WorkflowStep[]): Record<string, { x: number; y: number }> {
@@ -103,6 +140,11 @@ export function fromDefinition(definition: WorkflowDefinition): StudioDraft {
     if (step.kind === "condition" || step.onSuccess !== undefined) return step;
     return { ...step, onSuccess: index + 1 < all.length ? all[index + 1]!.id : null } as WorkflowStep;
   });
+  const loops = structuredClone(canvas.loops ?? {});
+  for (const step of steps) {
+    if (step.kind !== "loop" || loops[step.id]) continue;
+    loops[step.id] = { nodes: autoLayout(step.body), notes: [], containers: [] };
+  }
   return {
     id: definition.id,
     version: definition.version,
@@ -110,7 +152,12 @@ export function fromDefinition(definition: WorkflowDefinition): StudioDraft {
     department: definition.department,
     retentionDays: definition.retentionDays,
     steps,
-    canvas: { nodes, notes: structuredClone(canvas.notes), containers: structuredClone(canvas.containers) },
+    canvas: {
+      nodes,
+      notes: structuredClone(canvas.notes),
+      containers: structuredClone(canvas.containers),
+      loops,
+    },
     createdAt: definition.createdAt,
     updatedAt: definition.updatedAt,
   };
@@ -126,6 +173,17 @@ export function toDefinition(draft: StudioDraft): WorkflowDefinition {
   const steps = structuredClone(draft.steps).map((step) => step.kind !== "condition" && step.onSuccess === undefined
     ? { ...step, onSuccess: null } as WorkflowStep
     : step);
+  const loops = Object.fromEntries(steps
+    .filter((step) => step.kind === "loop")
+    .map((step) => {
+      const bodyIds = new Set(step.body.map((bodyStep) => bodyStep.id));
+      const subcanvas = draft.canvas.loops[step.id] ?? emptySubcanvas();
+      return [step.id, {
+        nodes: Object.fromEntries(Object.entries(subcanvas.nodes).filter(([id]) => bodyIds.has(id))),
+        notes: structuredClone(subcanvas.notes),
+        containers: structuredClone(subcanvas.containers),
+      }];
+    })) as WorkflowCanvas["loops"];
   return {
     id: draft.id,
     version: draft.version ?? 1,
@@ -135,14 +193,23 @@ export function toDefinition(draft: StudioDraft): WorkflowDefinition {
     steps,
     createdAt: draft.createdAt,
     updatedAt: draft.updatedAt,
-    canvas: { nodes, notes, containers: structuredClone(draft.canvas.containers) },
+    canvas: { nodes, notes, containers: structuredClone(draft.canvas.containers), loops },
   };
 }
 
-export function createStep(draft: StudioDraft, kind: Exclude<StudioKind, "note" | "container">, point: { x: number; y: number }, botId?: string): { draft: StudioDraft; stepId: string } {
-  const taken = new Set(draft.steps.map((step) => step.id));
+export function createStep(
+  draft: StudioDraft,
+  kind: Exclude<StudioKind, "note" | "container">,
+  point: { x: number; y: number },
+  botId?: string,
+  takenIds?: ReadonlySet<string>,
+): { draft: StudioDraft; stepId: string } {
+  const taken = new Set([...allDraftSteps(draft).map((step) => step.id), ...(takenIds ?? [])]);
   const count = draft.steps.filter((step) => step.kind === (kind === "agent" ? "bot" : kind)).length + 1;
-  const baseName = kind === "agent" ? `Agente ${count}` : kind === "script" ? `Script ${count}` : `IF / Else ${count}`;
+  const baseName = kind === "agent" ? `Agente ${count}`
+    : kind === "script" ? `Script ${count}`
+      : kind === "condition" ? `IF / Else ${count}`
+        : `Do While ${count}`;
   const id = uniqueId(slugify(baseName), taken);
   const step: WorkflowStep = kind === "agent"
     ? {
@@ -154,12 +221,92 @@ export function createStep(draft: StudioDraft, kind: Exclude<StudioKind, "note" 
         id, kind: "script", name: baseName, run: `${id}.mjs`, timeoutMs: 60_000, mode: "auto",
         inputs: [], outputs: structuredClone(DEFAULT_OUTPUTS), result: "result.json",
       }
-      : { id, kind: "condition", name: baseName, from: "", match: "all", conditions: [{ field: "ok", op: "equals", value: true }] };
+      : kind === "condition"
+        ? { id, kind: "condition", name: baseName, from: "", match: "all", conditions: [{ field: "ok", op: "equals", value: true }] }
+        : {
+          id, kind: "loop", name: baseName, body: [], from: "", match: "all",
+          conditions: [{ field: "restantes", op: "lte", value: 0 }], maxIterations: 1, outputs: [],
+        };
+  const canvas = kind === "loop"
+    ? { ...draft.canvas, loops: { ...draft.canvas.loops, [id]: emptySubcanvas() } }
+    : draft.canvas;
   return {
     draft: {
       ...draft,
       steps: [...draft.steps, step],
-      canvas: { ...draft.canvas, nodes: { ...draft.canvas.nodes, [id]: { x: point.x - CARD_WIDTH / 2, y: point.y - CARD_HEIGHT / 2 } } },
+      canvas: { ...canvas, nodes: { ...canvas.nodes, [id]: { x: point.x - CARD_WIDTH / 2, y: point.y - CARD_HEIGHT / 2 } } },
+    },
+    stepId: id,
+  };
+}
+
+/** Copies a Do While, its body and its sub-canvas with fresh ids and no external edges. */
+export function duplicateLoop(draft: StudioDraft, loopId: string, point: { x: number; y: number }): { draft: StudioDraft; stepId: string } | undefined {
+  const source = draft.steps.find((step): step is Extract<WorkflowStep, { kind: "loop" }> => step.id === loopId && step.kind === "loop");
+  if (!source) return undefined;
+  const taken = new Set(allDraftSteps(draft).map((step) => step.id));
+  const id = uniqueId(slugify(source.name), taken);
+  taken.add(id);
+  const bodyIds = new Map<string, string>();
+  for (const bodyStep of source.body) {
+    const candidate = uniqueId(slugify(bodyStep.name), taken);
+    taken.add(candidate);
+    bodyIds.set(bodyStep.id, candidate);
+  }
+  const remap = (target: string | null | undefined): string | null | undefined =>
+    target === undefined || target === null ? target : bodyIds.get(target) ?? target;
+  const body = source.body.map((bodyStep) => {
+    const nextId = bodyIds.get(bodyStep.id)!;
+    if (bodyStep.kind === "condition") {
+      return {
+        ...bodyStep,
+        id: nextId,
+        from: bodyIds.get(bodyStep.from) ?? bodyStep.from,
+        whenTrue: remap(bodyStep.whenTrue),
+        whenFalse: remap(bodyStep.whenFalse),
+        onFailure: remap(bodyStep.onFailure) ?? undefined,
+      } as WorkflowStep;
+    }
+    return {
+      ...bodyStep,
+      id: nextId,
+      inputs: bodyStep.inputs.map((input) => ({ ...input, from: { ...input.from, step: bodyIds.get(input.from.step) ?? input.from.step } })),
+      onSuccess: remap(bodyStep.onSuccess),
+      onFailure: remap(bodyStep.onFailure) ?? undefined,
+      onTimeout: remap(bodyStep.onTimeout) ?? undefined,
+      when: bodyStep.when?.map((branch) => ({ ...branch, next: bodyIds.get(branch.next) ?? branch.next })),
+    } as WorkflowStep;
+  });
+  const clone = {
+    ...source,
+    id,
+    name: `${source.name} cópia`,
+    body,
+    from: bodyIds.get(source.from) ?? source.from,
+    onSuccess: undefined,
+    onFailure: undefined,
+  } as WorkflowStep;
+  const sourceCanvas = draft.canvas.loops[source.id] ?? emptySubcanvas();
+  const nodes = Object.fromEntries([...bodyIds.entries()].map(([from, to]) => {
+    const node = sourceCanvas.nodes[from];
+    return [to, node ? { x: node.x + 40, y: node.y + 80 } : { x: 80, y: 120 }];
+  }));
+  return {
+    draft: {
+      ...draft,
+      steps: [...draft.steps, clone],
+      canvas: {
+        ...draft.canvas,
+        nodes: { ...draft.canvas.nodes, [id]: { x: point.x - CARD_WIDTH / 2, y: point.y - CARD_HEIGHT / 2 } },
+        loops: {
+          ...draft.canvas.loops,
+          [id]: {
+            nodes,
+            notes: structuredClone(sourceCanvas.notes),
+            containers: structuredClone(sourceCanvas.containers),
+          },
+        },
+      },
     },
     stepId: id,
   };
@@ -315,6 +462,16 @@ export function removeStep(draft: StudioDraft, stepId: string): StudioDraft {
           onFailure: step.onFailure === stepId ? undefined : step.onFailure,
         } as WorkflowStep;
       }
+      if (step.kind === "loop") {
+        return {
+          ...step,
+          body: step.body.map((bodyStep) => bodyStep.kind === "condition"
+            ? { ...bodyStep, from: bodyStep.from === stepId ? "" : bodyStep.from } as WorkflowStep
+            : { ...bodyStep, inputs: bodyStep.inputs.filter((input) => input.from.step !== stepId) } as WorkflowStep),
+          onSuccess: step.onSuccess === stepId ? null : step.onSuccess,
+          onFailure: step.onFailure === stepId ? undefined : step.onFailure,
+        } as WorkflowStep;
+      }
       return {
         ...step,
         inputs: step.inputs.filter((input) => input.from.step !== stepId),
@@ -324,8 +481,9 @@ export function removeStep(draft: StudioDraft, stepId: string): StudioDraft {
       } as WorkflowStep;
     });
   const { [stepId]: _removed, ...nodes } = draft.canvas.nodes;
+  const { [stepId]: _removedLoop, ...loops } = draft.canvas.loops;
   const notes = draft.canvas.notes.map((note) => note.link?.kind === "step" && note.link.id === stepId ? { ...note, link: undefined } : note);
-  return { ...draft, steps, canvas: { ...draft.canvas, nodes, notes } };
+  return { ...draft, steps, canvas: { ...draft.canvas, nodes, loops, notes } };
 }
 
 export function removeNote(draft: StudioDraft, noteId: string): StudioDraft {
@@ -351,7 +509,7 @@ export function outgoing(step: WorkflowStep): Array<{ branch: StudioBranch; targ
   return [
     ...(typeof step.onSuccess === "string" ? [{ branch: "run" as const, target: step.onSuccess }] : []),
     ...(step.onFailure ? [{ branch: "failure" as const, target: step.onFailure }] : []),
-    ...(step.onTimeout ? [{ branch: "timeout" as const, target: step.onTimeout }] : []),
+    ...(step.kind !== "loop" && step.onTimeout ? [{ branch: "timeout" as const, target: step.onTimeout }] : []),
   ];
 }
 
@@ -388,11 +546,11 @@ export function connect(draft: StudioDraft, fromId: string, branch: StudioBranch
   const side = branch === "failure" || branch === "timeout";
   if (branch === "run" && source.kind === "condition") return { ok: false, key: "studio.toast.entryTaken" };
   if ((branch === "true" || branch === "false") && source.kind !== "condition") return { ok: false, key: "studio.toast.entryTaken" };
-  if (branch === "timeout" && source.kind === "condition") return { ok: false, key: "studio.toast.entryTaken" };
+  if (branch === "timeout" && source.kind !== "bot" && source.kind !== "script") return { ok: false, key: "studio.toast.entryTaken" };
   const current = branch === "run"
     ? (source.kind === "condition" ? undefined : source.onSuccess)
     : branch === "failure" ? source.onFailure
-      : branch === "timeout" ? (source.kind === "condition" ? undefined : source.onTimeout)
+      : branch === "timeout" ? (source.kind === "bot" || source.kind === "script" ? source.onTimeout : undefined)
         : source.kind === "condition" ? (branch === "true" ? source.whenTrue : source.whenFalse) : undefined;
   if (current !== undefined && current !== null) return { ok: false, key: "studio.toast.outputTaken" };
   if (!side && entrySource(draft, toId) !== undefined) return { ok: false, key: "studio.toast.entryTaken" };
@@ -401,7 +559,7 @@ export function connect(draft: StudioDraft, fromId: string, branch: StudioBranch
     if (step.id !== fromId) return step;
     if (branch === "run" && step.kind !== "condition") return { ...step, onSuccess: toId };
     if (branch === "failure") return { ...step, onFailure: toId };
-    if (branch === "timeout" && step.kind !== "condition") return { ...step, onTimeout: toId };
+    if (branch === "timeout" && (step.kind === "bot" || step.kind === "script")) return { ...step, onTimeout: toId };
     if (branch === "true" && step.kind === "condition") return { ...step, whenTrue: toId };
     if (branch === "false" && step.kind === "condition") return { ...step, whenFalse: toId };
     return step;
@@ -425,7 +583,7 @@ export function disconnect(draft: StudioDraft, stepId: string, branch: StudioBra
       }
       if (branch === "run") return { ...step, onSuccess: null };
       if (branch === "failure") return { ...step, onFailure: undefined };
-      if (branch === "timeout") return { ...step, onTimeout: undefined };
+      if (branch === "timeout" && (step.kind === "bot" || step.kind === "script")) return { ...step, onTimeout: undefined };
       return step;
     }),
   };
@@ -490,10 +648,44 @@ export interface DraftProblem {
   params?: Record<string, string | number>;
 }
 
+function conditionProblem(step: WorkflowBodyStep | WorkflowStep, pool: readonly WorkflowStep[]): DraftProblem | undefined {
+  if (step.kind !== "condition") return undefined;
+  if (!step.from) return { key: "studio.needFrom", params: { name: step.name } };
+  const sourceIndex = pool.findIndex((candidate) => candidate.id === step.from);
+  const source = pool[sourceIndex];
+  if (sourceIndex < 0 || !source || source.kind === "condition" || source.kind === "loop" || source.result === undefined) {
+    return { key: "studio.needSourceResult", params: { name: step.name } };
+  }
+  if (step.conditions.length === 0) return { key: "studio.needCondition", params: { name: step.name } };
+  if (step.conditions.length > WORKFLOW_CONDITION_ROWS_MAX) {
+    return { key: "studio.needConditionMax", params: { name: step.name, max: WORKFLOW_CONDITION_ROWS_MAX } };
+  }
+  if (step.conditions.some((line) => line.op !== "exists" && line.value === undefined)) {
+    return { key: "studio.needValue", params: { name: step.name } };
+  }
+  return undefined;
+}
+
+function bodyStepProblem(step: WorkflowBodyStep, pool: readonly WorkflowBodyStep[], botIds: ReadonlySet<string>, skillOptions: Record<string, WorkflowSkillOptions>): DraftProblem | undefined {
+  if (step.kind === "bot" && (!step.botId || !botIds.has(step.botId))) return { key: "studio.needBot", params: { name: step.name } };
+  if (step.kind === "bot") {
+    const skillProblem = skillSelectionProblem(step, skillOptions[step.botId]);
+    if (skillProblem) return skillProblem;
+  }
+  if (step.kind === "script" && !isWorkflowScriptName(step.run)) return { key: "studio.needScriptName", params: { name: step.name } };
+  if (step.kind !== "condition" && step.onTimeout !== undefined && step.timeoutMs <= 0) {
+    return { key: "studio.needTimeout", params: { name: step.name } };
+  }
+  if (step.kind === "condition") return conditionProblem(step, pool);
+  if (step.outputs.length === 0) return { key: "studio.needOutput", params: { name: step.name } };
+  return undefined;
+}
+
 /** What the Studio can check before the server's schema does. */
 export function draftProblem(draft: StudioDraft, botIds: ReadonlySet<string>, skillOptions: Record<string, WorkflowSkillOptions> = {}): DraftProblem | undefined {
   if (!draft.name.trim()) return { key: "studio.needName" };
   if (draft.steps.length === 0) return { key: "studio.needStep" };
+  if (allDraftSteps(draft).length > 40) return { key: "studio.needStepMax", params: { max: 40 } };
   for (const step of draft.steps) {
     if (step.kind === "bot" && (!step.botId || !botIds.has(step.botId))) return { key: "studio.needBot", params: { name: step.name } };
     if (step.kind === "bot") {
@@ -501,24 +693,76 @@ export function draftProblem(draft: StudioDraft, botIds: ReadonlySet<string>, sk
       if (skillProblem) return skillProblem;
     }
     if (step.kind === "script" && !isWorkflowScriptName(step.run)) return { key: "studio.needScriptName", params: { name: step.name } };
-    if (step.kind !== "condition" && step.onTimeout !== undefined && step.timeoutMs <= 0) {
+    if (step.kind !== "condition" && step.kind !== "loop" && step.onTimeout !== undefined && step.timeoutMs <= 0) {
       return { key: "studio.needTimeout", params: { name: step.name } };
     }
     if (step.kind === "condition") {
-      if (!step.from) return { key: "studio.needFrom", params: { name: step.name } };
-      const source = draft.steps.find((candidate) => candidate.id === step.from);
-      if (!source || source.kind === "condition" || source.result === undefined) {
-        return { key: "studio.needSourceResult", params: { name: step.name } };
+      const problem = conditionProblem(step, draft.steps);
+      if (problem) return problem;
+      continue;
+    }
+    if (step.kind !== "loop") {
+      if (step.outputs.length === 0) return { key: "studio.needOutput", params: { name: step.name } };
+      continue;
+    }
+
+    if (step.body.length === 0) return { key: "studio.loop.needBody", params: { name: step.name } };
+    const source = step.body.find((candidate) => candidate.id === step.from);
+    if (!step.from || !source || source.kind === "condition" || source.result === undefined) {
+      return { key: "studio.loop.needFrom", params: { name: step.name } };
+    }
+    if (step.conditions.length === 0) return { key: "studio.needCondition", params: { name: step.name } };
+    if (step.conditions.length > WORKFLOW_CONDITION_ROWS_MAX) {
+      return { key: "studio.needConditionMax", params: { name: step.name, max: WORKFLOW_CONDITION_ROWS_MAX } };
+    }
+    if (step.conditions.some((line) => line.op !== "exists" && line.value === undefined)) {
+      return { key: "studio.needValue", params: { name: step.name } };
+    }
+    if (!Number.isInteger(step.maxIterations) || step.maxIterations < 1) {
+      return { key: "studio.loop.needMax", params: { name: step.name } };
+    }
+    for (const bodyStep of step.body) {
+      const problem = bodyStepProblem(bodyStep, step.body, botIds, skillOptions);
+      if (problem) return problem;
+    }
+    for (const bodyStep of step.body) {
+      if (bodyStep.kind === "condition" || bodyStep.inputs.length === 0) continue;
+      for (const input of bodyStep.inputs) {
+        const bodyIndex = step.body.findIndex((candidate) => candidate.id === input.from.step);
+        const bodySource = bodyIndex >= 0 ? step.body[bodyIndex] : undefined;
+        const topIndex = draft.steps.findIndex((candidate) => candidate.id === input.from.step);
+        const topSource = topIndex >= 0 && topIndex < draft.steps.indexOf(step) ? draft.steps[topIndex] : undefined;
+        const output = bodySource?.kind !== "condition"
+          ? (bodySource?.outputs ?? []).find((entry) => entry.path === input.from.output)
+          : topSource !== undefined && topSource.kind !== "condition" && topSource.kind !== "loop"
+            ? topSource.outputs.find((entry) => entry.path === input.from.output)
+            : undefined;
+        if (!output?.required) return { key: "studio.loop.needInput", params: { name: bodyStep.name } };
       }
-      if (step.conditions.length === 0) return { key: "studio.needCondition", params: { name: step.name } };
-      if (step.conditions.length > WORKFLOW_CONDITION_ROWS_MAX) {
-        return { key: "studio.needConditionMax", params: { name: step.name, max: WORKFLOW_CONDITION_ROWS_MAX } };
+    }
+    const declared = new Map<string, { required: boolean; count: number }>();
+    for (const bodyStep of step.body) {
+      if (bodyStep.kind === "condition") continue;
+      for (const output of bodyStep.outputs) {
+        const current = declared.get(output.path);
+        declared.set(output.path, { required: output.required && (current?.required ?? true), count: (current?.count ?? 0) + 1 });
       }
-      if (step.conditions.some((line) => line.op !== "exists" && line.value === undefined)) {
-        return { key: "studio.needValue", params: { name: step.name } };
-      }
-    } else if (step.outputs.length === 0) {
-      return { key: "studio.needOutput", params: { name: step.name } };
+    }
+    if (step.outputs.length === 0) return { key: "studio.loop.needOutput", params: { name: step.name } };
+    const seenOutputs = new Set<string>();
+    for (const output of step.outputs) {
+      if (seenOutputs.has(output.path)) return { key: "studio.loop.outputAmbiguous", params: { name: step.name, path: output.path } };
+      seenOutputs.add(output.path);
+      const declaration = declared.get(output.path);
+      if (!declaration) return { key: "studio.loop.needOutput", params: { name: step.name } };
+      if (declaration.count > 1) return { key: "studio.loop.outputAmbiguous", params: { name: step.name, path: output.path } };
+      if (output.required && !declaration.required) return { key: "studio.loop.outputOptional", params: { name: step.name, path: output.path } };
+    }
+    if (step.result !== undefined && !step.outputs.some((output) => output.path === step.result)) {
+      return { key: "studio.loop.needResult", params: { name: step.name } };
+    }
+    if (step.require !== undefined && step.result === undefined) {
+      return { key: "studio.loop.needResult", params: { name: step.name } };
     }
   }
   return undefined;
@@ -556,7 +800,7 @@ export function outputsOf(step: WorkflowStep): Array<{ path: string; required: b
 }
 
 export function inputsOf(step: WorkflowStep): Array<{ as: string; from: { step: string; output: string } }> {
-  return step.kind === "condition" ? [] : step.inputs;
+  return step.kind === "condition" || step.kind === "loop" ? [] : step.inputs;
 }
 
 export const conditionOpLabel: Record<ConditionOp, LocaleKey> = {
