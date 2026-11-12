@@ -25292,7 +25292,8 @@
       "settings.section.updates": "22e2bada8f1c65cd83f4ba976f0027c5dd7cb81d5d2199cd1b0130792841eef4",
       "connectors.resetSavedKeys": "764411710357197d3d55fbf646d0ea6249c4236cbc635e0b4212b8d92cf5dea6",
       "computer.watchFullScreenTitle": "9f3f625c39cd1e74ba76474fda7f8cd15b2fabe6e6ee337201a72551f47986d2",
-      "computer.watchingBotWorks": "b441025e38fe828e8ec4d56a2c9c685f88d9b41d993242c2af8eeaeb8ae3878b"
+      "computer.watchingBotWorks": "b441025e38fe828e8ec4d56a2c9c685f88d9b41d993242c2af8eeaeb8ae3878b",
+      "accounts.chatgptSharedSetupNote": "953254bf7dd1030efce9d15d8cda59f36617071bae50cf906476467a299123ee"
     },
     "zh": {
       "highlevel.unavailable": "87b8ac7f7610e6dd69f520bc59058fd92f307b9f4bcf804075f25d08bcaa7533",
@@ -32850,7 +32851,8 @@
       "voice.libraryHint": "b1f4803e14cc85b75c73d1001263740aff3e8e4cbf82dc5b08206ca76ced8435",
       "voice.adding": "c6de6f45c827f464b161b668ae93192ce4e6585c4029d8dd71795cbd7f922719",
       "computer.watchFullScreenTitle": "9f3f625c39cd1e74ba76474fda7f8cd15b2fabe6e6ee337201a72551f47986d2",
-      "computer.watchingBotWorks": "b441025e38fe828e8ec4d56a2c9c685f88d9b41d993242c2af8eeaeb8ae3878b"
+      "computer.watchingBotWorks": "b441025e38fe828e8ec4d56a2c9c685f88d9b41d993242c2af8eeaeb8ae3878b",
+      "accounts.chatgptSharedSetupNote": "953254bf7dd1030efce9d15d8cda59f36617071bae50cf906476467a299123ee"
     },
     "uk": {
       "highlevel.unavailable": "87b8ac7f7610e6dd69f520bc59058fd92f307b9f4bcf804075f25d08bcaa7533",

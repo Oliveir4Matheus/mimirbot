@@ -336,6 +336,7 @@ export function AccountsCard({ group, accounts, advanced }: { group: AccountGrou
             ))}
           </ul>
           {!primary.snapshot.authenticationUnavailableReason && <AddAccount label={t(COPY[group].add)} endpoint={`/api/instances/${group}-accounts`} folder={group === "claude"} onAdded={setSigningIn} />}
+          {group === "chatgpt" && <p data-codex-shared-setup className="px-2 text-[12px] leading-relaxed text-ink-secondary">{t("accounts.chatgptSharedSetupNote")}</p>}
         </div>
       )}
       {primary.snapshot.update && <EngineUpdateNotice update={primary.snapshot.update} instance={primary} className="mt-3" quiet />}

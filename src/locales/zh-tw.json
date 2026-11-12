@@ -2416,6 +2416,7 @@
   "engines.claudeUpdated": "Claude 已更新 — {version}",
   "engines.account.signInHint": "請在執行 MimirBot 的電腦終端機中執行這道完整指令，完成 Claude CLI 登入後，再點選「檢查帳戶」。若你是以遠端方式檢視 MimirBot，請在那裡執行，而不是這台裝置。",
   "engines.account.powershell": "這道指令請使用 PowerShell 執行。",
+  "accounts.chatgptSharedSetupNote": "使用這些帳號的機器人也會遵循你自己的 Codex 設定：你的指示（AGENTS.md）、config.toml、技能和外掛。",
   "engines.none": "尚未偵測到任何模型供應商應用程式。",
   "engines.footer": "「設定 CLI」可將模型供應商指向特定的執行檔 — 特定版本的組建、包裝指令碼或絕對路徑。只有在所選供應商閒置時才會儲存變更，其他供應商會繼續執行。",
   "engines.freeSpace.title": "殘留檔案",

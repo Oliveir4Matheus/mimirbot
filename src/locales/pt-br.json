@@ -3402,6 +3402,7 @@
   "accounts.removeBodyChatgpt": "Isso desconecta a conta e a remove do MimirBot.",
   "accounts.addClaude": "Adicionar outra conta do Claude",
   "accounts.addChatgpt": "Adicionar outra conta do ChatGPT",
+  "accounts.chatgptSharedSetupNote": "Os bots que usam essas contas também seguem a sua configuração do Codex: suas instruções (AGENTS.md), config.toml, skills e plugins.",
   "accounts.nameLabel": "Nome da conta",
   "accounts.namePlaceholder": "Trabalho",
   "accounts.addSubmit": "Adicionar e entrar",

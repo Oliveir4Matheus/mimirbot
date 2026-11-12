@@ -3732,6 +3732,7 @@
   "accounts.removeBodyAntigravity": "This removes the account and its sign-in from MimirBot. Your other Antigravity accounts stay connected.",
   "accounts.addClaude": "Add another Claude account",
   "accounts.addChatgpt": "Add another ChatGPT account",
+  "accounts.chatgptSharedSetupNote": "Bots that use these accounts also follow your own Codex setup: your instructions (AGENTS.md), config.toml, skills and plugins.",
   "accounts.nameLabel": "Account name",
   "accounts.namePlaceholder": "Work",
   "accounts.addSubmit": "Add and sign in",
