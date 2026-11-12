@@ -1473,7 +1473,7 @@ export const CodexDriver: ProviderDriver<CodexConfig> = {
         // Codex's `never` means "do not ask to escalate", not "grant every requested permission":
         // only Full may synthesize approvals.
         autoAcceptPermissions = approvalMode === "full";
-        const selection = config.managed
+        const selection: { model?: string | null; modelProvider: string | null; serviceTier?: string } = config.managed
           ? { model: turn.model, modelProvider: "openmaus_company" }
           : config.authMode === "chatgpt-plan"
             ? { model: turn.model, modelProvider: "openai_chatgpt_plan" }
@@ -1582,7 +1582,7 @@ export const CodexDriver: ProviderDriver<CodexConfig> = {
             ...(turn.guestConfined ? { environments: [] } : {}),
             // Spread, not `effort ?? null`: codex-cli 0.146.0 treats null as absent (the thread keeps
             // its effort), rejects "", and thread/start takes no effort, so a thread keeps its last level.
-            ...(turn.effort ? { effort: turn.effort } : {}),
+            ...(turn.effort ? { effort: turn.effort } : {}), ...(selection.serviceTier ? { serviceTierForTurn: selection.serviceTier } : {}),
           });
         };
         const mcpReady = await mcpStartup.settled([...selectedMcp.keys(), ...directMounts], stopSignal.signal);
