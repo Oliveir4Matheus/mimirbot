@@ -6,7 +6,7 @@ import { createRoot } from "react-dom/client";
 import { UpdateChannelRow, UpdatesRow } from "@/components/SettingsModal";
 import { Switch } from "@/components/SettingsPrimitives";
 import { Select } from "@/components/Select";
-import { setLocale } from "@/lib/i18n";
+import { setLocale, t } from "@/lib/i18n";
 import { SKIN_IDS, type SkinId } from "@/lib/skins";
 import type { UpdaterState, UpdateChannel } from "@/types/ogb";
 import "./styles.css";
@@ -71,19 +71,19 @@ function Preview() {
     <div className="min-h-dvh bg-app px-4 py-10 text-ink">
       <div className="mx-auto w-full max-w-[680px] overflow-hidden rounded-2xl border border-hairline/40 bg-panel shadow-2xl shadow-black/40">
         <div className="flex items-center justify-between gap-3 border-b border-hairline/40 px-5 py-3.5">
-          <span className="text-[15px] font-semibold">Settings</span>
-          <span className="text-[13px] text-ink-secondary">General</span>
+          <span className="text-[15px] font-semibold">{t("settings.title")}</span>
+          <span className="text-[13px] text-ink-secondary">{t("settings.section.general")}</span>
         </div>
         <div className="flex flex-col gap-4 px-3 py-5 sm:px-5">
-          <Row title="New bots start on">
-            <Select size="sm" className="w-full max-w-[240px]" defaultValue="balanced" aria-label="New bots start on">
+          <Row title={t("settings.newBotEffort.title")}>
+            <Select size="sm" className="w-full max-w-[240px]" defaultValue="balanced" aria-label={t("settings.newBotEffort.title")}>
               <option value="fast">Fast</option>
               <option value="balanced">Balanced</option>
               <option value="thorough">Thorough</option>
             </Select>
           </Row>
-          <Row title="Open at login">
-            <Switch checked={false} aria-label="Open at login" />
+          <Row title={t("settings.openAtLogin.title")}>
+            <Switch checked={false} aria-label={t("settings.openAtLogin.title")} />
           </Row>
           <div className="mx-1 h-px bg-hairline/40" />
           <UpdateChannelRow />

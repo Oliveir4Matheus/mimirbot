@@ -25743,7 +25743,12 @@
       "workflows.run.loopFailure": "1a51a20db5a5f6d763b344c7eb70e748503853d8d44eaf802dfd646f66325726",
       "workflows.run.iterationsOne": "89f88be527c098ea27c34eeed771f47f9f0351b8c8e0d21db8ff9df13bc59908",
       "workflows.run.iterationsOther": "90a57fc3caa475471da61e0c79384a70911968cd07051cbe22cda51cf5ad5a47",
-      "workflows.detail.loopCondition": "836e2c97e323512cea0d100200a57ac48740c0f36c3a61b8e880798c73b5bfd6"
+      "workflows.detail.loopCondition": "836e2c97e323512cea0d100200a57ac48740c0f36c3a61b8e880798c73b5bfd6",
+      "settings.updates.channel.title": "d4fc4230730665f7ebdf52d3ae8071025bd92e41eb56efc7a0d8200d665addf4",
+      "settings.updates.channel.subtitle": "2a4515f78bd50ce99fb132687d1e653b11eb1b61c5f6330de2e0e368752aaeed",
+      "settings.updates.channel.aria": "d4fc4230730665f7ebdf52d3ae8071025bd92e41eb56efc7a0d8200d665addf4",
+      "settings.updates.channel.main": "58c78435cf60015f15d44fb52e2d65c964dcb9645679a6975499f9b21a2075c6",
+      "settings.updates.channel.beta": "703390318bd55aef50b7823d2b90a846debff99e6e3d401a24a921b733912a6d"
     },
     "zh": {
       "signIn.answeredInChat": "77883f86ed4b5a0b328c72376ebdb53cd30508f75674b57c6c62e3643ee0e004",
