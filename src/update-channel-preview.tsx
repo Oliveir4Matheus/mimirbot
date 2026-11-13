@@ -1,13 +1,13 @@
-// Dev-only preview of the update channel in Settings → General, at
+// Dev-only preview of Settings → Updates, served at
 // /update-channel-preview.html?lang=pt-br&skin=daylight&channel=beta&status=downloaded
-// It mounts the real rows over a fake desktop bridge; never packaged.
-import { StrictMode, type ReactNode } from "react";
+// It mounts the real update rows over a fake desktop bridge; never packaged.
+import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import { CircleUser, Cloud, Download, Monitor, Palette, Sparkles, User, X } from "lucide-react";
 import { UpdateChannelRow, UpdatesRow } from "@/components/SettingsModal";
-import { Switch } from "@/components/SettingsPrimitives";
-import { Select } from "@/components/Select";
 import { setLocale, t } from "@/lib/i18n";
 import { SKIN_IDS, type SkinId } from "@/lib/skins";
+import { cn } from "@/lib/cn";
 import type { UpdaterState, UpdateChannel } from "@/types/ogb";
 import "./styles.css";
 
@@ -55,42 +55,49 @@ Object.assign(window, {
   },
 });
 
-function Row({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <div role="group" className="px-4">
-      <div className="grid min-w-0 grid-cols-1 items-center gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-6">
-        <div className="text-[14px] font-medium text-ink">{title}</div>
-        <div className="min-w-0 sm:max-w-[240px]">{children}</div>
-      </div>
-    </div>
-  );
-}
+const PAGES: Array<{ labelKey: Parameters<typeof t>[0]; icon: typeof User; selected?: boolean }> = [
+  { labelKey: "settings.section.general", icon: User },
+  { labelKey: "settings.section.appearance", icon: Palette },
+  { labelKey: "settings.group.ai", icon: Sparkles },
+  { labelKey: "settings.group.computers", icon: Monitor },
+  { labelKey: "settings.section.cloudAccount", icon: Cloud },
+  { labelKey: "settings.group.account", icon: CircleUser },
+  { labelKey: "settings.section.updates", icon: Download, selected: true },
+];
 
 function Preview() {
   return (
     <div className="min-h-dvh bg-app px-4 py-10 text-ink">
-      <div className="mx-auto w-full max-w-[680px] overflow-hidden rounded-2xl border border-hairline/40 bg-panel shadow-2xl shadow-black/40">
-        <div className="flex items-center justify-between gap-3 border-b border-hairline/40 px-5 py-3.5">
-          <span className="text-[15px] font-semibold">{t("settings.title")}</span>
-          <span className="text-[13px] text-ink-secondary">{t("settings.section.general")}</span>
-        </div>
-        <div className="flex flex-col gap-4 px-3 py-5 sm:px-5">
-          <Row title={t("settings.newBotEffort.title")}>
-            <Select size="sm" className="w-full max-w-[240px]" defaultValue="balanced" aria-label={t("settings.newBotEffort.title")}>
-              <option value="fast">Fast</option>
-              <option value="balanced">Balanced</option>
-              <option value="thorough">Thorough</option>
-            </Select>
-          </Row>
-          <Row title={t("settings.openAtLogin.title")}>
-            <Switch checked={false} aria-label={t("settings.openAtLogin.title")} />
-          </Row>
-          <div className="mx-1 h-px bg-hairline/40" />
-          <UpdateChannelRow />
-          <UpdatesRow />
+      <div className="mx-auto flex w-full max-w-[860px] overflow-hidden rounded-2xl border border-hairline/40 bg-panel shadow-2xl shadow-black/40 max-md:flex-col">
+        <aside className="flex w-[220px] shrink-0 flex-col gap-0.5 border-e border-hairline/40 bg-inset/40 p-3 max-md:w-full max-md:border-b max-md:border-e-0">
+          <div className="px-2.5 pb-2 pt-1 text-[15px] font-semibold">{t("settings.title")}</div>
+          {PAGES.map(({ labelKey, icon: Icon, selected }) => (
+            <div
+              key={labelKey}
+              className={cn(
+                "flex min-h-9 items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px]",
+                selected ? "bg-control text-ink" : "text-ink-secondary",
+              )}
+            >
+              <Icon size={15} className="shrink-0" />
+              {t(labelKey)}
+            </div>
+          ))}
+        </aside>
+        <div className="flex min-w-0 flex-1 flex-col">
+          <div className="flex items-center justify-between gap-3 border-b border-hairline/40 px-5 py-3.5">
+            <span className="text-[15px] font-semibold">{t("settings.section.updates")}</span>
+            <span className="flex size-7 items-center justify-center rounded-full text-ink-secondary">
+              <X size={16} aria-hidden />
+            </span>
+          </div>
+          <div className="flex flex-col gap-4 px-3 py-5 sm:px-5">
+            <UpdateChannelRow />
+            <UpdatesRow />
+          </div>
         </div>
       </div>
-      <p className="mx-auto mt-4 max-w-[680px] px-2 text-[12px] leading-relaxed text-ink-tertiary">
+      <p className="mx-auto mt-4 max-w-[860px] px-2 text-[12px] leading-relaxed text-ink-tertiary">
         Preview only. Query: lang=pt-br, skin=daylight, channel=beta, status=downloading.
       </p>
     </div>
