@@ -273,8 +273,10 @@ conversa, então a mudança é local: guardas no prompt, `beginMemoryTurn`
 ignorado e um override de memória no env da conversa da etapa. Turnos normais
 não mudam.
 
-**Status:** decidido em 12/11/2026; implementação pendente. Hoje a etapa herda
-a memória do bot.
+**Status:** implementado em 13/11/2026 (`server/index.ts`, `server/agents-turn.ts`):
+a conversa da etapa nasce com `OMB_MEMORY_ENABLED=0`, sem as guardas de
+memória/equipe/recentes/recall, sem `beginMemoryTurn` e sem as ferramentas de
+memória. Persona, `SOUL.md`, skills e departamento continuam.
 
 #### Parâmetros da etapa
 
@@ -299,7 +301,10 @@ declarou. O motor valida a união antes de criar a run e devolve
 `missing`/`invalid`/`unknown` com a etapa e o nome do campo. Parâmetro
 opcional declara `whenAbsent`; sem isso, é inválido.
 
-**Status:** decidido em 12/11/2026; implementação pendente.
+**Status:** implementado em 13/11/2026 (`shared/workflow.ts`,
+`server/workflows/parameters.ts`, `files.ts`, `engine.ts`): `parameters` por
+etapa, união validada antes da run, `params.json` com o subconjunto de cada
+etapa e `needs_input` com `missing`/`invalid`/`unknown`/`allowed`.
 
 #### Aprovação
 

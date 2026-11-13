@@ -874,7 +874,7 @@ const TOOL_DEFINITIONS = [
           additionalProperties: true,
           description: "The flat parameter map. Use only the names list_workflows shows; if the answer is needs_input, ask for what it names.",
         },
-        request_id: { type: "string", minLength: 1, maxLength: 200, description: "Optional idempotency key for this request." },
+        request_id: { type: "string", minLength: 1, maxLength: 200, description: "Optional caller id stored on the run; it does not deduplicate." },
       },
       required: ["workflow_id"],
     },

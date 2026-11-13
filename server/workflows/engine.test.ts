@@ -104,7 +104,7 @@ describe("engine", () => {
     expect(finished.steps[1]!.verified).toEqual(["decision.json"]);
     expect(finished.result).toEqual({ ok: true });
     expect(calls.map((call) => call.options.workflowStep.stepId)).toEqual(["coletar", "revisar"]);
-    expect(calls[1]!.text).toContain("Step 2 of 2");
+    expect(calls[1]!.text).toContain('STEP 2/2 "Review"');
     expect(broadcasts.some((frame) => frame.kind === "workflow.run")).toBe(true);
   });
 

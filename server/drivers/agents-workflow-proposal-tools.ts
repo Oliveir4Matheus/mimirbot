@@ -28,8 +28,17 @@ export const WORKFLOW_PROPOSAL_TOOL_DEFINITIONS = [
         },
         steps: {
           type: "array", minItems: 1, maxItems: 40,
-          items: { type: "object", additionalProperties: true },
-          description: "The workflow steps, each with id, kind, name, inputs, outputs, result and either botId/instructions or run. The first step must be a bot or script step in mode manual.",
+          items: {
+            type: "object", additionalProperties: true,
+            properties: {
+              parameters: {
+                type: "array",
+                items: { type: "object", additionalProperties: true },
+                description: "Values the run must supply: {name, type: string|number|integer|boolean|date|enum, required, values? for enum, whenAbsent? as rule:<name> when optional}.",
+              },
+            },
+          },
+          description: "The workflow steps, each with id, kind, name, inputs, parameters, outputs, result and either botId/instructions or run. The first step must be a bot or script step in mode manual.",
         },
         scripts: {
           type: "array", maxItems: 50,

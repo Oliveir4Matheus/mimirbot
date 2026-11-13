@@ -2,6 +2,7 @@
 // receives, what it does, what it leaves and how that is proved. It is derived
 // from the same definition the engine would run, so the preview cannot drift.
 import type { WorkflowProposal } from "./workflow-proposal.ts";
+import { startManualDefinition } from "./workflow-proposal.ts";
 import type { WorkflowStep } from "./workflow.ts";
 
 export type ProposalPreviewTag = "bot" | "script" | "condition" | "loop" | "manual";
@@ -72,13 +73,17 @@ function processLine(step: WorkflowStep): string {
 }
 
 export function proposalPreview(proposal: WorkflowProposal): ProposalPreview {
-  const steps: ProposalPreviewStep[] = proposal.definition.steps.map((step) => {
+  let definition = proposal.definition;
+  try {
+    definition = startManualDefinition(definition);
+  } catch {
+    // A condition or Do While as the first step is refused at creation; the
+    // preview still shows the definition as authored.
+  }
+  const steps: ProposalPreviewStep[] = definition.steps.map((step) => {
     const tags: ProposalPreviewTag[] = [step.kind];
     if ((step.kind === "bot" || step.kind === "script") && step.mode === "manual") tags.push("manual");
     const script = step.kind === "script" ? proposal.scripts.find((entry) => entry.name === step.run) : undefined;
-    const warnings = step.kind === "script" && script
-      ? SCRIPT_WARNINGS.filter((entry) => entry.pattern.test(script.content)).map((entry) => entry.warning)
-      : [];
     return {
       id: step.id,
       name: step.name,
@@ -89,7 +94,6 @@ export function proposalPreview(proposal: WorkflowProposal): ProposalPreview {
       proof: proofLines(step),
       ...(script ? { code: { name: script.name, content: script.content } } : {}),
       ...(proposal.annotations?.[step.id] ? { note: proposal.annotations[step.id] } : {}),
-      ...(warnings.length > 0 ? { tags: [...tags, "script"] } : {}),
     };
   });
   return {
@@ -98,7 +102,7 @@ export function proposalPreview(proposal: WorkflowProposal): ProposalPreview {
     version: proposal.definition.version,
     steps,
     assumptions: proposal.assumptions,
-    scriptWarnings: proposal.definition.steps.flatMap((step) => {
+    scriptWarnings: definition.steps.flatMap((step) => {
       if (step.kind !== "script") return [];
       const script = proposal.scripts.find((entry) => entry.name === step.run);
       if (!script) return [];

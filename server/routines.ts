@@ -254,7 +254,6 @@ export interface RoutineManagerOptions {
   cancelWorkflow?: (workflowRunId: string, reason?: string) => void;
   /** Whether the routine's Workflow still exists. */
   workflowState?: (workflowId: string | undefined) => "ready" | "missing";
-  /** Whether the Workflow must wait for a person before its first step, which a routine cannot start. */
   /** A Workflow run as the store still holds it, for a routine run a restart left active. */
   workflowRunState?: (workflowRunId: string | undefined) => Pick<WorkflowRun, "status" | "error"> | undefined;
   interruptTurn?: (botId: string, threadId: string) => Promise<void>;

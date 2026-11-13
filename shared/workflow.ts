@@ -865,7 +865,7 @@ export interface WorkflowRun {
   requestedBy?: { botId: string; threadId: string };
   /** The flat parameter map the person or bot supplied; each step receives its own subset. */
   inputs?: Record<string, unknown>;
-  /** The caller's idempotency key, when it supplied one. */
+  /** The caller's own request id, stored for traceability; it does not deduplicate. */
   requestId?: string;
   /** The routine that started the run, when a trigger did. */
   triggeredBy?: WorkflowRunTrigger;

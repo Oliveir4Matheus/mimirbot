@@ -63,4 +63,10 @@ describe("proposal rehearsal", () => {
     const result = await rehearseProposal(built, { inputs: { total: 1 } });
     expect(result.steps.find((step) => step.id === "revisar")).toMatchObject({ label: "untested" });
   });
+
+  it("refuses a Windows-style or absolute example file name", async () => {
+    const result = await rehearseProposal(proposal(script), { files: [{ name: "..\\secret.txt", content: "x" }] });
+    expect(result.status).toBe("diverged");
+    expect(result.steps[0]).toMatchObject({ id: "example", label: "diverged" });
+  });
 });

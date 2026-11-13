@@ -55,7 +55,7 @@ export async function rehearseProposal(proposal: WorkflowProposal, example: Rehe
   try {
     mkdirSync(join(root, "example"), { recursive: true });
     for (const file of example.files ?? []) {
-      const safe = file.name.split("/").every((part) => part && part !== "." && part !== "..");
+      const safe = !file.name.includes("\\") && !file.name.startsWith("/") && file.name.split("/").every((part) => part && part !== "." && part !== "..");
       if (!safe) {
         steps.push({ id: "example", name: "Example", label: "diverged", detail: `unsafe file name ${JSON.stringify(file.name)}` });
         return { at: Date.now(), status: "diverged", steps };

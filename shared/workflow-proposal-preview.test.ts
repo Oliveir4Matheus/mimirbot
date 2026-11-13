@@ -48,6 +48,7 @@ describe("proposal preview", () => {
       output: ["dados.json"],
       proof: ["dados.json", "resultado JSON: dados.json"],
       note: "conferir a planilha",
+      tags: ["script", "manual"],
     });
     expect(preview.steps[1]).toMatchObject({
       input: ["dados.json"],

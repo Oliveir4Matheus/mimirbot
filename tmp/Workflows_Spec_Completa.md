@@ -3525,7 +3525,7 @@ documenta essas fatias. Este 29 pertence ao bloco de implementação aberto na
 seção 28; o `## 24. Critérios de aceitação` do bloco de UI, mais acima,
 continua valendo no escopo dele.
 
-São 55 arquivos: 19 novos (A) e 36 modificados (M).
+São 57 arquivos: 21 novos (A) e 36 modificados (M).
 
 | Categoria | St | Arquivo | Propósito | Fatia |
 | --- | --- | --- | --- | --- |
@@ -3563,7 +3563,7 @@ São 55 arquivos: 19 novos (A) e 36 modificados (M).
 | locales | M | `src/locales/en.json` | Textos de proposta, prévia e escada. | suporte |
 | locales | M | `src/locales/pt-br.json` | Mesmos textos em português. | suporte |
 | locales | M | `src/locales/source-hashes.json` | Hashes das chaves traduzidas. | suporte |
-| testes | M | `server/agent-tool-policy.test.ts` | Política de uso das ferramentas de proposta. | 1 |
+| testes | M | `server/agent-tool-policy.test.ts` | Lista read-only inclui `list_workflows` e `workflow_status`. | suporte |
 | testes | A | `server/drivers/agents-call-proposal.test.ts` | Chamadas reais do driver para proposta e `run_workflow`. | 1 |
 | testes | M | `server/drivers/agents-proxy.test.ts` | Proxy não perde as ferramentas novas. | suporte |
 | testes | A | `server/routes/workflow-proposals.test.ts` | Rotas de proposta, criação, ensaio e escopo interno. | 1 |
@@ -3582,8 +3582,10 @@ São 55 arquivos: 19 novos (A) e 36 modificados (M).
 | docs/spec/verificação | M | `docs/superpowers/specs/2026-11-03-workflow-engine-design.md` | Brief, parâmetros, portão, prévia, ensaio e rodadas. | suporte |
 | docs/spec/verificação | M | `docs/verification/README.md` | Índice aponta o fixture de proposta. | suporte |
 | docs/spec/verificação | A | `docs/verification/workflow-proposal.md` | Receita isolada: rascunho, “Agora não” e criação manual. | suporte |
+| docs/spec/verificação | A | `docs/superpowers/specs/2026-11-12-workflow-a-partir-da-conversa.html` | Fonte de produto da feature. | 1–6 |
+| docs/spec/verificação | A | `docs/verification/workflow-impact-review-prompt.md` | Prompt de revisão de impacto contra a main. | suporte |
 | QA evidence | M | `tmp/progress.md` | Registro F3.4 e resultados de QA-A/B/C e do modelo real. | suporte |
-| docs/spec/verificação | M | `tmp/Workflows_Spec_Completa.md` | Este documento de trabalho (seções 23 e 24). | suporte |
+| docs/spec/verificação | M | `tmp/Workflows_Spec_Completa.md` | Este documento de trabalho (seções 28 e 29). | suporte |
 
 ### 29.1 Onde está cada spec
 

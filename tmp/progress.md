@@ -379,6 +379,12 @@ Cloud/VM, notificação de script manual e ferramentas por etapa).
   `tmp/qa-e2e/qa-real/`. O FAIL foi um cenário de aprovação com
   `show_widget` (cartão sem `requestId`, que não pausa a run); o caminho de
   pausa/retomada com cartão de requisição está coberto pelo QA-B e pelo motor.
+- Revisão de impacto: 57 arquivos (21 A / 36 M), mapa na seção 29 da spec
+  completa. Bloqueador encontrado e corrigido: `engine.test.ts` ainda esperava
+  o brief antigo. Também corrigidos `request_id` (não é idempotência),
+  orientação de `parameters` na ferramenta de proposta, prévia mostrando o
+  portão manual, checagem de `\` no ensaio e status “implementado” na spec do
+  motor. Suíte focada: 27 arquivos / 718 testes.
 - Lacunas registradas: prévia não expande o corpo do Do While; rotina não tem
   fonte de parâmetros obrigatórios; webhook/app event não têm alvo Workflow;
   lista de automações pode rotular run de rotina falha como “Concluída”.
