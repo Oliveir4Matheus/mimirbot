@@ -27,7 +27,15 @@ export function userProfileSystemPrompt(profile?: { aboutMe?: string; person?: s
 // Two per-turn sections stay stable on purpose: "setup" sits right after the standing instructions it overrides,
 // and "webhook" keeps its untrusted-data rule in the system prompt, out of reach of the payload it guards.
 const VOLATILE_SECTIONS = new Set(["memory", "mentions", "outstanding", "recent", "availability",
-  "plan", "assignment", "routine-execution", "skill-instructions", "playbooks", "device-place"]);
+  "plan", "assignment", "routine-execution", "skill-instructions", "playbooks", "device-place", "workflow-step"]);
+
+/** The rules every Workflow step shares. The task itself (its files, its words) travels in the user message. */
+export const WORKFLOW_STEP_PROMPT =
+  "\n\nWorkflow step: you are running one step of a Workflow. Read the files the task names under input/, write every file it names inside output/, and write nothing outside output/. Do not ask the person anything and do not wait for an answer: the engine checks your files and moves the run on when your turn ends. Leave the input files as they are.";
+
+export function workflowStepPart(enabled: boolean): PromptPart {
+  return { id: "workflow-step", label: "Workflow step", text: enabled ? WORKFLOW_STEP_PROMPT : "" };
+}
 
 /** Its id is what puts it in the volatile half. */
 export function teamAvailabilityPart(team: readonly RosterMember[]): PromptPart {

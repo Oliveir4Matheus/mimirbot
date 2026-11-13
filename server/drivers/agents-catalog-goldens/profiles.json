@@ -1,7 +1,7 @@
 {
   "default": {
-    "bytes": 56017,
-    "sha256": "311230f323ed620fa0a68f68a861fef05716e9a0cd38fd1b9efc68ff3ddf7f12",
+    "bytes": 61141,
+    "sha256": "d6cce29d59f1e0b5bf18c5e73656f4e96d499bd670a8602744dc7696a4a20950",
     "tools": [
       "tool_result_read",
       "list_room_targets",
@@ -44,12 +44,19 @@
       "propose_profile",
       "propose_model",
       "propose_team_memory",
-      "add_mcp_server"
+      "add_mcp_server",
+      "list_workflows",
+      "run_workflow",
+      "workflow_status",
+      "cancel_workflow",
+      "propose_workflow",
+      "create_workflow_from_proposal",
+      "archive_workflow_proposal"
     ]
   },
   "voice": {
-    "bytes": 56798,
-    "sha256": "df893038bc400a1c564e2afad480cdc27ca7065aab84a7568622a8292337d147",
+    "bytes": 61922,
+    "sha256": "344cdac217d48c4d2965b35ca2725584d1f1d4e7ff46ef0468a4b63593348312",
     "tools": [
       "tool_result_read",
       "list_room_targets",
@@ -93,12 +100,19 @@
       "propose_profile",
       "propose_model",
       "propose_team_memory",
-      "add_mcp_server"
+      "add_mcp_server",
+      "list_workflows",
+      "run_workflow",
+      "workflow_status",
+      "cancel_workflow",
+      "propose_workflow",
+      "create_workflow_from_proposal",
+      "archive_workflow_proposal"
     ]
   },
   "shared": {
-    "bytes": 58117,
-    "sha256": "6505342b56b25e4e1110854573374df6376f706fffda18adc2f0b89cb5de809c",
+    "bytes": 63241,
+    "sha256": "ac43028e7e6b155943973bb98643b797b908e56d38cc6871092299b42430395f",
     "tools": [
       "tool_result_read",
       "list_shared_computers",
@@ -143,12 +157,19 @@
       "propose_profile",
       "propose_model",
       "propose_team_memory",
-      "add_mcp_server"
+      "add_mcp_server",
+      "list_workflows",
+      "run_workflow",
+      "workflow_status",
+      "cancel_workflow",
+      "propose_workflow",
+      "create_workflow_from_proposal",
+      "archive_workflow_proposal"
     ]
   },
   "shared+voice": {
-    "bytes": 58898,
-    "sha256": "b320fa2ccf69b2bf01d6da0e4455ac815c2702456f58317dd9ed5f4658cfbc7a",
+    "bytes": 64022,
+    "sha256": "5d3080a43b685af65fc65ca2b7185e308d6324e94d03568c9d9d815ef1d0d200",
     "tools": [
       "tool_result_read",
       "list_shared_computers",
@@ -194,12 +215,19 @@
       "propose_profile",
       "propose_model",
       "propose_team_memory",
-      "add_mcp_server"
+      "add_mcp_server",
+      "list_workflows",
+      "run_workflow",
+      "workflow_status",
+      "cancel_workflow",
+      "propose_workflow",
+      "create_workflow_from_proposal",
+      "archive_workflow_proposal"
     ]
   },
   "skills": {
-    "bytes": 58836,
-    "sha256": "51a08cfd02af78e2724cffac37857bfc10a0f4888602407450b81c63e99dbb12",
+    "bytes": 63960,
+    "sha256": "ca234344f53d6b441f68c15b1dd02e70fbc02833c51cd0294b4c1eb6c233c329",
     "tools": [
       "tool_result_read",
       "list_room_targets",
@@ -244,12 +272,19 @@
       "propose_team_memory",
       "skills_list",
       "skill_manage",
-      "add_mcp_server"
+      "add_mcp_server",
+      "list_workflows",
+      "run_workflow",
+      "workflow_status",
+      "cancel_workflow",
+      "propose_workflow",
+      "create_workflow_from_proposal",
+      "archive_workflow_proposal"
     ]
   },
   "skills+voice": {
-    "bytes": 59617,
-    "sha256": "3ac3aea2dc63f59a8c40cc3243c0f0a688ba8d2409be7a783e2ed4f4eb945ef0",
+    "bytes": 64741,
+    "sha256": "18730f6dffaf8c7ef3f3781c0cfafd4e572db2393df515050782e5159d98225c",
     "tools": [
       "tool_result_read",
       "list_room_targets",
@@ -295,12 +330,19 @@
       "propose_team_memory",
       "skills_list",
       "skill_manage",
-      "add_mcp_server"
+      "add_mcp_server",
+      "list_workflows",
+      "run_workflow",
+      "workflow_status",
+      "cancel_workflow",
+      "propose_workflow",
+      "create_workflow_from_proposal",
+      "archive_workflow_proposal"
     ]
   },
   "skills+shared": {
-    "bytes": 60936,
-    "sha256": "00d29d18a798cf1dfdc7c6d22a956c0d7c2a4fa8dd51704d209fa32ca1b94a2e",
+    "bytes": 66060,
+    "sha256": "03003e334a478697f65d4dbeb52db6d4297ebc052e98956dabe067fbfce9ef46",
     "tools": [
       "tool_result_read",
       "list_shared_computers",
@@ -347,12 +389,19 @@
       "propose_team_memory",
       "skills_list",
       "skill_manage",
-      "add_mcp_server"
+      "add_mcp_server",
+      "list_workflows",
+      "run_workflow",
+      "workflow_status",
+      "cancel_workflow",
+      "propose_workflow",
+      "create_workflow_from_proposal",
+      "archive_workflow_proposal"
     ]
   },
   "skills+shared+voice": {
-    "bytes": 61717,
-    "sha256": "27e567719190bd3fbdf9c7a705f29dedce660e9d661bc195f649f2a5f0b0bc11",
+    "bytes": 66841,
+    "sha256": "674c584db9ec262105872b864f461ba5573281dc6060d5c034ca10309ac80d35",
     "tools": [
       "tool_result_read",
       "list_shared_computers",
@@ -400,12 +449,19 @@
       "propose_team_memory",
       "skills_list",
       "skill_manage",
-      "add_mcp_server"
+      "add_mcp_server",
+      "list_workflows",
+      "run_workflow",
+      "workflow_status",
+      "cancel_workflow",
+      "propose_workflow",
+      "create_workflow_from_proposal",
+      "archive_workflow_proposal"
     ]
   },
   "non-chief": {
-    "bytes": 46985,
-    "sha256": "acbc5ca60af2ba8c63df301dafdccc1c16c85fc05059aad3ef50f09ef337efef",
+    "bytes": 52109,
+    "sha256": "2d51bc75bd4007a27d87b4c0d6006b158546d08e3d69415730c3514b1522b716",
     "tools": [
       "tool_result_read",
       "list_room_targets",
@@ -441,12 +497,19 @@
       "propose_profile",
       "propose_model",
       "propose_team_memory",
-      "add_mcp_server"
+      "add_mcp_server",
+      "list_workflows",
+      "run_workflow",
+      "workflow_status",
+      "cancel_workflow",
+      "propose_workflow",
+      "create_workflow_from_proposal",
+      "archive_workflow_proposal"
     ]
   },
   "voice+non-chief": {
-    "bytes": 47766,
-    "sha256": "e5627010b4007568bb38351f838a2806fe4dc41fa056c484ab415fa506ee56b8",
+    "bytes": 52890,
+    "sha256": "9d63f87632604eec8a1a9afa276fbe2b6f4b575d94e6353d997b02d760d85488",
     "tools": [
       "tool_result_read",
       "list_room_targets",
@@ -483,12 +546,19 @@
       "propose_profile",
       "propose_model",
       "propose_team_memory",
-      "add_mcp_server"
+      "add_mcp_server",
+      "list_workflows",
+      "run_workflow",
+      "workflow_status",
+      "cancel_workflow",
+      "propose_workflow",
+      "create_workflow_from_proposal",
+      "archive_workflow_proposal"
     ]
   },
   "shared+non-chief": {
-    "bytes": 49085,
-    "sha256": "10a79aaf6c824a8929a601ad0f202b9854cd2ec42845a7b280a8de480d856814",
+    "bytes": 54209,
+    "sha256": "2e0cffbac236f0ac49912c42de756cca799623b5fc01528c8b4b60d31f565e94",
     "tools": [
       "tool_result_read",
       "list_shared_computers",
@@ -526,12 +596,19 @@
       "propose_profile",
       "propose_model",
       "propose_team_memory",
-      "add_mcp_server"
+      "add_mcp_server",
+      "list_workflows",
+      "run_workflow",
+      "workflow_status",
+      "cancel_workflow",
+      "propose_workflow",
+      "create_workflow_from_proposal",
+      "archive_workflow_proposal"
     ]
   },
   "shared+voice+non-chief": {
-    "bytes": 49866,
-    "sha256": "d0849d950eaae07a5a3ffef1ee6dc12c6372add5229c12dc98b6b8b0c1a7fdd5",
+    "bytes": 54990,
+    "sha256": "70c5fc46b52fac7a6c1b6d2b8e36acd684e0109547b53246b5a3081755c8e758",
     "tools": [
       "tool_result_read",
       "list_shared_computers",
@@ -570,12 +647,19 @@
       "propose_profile",
       "propose_model",
       "propose_team_memory",
-      "add_mcp_server"
+      "add_mcp_server",
+      "list_workflows",
+      "run_workflow",
+      "workflow_status",
+      "cancel_workflow",
+      "propose_workflow",
+      "create_workflow_from_proposal",
+      "archive_workflow_proposal"
     ]
   },
   "skills+non-chief": {
-    "bytes": 49804,
-    "sha256": "6c2e1cf63a32a3112c10c89300d8673bb9c6223a145c84eccea14fa92d8d1531",
+    "bytes": 54928,
+    "sha256": "2b4fe3d6b9832636488f9b5880c70782ff6164d962a4a24a07fa562d85f75688",
     "tools": [
       "tool_result_read",
       "list_room_targets",
@@ -613,12 +697,19 @@
       "propose_team_memory",
       "skills_list",
       "skill_manage",
-      "add_mcp_server"
+      "add_mcp_server",
+      "list_workflows",
+      "run_workflow",
+      "workflow_status",
+      "cancel_workflow",
+      "propose_workflow",
+      "create_workflow_from_proposal",
+      "archive_workflow_proposal"
     ]
   },
   "skills+voice+non-chief": {
-    "bytes": 50585,
-    "sha256": "132383c3ec62ea402217c936b455127f67715930d3f75e381591868699af09fb",
+    "bytes": 55709,
+    "sha256": "f67e446012d276d5865fc4b4c91d9b256e0c4114bf80eaa7c493afca16f4025c",
     "tools": [
       "tool_result_read",
       "list_room_targets",
@@ -657,12 +748,19 @@
       "propose_team_memory",
       "skills_list",
       "skill_manage",
-      "add_mcp_server"
+      "add_mcp_server",
+      "list_workflows",
+      "run_workflow",
+      "workflow_status",
+      "cancel_workflow",
+      "propose_workflow",
+      "create_workflow_from_proposal",
+      "archive_workflow_proposal"
     ]
   },
   "skills+shared+non-chief": {
-    "bytes": 51904,
-    "sha256": "391a43dbc0fe516e9911b8885653c8638269346be60554d68eb10ca46a24636a",
+    "bytes": 57028,
+    "sha256": "21f558e99c0edbb66e0c90e1a787e260022bfd4a72fa22bc22b5dcedc7217af4",
     "tools": [
       "tool_result_read",
       "list_shared_computers",
@@ -702,12 +800,19 @@
       "propose_team_memory",
       "skills_list",
       "skill_manage",
-      "add_mcp_server"
+      "add_mcp_server",
+      "list_workflows",
+      "run_workflow",
+      "workflow_status",
+      "cancel_workflow",
+      "propose_workflow",
+      "create_workflow_from_proposal",
+      "archive_workflow_proposal"
     ]
   },
   "skills+shared+voice+non-chief": {
-    "bytes": 52685,
-    "sha256": "51717da0471c2010b210e6224588d1f265ecdde543e954177610ce41b90923c1",
+    "bytes": 57809,
+    "sha256": "aba61ac77ce911748f10dcf97362b46ce67ca212241fd6addd279d7f6f1cd363",
     "tools": [
       "tool_result_read",
       "list_shared_computers",
@@ -748,12 +853,19 @@
       "propose_team_memory",
       "skills_list",
       "skill_manage",
-      "add_mcp_server"
+      "add_mcp_server",
+      "list_workflows",
+      "run_workflow",
+      "workflow_status",
+      "cancel_workflow",
+      "propose_workflow",
+      "create_workflow_from_proposal",
+      "archive_workflow_proposal"
     ]
   },
   "skills+shared+voice+cloud-home": {
-    "bytes": 60798,
-    "sha256": "07515c1599ad735525003b19091e83758785fec162f011581961a836cbbc2a57",
+    "bytes": 65922,
+    "sha256": "ac875a9642d4b74cdea89eb229511dcfd8755d3d437a9de2ab7db546a084ddbc",
     "tools": [
       "tool_result_read",
       "list_shared_computers",
@@ -800,12 +912,19 @@
       "propose_team_memory",
       "skills_list",
       "skill_manage",
-      "add_mcp_server"
+      "add_mcp_server",
+      "list_workflows",
+      "run_workflow",
+      "workflow_status",
+      "cancel_workflow",
+      "propose_workflow",
+      "create_workflow_from_proposal",
+      "archive_workflow_proposal"
     ]
   },
   "skills+shared+voice+non-chief+cloud-home": {
-    "bytes": 51766,
-    "sha256": "5dfa56bbdc019cbcb257ba384b048c5d238811868518cb89ff787526d0539c0a",
+    "bytes": 56890,
+    "sha256": "895e75a29c5bfac71cd09bbc576870e17fa1f546f8b43b11d4f2bc57f3f37078",
     "tools": [
       "tool_result_read",
       "list_shared_computers",
@@ -845,12 +964,19 @@
       "propose_team_memory",
       "skills_list",
       "skill_manage",
-      "add_mcp_server"
+      "add_mcp_server",
+      "list_workflows",
+      "run_workflow",
+      "workflow_status",
+      "cancel_workflow",
+      "propose_workflow",
+      "create_workflow_from_proposal",
+      "archive_workflow_proposal"
     ]
   },
   "skills+shared+voice+escalations": {
-    "bytes": 62547,
-    "sha256": "40ea85188d14c17b81900ce104fb841582544ac05c55a9933f3ef42adbde7b63",
+    "bytes": 67671,
+    "sha256": "2f5dd973259a538739b1c0e33df1367975c7e67c92b8954dd1426e42321b24cd",
     "tools": [
       "tool_result_read",
       "list_shared_computers",
@@ -899,12 +1025,19 @@
       "propose_team_memory",
       "skills_list",
       "skill_manage",
-      "add_mcp_server"
+      "add_mcp_server",
+      "list_workflows",
+      "run_workflow",
+      "workflow_status",
+      "cancel_workflow",
+      "propose_workflow",
+      "create_workflow_from_proposal",
+      "archive_workflow_proposal"
     ]
   },
   "skills+shared+voice+escalations+x": {
-    "bytes": 66386,
-    "sha256": "7b76c07044aaac3e53cd41374e176864e98ca8cb588c21cb57ca164ccc9d0cbf",
+    "bytes": 71510,
+    "sha256": "9c6deab14354297534a0fb8c8edc8c66c174bc60e27152b65a9023fea625fcb0",
     "tools": [
       "tool_result_read",
       "list_shared_computers",
@@ -957,60 +1090,19 @@
       "propose_team_memory",
       "skills_list",
       "skill_manage",
-      "add_mcp_server"
+      "add_mcp_server",
+      "list_workflows",
+      "run_workflow",
+      "workflow_status",
+      "cancel_workflow",
+      "propose_workflow",
+      "create_workflow_from_proposal",
+      "archive_workflow_proposal"
     ]
   },
   "default+legacy-switches": {
-    "bytes": 56017,
-    "sha256": "311230f323ed620fa0a68f68a861fef05716e9a0cd38fd1b9efc68ff3ddf7f12",
-    "tools": [
-      "tool_result_read",
-      "list_room_targets",
-      "coordinate_bots",
-      "assignment_status",
-      "list_bots",
-      "list_rooms",
-      "select_computer",
-      "list_threads",
-      "close_thread",
-      "start_thread",
-      "vm_exec",
-      "attach_file",
-      "show_widget",
-      "show_html",
-      "publish_page",
-      "unpublish_page",
-      "post_to_room",
-      "create_bot",
-      "list_team_setup",
-      "list_team_library",
-      "propose_team_setup",
-      "propose_bot_deletion",
-      "manage_room",
-      "request_credential",
-      "request_sign_in",
-      "fill_login",
-      "decide",
-      "extract",
-      "memory_update",
-      "retry_thread",
-      "memory_log",
-      "session_search",
-      "trigger_info",
-      "trigger",
-      "delete_trigger",
-      "wait_until",
-      "list_waits",
-      "cancel_wait",
-      "propose_profile",
-      "propose_model",
-      "propose_team_memory",
-      "add_mcp_server"
-    ]
-  },
-  "default+mausbot": {
-    "bytes": 56668,
-    "sha256": "061c257490c1722b36e1d567c22fb510dae3e36511ec849d9be5539c154aaf16",
+    "bytes": 61141,
+    "sha256": "d6cce29d59f1e0b5bf18c5e73656f4e96d499bd670a8602744dc7696a4a20950",
     "tools": [
       "tool_result_read",
       "list_room_targets",
@@ -1054,13 +1146,75 @@
       "propose_model",
       "propose_team_memory",
       "add_mcp_server",
+      "list_workflows",
+      "run_workflow",
+      "workflow_status",
+      "cancel_workflow",
+      "propose_workflow",
+      "create_workflow_from_proposal",
+      "archive_workflow_proposal"
+    ]
+  },
+  "default+mausbot": {
+    "bytes": 61792,
+    "sha256": "6536dbdfbc49ae475a8c94f99e08dd77c454225cd7d233e9ad794ca21c932986",
+    "tools": [
+      "tool_result_read",
+      "list_room_targets",
+      "coordinate_bots",
+      "assignment_status",
+      "list_bots",
+      "list_rooms",
+      "select_computer",
+      "list_threads",
+      "close_thread",
+      "start_thread",
+      "vm_exec",
+      "attach_file",
+      "show_widget",
+      "show_html",
+      "publish_page",
+      "unpublish_page",
+      "post_to_room",
+      "create_bot",
+      "list_team_setup",
+      "list_team_library",
+      "propose_team_setup",
+      "propose_bot_deletion",
+      "manage_room",
+      "request_credential",
+      "request_sign_in",
+      "fill_login",
+      "decide",
+      "extract",
+      "memory_update",
+      "retry_thread",
+      "memory_log",
+      "session_search",
+      "trigger_info",
+      "trigger",
+      "delete_trigger",
+      "wait_until",
+      "list_waits",
+      "cancel_wait",
+      "propose_profile",
+      "propose_model",
+      "propose_team_memory",
+      "add_mcp_server",
+      "list_workflows",
+      "run_workflow",
+      "workflow_status",
+      "cancel_workflow",
+      "propose_workflow",
+      "create_workflow_from_proposal",
+      "archive_workflow_proposal",
       "list_unread_notifications",
       "mark_notifications_read"
     ]
   },
   "skills+shared+voice+mausbot": {
-    "bytes": 62368,
-    "sha256": "e792348fb45d3b01e0adb0d8a6218acffd3321aabd167aa5f0ef9c5a5abd4fb3",
+    "bytes": 67492,
+    "sha256": "dff862dc2141810c61668a796dcf938f248c38c1653d1b049ae30f34c9c90934",
     "tools": [
       "tool_result_read",
       "list_shared_computers",
@@ -1109,13 +1263,20 @@
       "skills_list",
       "skill_manage",
       "add_mcp_server",
+      "list_workflows",
+      "run_workflow",
+      "workflow_status",
+      "cancel_workflow",
+      "propose_workflow",
+      "create_workflow_from_proposal",
+      "archive_workflow_proposal",
       "list_unread_notifications",
       "mark_notifications_read"
     ]
   },
   "default+no-computer-pick": {
-    "bytes": 54811,
-    "sha256": "88d562ecf15bc5134e5c77cc949904d58755f61e89f91e63405f4154e0ee1faf",
+    "bytes": 59935,
+    "sha256": "8c7ff3ee9574158e385ac58d558c4289f1502f0266578fded0257f8ac6aef987",
     "tools": [
       "tool_result_read",
       "list_room_targets",
@@ -1157,12 +1318,19 @@
       "propose_profile",
       "propose_model",
       "propose_team_memory",
-      "add_mcp_server"
+      "add_mcp_server",
+      "list_workflows",
+      "run_workflow",
+      "workflow_status",
+      "cancel_workflow",
+      "propose_workflow",
+      "create_workflow_from_proposal",
+      "archive_workflow_proposal"
     ]
   },
   "default+room": {
-    "bytes": 47893,
-    "sha256": "abe07dc22b4aac83e0a93d9d247925dc61d68ee3d89b433d42a1c4d00c8aa554",
+    "bytes": 53017,
+    "sha256": "d537b9a905d7af8ed214a5ec596b8c89d2e37afcf3bcc439a3462d1474605ead",
     "tools": [
       "tool_result_read",
       "list_room_targets",
@@ -1199,12 +1367,19 @@
       "propose_profile",
       "propose_model",
       "propose_team_memory",
-      "add_mcp_server"
+      "add_mcp_server",
+      "list_workflows",
+      "run_workflow",
+      "workflow_status",
+      "cancel_workflow",
+      "propose_workflow",
+      "create_workflow_from_proposal",
+      "archive_workflow_proposal"
     ]
   },
   "non-chief+room": {
-    "bytes": 38861,
-    "sha256": "fe5dba06c0f13f2bcfdbd9cf56a788c0aef015562e50b0e3836c0cdfc17990b0",
+    "bytes": 43985,
+    "sha256": "e7bf187a5170847364bfe3d0da2063443017aff4beb2a4f1411cf98e446cced9",
     "tools": [
       "tool_result_read",
       "list_room_targets",
@@ -1234,7 +1409,14 @@
       "propose_profile",
       "propose_model",
       "propose_team_memory",
-      "add_mcp_server"
+      "add_mcp_server",
+      "list_workflows",
+      "run_workflow",
+      "workflow_status",
+      "cancel_workflow",
+      "propose_workflow",
+      "create_workflow_from_proposal",
+      "archive_workflow_proposal"
     ]
   }
 }

@@ -10,14 +10,16 @@ export function sanitizeInput(input: RoutineInput, after: number): Omit<Routine,
   const prompt = String(input.prompt ?? "").trim().slice(0, 20_000);
   const botId = String(input.botId ?? "").trim();
   if (!name) throw new Error("Give the routine a name");
-  if (!prompt) throw new Error("Tell the bot what to do");
-  if (!botId) throw new Error("Choose a bot");
   const target = input.target ?? "bot";
-  if (target !== "bot" && target !== "room-goal") throw new Error("Choose a valid routine target");
+  if (target !== "bot" && target !== "room-goal" && target !== "workflow") throw new Error("Choose a valid routine target");
+  if (target !== "workflow" && !prompt) throw new Error("Tell the bot what to do");
+  if (!botId) throw new Error("Choose a bot");
+  const workflowId = typeof input.workflowId === "string" ? input.workflowId.trim() : "";
+  if (target === "workflow" && !workflowId) throw new Error("Choose a Workflow");
   const groupId = typeof input.groupId === "string" ? input.groupId.trim() : "";
-  const runOn = input.runOn ?? "maus";
+  const runOn = target === "workflow" ? "maus" : input.runOn ?? "maus";
   if (runOn !== "maus" && runOn !== "cloud") throw new Error("Choose where this routine runs");
-  const attachments = cleanAttachments(input.attachments);
+  const attachments = target === "workflow" ? [] : cleanAttachments(input.attachments);
   const timeoutMinutes = cleanTimeoutMinutes(input.timeoutMinutes);
   if (target === "room-goal" && runOn === "cloud") {
     throw new Error("Room goals can only run on this computer");
@@ -32,8 +34,8 @@ export function sanitizeInput(input: RoutineInput, after: number): Omit<Routine,
   if (input.overlap !== undefined && input.overlap !== "skip" && input.overlap !== "queue") {
     throw new Error("Choose skip or queue for overlapping runs");
   }
-  if (continuity && target === "room-goal") {
-    throw new Error("Room goals do not carry continuity yet");
+  if (continuity && target !== "bot") {
+    throw new Error("Only bot routines carry continuity");
   }
   const schedule = cleanSchedule(input.schedule, after);
   const asked = Array.isArray(input.checks) && input.checks.length === 0 ? null : input.checks;
@@ -48,6 +50,7 @@ export function sanitizeInput(input: RoutineInput, after: number): Omit<Routine,
     target,
     botId,
     groupId: target === "room-goal" && groupId ? groupId : undefined,
+    ...(target === "workflow" ? { workflowId } : {}),
     runOn,
     enabled: input.enabled !== false,
     schedule,

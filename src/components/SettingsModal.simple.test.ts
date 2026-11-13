@@ -66,7 +66,7 @@ vi.mock("./RoomTurnTimeoutSettings", () => ({ RoomTurnTimeoutSettings: () => nul
 vi.mock("./CompanyBackupSettings", () => ({ CompanyBackupSettings: () => null }));
 vi.mock("./ImportSettings", () => ({ ImportSettings: marker("import") }));
 
-const desktop = { ogb: { environments: {}, organization: {}, cloudAccount: {} } };
+const desktop = { ogb: { environments: {}, organization: {}, cloudAccount: {}, updater: { onState: () => () => {}, check: vi.fn(), install: vi.fn(), setChannel: vi.fn() } } };
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -93,15 +93,15 @@ const blocks = (html: string) => [...html.matchAll(/data-settings-block="([^"]+)
 const markers = (html: string) => [...html.matchAll(/MARKER:([^;]+);/g)].map((match) => match[1]);
 
 describe("Settings in Simple mode", () => {
-  it("draws at most six pages on the desktop, MimirBot Cloud among them, and none of the Advanced-only ones", () => {
+  it("draws seven pages on the desktop, MimirBot Cloud and Updates among them, and none of the Advanced-only ones", () => {
     const html = render();
-    expect(pages(html)).toEqual(["general", "appearance", "ai", "computers", "cloud", "account"]);
-    expect(SIMPLE_PAGES.length).toBeLessThanOrEqual(6);
+    expect(pages(html)).toEqual(["general", "appearance", "ai", "computers", "cloud", "account", "updates"]);
+    expect(SIMPLE_PAGES.length).toBe(7);
     expect(html).not.toContain("data-settings-group=");
     expect(html).not.toContain("data-settings-section=");
     for (const hidden of ["backups", "experimental", "workspaces", "skills"]) expect(html).not.toContain(`value="${hidden}"`);
     const picker = html.match(/<select aria-label="Settings"[\s\S]*?<\/select>/)![0];
-    expect([...picker.matchAll(/<option value="([^"]+)"/g)].map((match) => match[1])).toEqual(["general", "appearance", "ai", "computers", "cloud", "account"]);
+    expect([...picker.matchAll(/<option value="([^"]+)"/g)].map((match) => match[1])).toEqual(["general", "appearance", "ai", "computers", "cloud", "account", "updates"]);
   });
 
   it("files every Advanced page under one Simple page, or hides it", () => {
@@ -184,6 +184,7 @@ describe("Settings in Simple mode", () => {
     ["cloudAccount", "cloud"],
     ["organization", "account"],
     ["import", "account"],
+    ["updates", "updates"],
   ])("lands a deep link to %s on %s", (section, page) => {
     fixture.section = section;
     const html = render();
@@ -199,7 +200,7 @@ describe("Settings in Simple mode", () => {
   ])("opens a hidden page (%s) for as long as it is the open one", (section, content) => {
     fixture.section = section;
     const html = render();
-    expect(pages(html)).toEqual(["general", "appearance", "ai", "computers", "cloud", "account", section]);
+    expect(pages(html)).toEqual(["general", "appearance", "ai", "computers", "cloud", "account", "updates", section]);
     expect(currentPage(html)).toBe(section);
     if (content === "skillAuthoring") expect(html).toContain("Bots may write their own skills");
     else expect(markers(html)).toContain(content);

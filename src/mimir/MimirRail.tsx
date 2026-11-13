@@ -111,6 +111,7 @@ const ICONS = {
   automations: <Glyph><rect x="3" y="3.5" width="8.5" height="8.5" rx="2" /><rect x="13" y="13" width="8.5" height="8.5" rx="2" /><path d="M7.25 12v3.2a2 2 0 0 0 2 2H13" /></Glyph>,
   schedule: <Glyph><path d="M4 8V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3M8 1.7v4M16 1.7v4M4 8h16M4 9v10a2 2 0 0 0 2 2h5" /><circle cx="16.5" cy="16.5" r="5" /><path d="M16.5 13.7v3l2 1.1" /></Glyph>,
   logs: <Glyph><path d="m3 6 2.1 2.1L8.4 4.8M11.5 6.5H21M3 16l2.1 2.1 3.3-3.3M11.5 16.5H21" /><path d="M11.5 11.5H21" opacity=".75" /></Glyph>,
+  workflows: <Glyph><path d="M9 6h12M9 12h12M9 18h12M3 6l1.7 1.7L7.5 4.5M3 12l1.7 1.7L7.5 10.5M3 18l1.7 1.7L7.5 16.5" /></Glyph>,
   teamMap: (
     <Glyph strokeWidth={2}>
       <path d="M7.4 12.7 15.8 6.6M7.4 12.7h10.2M17.6 12.7l-5.2 5.1" />
@@ -181,6 +182,7 @@ export function MimirRail() {
         </RailButton>
         <RailButton label={t("routines.drawer.schedule")} active={routines && focus.view === "calendar"} onClick={() => pick({ type: "showRoutines", view: "calendar" })}>{ICONS.schedule}</RailButton>
         <RailButton label={t("routines.logs")} active={routines && focus.section === "logs"} onClick={() => pick({ type: "showRoutines", section: "logs" })}>{ICONS.logs}</RailButton>
+        <RailButton label={t("workflows.title")} active={state.activeView === "workflow-console" && !overlay} onClick={() => pick({ type: "showWorkflowConsole" })}>{ICONS.workflows}</RailButton>
         <RailButton label={t("sidebar.nav.teamMap")} active={state.activeView === "team-map" && !overlay} onClick={() => pick({ type: "showTeamMap" })}>{ICONS.teamMap}</RailButton>
         {filesReady && <RailButton label={t("sidebar.nav.files")} active={state.activeView === "files" && !overlay} onClick={() => pick({ type: "showFiles" })}>{ICONS.files}</RailButton>}
         <RailButton label={t("settings.section.usage")} active={state.activeView === "usage" && !overlay} onClick={openUsage}>{ICONS.usage}</RailButton>

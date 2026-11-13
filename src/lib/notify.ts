@@ -3,7 +3,7 @@ import { finishedNotificationsEnabled, notificationSoundsEnabled } from "./notif
 
 export type NotifyFrame = Notification;
 
-export type NotificationTarget = Pick<NotifyFrame, "botId" | "threadId">;
+export type NotificationTarget = Pick<NotifyFrame, "botId" | "threadId" | "workflowRunId">;
 
 /** On a team's page in the desktop app, its name: notifications then say which place they come from ("Acme · Scout"). */
 let placeName: string | null = null;
@@ -37,6 +37,7 @@ export function showNotification(
   visibleThreadId?: string | null,
 ) {
   if (typeof Notification === "undefined") return;
+  if (frame.kind === "workflow-waiting") return;
   if (frame.kind === "done" && !finishedNotificationsEnabled()) return;
   const spend = frame.kind === "spend";
   if (!spend && document.hasFocus() && visibleThreadId === frame.threadId) return;

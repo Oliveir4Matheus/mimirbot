@@ -64,6 +64,7 @@ import { ChatNotice } from "@/components/ChatErrorBanner";
 import { loadingLine } from "@/lib/app-loading";
 import { useAiSwitchKeeper } from "@/lib/ai-switch";
 import { WebPanelPage } from "@/components/WebPanelPage";
+import { WorkflowsPage } from "@/components/WorkflowsPage";
 
 function Shell({ viewer }: { viewer: WelcomeViewer | null }) {
   const { state, dispatch } = useStore();
@@ -139,6 +140,7 @@ function Shell({ viewer }: { viewer: WelcomeViewer | null }) {
   const sidePanelOpen = (Boolean(bot) && (state.settingsOpen || state.computerOpen || state.inspectorOpen || state.activityOpen)) || (notificationFeed && state.notificationsOpen);
   const collapseSidebar = sidePanelOpen && !sidebarAndPanelFit;
   const calendarFocus = state.activeView === "routines" && state.routinesFocus.view === "calendar";
+  const fullWidthView = calendarFocus || state.activeView === "workflow-console";
 
   const noEngines =
     state.connected &&
@@ -294,7 +296,7 @@ function Shell({ viewer }: { viewer: WelcomeViewer | null }) {
 
   return (
     <div className="flex h-full flex-col">
-      <UpdateBanner sidebarIndicator={!calendarFocus && (sidebarInline || drawerOpen)} />
+      <UpdateBanner sidebarIndicator={!fullWidthView && (sidebarInline || drawerOpen)} />
       <CloudAsleepStrip />
       <CloudSendStrip cloudHome={state.config?.cloudHome === true} onPairPhone={() => dispatch(phonePairingSettingsAction())} />
       <HomeLine />
@@ -302,7 +304,7 @@ function Shell({ viewer }: { viewer: WelcomeViewer | null }) {
       <WhatsNewDialog />
       {/* Clips the retracting right panel while it is out of the window; a slide-over that kept its box would widen the page. */}
       <div className="relative flex min-h-0 flex-1 overflow-clip">
-      {!calendarFocus && <button
+      {!fullWidthView && <button
         type="button"
         ref={menuButtonRef}
         aria-label="Open bot list"
@@ -313,7 +315,7 @@ function Shell({ viewer }: { viewer: WelcomeViewer | null }) {
         <Menu size={18} className="max-md:hidden" />
         <ChevronLeft size={20} aria-hidden="true" className="hidden max-md:block" />
       </button>}
-      {drawerOpen && !calendarFocus && (
+      {drawerOpen && !fullWidthView && (
         <div
           aria-hidden
           onMouseDown={(e) => e.target === e.currentTarget && setDrawerOpen(false)}
@@ -321,7 +323,7 @@ function Shell({ viewer }: { viewer: WelcomeViewer | null }) {
         />
       )}
       <MimirRail />
-      {!calendarFocus && <Sidebar
+      {!fullWidthView && <Sidebar
         collapseToIcons={collapseSidebar}
         open={drawerOpen}
         onClose={() => {
@@ -333,7 +335,9 @@ function Shell({ viewer }: { viewer: WelcomeViewer | null }) {
           panel covers the conversation and never the computer or inspector panel
           beside it. */}
       <div className="relative flex min-w-0 flex-1">
-        {state.activeView === "team-map" ? (
+        {state.activeView === "workflow-console" ? (
+          <WorkflowsPage />
+        ) : state.activeView === "team-map" ? (
           <TeamMapPage />
         ) : state.activeView === "usage" ? (
           <UsagePage />
@@ -401,8 +405,8 @@ function Shell({ viewer }: { viewer: WelcomeViewer | null }) {
       )}
       {!remoteClient && state.inspectorOpen && bot && <InspectorPanel key={bot.threadId} bot={bot} />}
       {!remoteClient && state.activityOpen && bot && <ActivityPanel key={`activity:${bot.id}`} bot={bot} />}
-      {notificationFeed && !calendarFocus && state.notificationsOpen && <NotificationsPanel />}
-      {notificationFeed && !calendarFocus && <NotificationRail />}
+      {notificationFeed && !fullWidthView && state.notificationsOpen && <NotificationsPanel />}
+      {notificationFeed && !fullWidthView && <NotificationRail />}
       {state.appSettingsOpen && <SettingsModal />}
       <CloudAddDialog />
       <CloudHowTo />
@@ -419,7 +423,7 @@ function Shell({ viewer }: { viewer: WelcomeViewer | null }) {
       {/* After the modals: same z-50 tier, so DOM order keeps the palette on top. */}
       <CommandPalette onOpenChange={setPaletteOpen} />
       {/* Blink resolves -webkit-app-region in DOM order, so this no-drag twin after the headers cuts the drawer button back out. */}
-      {!calendarFocus && <span
+      {!fullWidthView && <span
         aria-hidden
         data-drawer-button-no-drag
         style={captionChrome.noDragStyle}

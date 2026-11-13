@@ -3,6 +3,7 @@ import { CREDENTIAL_TARGETS } from "../../shared/credential-request.ts";
 import { OPTIONS_CARD_LIMITS, WATCHER_OPTIONS_CARD_BOT_ID } from "../../shared/options-card.ts";
 import { agentToolAnnotations } from "../agent-tool-policy.ts";
 import { CHAT_CARD_TOOL_DEFINITIONS } from "./agents-chat-card-tools.ts";
+import { WORKFLOW_PROPOSAL_TOOL_DEFINITIONS } from "./agents-workflow-proposal-tools.ts";
 import { HELPER_TOOL_DEFINITIONS } from "./agents-helper-tools.ts";
 import { WAIT_TOOL_DEFINITIONS, WAIT_TOOL_NAMES } from "./agents-wait-tools.ts";
 import { MAUSBOT_TOOL_DEFINITIONS } from "./agents-mausbot-tools.ts";
@@ -854,6 +855,55 @@ const TOOL_DEFINITIONS = [
       required: ["name"],
     },
   },
+  {
+    name: "list_workflows",
+    description: "List the Workflows of your department that you can start. A Workflow is a fixed sequence of steps the engine runs; you start it, the engine decides who runs next.",
+    inputSchema: { type: "object", additionalProperties: false, properties: {} },
+  },
+  {
+    name: "run_workflow",
+    description: "Start a Workflow from list_workflows. The engine runs its steps in order, each in its own folder with its own bot. This starts the run; it does not run the steps inside this turn.",
+    inputSchema: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        workflow_id: { type: "string", minLength: 1, maxLength: 64, description: "The Workflow id from list_workflows." },
+        version: { type: "integer", minimum: 1, description: "Optional definition version; omit for the latest." },
+        inputs: {
+          type: "object",
+          additionalProperties: true,
+          description: "The flat parameter map. Use only the names list_workflows shows; if the answer is needs_input, ask for what it names.",
+        },
+        request_id: { type: "string", minLength: 1, maxLength: 200, description: "Optional caller id stored on the run; it does not deduplicate." },
+      },
+      required: ["workflow_id"],
+    },
+  },
+  {
+    name: "workflow_status",
+    description: "Show a Workflow run's current step, each step's status and verified outputs, and why it failed.",
+    inputSchema: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        run_id: { type: "string", minLength: 1, maxLength: 64, description: "The run id returned by run_workflow." },
+      },
+      required: ["run_id"],
+    },
+  },
+  {
+    name: "cancel_workflow",
+    description: "Stop a Workflow run you started. Files already written stay on disk; steps that have not started do not start.",
+    inputSchema: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        run_id: { type: "string", minLength: 1, maxLength: 64, description: "The run id returned by run_workflow." },
+      },
+      required: ["run_id"],
+    },
+  },
+  ...WORKFLOW_PROPOSAL_TOOL_DEFINITIONS,
 ].map((tool) => {
   const annotations = agentToolAnnotations(tool.name);
   return annotations ? { ...tool, annotations } : tool;

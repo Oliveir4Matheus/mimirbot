@@ -51,6 +51,14 @@ installed apps get it from the update button without rebuilding:
    `git checkout v<version> && pnpm install && pnpm package:<win|mac|linux>`.
    Check with `git ls-remote --tags origin`; never release from unpushed code.
 
+The app's **Update channel** setting picks which feed it reads. **Main** (the
+default) follows `latest*.yml` on the newest full release; **Beta** follows
+`beta*.yml` on prereleases. A prerelease version such as `0.1.168-beta.1`, built
+from the `beta` branch, makes `fork-release.yml` run
+`scripts/beta-channel-feed.mjs` (copying each platform's `latest*.yml` to its
+`beta*.yml` name) and publish the release as a prerelease. A macOS build needs
+the same script run on `release/` before uploading `beta-mac.yml`.
+
 Windows (`latest.yml` + NSIS `.exe`) needs its own build on Windows:
 `.github/workflows/package-win.yml` builds it on `windows-latest`, and
 `fork-release.yml` calls it with `publish: true` after the Linux job, so one

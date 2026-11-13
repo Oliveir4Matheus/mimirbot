@@ -93,6 +93,33 @@ function renderAssignmentStatus(r: Json, id: string): string {
   return lines.join("\n");
 }
 
+const WORKFLOW_RUN_STATUS: Record<string, string> = {
+  queued: "queued, not started yet",
+  running: "running",
+  waiting_manual: "waiting for a person to continue",
+  waiting_approval: "waiting for approval",
+  succeeded: "succeeded",
+  failed: "failed",
+  cancelled: "cancelled",
+};
+
+function renderWorkflowRun(body: Json): string {
+  const run = jsonRecord(body.run) ? body.run : {};
+  const workflow = jsonRecord(body.workflow) ? body.workflow : {};
+  const steps = Array.isArray(run.steps) ? run.steps.filter(jsonRecord) : [];
+  const lines = [`Workflow ${String(workflow.name ?? run.workflowId ?? "?")} · run ${String(run.id ?? "?")}: ${WORKFLOW_RUN_STATUS[String(run.status)] ?? String(run.status ?? "unknown")}`];
+  if (typeof run.error === "string" && run.error.trim()) lines.push(`Why it stopped: ${run.error.trim()}`);
+  if (typeof run.currentStep === "number" && steps.length) lines.push(`Current step: ${Math.min(run.currentStep + 1, steps.length)} of ${steps.length}`);
+  for (const [index, step] of steps.entries()) {
+    const verified = Array.isArray(step.verified) && step.verified.length ? ` — verified: ${step.verified.map(String).join(", ")}` : "";
+    const error = typeof step.error === "string" && step.error.trim() ? ` — ${step.error.trim()}` : "";
+    lines.push(`${index + 1}. ${String(step.id ?? "?")}: ${String(step.status ?? "?")}${verified}${error}`);
+  }
+  if (run.status === "waiting_manual") lines.push("It waits for a person to continue before the next step starts; tell them and check again later rather than waiting in this turn.");
+  if (run.status === "running" || run.status === "queued") lines.push("It is still running; its steps start on their own. Check again later rather than waiting in this turn.");
+  return lines.join("\n");
+}
+
 function handoffIds(r: Json): string[] {
   const receipts = Array.isArray(r.receipts) ? r.receipts.filter(jsonRecord) : [];
   return receipts.map((receipt) => receipt.requestId).filter((id): id is string => typeof id === "string" && id.trim().length > 0);
@@ -193,6 +220,117 @@ export async function callTool(called: string, input: Json, context: ToolCallCon
   if (PAGE_TOOL_NAMES.has(name)) return callPageTool(name, args, context);
   if (TRIGGER_TOOL_NAMES.has(name)) return callTriggerTool(name, args, context);
   if (WAIT_TOOL_NAMES.has(name)) return callWaitTool(name, args, context);
+  if (name === "list_workflows") {
+    const r = await api("/api/internal/workflows");
+    const workflows = Array.isArray(r.workflows) ? r.workflows.filter(jsonRecord) : [];
+    if (!workflows.length) return { text: "No Workflow in your department yet. Only the person can create one." };
+    const lines = workflows.map((entry) => {
+      const steps = Array.isArray(entry.steps) ? entry.steps : [];
+      const parameters = [...new Set(steps.flatMap((step) => jsonRecord(step) && Array.isArray(step.parameters)
+        ? step.parameters.flatMap((parameter) => jsonRecord(parameter) && typeof parameter.name === "string" ? [parameter.name] : [])
+        : []))];
+      return `- ${String(entry.name)} [id: ${String(entry.id)}, version ${Number(entry.version)}, ${steps.length} steps${parameters.length ? `; inputs: ${parameters.join(", ")}` : ""}]`;
+    });
+    return { text: `Workflows you can start:\n${lines.join("\n")}\n\nStart one with run_workflow. The engine runs its steps; you do not run them in this turn.` };
+  }
+  if (name === "run_workflow") {
+    const id = String(args.workflow_id ?? "").trim();
+    if (!id) return { text: "run_workflow needs workflow_id from list_workflows.", isError: true };
+    const { ok, status, body } = await apiResponse(`/api/internal/workflows/${encodeURIComponent(id)}/run`, {
+      method: "POST",
+      body: JSON.stringify({
+        ...(args.version === undefined ? {} : { version: args.version }),
+        ...(jsonRecord(args.inputs) ? { inputs: args.inputs } : {}),
+        ...(typeof args.request_id === "string" && args.request_id.trim() ? { request_id: args.request_id.trim() } : {}),
+      }),
+    });
+    if (!ok) {
+      if (body.status === "needs_input") {
+        const missing = Array.isArray(body.missing) ? body.missing.flatMap((entry) => jsonRecord(entry) ? [`${String(entry.step)}.${String(entry.name)}`] : []) : [];
+        const invalid = Array.isArray(body.invalid) ? body.invalid.flatMap((entry) => jsonRecord(entry) ? [`${String(entry.step)}.${String(entry.name)}: ${String(entry.reason ?? "invalid")}`] : []) : [];
+        const unknown = Array.isArray(body.unknown) ? body.unknown.map(String) : [];
+        const allowed = Array.isArray(body.allowed) ? body.allowed.map(String) : [];
+        const lines = [
+          "The run was not created. Ask the person for what is missing or wrong:",
+          ...missing.map((entry) => `- missing ${entry}`),
+          ...invalid.map((entry) => `- invalid ${entry}`),
+          ...unknown.map((entry) => `- unknown ${entry}`),
+          allowed.length ? `Allowed inputs: ${allowed.join(", ")}.` : "This Workflow takes no inputs.",
+        ];
+        return { text: lines.join("\n"), isError: true };
+      }
+      return { text: status === 404 ? "No Workflow with that id in your department. Use list_workflows." : String(body.error ?? `HTTP ${status}`), isError: true };
+    }
+    const run = jsonRecord(body.run) ? body.run : {};
+    const total = Array.isArray(run.steps) ? run.steps.length : 0;
+    return { text: `Started Workflow run ${String(run.id ?? "?")}: step 1 of ${total || "?"}. The engine runs the steps and verifies their files; use workflow_status with this run id to follow it.` };
+  }
+  if (name === "workflow_status") {
+    const id = String(args.run_id ?? "").trim();
+    if (!id) return { text: "workflow_status needs run_id from run_workflow.", isError: true };
+    const { ok, status, body } = await apiResponse(`/api/internal/workflows/runs/${encodeURIComponent(id)}`);
+    if (!ok) {
+      return { text: status === 404 ? "No run with that id in your department." : status === 403 ? "That run belongs to another department." : String(body.error ?? `HTTP ${status}`), isError: true };
+    }
+    return { text: renderWorkflowRun(body) };
+  }
+  if (name === "cancel_workflow") {
+    const id = String(args.run_id ?? "").trim();
+    if (!id) return { text: "cancel_workflow needs run_id from run_workflow.", isError: true };
+    const { ok, status, body } = await apiResponse(`/api/internal/workflows/runs/${encodeURIComponent(id)}/cancel`, { method: "POST", body: "{}" });
+    if (!ok) {
+      return { text: status === 403 ? "Only the conversation that started this run can cancel it." : String(body.error ?? `HTTP ${status}`), isError: true };
+    }
+    return { text: `Run ${id} is cancelled. Files already written stay on disk.` };
+  }
+  if (name === "archive_workflow_proposal") {
+    const id = String(args.proposal_id ?? "").trim();
+    if (!id) return { text: "archive_workflow_proposal needs proposal_id from the card.", isError: true };
+    const { ok, status, body } = await apiResponse(`/api/internal/workflows/proposals/${encodeURIComponent(id)}/archive`, { method: "POST", body: "{}" });
+    if (!ok) return { text: status === 404 ? "No proposal with that id in your department." : String(body.error ?? `HTTP ${status}`), isError: true };
+    return { text: "Proposal archived under Workflows → Propostas. Nothing was created and no routine was changed." };
+  }
+  if (name === "create_workflow_from_proposal") {
+    const id = String(args.proposal_id ?? "").trim();
+    if (!id) return { text: "create_workflow_from_proposal needs proposal_id from the card.", isError: true };
+    const { ok, status, body } = await apiResponse(`/api/internal/workflows/proposals/${encodeURIComponent(id)}/create`, { method: "POST", body: "{}" });
+    if (!ok) {
+      return { text: status === 404 ? "No proposal with that id in your department." : String(body.error ?? `HTTP ${status}`), isError: true };
+    }
+    const workflowId = String(body.workflowId ?? "");
+    return { text: `Workflow created (version ${Number(body.version ?? 1)}, id ${workflowId}). Its first step is manual: a run waits for a person to choose Continuar.` };
+  }
+  if (name === "propose_workflow") {
+    const interview = jsonRecord(args.interview) ? args.interview : null;
+    if (!interview || typeof interview.recurring !== "boolean") {
+      return { text: "propose_workflow needs interview.recurring true or false. A one-time task is not a Workflow.", isError: true };
+    }
+    if (!interview.recurring) {
+      return { text: "A one-time task is not a Workflow. Finish the task and describe what should repeat instead.", isError: true };
+    }
+    const steps = Array.isArray(args.steps) ? args.steps : [];
+    if (steps.length === 0) return { text: "propose_workflow needs the Workflow steps.", isError: true };
+    const payload: Json = {
+      name: String(args.name ?? "").trim(),
+      interview: {
+        recurring: interview.recurring,
+        ...(typeof interview.changes === "string" ? { changes: interview.changes } : {}),
+        ...(typeof interview.confirmer === "string" ? { confirmer: interview.confirmer } : {}),
+      },
+      steps,
+      ...(typeof args.summary === "string" ? { summary: args.summary } : {}),
+      ...(Array.isArray(args.assumptions) ? { assumptions: args.assumptions.filter((entry): entry is string => typeof entry === "string") } : {}),
+      ...(Array.isArray(args.scripts) ? { scripts: args.scripts } : {}),
+      ...(Number.isSafeInteger(args.retention_days) ? { retentionDays: Number(args.retention_days) } : {}),
+    };
+    const { ok, body } = await apiResponse("/api/internal/workflows/proposals", { method: "POST", body: JSON.stringify(payload) });
+    if (!ok) return { text: String(body.error ?? "The proposal could not be saved."), isError: true };
+    const proposal = jsonRecord(body.proposal) ? body.proposal : {};
+    const id = String(proposal.id ?? "");
+    return {
+      text: `Proposal saved as a draft: ${String(jsonRecord(proposal.definition) ? proposal.definition.name : payload.name)} (id ${id}). Nothing was created, listed or scheduled. The person now sees a card with Criar Workflow and Agora não; wait for that choice before calling create_workflow_from_proposal or archive_workflow_proposal.`,
+    };
+  }
   // Second lock: with sharing off the catalog already omits these tools.
   if (SHARED_COMPUTER_TOOL_NAMES.has(name) && !context.sharedComputers) {
     return { text: "Computer sharing is turned off in this workspace. There are no shared computers to use.", isError: true };

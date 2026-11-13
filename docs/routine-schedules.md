@@ -33,6 +33,25 @@ webhook's address stops working at once. Automations left behind by a bot
 deleted in an earlier version are removed the next time MimirBot starts, and
 never run meanwhile.
 
+## Routines that start a Workflow
+
+A routine can target a Workflow. At the scheduled time the routine creates a
+Workflow run with `triggeredBy` set to the routine; it does not run the steps
+inside the routine turn.
+
+If the Workflow's first executable step is `mode: "manual"` — as every Workflow
+created from a conversation is — the run is created parked in
+`waiting_manual`. The engine does not copy `input/`, open a step thread or run a
+script until a person chooses **Continuar**. The routine run mirrors that state
+as **waiting**, with “Waiting for you to continue”. This is the execution gate,
+not a refusal to schedule: the schedule fires normally, but the first step waits
+for a person.
+
+A Workflow with required parameters cannot be started by a routine, because the
+routine has no value to supply. Those parameters need a rule for absence
+(`whenAbsent`) or must not be required for the scheduled path; otherwise the
+routine fails with `needs_input` before creating a run.
+
 ## Advanced cron
 
 Cron uses five fields: **minute hour day-of-month month day-of-week**.

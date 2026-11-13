@@ -15,6 +15,8 @@ export function isOnboardingCard(message: Message): boolean {
 
 export function shouldHideOnboardingCard(message: Message, transcript: Message[]): boolean {
   if (!isOnboardingCard(message) || !message.card) return false;
+  // A Workflow proposal outlives later turns: the person may answer it days later.
+  if (message.card.workflowProposal) return false;
   if (message.card.dismissed || message.card.answered) return true;
   const index = transcript.findIndex((entry) => entry.id === message.id);
   if (index < 0) return false;
@@ -89,6 +91,16 @@ export function OptionCard({
       onDismiss={dismiss}
       dismissLabel={t("onboarding.card.dismiss")}
     >
+      {card.workflowProposal && (
+        <div className="rounded-xl border border-hairline/50 bg-inset/60 px-3 py-2 text-[12px] text-ink-secondary">
+          <p className="font-medium text-ink">{t("workflows.proposals.cardTitle", { name: card.workflowProposal.name })}</p>
+          <p className="mt-0.5">
+            {card.workflowProposal.department} · {t("workflows.proposals.stepCount", { count: card.workflowProposal.steps })}
+            {card.workflowProposal.assumptions > 0 ? ` · ${t("workflows.proposals.assumptionCount", { count: card.workflowProposal.assumptions })}` : ""}
+          </p>
+          <p className="mt-1 text-[11px] text-ink-tertiary">{t("workflows.proposals.cardHint")}</p>
+        </div>
+      )}
       {options.length > 0 && (
         <div onKeyDown={moveChoiceFocus} className="overflow-hidden rounded-2xl border border-hairline/40">
           {options.map((opt, i) => (

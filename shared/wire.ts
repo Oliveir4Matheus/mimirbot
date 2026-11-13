@@ -26,6 +26,8 @@ import type { GroupGoalRunCardData } from "./group-goal-run.ts";
 import type { RuntimeEvent } from "./runtime-events.ts";
 import type { NotificationLogEntry } from "./notification.ts";
 import type { Routine, RoutineRun } from "./routines.ts";
+import type { WorkflowRun } from "./workflow.ts";
+import type { WorkflowProposalCardData } from "./workflow-proposal.ts";
 import type { WebhookAttempt, WebhookTrigger } from "./webhooks.ts";
 import type { PublishedPageCard } from "./published-page.ts";
 import type { LiveCallRecord, LiveCallState } from "./live-call-wire.ts";
@@ -683,6 +685,8 @@ export interface OptionCardData extends WaitCardField {
   teamSetupRequest?: TeamSetupRequest;
   /** A durable learned-skill proposal. */
   skillRequest?: SkillRequestCardData;
+  /** A Workflow the bot designed from this conversation; nothing exists until the person says yes. */
+  workflowProposal?: WorkflowProposalCardData;
   /** A provider's structured question set. */
   questionRequest?: QuestionRequestCardData;
   /** The options are the whole answer: clients offer no free-text reply. */
@@ -944,6 +948,7 @@ export type ServerFrame =
   | { kind: "routine"; routine: Routine }
   | { kind: "routine.deleted"; routineId: string }
   | { kind: "routine.run"; run: RoutineRun }
+  | { kind: "workflow.run"; run: WorkflowRun }
   | { kind: "webhook"; webhook: WebhookTrigger }
   | { kind: "webhook.attempt"; attempt: WebhookAttempt }
   | { kind: "webhook.deleted"; webhookId: string }

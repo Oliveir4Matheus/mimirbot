@@ -24,6 +24,8 @@ export interface AgentsTurn {
   skillAuthoring: boolean;
   roomHandoffId?: string;
   deliversSavedFiles?: boolean;
+  /** A Workflow step starts with no memory, even when the bot has it enabled elsewhere. */
+  memoryDisabled?: boolean;
 }
 
 const flag = (on: boolean) => (on ? "1" : "0");
@@ -38,7 +40,7 @@ export function agentsServerEnv(conversation: AgentsConversation, turn: AgentsTu
     OMB_COMMS_TOKEN: bearer(turn),
     OMB_TURN_DEPTH: String(turn.depth),
     OMB_SKILL_AUTHORING_ENABLED: flag(host.skillAuthoring),
-    OMB_MEMORY_ENABLED: flag(bot.memoryEnabled !== false),
+    OMB_MEMORY_ENABLED: flag(turn.memoryDisabled !== true && bot.memoryEnabled !== false),
     OMB_SHARED_COMPUTERS_ENABLED: flag(host.sharedComputers),
     OMB_CLOUD_HOME: flag(host.cloudHome), OMB_TEAM_PEOPLE: flag(host.team), OMB_ROOM: flag(conversation.room),
     OMB_VOICE_NOTES: flag(host.voiceNotes),

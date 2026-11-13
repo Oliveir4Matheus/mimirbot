@@ -102,6 +102,10 @@ jobs:
             exit 1
           fi
           files=(release/*.deb release/*.AppImage release/latest-linux.yml release/SHA256SUMS-linux-x64.txt)
+          # A prerelease version (0.1.168-beta.1) is what a beta-channel install reads: the beta feed
+          # and the prerelease marker must both be on the release, or those installs see the official one.
+          prerelease=false
+          case "$v" in *-*) prerelease=true; node scripts/beta-channel-feed.mjs release; files+=(release/beta-linux.yml) ;; esac
           for file in "${files[@]}"; do
             test -f "$file" || { echo "::error::missing $file"; exit 1; }
           done
@@ -110,6 +114,7 @@ jobs:
           else
             args=(--title "MimirBot $v" --generate-notes --target "$GITHUB_SHA")
             [ "$PUBLISH" = "true" ] || args+=(--draft)
+            [ "$prerelease" = "true" ] && args+=(--prerelease)
             gh release create "$tag" "${files[@]}" "${args[@]}"
           fi
           gh release view "$tag" --json url,isDraft --jq '"release \(.url) — draft: \(.isDraft)"'

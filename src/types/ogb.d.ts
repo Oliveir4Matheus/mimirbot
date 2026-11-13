@@ -365,6 +365,9 @@ const __APP_VERSION__: string;
         /** apply the download: quit-and-install, or copy the command and open
          * a terminal. On a server's page, only from the person's click. */
         install(): Promise<void>;
+        /** pick the release feed later checks read: official releases or the
+         * beta branch's prereleases. On a server's page, only from a click. */
+        setChannel(channel: UpdateChannel): Promise<void>;
         onState(cb: (s: UpdaterState) => void): () => void;
       };
     };
@@ -384,6 +387,8 @@ export interface LinuxLocalControlStatus {
   warnings?: Array<{ label: string; status: string; message: string; detail?: string }>;
 }
 
+export type UpdateChannel = "main" | "beta";
+
 export interface UpdaterState {
   status:
     | "idle"
@@ -396,6 +401,8 @@ export interface UpdaterState {
     /** the command is on the clipboard; the user finishes in a terminal */
     | "handed-off"
     | "error";
+  /** Which release feed this computer checks: official releases or beta prereleases. */
+  channel?: UpdateChannel;
   version?: string;
   /** the release's notes as published (HTML or Markdown), when the feed has them */
   releaseNotes?: string;
