@@ -533,6 +533,7 @@ export type AppSettingsSection =
   | "desktopWorkspaces"
   | "organization"
   | "cloudAccount"
+  | "updates"
   | "appearance"
   | "experimental"
   | "connections"

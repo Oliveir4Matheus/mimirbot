@@ -556,6 +556,7 @@
   "settings.section.desktopWorkspaces": "Servidores",
   "settings.section.organization": "Organização",
   "settings.section.cloudAccount": "MimirBot Cloud",
+  "settings.section.updates": "Atualizações",
   "cloudAccount.optional": "O MimirBot Cloud é opcional. O uso local gratuito, suas conversas e suas próprias contas de modelos continuam disponíveis sem entrar.",
   "cloudAccount.separate": "Sua conta pessoal do Cloud é separada do login da organização.",
   "cloudAccount.desktopOnly": "Use o MimirBot Cloud no app de desktop local deste computador.",
