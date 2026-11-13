@@ -1,7 +1,24 @@
-// The step brief is built from the definition alone: same step, same words.
-// It lists the files the step receives and the files it must leave, so the
-// bot never has to infer the contract from the previous conversation.
+// The step brief is a compact, English contract generated from the definition.
+// Same step, same words. It tells the bot only what the engine cannot infer:
+// the task, the files, the parameters, the proof and the approval rule.
 import type { BotWorkflowStep } from "../../shared/workflow.ts";
+
+function parameterLine(step: BotWorkflowStep): string | undefined {
+  if (step.parameters.length === 0) return undefined;
+  return step.parameters.map((parameter) => {
+    const values = parameter.type === "enum" ? `[${(parameter.values ?? []).join("|")}]` : "";
+    const optional = parameter.required ? "!" : `?whenAbsent=${parameter.whenAbsent}`;
+    return `${parameter.name}:${parameter.type}${values}${optional}`;
+  }).join(", ");
+}
+
+function outputLine(step: BotWorkflowStep): string {
+  return step.outputs.map((output) => {
+    const optional = output.required ? "" : "?";
+    const result = output.path === step.result ? "=result(JSON)" : "";
+    return `${output.path}${optional}${result}`;
+  }).join(", ");
+}
 
 export function stepBrief(input: {
   workflowName: string;
@@ -11,27 +28,18 @@ export function stepBrief(input: {
 }): string {
   const { workflowName, step, index, total } = input;
   const lines = [
-    `Workflow: ${workflowName}`,
-    `Step ${index + 1} of ${total}: ${step.name}`,
+    `WORKFLOW "${workflowName}" · STEP ${index + 1}/${total} "${step.name}"`,
     "",
+    "TASK",
     step.instructions,
     "",
+    "CONTRACT v1",
+    `INPUT ${step.inputs.length > 0 ? step.inputs.map((entry) => entry.as).join(", ") : "none"}`,
   ];
-  if (step.inputs.length > 0) {
-    lines.push("Files to read from input/:", ...step.inputs.map((entry) => `- input/${entry.as}`), "");
-  } else {
-    lines.push("This step has no input files.", "");
-  }
-  if (step.parameters.length > 0) {
-    lines.push("Run parameters are in input/params.json:", ...step.parameters.map((parameter) => `- ${parameter.name} (${parameter.type}${parameter.required ? ", required" : `, optional; when absent: ${parameter.whenAbsent}`})`), "");
-  }
-  lines.push("Files to write in output/:");
-  for (const output of step.outputs) {
-    const result = output.path === step.result ? " (this step's result: a JSON object)" : "";
-    lines.push(`- output/${output.path}${result}`);
-  }
-  lines.push("", "Write the files inside output/ and end your turn. The engine verifies them before the next step starts.");
-  lines.push("", "If you need the person's answer or confirmation before finishing, open a request card with request_credential (or the approval tool) and end your turn. show_widget only displays information; it does not pause the step or wait for an answer.");
+  const parameters = parameterLine(step);
+  if (parameters) lines.push(`PARAMS ${parameters}`);
+  lines.push(`OUTPUT ${outputLine(step)}`);
+  lines.push("RULES read input/, write only output/, end turn; approval=request card(request_credential), show_widget does not pause; engine verifies outputs.");
   return lines.join("\n");
 }
 

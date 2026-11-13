@@ -224,16 +224,29 @@ e falha a etapa se alguma skill declarada não estiver mais disponível.
 início de toda etapa de bot, inclusive dentro de um Do While. Não é campo do
 JSON nem fica persistido: é derivado da definição.
 
-O texto carrega o nome do Workflow e a posição (`Step N of M`), as
-`instructions`, os `inputs[].as`, os `parameters`, os `outputs[].path`, o
-`result` marcado e um fecho fixo para escrever os arquivos e encerrar o turno.
+O texto é em inglês e usa um formato compacto e estável, para gastar poucos
+tokens e não variar entre etapas:
 
-O fecho também diz como pedir uma pessoa:
+```text
+WORKFLOW "Cobrança mensal" · STEP 2/3 "Revisar cobrança"
 
-> If you need the person's answer or confirmation before finishing, open a
-> request card with `request_credential` (or the approval tool) and end your
-> turn. `show_widget` only displays information; it does not pause the step or
-> wait for an answer.
+TASK
+Leia input/dados.json. Escreva output/mensagem.md e output/result.json.
+
+CONTRACT v1
+INPUT dados.json
+PARAMS competencia:date!
+OUTPUT mensagem.md, result.json=result(JSON)
+RULES read input/, write only output/, end turn; approval=request card(request_credential), show_widget does not pause; engine verifies outputs.
+```
+
+O contrato codifica `INPUT` (`inputs[].as`), `PARAMS` (`name:type`, enum com
+valores, `!` obrigatório, `?whenAbsent=rule:<name>` opcional), `OUTPUT`
+(`outputs[].path`, `?` opcional, `=result(JSON)`) e `RULES`.
+
+A regra de aprovação está em inglês no fecho: para pedir resposta ou
+confirmação, abra um cartão de requisição com `request_credential`;
+`show_widget` só exibe e não pausa.
 
 O motor só considera “cartão esperando a pessoa” quando o cartão tem
 `requestId` e não foi respondido, dispensado ou expirado. Um `show_widget` não

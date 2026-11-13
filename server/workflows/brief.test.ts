@@ -21,25 +21,43 @@ const step = (overrides: Partial<BotWorkflowStep> = {}): BotWorkflowStep => ({
 describe("stepBrief", () => {
   it("names the workflow, the position and the instruction", () => {
     const brief = stepBrief({ workflowName: "Contrato mensal", step: step(), index: 1, total: 3 });
-    expect(brief).toContain("Workflow: Contrato mensal");
-    expect(brief).toContain("Step 2 of 3: Review the numbers");
+    expect(brief).toContain('WORKFLOW "Contrato mensal" · STEP 2/3 "Review the numbers"');
     expect(brief).toContain("Check the numbers and answer with a decision.");
   });
 
   it("lists every input and every output, and marks the declared result", () => {
     const brief = stepBrief({ workflowName: "Contrato mensal", step: step(), index: 1, total: 3 });
-    expect(brief).toContain("- input/numbers.csv");
-    expect(brief).toContain("- output/decision.json (this step's result: a JSON object)");
-    expect(brief).toContain("- output/notes.md");
-    expect(brief).toContain("Write the files inside output/");
-    expect(brief).toContain("show_widget only displays information; it does not pause the step");
-    expect(brief).toContain("request_credential");
+    expect(brief).toContain("INPUT numbers.csv");
+    expect(brief).toContain("OUTPUT decision.json=result(JSON), notes.md");
+    expect(brief).toContain("approval=request card(request_credential)");
+    expect(brief).toContain("show_widget does not pause");
+  });
+
+  it("keeps the contract compact and English", () => {
+    const brief = stepBrief({ workflowName: "Contrato mensal", step: step(), index: 1, total: 3 });
+    expect(brief.split("\n")).toHaveLength(9);
+    expect(brief).toContain("CONTRACT v1");
+    expect(brief).not.toContain("Files to read from input/");
+  });
+
+  it("encodes an optional parameter with its rule and an enum's closed values", () => {
+    const brief = stepBrief({
+      workflowName: "Contrato mensal",
+      step: step({
+        parameters: [
+          { name: "regime", type: "enum", values: ["escala", "mesa"], required: true },
+          { name: "fim", type: "date", required: false, whenAbsent: "rule:periodo_padrao" },
+        ],
+      }),
+      index: 0,
+      total: 1,
+    });
+    expect(brief).toContain("PARAMS regime:enum[escala|mesa]!, fim:date?whenAbsent=rule:periodo_padrao");
   });
 
   it("says so when the first step has no input files", () => {
     const brief = stepBrief({ workflowName: "Contrato mensal", step: step({ inputs: [] }), index: 0, total: 1 });
-    expect(brief).toContain("This step has no input files.");
-    expect(brief).not.toContain("Files to read from input/");
+    expect(brief).toContain("INPUT none");
   });
 
   it("is the same text for the same step, every time", () => {

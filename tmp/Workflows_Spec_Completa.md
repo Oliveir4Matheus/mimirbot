@@ -450,22 +450,33 @@ e falha a etapa se alguma skill declarada não estiver mais disponível.
 turno no início de toda etapa de bot, inclusive dentro de um Do While. Ele não
 é um campo do JSON nem fica persistido: é derivado da definição.
 
-O texto carrega:
+O texto é em inglês e usa um formato compacto e estável, para gastar poucos
+tokens e não variar entre etapas. Exemplo:
 
-- nome do Workflow e posição (`Step N of M`);
-- `instructions` da etapa;
-- `inputs[].as` como arquivos a ler em `input/`;
-- `parameters` como valores em `input/params.json`;
-- `outputs[].path` como arquivos a escrever em `output/`;
-- `result` marcado como o objeto JSON verificado;
-- um fecho fixo: escreva os arquivos e encerre o turno.
+```text
+WORKFLOW "Cobrança mensal" · STEP 2/3 "Revisar cobrança"
 
-O fecho também diz como pedir uma pessoa:
+TASK
+Leia input/dados.json. Escreva output/mensagem.md com o texto da cobrança e output/result.json com {ok:true}.
 
-> If you need the person's answer or confirmation before finishing, open a
-> request card with `request_credential` (or the approval tool) and end your
-> turn. `show_widget` only displays information; it does not pause the step or
-> wait for an answer.
+CONTRACT v1
+INPUT dados.json
+PARAMS competencia:date!
+OUTPUT mensagem.md, result.json=result(JSON)
+RULES read input/, write only output/, end turn; approval=request card(request_credential), show_widget does not pause; engine verifies outputs.
+```
+
+O contrato codifica:
+
+- `INPUT`: `inputs[].as`, ou `none`;
+- `PARAMS`: `name:type`, `enum[a|b]`, `!` para obrigatório e
+  `?whenAbsent=rule:<name>` para opcional; a linha some quando não há parâmetro;
+- `OUTPUT`: `outputs[].path`, `?` para opcional e `=result(JSON)` no `result`;
+- `RULES`: o fecho fixo, incluindo a regra de aprovação.
+
+O fecho em inglês diz para ler `input/`, escrever só em `output/`, encerrar o
+turno e, se precisar de resposta ou confirmação, abrir um cartão de requisição
+com `request_credential`; `show_widget` só exibe e não pausa.
 
 O motor só considera “cartão esperando a pessoa” quando o cartão tem
 `requestId` e não foi respondido, dispensado ou expirado. Um `show_widget` não
