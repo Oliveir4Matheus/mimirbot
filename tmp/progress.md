@@ -367,6 +367,12 @@ Cloud/VM, notificação de script manual e ferramentas por etapa).
 - QA E2E em fixture isolado, três fluxos, vídeos e evidências em
   `tmp/qa-e2e/qa-{a,b,c}/evidence/` (1600×720, app + painel de checklist).
   Resultados: A 10/10, B 8/8, C 10 PASS / 0 FAIL / 2 N/A.
+- QA com modelo real `opencode/deepseek-v4.1-flash-free` em conversa de UI:
+  14 PASS, 1 FAIL, 1 N/A; o modelo chamou `propose_workflow`, ajustou a
+  proposta, pediu ensaio e criou a automação. Evidência em
+  `tmp/qa-e2e/qa-real/`. O FAIL foi um cenário de aprovação com
+  `show_widget` (cartão sem `requestId`, que não pausa a run); o caminho de
+  pausa/retomada com cartão de requisição está coberto pelo QA-B e pelo motor.
 - Lacunas registradas: prévia não expande o corpo do Do While; rotina não tem
   fonte de parâmetros obrigatórios; webhook/app event não têm alvo Workflow;
   lista de automações pode rotular run de rotina falha como “Concluída”.

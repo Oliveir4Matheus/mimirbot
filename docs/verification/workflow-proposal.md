@@ -81,6 +81,28 @@ Each step can carry a note. **Registrar outra rodada** increments the review
 round; after three rounds the preview offers **Refazer do zero com o que
 aprendemos** and **Abrir no editor de Workflows**.
 
+## Real-conversation QA (13/11/2026)
+
+A separate run used the real model `opencode/deepseek-v4.1-flash-free`
+(`opencodeGo`) in the real UI, with no `FAKE_CLAUDE_*`. The person gave a task,
+answered the bot's questions, received the delivery, asked for a Workflow,
+answered the interview, requested a concrete change to one step, asked for a
+rehearsal, and asked for a schedule. The model itself called
+`propose_workflow` twice: the first proposal had four steps, the adjusted one
+had three (`script → Do While → bot`). The recorded tool arguments match the
+stored proposal byte for byte after schema defaults.
+
+Result: **14 PASS, 1 FAIL, 1 N/A**. Evidence is under `tmp/qa-e2e/qa-real/`,
+including `QA-REAL.mp4`, `model-proposal-request.json`, the transcripts and the
+run/proposal JSON.
+
+The one FAIL was an approval scenario: the bot used `show_widget`, which is a
+widget card without `requestId`; the engine only parks on request/approval
+cards, so the run continued without the widget answer and failed on a missing
+output. Use a request card (`request_credential` or an approval) to test the
+pause. The card pause/resume path itself is proven by QA-B and by
+`server/workflows/engine.test.ts`.
+
 ## What it does not prove
 
 - The bot's card answer is a normal chat message; the model must call
