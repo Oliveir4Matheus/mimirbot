@@ -31,6 +31,7 @@ export function stepBrief(input: {
     lines.push(`- output/${output.path}${result}`);
   }
   lines.push("", "Write the files inside output/ and end your turn. The engine verifies them before the next step starts.");
+  lines.push("", "If you need the person's answer or confirmation before finishing, open a request card with request_credential (or the approval tool) and end your turn. show_widget only displays information; it does not pause the step or wait for an answer.");
   return lines.join("\n");
 }
 

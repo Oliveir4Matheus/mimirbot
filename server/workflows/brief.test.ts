@@ -32,6 +32,8 @@ describe("stepBrief", () => {
     expect(brief).toContain("- output/decision.json (this step's result: a JSON object)");
     expect(brief).toContain("- output/notes.md");
     expect(brief).toContain("Write the files inside output/");
+    expect(brief).toContain("show_widget only displays information; it does not pause the step");
+    expect(brief).toContain("request_credential");
   });
 
   it("says so when the first step has no input files", () => {

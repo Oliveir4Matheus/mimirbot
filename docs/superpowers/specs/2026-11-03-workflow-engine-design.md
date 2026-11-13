@@ -204,8 +204,9 @@ O motor não escreve prompt novo. Ele usa o prompt que todo turno já monta em
 | Tarefa | `instructions`, entradas e saídas na mensagem do usuário | sim |
 
 A parte `workflow-step` entra em `VOLATILE_SECTIONS` e diz só o que vale para
-toda etapa: leia `input/`, escreva apenas em `output/`, não pergunte à pessoa,
-encerre o turno, o motor copia as saídas.
+toda etapa: leia `input/`, escreva apenas em `output/`, não peça resposta em
+texto, encerre o turno, o motor copia as saídas. Para confirmação, a etapa abre
+um cartão de requisição; isso é detalhado no brief abaixo.
 
 O corpo da tarefa viaja na mensagem do usuário, como o brief de um colega
 delegado (`composeRootTurn`). Motivo: o Claude reusa o primeiro system prompt
@@ -216,6 +217,87 @@ O agente recebe a instrução como texto. A etapa `bot` declara o bloco
 `skills` (`bot`, `bundled`, `imported`); sem o bloco, ou com todos os grupos
 vazios, nenhuma skill carrega. O motor valida a seleção antes de abrir o turno
 e falha a etapa se alguma skill declarada não estiver mais disponível.
+
+#### Brief da etapa
+
+`server/workflows/brief.ts` monta o texto enviado como mensagem do turno no
+início de toda etapa de bot, inclusive dentro de um Do While. Não é campo do
+JSON nem fica persistido: é derivado da definição.
+
+O texto carrega o nome do Workflow e a posição (`Step N of M`), as
+`instructions`, os `inputs[].as`, os `parameters`, os `outputs[].path`, o
+`result` marcado e um fecho fixo para escrever os arquivos e encerrar o turno.
+
+O fecho também diz como pedir uma pessoa:
+
+> If you need the person's answer or confirmation before finishing, open a
+> request card with `request_credential` (or the approval tool) and end your
+> turn. `show_widget` only displays information; it does not pause the step or
+> wait for an answer.
+
+O motor só considera “cartão esperando a pessoa” quando o cartão tem
+`requestId` e não foi respondido, dispensado ou expirado. Um `show_widget` não
+tem `requestId`: ele exibe informação e não pausa. Se a etapa precisa de
+confirmação, o cartão de requisição é o que grava `waiting_approval` e permite
+retomar a mesma run.
+
+Etapas de `script` não recebem brief; recebem `cwd`, `input/`, `output/` e
+`input/params.json`.
+
+#### Memória da etapa
+
+Decidido: a etapa de Workflow roda com **memória vazia por padrão**. Ficam
+desligados na conversa da etapa:
+
+- `MEMORY.md` do bot e a memória da equipe;
+- trabalho recente (`recent`) e o recall automático de conversas;
+- as ferramentas de memória (`memory_update`, `memory_log`, `session_search`);
+- o journal de memória do turno.
+
+Ficam: persona, `SOUL.md`, as skills declaradas, o departamento e os arquivos
+de `input/`. A etapa já roda numa conversa nova, e a lista de ferramentas é por
+conversa, então a mudança é local: guardas no prompt, `beginMemoryTurn`
+ignorado e um override de memória no env da conversa da etapa. Turnos normais
+não mudam.
+
+**Status:** decidido em 12/11/2026; implementação pendente. Hoje a etapa herda
+a memória do bot.
+
+#### Parâmetros da etapa
+
+Cada etapa declara os próprios parâmetros, no mesmo bloco em que declara
+`inputs`, `outputs` e `result`:
+
+```json
+{
+  "id": "consultar",
+  "kind": "script",
+  "parameters": [
+    { "name": "inicio", "type": "date", "required": true },
+    { "name": "regime", "type": "enum", "values": ["escala", "mesa", "todos"], "required": true }
+  ]
+}
+```
+
+Não existe bloco `parameters` no topo da definição. `run_workflow` recebe um
+mapa plano de valores (`inputs`); um nome declarado por mais de uma etapa é o
+mesmo valor, e cada etapa recebe em `params.json` só o subconjunto que
+declarou. O motor valida a união antes de criar a run e devolve
+`missing`/`invalid`/`unknown` com a etapa e o nome do campo. Parâmetro
+opcional declara `whenAbsent`; sem isso, é inválido.
+
+**Status:** decidido em 12/11/2026; implementação pendente.
+
+#### Aprovação
+
+A aprovação é **uma por etapa**, feita pelo **dono designado** do Workflow.
+Não existe segunda aprovação. A etapa manual (`mode: "manual"`) e o cartão que
+espera resposta são essa aprovação.
+
+**Status:** decidido em 12/11/2026. O portão manual já existe; o registro do
+dono designado entra com o record→promote. A aprovação longa P16 existente
+(qualquer membro do departamento pode responder um cartão) não muda nesta
+spec; esta regra vale para Workflows criados por este caminho.
 
 #### Ids
 
@@ -253,6 +335,12 @@ O aceite do MVP é estrutural, em código (`verifyStepOutputs`):
 
 Isso responde "o arquivo veio", não "a entrega está correta". O motor não lê o
 conteúdo do resultado por conta própria.
+
+No ensaio de um Workflow gerado, **só a saída esperada é critério**. O caminho
+que o bot usou — ferramentas, raciocínio, ordem interna — não entra no aceite:
+Workflow existe para rodar de forma determinística, e a entrega confere ou não
+confere. Etapa de bot é comparada pela saída declarada, não pela reprodução do
+raciocínio.
 
 Para uma condição determinística sem gastar token, a etapa declara o campo
 `require`:
@@ -517,6 +605,11 @@ Decidido: o Workflow vive em `workflows.json`, no data dir (entra no backup).
 | Terminologia | o produto diz "Workflow"; no código ficam `WorkflowDefinition`/`WorkflowRun`, `/api/workflows` e as tools `run_workflow`/`list_workflows` | F1 |
 | Retenção | por idade, no boot; `queued`/`running`/`waiting_approval` nunca são apagadas | F1 |
 | Retry | adiado; sem retry automático, `attempts` registrado | F2 |
+| Memória da etapa | vazia por padrão: sem MEMORY.md, memória da equipe, recentes, recall e ferramentas de memória; persona, SOUL e skills ficam | record→promote (decidido, pendente) |
+| Parâmetros | cada etapa declara os seus; `run_workflow` recebe um mapa plano; sem bloco no topo | record→promote (decidido, pendente) |
+| Aprovação | uma por etapa, feita pelo dono designado; sem segunda aprovação (no record→promote) | record→promote (decidido, pendente) |
+| Custo e limite | custo por etapa e limite mensal fora de escopo | — |
+| Aceite do ensaio | só a saída esperada; o caminho do bot não é critério | record→promote (decidido, pendente) |
 | Script, condição e repetição | uma feature só, com os riscos da seção 4 | F2 |
 | Snapshot da run | `run.json` guarda ids; nome/instruções para auditoria ficam para a F2 | F2 |
 | Correção | `workflowId` UUID vs slug em `workflowRunPaths` | F1 |

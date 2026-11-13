@@ -430,8 +430,9 @@ O motor não escreve prompt novo. Ele usa o prompt que todo turno já monta em
 | Tarefa | `instructions`, entradas e saídas na mensagem do usuário | sim |
 
 A parte `workflow-step` entra em `VOLATILE_SECTIONS` e diz só o que vale para
-toda etapa: leia `input/`, escreva apenas em `output/`, não pergunte à pessoa,
-encerre o turno, o motor copia as saídas.
+toda etapa: leia `input/`, escreva apenas em `output/`, não peça resposta em
+texto, encerre o turno, o motor copia as saídas. Para confirmação, a etapa abre
+um cartão de requisição; isso é detalhado no brief abaixo.
 
 O corpo da tarefa viaja na mensagem do usuário, como o brief de um colega
 delegado (`composeRootTurn`). Motivo: o Claude reusa o primeiro system prompt
@@ -442,6 +443,38 @@ O agente recebe a instrução como texto. A etapa `bot` declara o bloco
 `skills` (`bot`, `bundled`, `imported`); sem o bloco, ou com todos os grupos
 vazios, nenhuma skill carrega. O motor valida a seleção antes de abrir o turno
 e falha a etapa se alguma skill declarada não estiver mais disponível.
+
+#### Brief da etapa
+
+`server/workflows/brief.ts` monta o texto que o motor envia como mensagem do
+turno no início de toda etapa de bot, inclusive dentro de um Do While. Ele não
+é um campo do JSON nem fica persistido: é derivado da definição.
+
+O texto carrega:
+
+- nome do Workflow e posição (`Step N of M`);
+- `instructions` da etapa;
+- `inputs[].as` como arquivos a ler em `input/`;
+- `parameters` como valores em `input/params.json`;
+- `outputs[].path` como arquivos a escrever em `output/`;
+- `result` marcado como o objeto JSON verificado;
+- um fecho fixo: escreva os arquivos e encerre o turno.
+
+O fecho também diz como pedir uma pessoa:
+
+> If you need the person's answer or confirmation before finishing, open a
+> request card with `request_credential` (or the approval tool) and end your
+> turn. `show_widget` only displays information; it does not pause the step or
+> wait for an answer.
+
+O motor só considera “cartão esperando a pessoa” quando o cartão tem
+`requestId` e não foi respondido, dispensado ou expirado. Um `show_widget` não
+tem `requestId`: ele exibe informação e não pausa. Se a etapa precisa de
+confirmação, o cartão de requisição é o que grava `waiting_approval` e permite
+retomar a mesma run.
+
+Etapas de `script` não recebem brief; recebem `cwd`, `input/`, `output/` e
+`input/params.json`.
 
 #### Ids
 
@@ -811,6 +844,11 @@ Decidido: o Workflow vive em `workflows.json`, no data dir (entra no backup).
 | Política de Retry | adiado; qualquer erro falha de primeira sem retry automático | F2 |
 | Instrução da etapa | texto em `instructions`; corpo na mensagem do usuário; regras fixas na parte volátil `workflow-step` | F1 |
 | Skills | a etapa `bot` declara `skills` (`bot`, `bundled`, `imported`); vazio ou ausente = nenhuma | F3.2 |
+| Memória da etapa | vazia por padrão: sem MEMORY.md, memória da equipe, trabalho recente, recall e ferramentas de memória; persona, SOUL e skills ficam | record→promote (decidido, pendente) |
+| Parâmetros | cada etapa declara os seus; `run_workflow` recebe um mapa plano; sem bloco no topo | record→promote (decidido, pendente) |
+| Aprovação | uma por etapa, feita pelo dono designado; sem segunda aprovação (no record→promote) | record→promote (decidido, pendente) |
+| Custo e limite | custo por etapa e limite mensal fora de escopo | — |
+| Aceite do ensaio | só a saída esperada; o caminho do bot não é critério | record→promote (decidido, pendente) |
 | Agente e modelo | a etapa aponta só para `botId` | F1 |
 | Id da run | separado do Workflow: `AAAAMMDD-HHMMSS-hex6` | F1 |
 | Departamento na run | retrato do momento da criação; não acompanha o Workflow | F1 |
