@@ -29,6 +29,7 @@ import {
   prepareIterationDirectories,
   projectLoopOutputs,
   verifyStepOutputs,
+  writeStepParameters,
   type OutputVerification,
 } from "./files.ts";
 import {
@@ -39,6 +40,7 @@ import {
   type StepFailureKind,
 } from "./flow.ts";
 import { iterationStepDir, iterationStepInputDir, iterationStepOutputDir, stepInputDir, stepOutputDir } from "./paths.ts";
+import { validateWorkflowInputs, type ParameterFailure, type WorkflowInputs } from "./parameters.ts";
 import { runWorkflowScript, type WorkflowScriptHandle } from "./script.ts";
 import {
   beginBodyStep,
@@ -89,10 +91,18 @@ export interface WorkflowEngineDeps {
   log?: (line: string) => void;
 }
 
-export type StartResult = { ok: true; run: WorkflowRun } | { ok: false; error: string };
+export type StartResult = { ok: true; run: WorkflowRun } | { ok: false; error: string; needsInput?: ParameterFailure };
+
+export interface WorkflowStartOptions {
+  version?: number;
+  requestedBy?: WorkflowRun["requestedBy"];
+  triggeredBy?: WorkflowRun["triggeredBy"];
+  inputs?: WorkflowInputs;
+  requestId?: string;
+}
 
 export interface WorkflowEngine {
-  start(workflowId: string, options?: { version?: number; requestedBy?: WorkflowRun["requestedBy"]; triggeredBy?: WorkflowRun["triggeredBy"] }): StartResult;
+  start(workflowId: string, options?: WorkflowStartOptions): StartResult;
   status(runId: string): WorkflowRun | undefined;
   cancel(runId: string, reason?: string): RunTransition;
   /** The person continued a manual step: release it once and resume the same run. */
@@ -786,6 +796,11 @@ export function createWorkflowEngine(deps: WorkflowEngineDeps): WorkflowEngine {
       failBodyOrLoop(run, loopIndex, iterationIndex, bodyIndex, copied.error, definition);
       return;
     }
+    const wroteParams = writeStepParameters(iterationStepInputDir(deps.store.runDir(run), iteration.index, step.id), step, run.inputs);
+    if (!wroteParams.ok) {
+      failBodyOrLoop(run, loopIndex, iterationIndex, bodyIndex, wroteParams.error, definition);
+      return;
+    }
     if (step.kind === "script") {
       await runBodyScriptStep(run, loopIndex, iterationIndex, bodyIndex, step, definition);
       return;
@@ -928,6 +943,11 @@ export function createWorkflowEngine(deps: WorkflowEngineDeps): WorkflowEngine {
       failOrRoute(run, index, copied.error, definition);
       return;
     }
+    const wroteParams = writeStepParameters(stepInputDir(deps.store.runDir(run), index + 1), step, run.inputs);
+    if (!wroteParams.ok) {
+      failOrRoute(run, index, wroteParams.error, definition);
+      return;
+    }
     if (step.kind === "script") {
       await runScriptStep(run, index, step, definition);
       return;
@@ -1026,8 +1046,21 @@ export function createWorkflowEngine(deps: WorkflowEngineDeps): WorkflowEngine {
       if (!definition) {
         return { ok: false, error: `no Workflow ${JSON.stringify(workflowId)}${options.version === undefined ? "" : ` version ${options.version}`}` };
       }
+      const inputs = validateWorkflowInputs(definition, options.inputs);
+      if (!inputs.ok) {
+        return {
+          ok: false,
+          error: "the run is missing or has invalid parameters",
+          needsInput: inputs.failure,
+        };
+      }
       try {
-        const run = deps.store.createRun(definition, { requestedBy: options.requestedBy, triggeredBy: options.triggeredBy });
+        const run = deps.store.createRun(definition, {
+          requestedBy: options.requestedBy,
+          triggeredBy: options.triggeredBy,
+          ...(Object.keys(inputs.values).length > 0 ? { inputs: inputs.values } : {}),
+          ...(options.requestId === undefined ? {} : { requestId: options.requestId }),
+        });
         deps.broadcast({ kind: "workflow.run", run });
         deps.onRun?.(run);
         void enqueue(run.id, () => advance(run.id));

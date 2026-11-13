@@ -1,14 +1,15 @@
 import { useRef } from "react";
-import { MoreHorizontal, Terminal } from "lucide-react";
+import { Archive, MoreHorizontal, Terminal } from "lucide-react";
 
 import { usePopoverDismiss } from "@/hooks/use-popover-dismiss";
 import { cn } from "@/lib/cn";
 import { t } from "@/lib/i18n";
 
-export function PanelMenu({ open, onOpenChange, onOpenConsole }: {
+export function PanelMenu({ open, onOpenChange, onOpenConsole, onOpenProposals }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onOpenConsole: () => void;
+  onOpenProposals: () => void;
 }) {
   const root = useRef<HTMLDivElement>(null);
   usePopoverDismiss(open, root, () => onOpenChange(false));
@@ -26,6 +27,14 @@ export function PanelMenu({ open, onOpenChange, onOpenConsole }: {
       </button>
       {open && (
         <div className="absolute right-0 top-full z-40 mt-1 w-[185px] rounded-xl border border-hairline bg-menu p-1.5 shadow-xl">
+          <button
+            type="button"
+            onClick={() => { onOpenChange(false); onOpenProposals(); }}
+            className="flex w-full items-center gap-2.5 rounded-[7px] px-2.5 py-2 text-left text-[11px] text-ink-secondary hover:bg-raised/60 hover:text-ink"
+          >
+            <Archive size={13} aria-hidden="true" />
+            {t("workflows.proposals.menu")}
+          </button>
           <button
             type="button"
             onClick={() => { onOpenChange(false); onOpenConsole(); }}

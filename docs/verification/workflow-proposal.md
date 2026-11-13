@@ -1,0 +1,64 @@
+# Workflow proposal from a conversation
+
+Checks that a bot's Workflow proposal stays a draft until the person says yes,
+that “Agora não” archives it, and that creating it writes a real Workflow whose
+first step is manual. It uses the isolated launcher and the fake Claude engine;
+it never touches the installed app or its data.
+
+`control-omb` has no Workflow verbs, so this recipe drives the proposal with the
+fake engine's scripted `agents` tool calls and reads the fixture's JSON files.
+
+## Launch
+
+Write the first scripted call before launching. The fake engine executes a call
+only when it names `server: "agents"`.
+
+```sh
+mkdir -p /tmp/opencode/wf-proposal/{tools,evidence}
+cat > /tmp/opencode/wf-proposal/tools/propose.json <<'JSON'
+[{"server":"agents","name":"propose_workflow","input":{
+  "name":"Cobrança mensal",
+  "interview":{"recurring":true,"changes":"Só as datas","confirmer":"Eu confirmo"},
+  "summary":"Uma mensagem por cliente.",
+  "steps":[{"id":"coletar","kind":"script","name":"Coletar","run":"coletar.mjs",
+    "outputs":[{"path":"dados.json"}],"result":"dados.json"}],
+  "scripts":[{"name":"coletar.mjs","content":"console.log('ok')\n"}]
+}}]
+JSON
+FAKE_CLAUDE_TOOL_CALLS_FILE=/tmp/opencode/wf-proposal/tools/propose.json \
+FAKE_CLAUDE_EXIT_AFTER_TURN=1 \
+node --experimental-strip-types scripts/control-omb.ts launch
+```
+
+## Drive
+
+Use the printed URL and data directory.
+
+1. `pnpm control:omb new-bot --name "Bot Proposta" --url <url>`.
+2. `pnpm control:omb send --bot <botId> --text "Transforme isso em um Workflow."`.
+3. `<dataDir>/workflow-proposals.json` has one `status: "draft"`; the
+   conversation has a `kind: "options"` message whose card carries
+   `workflowProposal` and the options **Criar Workflow** / **Agora não**.
+   `workflows.json` does not exist yet.
+4. Replace the tool file with
+   `[{"server":"agents","name":"archive_workflow_proposal","input":{"proposal_id":"<id>"}}]`
+   and send “Agora não.” The proposal becomes `archived`.
+5. Put the propose call back, send again, then replace the file with
+   `[{"server":"agents","name":"create_workflow_from_proposal","input":{"proposal_id":"<id>"}}]`
+   and send “Criar Workflow.” `workflows.json` now has version 1 and
+   `steps[0].mode === "manual"`.
+6. Open the UI (`OMB_PORT=<port> OMB_UI_PORT=5399 pnpm dev`), choose
+   **Workflows → Mais opções → Propostas**, select the archived proposal and
+   click **Criar Workflow**. The request is
+   `POST /api/workflow-proposals/<id>/create` and answers 201.
+
+Keep `workflow-proposals.json`, `workflows.json`, the UI screenshots and the
+server log as evidence.
+
+## What it does not prove
+
+- The bot's card answer is a normal chat message; the model must call
+  `create_workflow_from_proposal`. This recipe uses the fake engine's scripted
+  calls, not a real provider's judgment.
+- The rehearsal (slice 5) and the preview modal (slice 2) are not covered.
+- The generated Workflow is not run here; the engine's own suite covers runs.

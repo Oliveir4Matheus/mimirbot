@@ -33,7 +33,6 @@ function harness(start = new Date(2026, 7, 17, 8, 0, 0).getTime()) {
   let bot: "ready" | "busy" | "missing" = "ready";
   let goal: "ready" | "busy" | "missing" = "ready";
   let workflow: "ready" | "missing" = "ready";
-  let workflowStartsWithManual = false;
   let workflowRun: Pick<WorkflowRun, "status" | "error"> | undefined;
   let workflowSequence = 0;
   let task = 0;
@@ -70,7 +69,6 @@ function harness(start = new Date(2026, 7, 17, 8, 0, 0).getTime()) {
     botState: () => bot,
     goalState: () => goal,
     workflowState: () => workflow,
-    workflowStartsWithManual: () => workflowStartsWithManual,
     workflowRunState: () => workflowRun,
     startWorkflow: (routine) => {
       const runId = `wrun-${++workflowSequence}`;
@@ -128,7 +126,6 @@ function harness(start = new Date(2026, 7, 17, 8, 0, 0).getTime()) {
     setBot: (value: typeof bot) => (bot = value),
     setGoal: (value: typeof goal) => (goal = value),
     setWorkflow: (value: typeof workflow) => (workflow = value),
-    setWorkflowStartsWithManual: (value: boolean) => (workflowStartsWithManual = value),
     setWorkflowRun: (value: typeof workflowRun) => (workflowRun = value),
   };
 }
@@ -4114,15 +4111,10 @@ describe("workflow trigger", () => {
     expect(new RoutineManager(h.options).listRuns()[0]).toMatchObject({ status: "completed", workflowRunId: "wrun-1" });
   });
 
-  it("refuses to save a routine whose Workflow starts with a manual step", () => {
+  it("saves a routine whose Workflow starts with a manual step: the run is created parked", () => {
     const h = harness(start);
-    h.setWorkflowStartsWithManual(true);
-    expect(() => h.manager.create(input())).toThrow(/waits for a person before its first step/);
-    expect(h.manager.listRoutines()).toEqual([]);
-
-    const other = harness(start);
-    const routine = other.manager.create(input());
-    other.setWorkflowStartsWithManual(true);
-    expect(() => other.manager.update(routine.id, { name: "Renamed" })).toThrow(/waits for a person before its first step/);
+    expect(h.manager.create(input())).toMatchObject({ target: "workflow", workflowId });
+    const routine = h.manager.create(input({ name: "Renamed" }));
+    expect(h.manager.update(routine.id, { name: "Renamed again" })).toMatchObject({ name: "Renamed again" });
   });
 });

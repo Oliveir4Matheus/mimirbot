@@ -671,6 +671,9 @@ describe("agents-proxy MCP surface", () => {
       "run_workflow",
       "workflow_status",
       "cancel_workflow",
+      "propose_workflow",
+      "create_workflow_from_proposal",
+      "archive_workflow_proposal",
     ]);
     const tool = (name: string) => list.result.tools.find((entry: { name: string }) => entry.name === name);
     const coordinate = tool("coordinate_bots");

@@ -19,6 +19,7 @@ import { ConfirmDialog } from "./workflows/ConfirmDialog";
 import { DIALOG_BUTTON, Dialog } from "./workflows/Dialog";
 import { FilterPopover, defaultRunFilters, defaultWorkflowFilters } from "./workflows/FilterPopover";
 import { PanelMenu } from "./workflows/PanelMenu";
+import { ProposalsPage } from "./workflows/ProposalsPage";
 import { RunDetail } from "./workflows/RunDetail";
 import { RunDialog } from "./workflows/RunDialog";
 import { RunList } from "./workflows/RunList";
@@ -71,6 +72,7 @@ export function WorkflowsPage() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [consoleOpen, setConsoleOpen] = useState(false);
+  const [proposalsOpen, setProposalsOpen] = useState(false);
   const [studio, setStudio] = useState<{ id?: string } | null>(null);
   const [mobileDetail, setMobileDetail] = useState(false);
   const [width, setWidth] = useState(readWidth);
@@ -498,6 +500,24 @@ export function WorkflowsPage() {
     return <WorkflowConsolePage onBack={() => setConsoleOpen(false)} />;
   }
 
+  if (proposalsOpen) {
+    return (
+      <ProposalsPage
+        onBack={() => setProposalsOpen(false)}
+        onCreated={(id) => {
+          setProposalsOpen(false);
+          setTab("workflows");
+          setSelectedWorkflowId(id);
+          feed.refresh();
+        }}
+        onOpenStudio={(id) => {
+          setProposalsOpen(false);
+          setStudio({ id });
+        }}
+      />
+    );
+  }
+
   const dialogWorkflow = dialog && (dialog.kind === "run" || dialog.kind === "deleteWorkflow")
     ? feed.workflows.find((workflow) => workflow.id === dialog.workflowId)
     : undefined;
@@ -535,7 +555,7 @@ export function WorkflowsPage() {
             >
               <Plus size={14} aria-hidden="true" />
             </button>
-            <PanelMenu open={menuOpen} onOpenChange={setMenuOpen} onOpenConsole={() => setConsoleOpen(true)} />
+            <PanelMenu open={menuOpen} onOpenChange={setMenuOpen} onOpenConsole={() => setConsoleOpen(true)} onOpenProposals={() => setProposalsOpen(true)} />
           </div>
 
           <div className="-mx-4 grid grid-cols-2 border-b border-hairline">

@@ -1,7 +1,7 @@
 // The run folder's file rules: a step only writes inside its own output/,
 // the engine verifies what it declared, and the engine alone copies one
 // step's declared output into the next step's input/.
-import { chmodSync, copyFileSync, lstatSync, mkdirSync, readFileSync } from "node:fs";
+import { chmodSync, copyFileSync, lstatSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 
 import {
@@ -87,6 +87,22 @@ export function verifyStepOutputs(
 }
 
 export type StepInputsCopy = { ok: true; copied: string[] } | { ok: false; error: string };
+
+/** Writes the step's declared parameter subset to `input/params.json`; a step
+ * with no declarations gets no file, so old Workflows read exactly as before. */
+export function writeStepParameters(inputDir: string, step: WorkflowStep | WorkflowBodyStep, inputs: Record<string, unknown> = {}): { ok: true } | { ok: false; error: string } {
+  if (step.kind === "condition" || step.kind === "loop") return { ok: true };
+  const parameters = step.parameters ?? [];
+  if (parameters.length === 0) return { ok: true };
+  const values = Object.fromEntries(parameters.filter((parameter) => Object.hasOwn(inputs, parameter.name)).map((parameter) => [parameter.name, inputs[parameter.name]]));
+  try {
+    mkdirSync(inputDir, { recursive: true, mode: 0o700 });
+    writeFileSync(join(inputDir, "params.json"), JSON.stringify(values, null, 2), { mode: 0o600 });
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: `could not write input/params.json: ${error instanceof Error ? error.message : String(error)}` };
+  }
+}
 
 /** D15: only declared inputs are copied, from files the engine already
  * verified. A link or a path outside the source output/ is refused. */

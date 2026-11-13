@@ -203,8 +203,17 @@ export function createWorkflowRoutes(deps: WorkflowRoutesDeps): RouteHandler {
     if (parts.length === 2 && parts[1] === "run" && method === "POST") {
       const body = await readBody(req);
       const version = isRecord(body) && Number.isSafeInteger(body.version) ? Number(body.version) : undefined;
-      const started = deps.engine.start(id, version === undefined ? {} : { version });
-      if (!started.ok) return void json(res, 404, { error: started.error });
+      const inputs = isRecord(body) && isRecord(body.inputs) ? body.inputs : undefined;
+      const requestId = isRecord(body) && typeof body.requestId === "string" ? body.requestId : undefined;
+      const started = deps.engine.start(id, {
+        ...(version === undefined ? {} : { version }),
+        ...(inputs === undefined ? {} : { inputs }),
+        ...(requestId === undefined ? {} : { requestId }),
+      });
+      if (!started.ok) {
+        if (started.needsInput) return void json(res, 400, { ...started.needsInput, error: started.error });
+        return void json(res, 404, { error: started.error });
+      }
       return void json(res, 202, { run: started.run });
     }
     return void json(res, 405, { error: "method not allowed" });
@@ -257,11 +266,18 @@ export function createWorkflowInternalRoutes(deps: WorkflowRoutesDeps) {
       if (!sameDepartment(definition.department, department)) return void json(res, 403, { error: "that Workflow belongs to another department" });
       const body = await ctx.readBody();
       const version = isRecord(body) && Number.isSafeInteger(body.version) ? Number(body.version) : undefined;
+      const inputs = isRecord(body) && isRecord(body.inputs) ? body.inputs : undefined;
+      const requestId = isRecord(body) && typeof body.request_id === "string" ? body.request_id : undefined;
       const started = deps.engine.start(definition.id, {
         ...(version === undefined ? {} : { version }),
         requestedBy: { botId: ctx.botId, threadId: ctx.threadId },
+        ...(inputs === undefined ? {} : { inputs }),
+        ...(requestId === undefined ? {} : { requestId }),
       });
-      if (!started.ok) return void json(res, 409, { error: started.error });
+      if (!started.ok) {
+        if (started.needsInput) return void json(res, 400, { ...started.needsInput, error: started.error });
+        return void json(res, 409, { error: started.error });
+      }
       return void json(res, 202, { run: started.run });
     }
 

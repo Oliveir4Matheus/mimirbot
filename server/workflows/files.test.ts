@@ -36,6 +36,7 @@ const step = (overrides: Partial<BotWorkflowStep> = {}): BotWorkflowStep => ({
   timeoutMs: 0,
   mode: "auto",
   inputs: [],
+  parameters: [],
   outputs: required("decision.json"),
   ...overrides,
 });

@@ -255,7 +255,6 @@ export interface RoutineManagerOptions {
   /** Whether the routine's Workflow still exists. */
   workflowState?: (workflowId: string | undefined) => "ready" | "missing";
   /** Whether the Workflow must wait for a person before its first step, which a routine cannot start. */
-  workflowStartsWithManual?: (workflowId: string | undefined) => boolean;
   /** A Workflow run as the store still holds it, for a routine run a restart left active. */
   workflowRunState?: (workflowRunId: string | undefined) => Pick<WorkflowRun, "status" | "error"> | undefined;
   interruptTurn?: (botId: string, threadId: string) => Promise<void>;
@@ -584,7 +583,6 @@ export class RoutineManager {
     const clean = sanitizeInput(input, at);
     clean.schedule = this.timedSchedule(clean.schedule);
     if (this.targetState(clean) === "missing") throw new Error(this.missingTargetMessage(clean.target));
-    this.assertWorkflowCanStart(clean);
     const nextRunAt = clean.enabled ? this.initialOccurrence(clean.schedule, at) : null;
     if (clean.schedule.type === "interval" && clean.enabled && nextRunAt === null) {
       throw new Error("This interval has no future runs. Choose a later end date or turn it off.");
@@ -648,7 +646,6 @@ export class RoutineManager {
     }, now);
     clean.schedule = this.timedSchedule(clean.schedule, routine.id);
     if (this.targetState(clean) === "missing") throw new Error(this.missingTargetMessage(clean.target));
-    this.assertWorkflowCanStart(clean);
     const scheduleChanged = JSON.stringify(clean.schedule) !== JSON.stringify(routine.schedule);
     const enabledChanged = clean.enabled !== routine.enabled;
     if (enabledChanged && clean.enabled && clean.schedule.type === "once" && clean.schedule.at <= now) throw new RoutineScheduleError("Its time has passed. Edit it to pick a new time.");
@@ -1529,13 +1526,6 @@ export class RoutineManager {
       return this.options.goalState(target.groupId, target.botId);
     }
     return this.options.botState(target.botId);
-  }
-
-  private assertWorkflowCanStart(target: Pick<Routine, "target" | "workflowId">): void {
-    if (target.target !== "workflow") return;
-    if (this.options.workflowStartsWithManual?.(target.workflowId)) {
-      throw Object.assign(new Error("The assigned Workflow waits for a person before its first step"), { status: 400 });
-    }
   }
 
   private missingTargetMessage(target: RoutineTarget): string {

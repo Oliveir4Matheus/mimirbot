@@ -67,7 +67,7 @@ export interface WorkflowStore {
   versions(id: string): WorkflowDefinition[];
   saveWorkflow(input: unknown, options?: { scripts?: readonly WorkflowScriptUpload[] }): WorkflowSave;
   removeWorkflow(id: string): boolean;
-  createRun(definition: WorkflowDefinition, options?: { requestedBy?: WorkflowRun["requestedBy"]; triggeredBy?: WorkflowRun["triggeredBy"] }): WorkflowRun;
+  createRun(definition: WorkflowDefinition, options?: { requestedBy?: WorkflowRun["requestedBy"]; triggeredBy?: WorkflowRun["triggeredBy"]; inputs?: WorkflowRun["inputs"]; requestId?: WorkflowRun["requestId"] }): WorkflowRun;
   readRun(runId: string): WorkflowRun | undefined;
   writeRun(run: WorkflowRun): void;
   listRuns(filter?: WorkflowRunFilter): WorkflowRun[];
@@ -303,7 +303,7 @@ export function createWorkflowStore(options: WorkflowStoreOptions): WorkflowStor
       }
       mkdirSync(paths.runDir, { recursive: true, mode: 0o700 });
       prepareRunDirectories(paths.runDir, definition.steps.length);
-      const run = createRun({ definition, runId, now: stamp, requestedBy: runOptions?.requestedBy, triggeredBy: runOptions?.triggeredBy });
+      const run = createRun({ definition, runId, now: stamp, requestedBy: runOptions?.requestedBy, triggeredBy: runOptions?.triggeredBy, inputs: runOptions?.inputs, requestId: runOptions?.requestId });
       writeRun(run);
       return run;
     },

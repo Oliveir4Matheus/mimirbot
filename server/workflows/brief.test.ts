@@ -12,6 +12,7 @@ const step = (overrides: Partial<BotWorkflowStep> = {}): BotWorkflowStep => ({
   timeoutMs: 0,
   mode: "auto",
   inputs: [{ as: "numbers.csv", from: { step: "coletar", output: "numbers.csv" } }],
+  parameters: [],
   outputs: [{ path: "decision.json", required: true }, { path: "notes.md", required: true }],
   result: "decision.json",
   ...overrides,

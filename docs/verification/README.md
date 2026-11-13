@@ -111,6 +111,8 @@ entry only after the shared control surface can really drive it.
 The [Workflow approval fixture](workflow-approval.md) pauses a Workflow run on
 a card and resumes it through the real server and the fake engine. `control-omb`
 has no Workflow verbs, so it drives the HTTP routes directly. The
+[Workflow proposal fixture](workflow-proposal.md) keeps a bot-made Workflow as a
+draft until the person says yes, then creates it with a manual first step. The
 [Workflow trigger fixture](workflow-trigger.md) starts a run from a routine and
 checks the trigger as its origin. The [Workflow script fixture](workflow-script.md)
 runs a real Node script step, follows its `when` branch and checks the skipped

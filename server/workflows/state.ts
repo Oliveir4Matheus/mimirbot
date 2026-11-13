@@ -32,8 +32,10 @@ export function createRun(input: {
   now: number;
   requestedBy?: WorkflowRun["requestedBy"];
   triggeredBy?: WorkflowRun["triggeredBy"];
+  inputs?: WorkflowRun["inputs"];
+  requestId?: WorkflowRun["requestId"];
 }): WorkflowRun {
-  const { definition, runId, now, requestedBy, triggeredBy } = input;
+  const { definition, runId, now, requestedBy, triggeredBy, inputs, requestId } = input;
   return {
     id: runId,
     workflowId: definition.id,
@@ -48,6 +50,8 @@ export function createRun(input: {
     updatedAt: now,
     ...(requestedBy ? { requestedBy } : {}),
     ...(triggeredBy ? { triggeredBy } : {}),
+    ...(inputs ? { inputs } : {}),
+    ...(requestId ? { requestId } : {}),
     snapshot: {
       name: definition.name,
       steps: definition.steps.map((step) => step.kind === "loop"

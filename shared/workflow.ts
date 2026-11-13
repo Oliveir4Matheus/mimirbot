@@ -27,6 +27,10 @@ export const WORKFLOW_CONDITION_VALUE_MAX = 4_096;
 export const WORKFLOW_CONDITION_GROUP_MAX = 64 * 1024;
 /** How many comparisons one IF/Else step or Do While may hold. */
 export const WORKFLOW_CONDITION_ROWS_MAX = 20;
+/** A step declares the values a run must supply; the run gets a flat map. */
+export const WORKFLOW_PARAMETER_MAX = 50;
+export const WORKFLOW_PARAMETER_NAME_MAX = 64;
+export const workflowParameterTypes = ["string", "number", "integer", "boolean", "date", "enum"] as const;
 /** How many steps one Do While body may hold; nested loops are not part of the contract. */
 export const WORKFLOW_LOOP_BODY_MAX = 20;
 export const WORKFLOW_SKILLS_BOT_MAX = 200;
@@ -85,6 +89,41 @@ const stepOutputSchema = z.object({
   /** A missing optional output does not fail the step; a declared result always does. */
   required: z.boolean().default(true),
 });
+
+const parameterName = z.string()
+  .trim()
+  .min(1)
+  .max(WORKFLOW_PARAMETER_NAME_MAX)
+  .regex(/^[a-z][a-z0-9_]*$/, { message: "must start with a lowercase letter and use letters, digits or _ only" });
+
+export const workflowParameterSchema = z.object({
+  name: parameterName,
+  type: z.enum(workflowParameterTypes),
+  /** The closed list an `enum` parameter accepts. */
+  values: z.array(z.string().trim().min(1).max(200)).min(1).max(100).optional(),
+  required: z.boolean().default(true),
+  /** An optional parameter must say what happens when it is absent: `rule:<name>`. */
+  whenAbsent: z.string().trim().regex(/^rule:[a-z0-9]+(?:[-_][a-z0-9]+)*$/, { message: "must name a rule as rule:<name>" }).optional(),
+}).superRefine((parameter, context) => {
+  if (parameter.type === "enum" && parameter.values === undefined) {
+    context.addIssue({ code: "custom", path: ["values"], message: "an enum parameter needs its values" });
+  }
+  if (parameter.type !== "enum" && parameter.values !== undefined) {
+    context.addIssue({ code: "custom", path: ["values"], message: "only an enum parameter declares values" });
+  }
+  if (!parameter.required && parameter.whenAbsent === undefined) {
+    context.addIssue({ code: "custom", path: ["whenAbsent"], message: "an optional parameter needs whenAbsent, such as rule:periodo_padrao" });
+  }
+  if (parameter.required && parameter.whenAbsent !== undefined) {
+    context.addIssue({ code: "custom", path: ["whenAbsent"], message: "a required parameter does not use whenAbsent" });
+  }
+  if (parameter.required && parameter.type === "enum" && parameter.values !== undefined && parameter.values.length === 0) {
+    context.addIssue({ code: "custom", path: ["values"], message: "an enum parameter needs at least one value" });
+  }
+});
+
+export type WorkflowParameter = z.output<typeof workflowParameterSchema>;
+export type WorkflowParameterType = (typeof workflowParameterTypes)[number];
 
 const canvasPointSchema = z.object({
   x: z.number().finite().min(-1_000_000).max(1_000_000),
@@ -163,6 +202,8 @@ const stepBaseSchema = z.object({
   name: z.string().trim().min(1).max(120),
   inputs: z.array(stepInputSchema).max(50).default([]),
   outputs: z.array(stepOutputSchema).min(1).max(50),
+  /** The values a run supplies to this step; each step receives only its own subset. */
+  parameters: z.array(workflowParameterSchema).max(WORKFLOW_PARAMETER_MAX).default([]),
   /** The short JSON object a later branch reads; must be one of the outputs. */
   result: workflowPath.optional(),
   /** Fields of the declared result that must match by equality for the step to pass. */
@@ -625,6 +666,29 @@ export const workflowDefinitionSchema = z.object({
     });
     outputs.set(step.id, own);
   });
+  const parameterKinds = new Map<string, { type: string; values: string; step: string }>();
+  const checkParameters = (step: WorkflowStep | WorkflowBodyStep, path: Array<string | number>): void => {
+    if (step.kind === "condition" || step.kind === "loop") return;
+    const seen = new Set<string>();
+    step.parameters.forEach((parameter, parameterIndex) => {
+      if (seen.has(parameter.name)) {
+        context.addIssue({ code: "custom", path: [...path, "parameters", parameterIndex, "name"], message: `parameter ${JSON.stringify(parameter.name)} is declared more than once` });
+      }
+      seen.add(parameter.name);
+      const kind = `${parameter.type}|${JSON.stringify(parameter.values ?? [])}`;
+      const previous = parameterKinds.get(parameter.name);
+      if (!previous) {
+        parameterKinds.set(parameter.name, { type: kind, values: kind, step: step.id });
+      } else if (previous.type !== kind) {
+        context.addIssue({ code: "custom", path: [...path, "parameters", parameterIndex, "type"], message: `parameter ${JSON.stringify(parameter.name)} has a different type in step ${JSON.stringify(previous.step)}` });
+      }
+    });
+  };
+  definition.steps.forEach((step, index) => {
+    checkParameters(step, ["steps", index]);
+    if (step.kind === "loop") step.body.forEach((body, bodyIndex) => checkParameters(body, ["steps", index, "body", bodyIndex]));
+  });
+
   if (definition.canvas) {
     const containerIds = new Set(definition.canvas.containers.map((container) => container.id));
     definition.canvas.notes.forEach((note, index) => {
@@ -799,6 +863,10 @@ export interface WorkflowRun {
   error?: string;
   /** The bot conversation that asked for the run; only it may cancel a run started by a bot. */
   requestedBy?: { botId: string; threadId: string };
+  /** The flat parameter map the person or bot supplied; each step receives its own subset. */
+  inputs?: Record<string, unknown>;
+  /** The caller's idempotency key, when it supplied one. */
+  requestId?: string;
   /** The routine that started the run, when a trigger did. */
   triggeredBy?: WorkflowRunTrigger;
   /** The Workflow and step names at run time, so the run stays readable after the Workflow is gone. */
@@ -881,6 +949,8 @@ export const workflowRunSchema: z.ZodType<WorkflowRun> = z.object({
   hold: workflowRunHoldSchema.optional(),
   result: z.unknown().optional(),
   error: z.string().optional(),
+  inputs: z.record(z.string(), z.unknown()).optional(),
+  requestId: z.string().min(1).max(200).optional(),
   requestedBy: z.object({ botId: z.string().min(1), threadId: z.string().min(1) }).optional(),
   triggeredBy: z.object({ routineId: z.string().min(1).max(200), routineName: z.string().min(1).max(80) }).optional(),
   snapshot: workflowRunSnapshotSchema.optional(),

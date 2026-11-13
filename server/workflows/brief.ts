@@ -22,6 +22,9 @@ export function stepBrief(input: {
   } else {
     lines.push("This step has no input files.", "");
   }
+  if (step.parameters.length > 0) {
+    lines.push("Run parameters are in input/params.json:", ...step.parameters.map((parameter) => `- ${parameter.name} (${parameter.type}${parameter.required ? ", required" : `, optional; when absent: ${parameter.whenAbsent}`})`), "");
+  }
   lines.push("Files to write in output/:");
   for (const output of step.outputs) {
     const result = output.path === step.result ? " (this step's result: a JSON object)" : "";

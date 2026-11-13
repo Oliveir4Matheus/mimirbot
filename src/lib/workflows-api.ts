@@ -1,4 +1,5 @@
 import type { WorkflowDefinition, WorkflowRun, WorkflowRunStatus, WorkflowSkillOptions } from "../../shared/workflow";
+import type { WorkflowProposal, WorkflowProposalStatus } from "../../shared/workflow-proposal";
 import { api } from "@/state/api";
 
 export interface WorkflowDetail {
@@ -64,6 +65,54 @@ export function deleteWorkflow(id: string): Promise<boolean> {
 export function deleteRun(id: string): Promise<boolean> {
   return api<{ removed: boolean }>(`/api/workflows/runs/${encodeURIComponent(id)}`, { method: "DELETE" })
     .then((answer) => answer.removed === true);
+}
+
+export function listProposals(status: WorkflowProposalStatus | "all" = "archived", options: RequestOptions = {}): Promise<WorkflowProposal[]> {
+  return api<{ proposals: WorkflowProposal[] }>(`/api/workflow-proposals?status=${status}`, { background: options.background })
+    .then((answer) => answer.proposals ?? []);
+}
+
+export function readProposal(id: string): Promise<WorkflowProposal> {
+  return api<{ proposal: WorkflowProposal }>(`/api/workflow-proposals/${encodeURIComponent(id)}`).then((answer) => answer.proposal);
+}
+
+export function createWorkflowFromProposal(id: string): Promise<{ workflowId: string; version: number }> {
+  return api<{ workflowId: string; version: number }>(`/api/workflow-proposals/${encodeURIComponent(id)}/create`, json({}));
+}
+
+export function archiveProposal(id: string): Promise<WorkflowProposal> {
+  return api<{ proposal: WorkflowProposal }>(`/api/workflow-proposals/${encodeURIComponent(id)}/archive`, json({}))
+    .then((answer) => answer.proposal);
+}
+
+export function deleteProposal(id: string): Promise<boolean> {
+  return api<{ removed: boolean }>(`/api/workflow-proposals/${encodeURIComponent(id)}`, { method: "DELETE" })
+    .then((answer) => answer.removed === true);
+}
+
+export interface RehearsalExample {
+  inputs?: Record<string, unknown>;
+  files?: Array<{ name: string; content: string }>;
+  expected?: Record<string, string>;
+}
+
+export function rehearseProposal(id: string, example: RehearsalExample = {}): Promise<{ rehearsal: WorkflowProposal["rehearsal"]; proposal: WorkflowProposal }> {
+  return api<{ rehearsal: WorkflowProposal["rehearsal"]; proposal: WorkflowProposal }>(`/api/workflow-proposals/${encodeURIComponent(id)}/rehearse`, {
+    method: "POST",
+    body: JSON.stringify({ example }),
+  });
+}
+
+export function annotateProposal(id: string, annotations: Record<string, string>): Promise<WorkflowProposal> {
+  return api<{ proposal: WorkflowProposal }>(`/api/workflow-proposals/${encodeURIComponent(id)}/annotate`, {
+    method: "POST",
+    body: JSON.stringify({ annotations }),
+  }).then((answer) => answer.proposal);
+}
+
+export function bumpProposalRound(id: string): Promise<WorkflowProposal> {
+  return api<{ proposal: WorkflowProposal }>(`/api/workflow-proposals/${encodeURIComponent(id)}/round`, { method: "POST", body: "{}" })
+    .then((answer) => answer.proposal);
 }
 
 export interface WorkflowScriptUpload {

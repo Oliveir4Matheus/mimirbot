@@ -512,7 +512,7 @@ import { computerFreeAfterText, computerParkedText, computerPersonAwayText, comp
 import { modelContextWindow } from "./model-context-window.ts";
 import { browserIsThePlace, chosenPin, cloudPlaceRefusal, computerSkippedNote, computerToolsRefusal, parseSurface, PlaceUnavailableError, placeUnavailable, resolveSurface, surfaceLabel, surfaceOfComputerKind, surfacePrompt, type ComputerWant, type PlaceSource, type Surface } from "./surface.ts";
 import { cloudRefusal, type PlaceRow } from "../shared/place-view.ts";
-import { workflowStartsManual, type WorkflowSkillOptions, type WorkflowStepSkills } from "../shared/workflow.ts";
+import type { WorkflowSkillOptions, WorkflowStepSkills } from "../shared/workflow.ts";
 import {
   PendingTurnCancellations,
   ProviderTurnGenerationRegistry,
@@ -1880,13 +1880,14 @@ function agentsIntegration(
   generation: string,
   roomHandoffId?: string,
   hostFiles = false,
+  memoryDisabled = false,
 ) {
   const bot = store.bot(botId), speaking = botForThread(botId, threadId) ?? bot;
   // Only advertises the tools; the routes behind them refuse regardless.
   const host = { skillAuthoring: skillAuthoringEnabled(cfg), sharedComputers: lendingEnabled(), cloudHome: Boolean(CLOUD_HOME), team: Boolean(CLOUD_TEAM), escalations: chiefEscalationsEnabled(cfg),
     voiceNotes: tts.voiceReady(cfg, speaking?.voice) && speaking?.voiceNotes !== false, research: Boolean(researchCredential(cfg.treg?.key)) };
   return { ...agentsProxyLaunch(), env: agentsServerEnv({ threadId, bot: bot ?? { id: botId }, room: Boolean(store.groupByThread(threadId)), teamComputer: Boolean(bot && inheritedTeamComputer(bot)), host },
-    { generation, depth, skillAuthoring, roomHandoffId, ...(hostFiles && !CLOUD_HOME && !HOSTED_WORKSPACE ? { deliversSavedFiles: true } : {}) },
+    { generation, depth, skillAuthoring, roomHandoffId, ...(memoryDisabled ? { memoryDisabled: true } : {}), ...(hostFiles && !CLOUD_HOME && !HOSTED_WORKSPACE ? { deliversSavedFiles: true } : {}) },
     (turn) => mintInternalCapability({ botId, threadId, kind: "agents", createdBots: 0, openedThreads: 0, ...turn }), `http://127.0.0.1:${PORT}`) };
 }
 
@@ -2910,6 +2911,28 @@ const workflows = createWorkflowHost({
     const bot = store.bot(botId);
     return bot ? workflowSkillOptionsFor(bot) : undefined;
   },
+  proposalCard: (proposal, botId, threadId) => {
+    const bot = store.bot(botId);
+    const steps = proposal.definition.steps.length;
+    store.appendMessage(threadId, {
+      role: "bot",
+      kind: "options",
+      ...(bot ? { from: { botId: bot.id, name: bot.name, color: bot.color } } : {}),
+      card: {
+        title: `Proposta de Workflow: ${proposal.definition.name}`,
+        subtitle: proposal.summary || `${steps} ${steps === 1 ? "etapa" : "etapas"} · nada foi criado ainda`,
+        options: ["Criar Workflow", "Agora não"],
+        fixedOptions: true,
+        workflowProposal: {
+          id: proposal.id,
+          name: proposal.definition.name,
+          department: proposal.department,
+          steps,
+          assumptions: proposal.assumptions.length,
+        },
+      },
+    });
+  },
 });
 const notifyWorkflowHold = createWorkflowHoldNotifier({
   bot: (id) => {
@@ -2920,6 +2943,7 @@ const notifyWorkflowHold = createWorkflowHoldNotifier({
   send: (notification, options) => notify(notification, options),
 });
 ROUTES.push(workflows.routes);
+ROUTES.push(workflows.proposalRoutes);
 const { cloudLendingTurn, cloudLendingRefusalNotice, cloudLendingRefusal, cloudThreadStarters, cloudLendingView, cloudReportFromOthers, roomTurnStarted, roomTurnEnded } = createCloudLendingTurns({
   store, cloudHome: CLOUD_HOME !== null, directRequest: (threadId) => directRequestOwners.get(threadId), threadStarter: (threadId) => threadStarters.get(threadId),
   ownerPerson: cloudProvenOwnerPerson, cardAnswerer: cloudCardAnswerer, activeRoutineRun: activeRoutineRunForThread, ownerStartedRun: (runId) => ownerStartedRoutineRuns.has(runId),
@@ -8201,7 +8225,7 @@ async function startTurn(
       const worksInWorkspace = supportsWorkspaceFiles(instance.driverKind);
       if (worksInWorkspace) {
         ensureWorkspace(bot.id, appLanguage());
-        if (bot.memoryEnabled !== false) beginMemoryTurn(teamHost.layer(bot.id, threadId), threadId); botBox.lend(bot.id, threadId, teamHost.layerDirs(bot.id, threadId));
+        if (bot.memoryEnabled !== false && opts?.workflowStep === undefined) beginMemoryTurn(teamHost.layer(bot.id, threadId), threadId); botBox.lend(bot.id, threadId, teamHost.layerDirs(bot.id, threadId));
       }
       const privateWorkspace = worksInWorkspace
         ? ensureTaskWorkspaceWithSkills(bot.id, threadId, skillsHost.turnImports(bot, threadId, instance,
@@ -8539,7 +8563,7 @@ async function startTurn(
       // One reachability rule: a bot is never told about a peer that coordinate_bots would refuse.
       const sectionPeers = reachablePeers(store.bots, bot);
       if (agentsMounted) {
-        integrations.agents = agentsIntegration(bot.id, threadId, commsDepth, skillAuthoring, dispatchClaimId, opts?.coordination?.id, worksInWorkspace);
+        integrations.agents = agentsIntegration(bot.id, threadId, commsDepth, skillAuthoring, dispatchClaimId, opts?.coordination?.id, worksInWorkspace, opts?.workflowStep !== undefined);
       }
       if (instance.adapter.capabilities.hooks === true && hooksEnabled()) {
         integrations.hooks = hooksIntegration(bot.id, threadId, dispatchClaimId);
@@ -8558,7 +8582,7 @@ async function startTurn(
       const credentialPrompt = integrations.agents ? CREDENTIAL_PROMPT + THREADS_PROMPT + WIDGET_PROMPT : "";
       const routinePrompt = integrations.agents ? TRIGGER_PROMPT : "";
       const profilePrompt = integrations.agents ? PROFILE_PROMPT : "";
-      const recallPrompt = integrations.agents && bot.memoryEnabled !== false ? SESSION_SEARCH_SYSTEM_PROMPT : "";
+      const recallPrompt = integrations.agents && bot.memoryEnabled !== false && opts?.workflowStep === undefined ? SESSION_SEARCH_SYSTEM_PROMPT : "";
       const learnPrompt = skillAuthoring ? LEARN_PROMPT : "";
 
       // Wait for the snapshot right before dispatch: the engine must not edit the project until it settles.
@@ -8669,11 +8693,11 @@ async function startTurn(
         { id: "profile", label: "Profile changes", text: profilePrompt },
         { id: "learn", label: "Skill authoring", text: learnPrompt },
         { id: "section-context", label: "Section context", text: sectionContextSystemPrompt(bot.section) },
-        { id: "team-memory", label: "Team memory", text: teamMemory.systemPrompt(bot.section) + (integrations.agents ? TEAM_MEMORY_PROMPT : "") },
+        { id: "team-memory", label: "Team memory", text: opts?.workflowStep === undefined ? teamMemory.systemPrompt(bot.section) + (integrations.agents ? TEAM_MEMORY_PROMPT : "") : "" },
         // Volatile, so a teammate starting or finishing never changes the stable half.
         teamAvailabilityPart(coordinationPrompt ? sectionPeers : []),
-        { id: "recent", label: "Recent work", text: recentWorkPrompt(recentWork(recentWorkSources(bot), bot, { userName: CLOUD_TEAM ? teamHost.personName(teamConversationPerson(threadId)) ?? "the team" : cfg.profile?.name?.trim() || "User", currentThreadId: threadId, ...recentWorkFilter(threadId) })) },
-        { id: "memory", label: "Memory", text: memorySystemPrompt(teamHost.layer(bot.id, threadId), { managedWrites: Boolean(integrations.agents), fileTools: worksInWorkspace, enabled: bot.memoryEnabled !== false, writesRefused: notesRefused }) + teamHost.sharedNotesPrompt(bot.id, threadId) },
+        { id: "recent", label: "Recent work", text: opts?.workflowStep === undefined ? recentWorkPrompt(recentWork(recentWorkSources(bot), bot, { userName: CLOUD_TEAM ? teamHost.personName(teamConversationPerson(threadId)) ?? "the team" : cfg.profile?.name?.trim() || "User", currentThreadId: threadId, ...recentWorkFilter(threadId) })) : "" },
+        { id: "memory", label: "Memory", text: opts?.workflowStep === undefined ? memorySystemPrompt(teamHost.layer(bot.id, threadId), { managedWrites: Boolean(integrations.agents), fileTools: worksInWorkspace, enabled: bot.memoryEnabled !== false, writesRefused: notesRefused }) + teamHost.sharedNotesPrompt(bot.id, threadId) : "" },
         // liveBot predates awaited setup work; an assignment PUT in that window must still reach this prompt.
         { id: "skills", label: "Skills index", text: privateWorkspace ? skillsHost.skillsIndex(store.bot(bot.id) ?? bot, threadId, instance,
           opts?.workflowStep === undefined ? undefined : { bot: opts.skills?.bot ?? [], imported: opts.skills?.imported ?? [] }) : "" },
@@ -8685,7 +8709,7 @@ async function startTurn(
       ].filter((part) => !confined || READ_AND_DRAFT_PARTS.has(part.id)), integrations.agents, { replyStyle: liveBot?.replyStyle ?? bot.replyStyle });
       turnPromptBytes.set(threadId, { stable: Buffer.byteLength(prompt.stable), volatile: Buffer.byteLength(prompt.volatile) });
       // Recall rides in front of this turn's message, never the system prompt, whose volatile half is re-sent whole on any change.
-      const recalled = autoRecallPrompt(bot, threadId, resolvedImages.text, {
+      const recalled = opts?.workflowStep !== undefined ? "" : autoRecallPrompt(bot, threadId, resolvedImages.text, {
         // A routine run starts fresh, and a webhook is untrusted: neither pulls earlier conversations in.
         conversations: commsDepth === 0 && !coordinationNode && !opts?.automationSource && !opts?.unattended,
         userName: userNameFor(threadId),
@@ -9124,10 +9148,6 @@ routines = new RoutineManager({
   },
   cancelWorkflow: (runId, reason) => { workflows.engine.cancel(runId, reason); },
   workflowState: (workflowId) => workflowId && workflows.store.workflow(workflowId) ? "ready" : "missing",
-  workflowStartsWithManual: (workflowId) => {
-    const definition = workflowId ? workflows.store.workflow(workflowId) : undefined;
-    return definition !== undefined && workflowStartsManual(definition);
-  },
   workflowRunState: (runId) => {
     const run = runId ? workflows.store.readRun(runId) : undefined;
     return run ? { status: run.status, ...(run.error === undefined ? {} : { error: run.error }) } : undefined;
@@ -13482,6 +13502,7 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
           throw Object.assign(new Error(TURN_ENDED_REFUSAL), { status: 401 });
         }
       };
+      if (await workflows.proposalInternal({ method, path, res, json, readBody: readInternalBody, botId: internalSender.id, threadId: internalCapability.threadId, department: internalSender.section?.trim() || "General" }) !== PASS) return;
       if (await workflows.internal({ method, path, res, json, readBody: readInternalBody, botId: internalSender.id, threadId: internalCapability.threadId }) !== PASS) return;
       const botFolders = async () => ({ roots: messageFileRootsForThread(internalSender.id, internalCapability.threadId).filter((root) => root !== ATTACHMENTS_DIR), vmWorkspace: (await attachmentVmForTurn(internalCapability))?.workspaceDir ?? null }); if (await internalToolRoutes({ method, path, res, json, botId: internalSender.id, readBody: readInternalBody, folders: botFolders }) !== PASS || await waitRoutes({ method, path, res, json, botId: internalSender.id, threadId: internalCapability.threadId, readBody: readInternalBody, ...waitTurnChecks(internalCapability, internalSender) }) !== PASS) return; const pagesCall = new AbortController(); res.once("close", () => { if (!res.writableEnded) pagesCall.abort(); }); if (await publishedPages.internal({ method, path, res, json, botId: internalSender.id, threadId: internalCapability.threadId, readBody: readInternalBody, requireActive: requireActiveInternalCapability, signal: pagesCall.signal, folders: botFolders, post: (text, publishedPage, bundle) => { const source = connectorThread(internalSender.id, internalCapability.threadId); return !source ? null : (!source.group && bundle && publishedPages.show({ threadId: internalCapability.threadId, card: publishedPage, bundle })) || store.appendMessage(internalCapability.threadId, { role: "bot", kind: "text", text, publishedPage, ...(source.group ? { from: { botId: internalSender.id, name: internalSender.name, color: internalSender.color } } : {}) }).id; } }) !== PASS) return;
       const delegatedThisTurn = (taskId: string) => {

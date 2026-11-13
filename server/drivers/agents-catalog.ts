@@ -3,6 +3,7 @@ import { CREDENTIAL_TARGETS } from "../../shared/credential-request.ts";
 import { OPTIONS_CARD_LIMITS, WATCHER_OPTIONS_CARD_BOT_ID } from "../../shared/options-card.ts";
 import { agentToolAnnotations } from "../agent-tool-policy.ts";
 import { CHAT_CARD_TOOL_DEFINITIONS } from "./agents-chat-card-tools.ts";
+import { WORKFLOW_PROPOSAL_TOOL_DEFINITIONS } from "./agents-workflow-proposal-tools.ts";
 import { HELPER_TOOL_DEFINITIONS } from "./agents-helper-tools.ts";
 import { WAIT_TOOL_DEFINITIONS, WAIT_TOOL_NAMES } from "./agents-wait-tools.ts";
 import { MAUSBOT_TOOL_DEFINITIONS } from "./agents-mausbot-tools.ts";
@@ -868,6 +869,12 @@ const TOOL_DEFINITIONS = [
       properties: {
         workflow_id: { type: "string", minLength: 1, maxLength: 64, description: "The Workflow id from list_workflows." },
         version: { type: "integer", minimum: 1, description: "Optional definition version; omit for the latest." },
+        inputs: {
+          type: "object",
+          additionalProperties: true,
+          description: "The flat parameter map. Use only the names list_workflows shows; if the answer is needs_input, ask for what it names.",
+        },
+        request_id: { type: "string", minLength: 1, maxLength: 200, description: "Optional idempotency key for this request." },
       },
       required: ["workflow_id"],
     },
@@ -896,6 +903,7 @@ const TOOL_DEFINITIONS = [
       required: ["run_id"],
     },
   },
+  ...WORKFLOW_PROPOSAL_TOOL_DEFINITIONS,
 ].map((tool) => {
   const annotations = agentToolAnnotations(tool.name);
   return annotations ? { ...tool, annotations } : tool;

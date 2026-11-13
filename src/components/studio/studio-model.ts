@@ -214,12 +214,12 @@ export function createStep(
   const step: WorkflowStep = kind === "agent"
     ? {
       id, kind: "bot", name: baseName, botId: botId ?? FALLBACK_BOT, timeoutMs: 0, mode: "auto",
-      instructions: DEFAULT_INSTRUCTIONS, inputs: [], outputs: structuredClone(DEFAULT_OUTPUTS), result: "result.json",
+      instructions: DEFAULT_INSTRUCTIONS, inputs: [], parameters: [], outputs: structuredClone(DEFAULT_OUTPUTS), result: "result.json",
     }
     : kind === "script"
       ? {
         id, kind: "script", name: baseName, run: `${id}.mjs`, timeoutMs: 60_000, mode: "auto",
-        inputs: [], outputs: structuredClone(DEFAULT_OUTPUTS), result: "result.json",
+        inputs: [], parameters: [], outputs: structuredClone(DEFAULT_OUTPUTS), result: "result.json",
       }
       : kind === "condition"
         ? { id, kind: "condition", name: baseName, from: "", match: "all", conditions: [{ field: "ok", op: "equals", value: true }] }
