@@ -1,4 +1,4 @@
-import { RELEASE_NOTES, type LocalizedReleaseNotes, type ReleaseNotes } from "@/lib/release-notes";
+import { RELEASES, type LocalizedReleaseNotes, type Release, type ReleaseNotes } from "@/lib/release-notes";
 
 export const WHATS_NEW_SEEN_KEY = "whats-new-seen-version";
 
@@ -16,32 +16,43 @@ export function compareVersions(left: string, right: string): number {
   return 0;
 }
 
-/** Every version after `lastSeen` up to `current` merged, newest first; only `current` when nothing was seen before. Each version reads in `locale` when it has that text and in English otherwise. */
-export function notesSince(
-  lastSeen: string | null,
-  current: string,
-  notes: Record<string, LocalizedReleaseNotes> = RELEASE_NOTES,
-  locale = "en",
-): ReleaseNotes | null {
-  const versions = Object.keys(notes)
-    .filter((version) => compareVersions(version, current) <= 0 && (lastSeen === null ? version === current : compareVersions(version, lastSeen) > 0))
-    .sort((left, right) => compareVersions(right, left));
-  const read = (version: string) => notes[version]![locale] ?? notes[version]!.en;
-  const features = versions.flatMap((version) => read(version).features);
-  const fixes = versions.flatMap((version) => read(version).fixes);
-  return features.length || fixes.length ? { features, fixes } : null;
+/** The notes for `version` alone, never merged with other releases; in `locale` when that file has it and in English otherwise. Null when the version shipped no file or an empty one. */
+export function notesFor(version: string, locale = "en", releases: Record<string, Release> = RELEASES): ReleaseNotes | null {
+  const release = releases[version];
+  if (!release) return null;
+  const notes = localized(release.notes, locale);
+  return notes.features.length || notes.fixes.length ? notes : null;
 }
 
-export type WhatsNewDecision = { kind: "none" } | { kind: "baseline" } | { kind: "show"; notes: ReleaseNotes };
+/** The release's own text for `locale`, a lone regional variant of it (pt → pt-br), or English. */
+function localized(notes: LocalizedReleaseNotes, locale: string): ReleaseNotes {
+  const exact = notes[locale];
+  if (exact) return exact;
+  const base = locale.split("-")[0]!;
+  const regional = Object.keys(notes).filter((key) => key.split("-")[0] === base);
+  return (regional.length === 1 ? notes[regional[0]!] : undefined) ?? notes.en;
+}
+
+export type WhatsNewDecision =
+  | { kind: "none" }
+  | { kind: "baseline" }
+  | { kind: "show"; version: string; date: string; notes: ReleaseNotes };
 
 /** A fresh install (not onboarded, nothing seen) and a downgrade only record the version; the screen is for people updating. */
-export function whatsNewDecision(input: { lastSeen: string | null; current: string; onboarded: boolean; locale?: string }): WhatsNewDecision {
-  const { lastSeen, current, onboarded, locale } = input;
+export function whatsNewDecision(input: {
+  lastSeen: string | null;
+  current: string;
+  onboarded: boolean;
+  locale?: string;
+  releases?: Record<string, Release>;
+}): WhatsNewDecision {
+  const { lastSeen, current, onboarded, locale = "en", releases = RELEASES } = input;
   if (!parseVersion(current) || lastSeen === current) return { kind: "none" };
   if (lastSeen === null && !onboarded) return { kind: "baseline" };
   if (lastSeen !== null && compareVersions(lastSeen, current) > 0) return { kind: "baseline" };
-  const notes = notesSince(lastSeen, current, RELEASE_NOTES, locale);
-  return notes ? { kind: "show", notes } : { kind: "baseline" };
+  const release = releases[current];
+  const notes = notesFor(current, locale, releases);
+  return release && notes ? { kind: "show", version: current, date: release.date, notes } : { kind: "baseline" };
 }
 
 export function readSeenVersion(): string | null {

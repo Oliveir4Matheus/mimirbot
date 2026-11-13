@@ -26,6 +26,16 @@ rule that guards correctness; fix the code.
 
 More specific `AGENTS.md` files override this note within their directories.
 
+## What's new notes
+
+Every version bump ships its notes in `src/releases/<version>.ts` (for example
+`src/releases/0.1.168.ts`), exporting the localized notes for that version with
+`en` required and other locales optional. The What's new dialog reads only the
+file for the version that is running: it never merges notes from earlier
+versions, and an update with no file for its version shows nothing. Never raise
+`version` without its notes file: the bump and the notes ship in the same
+change, and the notes only describe what that version actually shipped.
+
 ## Shipping an approved change
 
 Any change the owner approves ships to GitHub through the in-app updater, so
