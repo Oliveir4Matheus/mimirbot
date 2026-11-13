@@ -574,7 +574,6 @@ export function EventEditor({
     name.trim()
     && (kind === "call" || description.trim() || isWorkflow)
     && (!isWorkflow || Boolean(workflowId))
-    && !workflowStartsManual
     && (!lockedBotId || botIds[0] === lockedBotId)
     && (kind === "call"
       ? botIds.length > 0

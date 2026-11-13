@@ -4310,7 +4310,7 @@
   "routines.editor.workflowTaskHelp": "Inicia uma run do Workflow no horário agendado.",
   "routines.editor.chooseWorkflow": "Escolha um Workflow",
   "routines.editor.workflowInstructions": "Este gatilho inicia o Workflow como ele está salvo. Cada etapa mantém o próprio bot e as próprias instruções.",
-  "routines.editor.workflowManualFirst": "Este Workflow começa com uma etapa Manual, então uma rotina não pode iniciá-lo. Escolha outro Workflow ou mude a primeira etapa.",
+  "routines.editor.workflowManualFirst": "Este Workflow começa com uma etapa Manual: a rotina cria a run parada e alguém precisa clicar Continuar.",
   "routines.editor.workflowOwnerHelp": "Este bot é dono do gatilho; cada etapa do Workflow roda com o próprio bot.",
   "routines.editor.workflowsUnavailable": "Não foi possível carregar os Workflows.",
   "routines.editor.goalWhere": "Onde roda",

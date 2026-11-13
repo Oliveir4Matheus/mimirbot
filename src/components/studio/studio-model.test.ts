@@ -325,6 +325,31 @@ describe("Do While in the Studio", () => {
     expect(draftProblem(created.draft, new Set())).toEqual({ key: "studio.loop.needBody", params: { name: expect.any(String) } });
   });
 
+  it("accepts a body step reading a required output from an earlier top-level step", () => {
+    let draft = { ...newDraft("Financeiro"), name: "Lote" };
+    const top = createStep(draft, "script", { x: 120, y: 120 });
+    draft = top.draft;
+    const created = createStep(draft, "loop", { x: 500, y: 300 });
+    draft = created.draft;
+    let body = bodyDraft(draft, created.stepId)!;
+    const bodyStep = createStep(body, "script", { x: 120, y: 120 });
+    body = bodyStep.draft;
+    body = {
+      ...body,
+      steps: body.steps.map((step) => step.id === bodyStep.stepId
+        ? { ...step, inputs: [{ as: "x.csv", from: { step: top.stepId, output: "result.json" } }] }
+        : step),
+    };
+    draft = withBodyDraft(draft, created.stepId, body);
+    draft = {
+      ...draft,
+      steps: draft.steps.map((step) => step.id === created.stepId && step.kind === "loop"
+        ? { ...step, from: bodyStep.stepId, outputs: [{ path: "result.json", required: true }], result: "result.json" }
+        : step),
+    };
+    expect(draftProblem(draft, new Set())).toBeUndefined();
+  });
+
   it("edits the body through the same draft model and saves a valid definition", () => {
     const { draft, loopId, bodyId } = withLoop();
     expect(draftProblem(draft, new Set(["bot-a"]))).toBeUndefined();

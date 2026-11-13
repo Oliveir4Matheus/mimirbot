@@ -732,8 +732,10 @@ export function draftProblem(draft: StudioDraft, botIds: ReadonlySet<string>, sk
         const bodySource = bodyIndex >= 0 ? step.body[bodyIndex] : undefined;
         const topIndex = draft.steps.findIndex((candidate) => candidate.id === input.from.step);
         const topSource = topIndex >= 0 && topIndex < draft.steps.indexOf(step) ? draft.steps[topIndex] : undefined;
-        const output = bodySource?.kind !== "condition"
-          ? (bodySource?.outputs ?? []).find((entry) => entry.path === input.from.output)
+        const output = bodySource !== undefined
+          ? bodySource.kind !== "condition"
+            ? bodySource.outputs.find((entry) => entry.path === input.from.output)
+            : undefined
           : topSource !== undefined && topSource.kind !== "condition" && topSource.kind !== "loop"
             ? topSource.outputs.find((entry) => entry.path === input.from.output)
             : undefined;

@@ -4638,7 +4638,7 @@
   "routines.editor.workflowTaskHelp": "Starts a Workflow run at the scheduled time.",
   "routines.editor.chooseWorkflow": "Choose a Workflow",
   "routines.editor.workflowInstructions": "This trigger starts the Workflow as it is saved. Each step keeps its own bot and instructions.",
-  "routines.editor.workflowManualFirst": "This Workflow starts with a Manual step, so a routine cannot start it. Choose another Workflow or change the first step.",
+  "routines.editor.workflowManualFirst": "This Workflow starts with a Manual step: the routine creates the run parked, and a person must choose Continue.",
   "routines.editor.workflowOwnerHelp": "This bot owns the trigger; each Workflow step runs with its own bot.",
   "routines.editor.workflowsUnavailable": "Could not load Workflows.",
   "routines.editor.goalWhere": "Where it runs",
