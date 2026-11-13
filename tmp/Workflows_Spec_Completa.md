@@ -3429,3 +3429,180 @@ Este documento descreve **a interface e o comportamento observável**. Não dete
 - **Seletor de associação das notas:** `Workflow_Studio_v05_vinculos.png`.
 
 **Critério final de aprovação:** a UI recriada deve ser visualmente equivalente à versão 0.5 e reproduzir os comportamentos de arraste, configuração, conexão, Markdown e agrupamento descritos aqui, **sem acrescentar funcionalidades ou decisões de arquitetura**.
+
+---
+
+## 28. Workflow a partir da conversa — implementação (13/11/2026)
+
+**Estado:** implementado na branch `feat/workflow-f1`, commit `a2bf68094`.
+**Fonte de produto:** `docs/superpowers/specs/2026-11-12-workflow-a-partir-da-conversa.html`.
+**Verificação:** `docs/verification/workflow-proposal.md`.
+
+### 23.1 Proposta e criação
+
+- Rascunho em `workflow-proposals.json`, separado de `workflows.json`; não
+  entra na lista de Workflows, não cria run e não dispara rotina.
+- Ferramentas do bot: `propose_workflow` (entrevista + definição + scripts),
+  `create_workflow_from_proposal` (“sim”) e `archive_workflow_proposal`
+  (“Agora não”).
+- Cartão no chat com **Criar Workflow / Agora não**; a aba **Propostas** lista
+  as arquivadas e permite prévia, criação, exclusão e abertura no Studio.
+- Entrevista: uma tarefa pontual não é Workflow; “não sei” vira suposição.
+- Criação aplica o portão: a primeira etapa executável nasce `mode: "manual"`.
+
+### 23.2 Prévia, ensaio e revisão
+
+- Prévia com Input, Process, Output e Proof por etapa, mapa, suposições,
+  anotações por etapa, código do script e avisos estáticos não bloqueantes.
+- Ensaio de scripts em pasta descartável, com `inputs`, `files` e `expected`;
+  bot/condição/loop ficam **não testados**.
+- Anotação por etapa e rodadas; após três rodadas, refazer do zero ou abrir no
+  editor.
+- Hash de aprovação cobre definição + scripts; mudar um byte invalida a
+  criação até nova revisão.
+
+### 23.3 Parâmetros e execução
+
+- `parameters` por etapa (string, number, integer, boolean, date, enum),
+  `required`, `whenAbsent: rule:<name>` e validação de nomes duplicados/tipos
+  conflitantes.
+- `run_workflow(inputs, request_id)`: mapa plano, união dos parâmetros,
+  resposta `needs_input` com `missing`, `invalid`, `unknown` e `allowed` antes
+  de criar a run.
+- Cada etapa recebe somente seu subconjunto em `input/params.json`.
+- Rotina com Workflow: agenda, cria a run e, se a primeira etapa for manual,
+  para em `waiting_manual`; **Continuar** libera. Parâmetros obrigatórios não
+  têm fonte na rotina e falham com `needs_input`.
+- Memória da etapa vazia: sem `MEMORY.md`, memória da equipe, recentes, recall
+  automático ou ferramentas de memória; persona/SOUL/skills continuam.
+
+### 23.4 Brief da etapa
+
+`stepBrief` é um contrato compacto em inglês, gerado por
+`server/workflows/brief.ts` e enviado no início de toda etapa de bot:
+
+```text
+WORKFLOW "..." · STEP N/M "..."
+TASK
+<instructions>
+CONTRACT v1
+INPUT ...
+PARAMS ...        (quando houver)
+OUTPUT ...
+RULES read input/, write only output/, end turn; approval=request card(request_credential), show_widget does not pause; engine verifies outputs.
+```
+
+`show_widget` não tem `requestId` e não pausa; confirmação usa cartão de
+requisição, que grava `waiting_approval` e retoma a mesma run.
+
+### 23.5 Verificação
+
+- Unitários: schema, parâmetros, aprovação, prévia, brief, store, ensaio.
+- Integração: motor, rotas, host, rotinas, ferramentas e cartão.
+- E2E: QA-A 10/10, QA-B 8/8, QA-C 10 PASS / 0 FAIL / 2 N/A; QA real com
+  `opencode/deepseek-v4.1-flash-free` 14 PASS / 1 FAIL / 1 N/A. Vídeos em
+  `tmp/qa-e2e/`.
+- `pnpm typecheck`, `pnpm lint` e `pnpm i18n:check` passam.
+
+### 23.6 Lacunas conhecidas
+
+- Prévia não expande o corpo do Do While com Process/Proof/código próprios.
+- Rotina não tem fonte de parâmetros obrigatórios.
+- Webhook/app event não oferecem alvo Workflow.
+- A lista de automações pode rotular como “Concluída” uma run de rotina que
+  falhou.
+
+---
+
+## 29. Mapa de arquivos da feature (13/11/2026)
+
+Alcance: `git diff --name-status 85ea992fe..HEAD`, ou seja, os commits
+`73e4a6024`, `1d766a53d`, `b1743d79d`, `fdf985b06`, `705e3f25d`, `7a6540d97`
+e `a2bf68094` — **não** a branch inteira contra a `main`. A coluna **Fatia** usa a numeração do
+produto: 1 proposta, 2 prévia, 3 parâmetros, 4 portão/memória/hash/ensaio,
+5 ensaio, 6 anotação/escada; **suporte** é o que apenas liga, testa ou
+documenta essas fatias. Este 29 pertence ao bloco de implementação aberto na
+seção 28; o `## 24. Critérios de aceitação` do bloco de UI, mais acima,
+continua valendo no escopo dele.
+
+São 55 arquivos: 19 novos (A) e 36 modificados (M).
+
+| Categoria | St | Arquivo | Propósito | Fatia |
+| --- | --- | --- | --- | --- |
+| contrato/shared | M | `shared/wire.ts` | Campo `workflowProposal` no cartão de opções. | 1 |
+| contrato/shared | M | `shared/workflow.ts` | Schema de `parameters` por etapa, tipos, `required` e `whenAbsent`. | 3 |
+| contrato/shared | A | `shared/workflow-proposal.ts` | Schema, avaliação e escada de status da proposta. | 1 |
+| contrato/shared | A | `shared/workflow-proposal-preview.ts` | Deriva Input/Process/Output/Proof da definição. | 2 |
+| motor | A | `server/workflows/approval.ts` | Hash de aprovação sobre definição + scripts + parâmetros. | 4 |
+| motor | A | `server/workflows/proposals.ts` | Store de `workflow-proposals.json`; criar/arquivar sem tocar `workflows.json`. | 1 |
+| motor | A | `server/workflows/parameters.ts` | Valida o mapa plano e devolve `missing`/`invalid`/`unknown`. | 3 |
+| motor | A | `server/workflows/rehearsal.ts` | Roda scripts em pasta descartável e compara bytes. | 5 |
+| motor | M | `server/workflows/brief.ts` | Brief compacto em inglês, com linha `PARAMS` e regra de aprovação. | suporte |
+| motor | M | `server/workflows/engine.ts` | `start` aceita `inputs`/`requestId` e devolve `needsInput`. | 3 |
+| motor | M | `server/workflows/files.ts` | Escreve o subconjunto da etapa em `input/params.json`. | 3 |
+| motor | M | `server/workflows/state.ts` | Persiste `inputs` e `requestId` na run. | 3 |
+| motor | M | `server/workflows/store.ts` | Repassa `inputs`/`requestId` da criação para a run. | 3 |
+| rotas/host | A | `server/routes/workflow-proposals.ts` | Rotas admin e internas de proposta, ensaio e criação. | 1 |
+| rotas/host | M | `server/routes/workflows.ts` | `inputs`/`request_id` no start e 400 com `needs_input`. | 3 |
+| rotas/host | M | `server/host/workflows.ts` | Monta o store/rotas de proposta e o gancho do cartão. | 1 |
+| rotas/host | M | `server/index.ts` | Cartão “Criar Workflow / Agora não” e `memoryDisabled` na etapa. | 4 |
+| rotas/host | M | `server/routines.ts` | Remove o bloqueio de rotina cujo Workflow começa manual. | 4 |
+| rotas/host | M | `server/agents-turn.ts` | `memoryDisabled` desliga `OMB_MEMORY_ENABLED` no turno. | 4 |
+| ferramentas do bot | A | `server/drivers/agents-workflow-proposal-tools.ts` | `propose_workflow`, `create_workflow_from_proposal`, `archive_workflow_proposal`. | 1 |
+| ferramentas do bot | M | `server/drivers/agents-call.ts` | `run_workflow` envia `inputs`/`request_id`; lista mostra parâmetros. | 3 |
+| ferramentas do bot | M | `server/drivers/agents-catalog.ts` | Registra as ferramentas e o schema de `inputs`. | suporte |
+| UI | A | `src/components/workflows/ProposalPreview.tsx` | Prévia por etapa, mapa, suposições, código e avisos. | 2 |
+| UI | A | `src/components/workflows/ProposalsPage.tsx` | Aba Propostas: listar, prévia, anotar, criar, excluir, Studio. | 6 |
+| UI | M | `src/components/workflows/PanelMenu.tsx` | Entrada “Propostas” no menu do painel. | 6 |
+| UI | M | `src/components/WorkflowsPage.tsx` | Abre a `ProposalsPage` e leva o Workflow criado ao Studio. | 6 |
+| UI | M | `src/components/OptionCard.tsx` | Cartão de proposta com resumo e dica, sem expirar. | 1 |
+| UI | M | `src/components/RoutineCalendarPage.tsx` | Remove o aviso que impedia rotina com primeira etapa manual. | 4 |
+| UI | M | `src/components/studio/studio-model.ts` | `parameters: []` por padrão e saída de loop sem corpo. | suporte |
+| UI | M | `src/lib/workflows-api.ts` | Cliente HTTP de listar/ler/criar/arquivar/excluir/ensaiar proposta. | 1 |
+| UI | M | `src/state/store.tsx` | Propaga `workflowProposal` no cartão persistido. | 1 |
+| locales | M | `src/locales/en.json` | Textos de proposta, prévia e escada. | suporte |
+| locales | M | `src/locales/pt-br.json` | Mesmos textos em português. | suporte |
+| locales | M | `src/locales/source-hashes.json` | Hashes das chaves traduzidas. | suporte |
+| testes | M | `server/agent-tool-policy.test.ts` | Política de uso das ferramentas de proposta. | 1 |
+| testes | A | `server/drivers/agents-call-proposal.test.ts` | Chamadas reais do driver para proposta e `run_workflow`. | 1 |
+| testes | M | `server/drivers/agents-proxy.test.ts` | Proxy não perde as ferramentas novas. | suporte |
+| testes | A | `server/routes/workflow-proposals.test.ts` | Rotas de proposta, criação, ensaio e escopo interno. | 1 |
+| testes | M | `server/routines.test.ts` | Rotina agenda e para em `waiting_manual`; sem bloqueio. | 4 |
+| testes | A | `server/workflows/approval.test.ts` | Hash muda com definição/script e ignora anotação. | 4 |
+| testes | M | `server/workflows/brief.test.ts` | Contrato do brief, incluindo `PARAMS` e `RULES`. | suporte |
+| testes | M | `server/workflows/files.test.ts` | `params.json` só com o subconjunto da etapa. | 3 |
+| testes | A | `server/workflows/parameters.test.ts` | `missing`/`invalid`/`unknown` e união entre etapas. | 3 |
+| testes | A | `server/workflows/proposals.test.ts` | Store de proposta, arquivamento e criação com etapa manual. | 1 |
+| testes | A | `server/workflows/rehearsal.test.ts` | Ensaio de script, `expected` e etapa não testada. | 5 |
+| testes | A | `shared/workflow-proposal.test.ts` | Schema e avaliação da proposta. | 1 |
+| testes | A | `shared/workflow-proposal-preview.test.ts` | Prévia derivada, tags e código do script. | 2 |
+| testes | M | `src/components/OptionCard.test.ts` | Cartão de proposta não expira e mostra resumo. | 1 |
+| testes | M | `src/components/studio/studio-model.test.ts` | Loop passa a preservar as entradas. | suporte |
+| docs/spec/verificação | M | `docs/routine-schedules.md` | Seção “Routines that start a Workflow”. | 4 |
+| docs/spec/verificação | M | `docs/superpowers/specs/2026-11-03-workflow-engine-design.md` | Brief, parâmetros, portão, prévia, ensaio e rodadas. | suporte |
+| docs/spec/verificação | M | `docs/verification/README.md` | Índice aponta o fixture de proposta. | suporte |
+| docs/spec/verificação | A | `docs/verification/workflow-proposal.md` | Receita isolada: rascunho, “Agora não” e criação manual. | suporte |
+| QA evidence | M | `tmp/progress.md` | Registro F3.4 e resultados de QA-A/B/C e do modelo real. | suporte |
+| docs/spec/verificação | M | `tmp/Workflows_Spec_Completa.md` | Este documento de trabalho (seções 23 e 24). | suporte |
+
+### 29.1 Onde está cada spec
+
+- **Canônicas, no lugar certo:** `docs/superpowers/specs/2026-11-03-workflow-engine-design.md`
+  (motor, atualizada com brief/portão/parâmetros) e
+  `docs/superpowers/specs/2026-11-12-workflow-a-partir-da-conversa.html`
+  (fonte de produto) estão em `docs/superpowers/specs/`.
+- **Receitas de verificação, no lugar certo:** `docs/verification/workflow-proposal.md`
+  está em `docs/verification/`, indexada pelo `docs/verification/README.md`.
+- **Docs de trabalho, em `tmp/` por decisão explícita:**
+  `tmp/Workflows_Spec_Completa.md` e `tmp/progress.md` são rascunhos de
+  acompanhamento, referenciados pelas specs canônicas
+  (`2026-11-03-workflow-engine-design.md`, `2026-11-09-workflow-f31-fixes.md`,
+  `2026-11-09-workflow-f32.md`) e pela receita
+  `docs/verification/workflow-impact-review-prompt.md`. Não são spec canônica.
+- **Correções aplicadas:**
+  1. `tmp/2026-11-03-workflow-engine-design.md` era uma cópia antiga da spec
+     canônica; foi removida para não ser lida como fonte.
+  2. `docs/superpowers/specs/2026-11-12-workflow-a-partir-da-conversa.html`,
+     a fonte de produto, foi adicionada ao git.
+  3. `docs/verification/workflow-impact-review-prompt.md`, que cita as seções
+     28 e 29 deste documento, também foi adicionado ao git.

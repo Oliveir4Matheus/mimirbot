@@ -352,7 +352,7 @@ Cloud/VM, notificação de script manual e ferramentas por etapa).
 
 ## F3.4 — Workflow a partir da conversa (fatias 1–6)
 
-**Estado:** implementado e verificado em 13/11/2026, commit `b1743d79d`.
+**Estado:** implementado e verificado em 13/11/2026, commit `a2bf68094`.
 
 - Proposta/rascunho em `workflow-proposals.json`, ferramentas
   `propose_workflow`, `create_workflow_from_proposal` e
@@ -364,6 +364,12 @@ Cloud/VM, notificação de script manual e ferramentas por etapa).
 - Portão de execução: primeira etapa sempre manual; rotina agenda, cria a run
   parada em `waiting_manual` e espera **Continuar**; memória vazia na conversa
   da etapa; hash de aprovação; ensaio de scripts em pasta descartável.
+- `stepBrief` compacto em inglês (`WORKFLOW/STEP/TASK/CONTRACT v1/INPUT/PARAMS/
+  OUTPUT/RULES`) com a regra de aprovação: cartão de requisição pausa,
+  `show_widget` não pausa.
+- Mapa de arquivos da feature na seção **29** de
+  `tmp/Workflows_Spec_Completa.md`; prompt de revisão de impacto em
+  `docs/verification/workflow-impact-review-prompt.md`.
 - QA E2E em fixture isolado, três fluxos, vídeos e evidências em
   `tmp/qa-e2e/qa-{a,b,c}/evidence/` (1600×720, app + painel de checklist).
   Resultados: A 10/10, B 8/8, C 10 PASS / 0 FAIL / 2 N/A.
@@ -381,7 +387,7 @@ Cloud/VM, notificação de script manual e ferramentas por etapa).
 
 1. **F3.2:** fatias 1 (Manual), 3 (Python/TypeScript), 4 (condição E/OU) e skills por etapa de agente concluídas. Falta só o **QA do canvas** (arraste de nota/container; minimapa fora da spec). A fatia 2 (ferramentas por etapa) foi adiada por decisão do dono e está registrada em `docs/superpowers/specs/2026-11-09-workflow-f32.md` §9.5. O snapshot de skills e a pendência do modo “all skills” estão no §9.6.
 2. **F3.2.1:** replay a partir de uma etapa — pegar uma run já terminada e criar uma execução nova começando em `fromStep`. Hoje não existe; "Rodar de novo" sempre começa do zero. Decisões em aberto no handoff da F3.2.
-3. **record→promote** (transformar uma conversa ou sequência que deu certo em Workflow) — pulado por decisão do dono nesta rodada.
+3. **record→promote** (transformar uma conversa ou sequência que deu certo em Workflow) — implementado na F3.4; a proposta, a prévia, os parâmetros, o ensaio e o portão manual estão na branch `feat/workflow-f1`.
 4. **Team Cloud/VM** (F3).
 
 O retry automático continua adiado: qualquer erro falha a execução de imediato, salvo quando a etapa declara `onFailure`.
