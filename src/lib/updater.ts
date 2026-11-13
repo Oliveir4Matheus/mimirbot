@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import type { UpdaterState } from "@/types/ogb";
+import type { UpdaterState, UpdateChannel } from "@/types/ogb";
 
-export type { UpdaterState };
+export type { UpdaterState, UpdateChannel };
 
 export function useUpdaterState(): UpdaterState | null {
   const [state, setState] = useState<UpdaterState | null>(null);

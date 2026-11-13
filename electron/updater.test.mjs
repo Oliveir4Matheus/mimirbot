@@ -149,7 +149,7 @@ function bridgeFor(origin, { clicked = false, rule = null } = {}) {
 
 it("My Cloud's page gets the update bridge, and it restarts the app only on the person's click", async () => {
   const local = bridgeFor(LOCAL);
-  expect(Object.keys(local.bridge.updater).sort()).toEqual(["check", "install", "onState"]);
+  expect(Object.keys(local.bridge.updater).sort()).toEqual(["check", "install", "onState", "setChannel"]);
   expect(local.asked, "this computer's page has the whole bridge without asking").toEqual([]);
   await local.bridge.updater.install();
   expect(local.invoked).toEqual([["update:install"]]);
@@ -157,7 +157,7 @@ it("My Cloud's page gets the update bridge, and it restarts the app only on the 
   const rule = mainRule();
   rule.show(page(CLOUD), "cloud");
   const cloud = bridgeFor(CLOUD, { rule });
-  expect(Object.keys(cloud.bridge.updater).sort()).toEqual(["check", "install", "onState"]);
+  expect(Object.keys(cloud.bridge.updater).sort()).toEqual(["check", "install", "onState", "setChannel"]);
   await expect(cloud.bridge.updater.install()).rejects.toThrow(/Restart to update/);
   await cloud.bridge.updater.check();
   cloud.bridge.updater.onState(() => {});
@@ -280,7 +280,7 @@ it("downloads an update by itself: the first check after launch starts it, and n
 it("My Cloud's page reads and drives the update channels, and another server's page is refused", async () => {
   const rule = mainRule();
   const { handlers } = await load(rule.pageAllowed);
-  expect([...handlers.keys()].sort()).toEqual(["update:check", "update:get-state", "update:install"]);
+  expect([...handlers.keys()].sort()).toEqual(["update:check", "update:get-state", "update:install", "update:set-channel"]);
 
   const cloud = page(CLOUD);
   rule.show(cloud, "cloud");
@@ -371,4 +371,38 @@ it("sends updater progress to a reopened window without restarting the updater",
     .toEqual(["checking", "downloading", "downloading", ...(process.platform === "darwin" ? ["preparing"] : []), "downloaded"]);
   expect(autoUpdater.eventNames().reduce((count, name) => count + autoUpdater.listenerCount(name), 0)).toBe(listenerCount);
   expect(vi.getTimerCount()).toBe(timerCount);
+});
+
+it("switching channel points the next check at that feed and is broadcast to the page", async () => {
+  const rule = mainRule();
+  const local = page(LOCAL);
+  rule.show(local);
+  const { updater, autoUpdater, handlers } = await load(rule.pageAllowed);
+  updater.attachUpdaterWindow(rule.window);
+  updater.startUpdater();
+  expect(autoUpdater.channel).toBe(null);
+  expect(autoUpdater.allowPrerelease).toBe(false);
+
+  await handlers.get("update:set-channel")(local.event, "beta");
+  await settle();
+  expect(autoUpdater.channel).toBe("beta");
+  expect(autoUpdater.allowPrerelease).toBe(true);
+  expect(autoUpdater.checkForUpdates).toHaveBeenCalledTimes(1);
+  expect(local.webContents.send.mock.calls.map(([, state]) => state.channel)).toContain("beta");
+  expect(handlers.get("update:get-state")(local.event)).toMatchObject({ channel: "beta" });
+
+  await handlers.get("update:set-channel")(local.event, "main");
+  await settle();
+  expect(autoUpdater.channel).toBe(null);
+  expect(autoUpdater.allowPrerelease).toBe(false);
+  expect(autoUpdater.checkForUpdates).toHaveBeenCalledTimes(2);
+});
+
+it("a server's page cannot choose another update channel", async () => {
+  const rule = mainRule();
+  const { handlers, autoUpdater } = await load(rule.pageAllowed);
+  const other = page(OTHER);
+  rule.show(other, "vps");
+  expect(() => handlers.get("update:set-channel")(other.event, "beta")).toThrow(/only available/);
+  expect(autoUpdater.allowPrerelease).toBeUndefined();
 });

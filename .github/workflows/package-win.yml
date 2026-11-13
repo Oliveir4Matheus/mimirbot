@@ -168,9 +168,13 @@ jobs:
           test -f "release/MimirBot-$v-setup.exe" || { echo "::error::no installer for $v"; exit 1; }
           test -f release/latest.yml || { echo "::error::no latest.yml — Windows would 404 on check"; exit 1; }
           cp "release/MimirBot-$v-setup.exe" release/MimirBot-setup.exe
-          gh release upload "$tag" \
-            "release/MimirBot-$v-setup.exe" \
-            release/MimirBot-setup.exe \
-            "release/MimirBot-$v-setup.exe.blockmap" \
-            release/latest.yml --clobber
+          files=(
+            "release/MimirBot-$v-setup.exe"
+            release/MimirBot-setup.exe
+            "release/MimirBot-$v-setup.exe.blockmap"
+            release/latest.yml
+          )
+          # A beta-channel Windows install asks for beta.yml; the same build writes both names.
+          case "$v" in *-*) node scripts/beta-channel-feed.mjs release; files+=(release/beta.yml) ;; esac
+          gh release upload "$tag" "${files[@]}" --clobber
           gh release view "$tag" --json url,isDraft --jq '"release \(.url) — draft: \(.isDraft)"'

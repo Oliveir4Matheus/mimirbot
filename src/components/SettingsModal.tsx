@@ -87,7 +87,7 @@ export const SECTIONS: Array<{
   icon: typeof User;
   keywords: string[];
 }> = [
-  { id: "general", group: "you", labelKey: "settings.section.general", icon: User, keywords: ["profile", "pinned panels", "web panel", "dashboard", "pin a page", "name", "email", "about me", "about", "suggestions", "suggested", "memory", "analytics", "updates", "product updates", "newsletter", "email updates", "effort", "new bots", "reasoning", "threads", "parallel", "concurrency", "cleanup", "retention", "event log", "event-log", "log size", "automatic recovery", "backup model", "fallback", "routines", "conversation", "schedule", "usage", "limit", "plan", "upgrade", "cloud desktop hours", "storage", "saved steps", "repeat", "replay", "computer tasks", "without ai", "forget"] },
+  { id: "general", group: "you", labelKey: "settings.section.general", icon: User, keywords: ["profile", "pinned panels", "web panel", "dashboard", "pin a page", "name", "email", "about me", "about", "suggestions", "suggested", "memory", "analytics", "updates", "update channel", "channel", "beta", "prerelease", "product updates", "newsletter", "email updates", "effort", "new bots", "reasoning", "threads", "parallel", "concurrency", "cleanup", "retention", "event log", "event-log", "log size", "automatic recovery", "backup model", "fallback", "routines", "conversation", "schedule", "usage", "limit", "plan", "upgrade", "cloud desktop hours", "storage", "saved steps", "repeat", "replay", "computer tasks", "without ai", "forget"] },
   { id: "appearance", group: "you", labelKey: "settings.section.appearance", icon: Palette, keywords: ["skin", "theme", "appearance", "chat width", "width", "wide", "full width", "bubble", "bubbles", "tools", "tool calls", "threads", "show threads", "hide threads", "sidebar", "density", "compact", "comfortable", "avatars", "display", "run", "this run", "run card", "commands", "notifications", "sound", "sounds", "mute", "silent", "chime", "pinned", "circles", "universal", "groups", "top", "send", "enter", "return", "shift+enter", "ctrl+enter", "cmd+enter", "⌘+enter", "new line", "keyboard", "ime", "japanese", "message color", "my messages", "toolbar", "tools layout", "footer", "routines", "triggers", "team map"] },
   { id: "companion", group: "you", labelKey: "settings.section.companion", icon: TabletSmartphone, keywords: ["companion", "device", "phone", "desktop", "client", "host", "pair", "pairing", "mobile", "https", "secure", "tailscale", "wifi", "remote", "advanced", "domain", "dns", "self-hosted", "server", "caddy"] },
   { id: "engines", group: "ai", labelKey: "settings.section.engines", icon: Terminal, keywords: ["models", "model providers", "engines", "claude", "codex", "grok", "providers", "cli", "sign in", "subscription"] },
@@ -159,6 +159,35 @@ function simplePageMatches(page: SimpleSettingsPage, query: string): boolean {
 export function sectionMatches(section: (typeof SECTIONS)[number], query: string): boolean {
   if (!query) return true;
   return [t(section.labelKey), ...section.keywords].some((part) => part.toLowerCase().includes(query));
+}
+
+export function UpdateChannelRow() {
+  const s = useUpdaterState();
+  const updater = window.ogb?.updater;
+  if (!s || !updater?.setChannel) return null;
+  const channel = s.channel ?? "main";
+  const switching = s.status === "downloading" || s.status === "preparing" || s.status === "installing";
+  return (
+    <SettingRow
+      title={t("settings.updates.channel.title")}
+      subtitle={t("settings.updates.channel.subtitle")}
+    >
+      <Select
+        size="sm"
+        className="w-full max-w-[240px]"
+        value={channel}
+        aria-label={t("settings.updates.channel.aria")}
+        disabled={switching}
+        onChange={(event) => {
+          const next = event.target.value === "beta" ? "beta" : "main";
+          if (next !== channel) void updater.setChannel(next);
+        }}
+      >
+        <option value="main">{t("settings.updates.channel.main")}</option>
+        <option value="beta">{t("settings.updates.channel.beta")}</option>
+      </Select>
+    </SettingRow>
+  );
 }
 
 export function UpdatesRow() {
@@ -700,6 +729,7 @@ export function SettingsModal() {
             <PinnedPanelsSettings />
 
             {!remoteActive && <ReplayTourRow />}
+            <UpdateChannelRow />
             <UpdatesRow />
             <DiagnosticsRow />
           </>

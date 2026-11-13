@@ -12,6 +12,8 @@ import {
 } from "./package-install-command.mjs";
 import { openBlankTerminal } from "./terminal-launch.mjs";
 import { createUpdaterCoordinator } from "./updater-coordinator.mjs";
+import { jsonFile } from "./desktop-prefs.mjs";
+import { applyUpdateChannel, createUpdateChannelStore, parseUpdateChannel } from "./update-channel.mjs";
 
 const require = createRequire(import.meta.url);
 
@@ -20,6 +22,8 @@ let win = null;
 let state = { status: "idle" };
 let updaterCoordinator = null;
 let pageAllowed = () => false;
+let channelStore = null;
+let channel = "main";
 
 function appendUpdaterLog(level, values) {
   try {
@@ -65,17 +69,35 @@ export function sendUpdaterState() {
 
 export function registerUpdaterIpc({ pageAllowed: allowed }) {
   pageAllowed = allowed;
-  const guarded = (channel, handler) => (event) => {
+  const guarded = (name, handler) => (event, ...args) => {
     if (!pageAllowed(event)) {
       // Recorded rather than dropped: a refused page sees no update at all, so the reason has to outlive the window.
-      appendUpdaterLog("warn", [`${channel} refused for ${event?.senderFrame?.url ?? "an unknown frame"}`]);
-      throw new Error(`${channel} is only available in this app's window`);
+      appendUpdaterLog("warn", [`${name} refused for ${event?.senderFrame?.url ?? "an unknown frame"}`]);
+      throw new Error(`${name} is only available in this app's window`);
     }
-    return handler();
+    return handler(...args);
   };
   ipcMain.handle("update:get-state", guarded("update:get-state", () => state));
   ipcMain.handle("update:check", guarded("update:check", () => updaterCoordinator?.check(true)));
   ipcMain.handle("update:install", guarded("update:install", () => updaterCoordinator?.install()));
+  ipcMain.handle("update:set-channel", guarded("update:set-channel", (next) => setChannel(next)));
+}
+
+/**
+ * The feed the person picked. A download already offered belongs to the feed they left, so it is
+ * dropped and the new feed is checked at once instead.
+ */
+function setChannel(value) {
+  const next = channelStore ? channelStore.set(value) : parseUpdateChannel(value);
+  if (next === channel) return state;
+  channel = next;
+  setState({ channel });
+  if (!autoUpdater) return state;
+  applyUpdateChannel(autoUpdater, channel);
+  autoUpdater.logger?.info?.(`update channel=${channel}`);
+  if (updaterCoordinator?.reset() === false) return state;
+  void updaterCoordinator?.check(true);
+  return state;
 }
 
 // macOS keeps the process (and updater) alive after its window closes, so each new window is retargeted here.
@@ -84,6 +106,9 @@ export function attachUpdaterWindow(mainWindow) {
 }
 
 export function startUpdater() {
+  channelStore ??= createUpdateChannelStore(jsonFile(join(app.getPath("userData"), "update-channel.json")));
+  channel = channelStore.get();
+  setState({ channel });
   if (!app.isPackaged) {
     updaterCoordinator = null;
     setState({ status: "idle" });
@@ -99,6 +124,8 @@ export function startUpdater() {
   // The coordinator starts each download itself, so it owns macOS staging and quiet failures.
   autoUpdater.autoDownload = false;
   autoUpdater.logger = updaterLogger();
+  applyUpdateChannel(autoUpdater, channel);
+  autoUpdater.logger.info(`update channel=${channel}`);
 
   // Broadcast the install flavour before the first check so the banner never offers a restart it cannot deliver.
   const packageType = linuxPackageType({ readMarker: (file) => (existsSync(file) ? readFileSync(file, "utf8") : null) });
