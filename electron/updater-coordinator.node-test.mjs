@@ -833,3 +833,44 @@ test("the check-failure notice stays up while the next hourly check runs, and a 
   await h.coordinator.check(true);
   assert.deepEqual(h.states.slice(before).map((entry) => entry.status), ["checking", "idle"]);
 });
+
+test("reset forgets a staged update, so the channel the person left offers nothing", async () => {
+  const h = harness();
+  await downloadInto(h);
+  assert.equal(h.getState().status, "downloaded");
+
+  assert.equal(h.coordinator.reset(), true);
+  assert.deepEqual(h.getState(), { status: "idle", version: undefined, releaseNotes: undefined, percent: undefined, message: undefined, retryable: undefined, command: undefined, terminalOpened: undefined });
+
+  h.updater.checkForUpdates = async () => {
+    h.updater.emit("checking-for-update");
+    h.updater.emit("update-not-available", {});
+  };
+  await h.coordinator.check();
+  assert.equal(h.getState().status, "idle");
+});
+
+test("a download that finishes after reset never becomes the new channel's update", async () => {
+  const h = harness();
+  const pending = deferred();
+  h.updater.downloadUpdate = () => pending.promise.then(() => {
+    h.updater.emit("update-downloaded", { version: "2.0.0" });
+    return ["/tmp/MimirBot-2.0.0-amd64.deb"];
+  });
+  await found(h);
+  assert.equal(h.getState().status, "downloading");
+
+  h.coordinator.reset();
+  pending.resolve();
+  await settle();
+  assert.equal(h.getState().status, "idle");
+  assert.equal(h.getState().version, undefined);
+});
+
+test("reset leaves an install already under way alone", async () => {
+  const h = harness({ handOffInstall: () => new Promise(() => {}) });
+  await downloadInto(h);
+  h.coordinator.install();
+  assert.equal(h.coordinator.reset(), false);
+  assert.equal(h.getState().status, "installing");
+});

@@ -276,6 +276,9 @@ const bridge = {
     check: () => ipcRenderer.invoke("update:check"),
     install: () => isLocalPage || navigator.userActivation?.isActive === true
       ? ipcRenderer.invoke("update:install") : Promise.reject(new Error("Choose Restart to update.")),
+    setChannel: channel => isLocalPage || navigator.userActivation?.isActive === true
+      ? ipcRenderer.invoke("update:set-channel", channel === "beta" ? "beta" : "main")
+      : Promise.reject(new Error("Choose the update channel you want.")),
     onState: (cb) => {
       ipcRenderer
         .invoke("update:get-state")

@@ -145,6 +145,9 @@ export function createUpdaterCoordinator(updater, setState, { handOffInstall = n
   });
   updater.on("update-downloaded", (info) => {
     if (recoveryRequired || installOperation) return;
+    // The coordinator starts every download itself (autoDownload is off); one that arrives with no
+    // download in progress belongs to the feed the person just left.
+    if (!downloadOperation && !nativeStaging) return;
       // On macOS electron-updater emits this before Squirrel.Mac finishes staging; the vendor patch resolves downloadUpdate on the native ready event.
     if (downloadOperation) {
       downloadOperation.downloadedInfo = info;
@@ -214,7 +217,9 @@ export function createUpdaterCoordinator(updater, setState, { handOffInstall = n
             setState({ status: "downloaded", version });
           }
         })
-        .catch((error) => handleRejectedOperation(operation.manual, error))
+        .catch((error) => {
+          if (!operation.failed) handleRejectedOperation(operation.manual, error);
+        })
         .finally(() => {
           clearTimeout(operation.timer);
           if (downloadOperation === operation) downloadOperation = null;
@@ -270,5 +275,35 @@ export function createUpdaterCoordinator(updater, setState, { handOffInstall = n
       });
   }
 
-  return { check, install };
+  /**
+   * The person picked another release feed: forget whatever the old one offered, so nothing from
+   * it is installed under the new channel's name. An install already under way cannot be recalled.
+   */
+  function reset() {
+    if (installOperation) return false;
+    if (downloadOperation) {
+      downloadOperation.failed = true;
+      clearTimeout(downloadOperation.timer);
+      downloadOperation = null;
+    }
+    if (checkOperation) checkOperation.supersededByDownload = true;
+    checkOperation = null;
+    staged = null;
+    actionOwnsState = false;
+    quietFailures = 0;
+    downloadedFiles = null;
+    setState({
+      status: "idle",
+      version: undefined,
+      releaseNotes: undefined,
+      percent: undefined,
+      message: undefined,
+      retryable: undefined,
+      command: undefined,
+      terminalOpened: undefined,
+    });
+    return true;
+  }
+
+  return { check, install, reset };
 }
