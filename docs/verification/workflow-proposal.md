@@ -55,6 +55,32 @@ Use the printed URL and data directory.
 Keep `workflow-proposals.json`, `workflows.json`, the UI screenshots and the
 server log as evidence.
 
+## Routines and parameters
+
+A routine can target a Workflow created here. At the scheduled time the routine
+creates the run; because the first step is manual, the run lands in
+`waiting_manual` and waits for **Continuar** before copying files or opening a
+thread. The routine run mirrors **waiting**.
+
+A routine cannot supply required parameters. A scheduled Workflow must declare
+its parameters optional with `whenAbsent`, or leave them out; otherwise the
+start fails with `needs_input` and no run is created.
+
+## Preview, rehearsal, annotations and rounds
+
+The proposal detail opens a preview with Input, Process, Output and Proof per
+step, the step map, assumptions, per-step notes, “ver o que o programa faz” for
+scripts and non-blocking script warnings.
+
+The rehearsal runs script steps in a disposable folder with the example's
+`inputs` and `files`, compares the declared outputs byte for byte when
+`expected` is supplied, and marks bot or branch steps **not tested** instead of
+pretending they ran. The result is stored on the proposal.
+
+Each step can carry a note. **Registrar outra rodada** increments the review
+round; after three rounds the preview offers **Refazer do zero com o que
+aprendemos** and **Abrir no editor de Workflows**.
+
 ## What it does not prove
 
 - The bot's card answer is a normal chat message; the model must call

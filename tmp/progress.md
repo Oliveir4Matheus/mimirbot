@@ -234,12 +234,12 @@ Desvios deliberados do protótipo v0.5 nesta fatia:
 
 ### F3.2 — fatia 1: modo Manual por etapa (09/11/2026)
 
-- Contrato: `mode: "auto" | "manual"` (default `"auto"`) nas etapas `bot` e `script`; `condition` não tem modo. `workflowStartsManual` centraliza a regra usada pela rotina.
+- Contrato: `mode: "auto" | "manual"` (default `"auto"`) nas etapas `bot` e `script`; `condition` não tem modo. A primeira etapa manual é o portão de execução; a rotina agenda e cria a run parada.
 - Run: status `waiting_manual` e `hold: { step, since }` no `run.json`. `isActiveRun` inclui o estado, então retenção, `DELETE` de Workflow/run, cancelamento e polling da F2 o tratam como ativo.
 - Motor: `advance` para antes de copiar `input/` ou abrir thread quando a etapa é manual e não foi liberada; nenhum turno, thread ou script inicia antes do Continuar. `engine.resume` libera uma única vez (memória do processo) e segue o fluxo normal; dois cliques respondem 409. O reinício não retoma a run parada.
 - Timeout: a espera manual não consome o `timeoutMs`; o relógio só começa quando a etapa inicia, como na pausa de aprovação.
 - Rota: `POST /api/workflows/runs/:id/continue` (404 inexistente, 409 fora de `waiting_manual`), exposta por `server/host/workflows.ts` via `engine.resume`.
-- Rotina: `workflowStartsWithManual` bloqueia no editor e em `RoutineManager.create/update` (400); a run da rotina espelha `waiting` com `attention: "Waiting for you to continue"`.
+- Rotina: o editor aceita Workflow com primeira etapa manual; a rotina dispara no horário, mas a run nasce em `waiting_manual` (sem copiar `input/`, abrir thread ou rodar script) e espera **Continuar**. A run da rotina espelha `waiting` com `attention: "Waiting for you to continue"`. Workflow com parâmetros obrigatórios ainda falha em `needs_input`, porque a rotina não tem uma fonte de valores.
 - Studio: balão **Execução** ganha **Modo de execução** (Automático/Manual) para Agente e Script; `createStep` nasce `auto` e o save grava `mode`.
 - F2: bloco **Aguardando você continuar** (etapa, tempo parado, **Continuar**), ícone âmbar de pausa, status/detalhe, timeline com **Aguardando início**, painel com **Manual**, filtros/contadores e textos em `en.json`/`pt-br.json`.
 - Verificação: `pnpm typecheck`, `pnpm lint` e `pnpm i18n:check` passaram. Testes focados: `shared/workflow.test.ts`, `server/workflows/state.test.ts`, `engine.test.ts`, `retention.test.ts`, `server/routes/workflows.test.ts`, `server/routines.test.ts`, `src/components/studio/studio-model.test.ts` e `RoutineCalendarPage.simple.test.ts` — **360 testes** passaram.
