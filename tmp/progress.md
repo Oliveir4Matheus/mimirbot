@@ -350,6 +350,27 @@ Cloud/VM, notificação de script manual e ferramentas por etapa).
   `npm -v 11.19.1` e `pnpm 10.33.0`; isso também destravou os testes
   `happy-dom` do Studio.
 
+## F3.4 — Workflow a partir da conversa (fatias 1–6)
+
+**Estado:** implementado e verificado em 13/11/2026, commit `b1743d79d`.
+
+- Proposta/rascunho em `workflow-proposals.json`, ferramentas
+  `propose_workflow`, `create_workflow_from_proposal` e
+  `archive_workflow_proposal`, cartão no chat e aba **Propostas**.
+- Prévia com Input/Process/Output/Proof, mapa, suposições, anotações por etapa,
+  código do script, avisos não bloqueantes e rodadas (escada em 3).
+- Parâmetros por etapa, validação `missing`/`invalid`/`unknown`, `params.json`
+  por etapa e `inputs`/`request_id` em `run_workflow`.
+- Portão de execução: primeira etapa sempre manual; rotina agenda, cria a run
+  parada em `waiting_manual` e espera **Continuar**; memória vazia na conversa
+  da etapa; hash de aprovação; ensaio de scripts em pasta descartável.
+- QA E2E em fixture isolado, três fluxos, vídeos e evidências em
+  `tmp/qa-e2e/qa-{a,b,c}/evidence/` (1600×720, app + painel de checklist).
+  Resultados: A 10/10, B 8/8, C 10 PASS / 0 FAIL / 2 N/A.
+- Lacunas registradas: prévia não expande o corpo do Do While; rotina não tem
+  fonte de parâmetros obrigatórios; webhook/app event não têm alvo Workflow;
+  lista de automações pode rotular run de rotina falha como “Concluída”.
+
 ## Próximo passo
 
 1. **F3.2:** fatias 1 (Manual), 3 (Python/TypeScript), 4 (condição E/OU) e skills por etapa de agente concluídas. Falta só o **QA do canvas** (arraste de nota/container; minimapa fora da spec). A fatia 2 (ferramentas por etapa) foi adiada por decisão do dono e está registrada em `docs/superpowers/specs/2026-11-09-workflow-f32.md` §9.5. O snapshot de skills e a pendência do modo “all skills” estão no §9.6.

@@ -84,7 +84,11 @@ aprendemos** and **Abrir no editor de Workflows**.
 ## What it does not prove
 
 - The bot's card answer is a normal chat message; the model must call
-  `create_workflow_from_proposal`. This recipe uses the fake engine's scripted
-  calls, not a real provider's judgment.
-- The rehearsal (slice 5) and the preview modal (slice 2) are not covered.
-- The generated Workflow is not run here; the engine's own suite covers runs.
+  `create_workflow_from_proposal`. The QA recipes use the fake engine's scripted
+  calls, not a real provider's judgment about when to propose or start a run.
+- The preview shows the top-level steps; the body of a Do While is not expanded
+  with its own Process/Proof/code yet.
+- The rehearsal runs script steps only; bot and branch steps stay **not tested**.
+- A routine cannot supply required parameters, so only parameterless or
+  `whenAbsent` Workflows are schedulable.
+- Webhook and app-event triggers do not offer a Workflow target in this version.
