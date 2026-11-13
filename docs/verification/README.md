@@ -117,7 +117,8 @@ draft until the person says yes, then creates it with a manual first step.
 compare the feature files against the Workflow spec and the project's main
 branch. The
 [Workflow trigger fixture](workflow-trigger.md) starts a run from a routine and
-checks the trigger as its origin. The [Workflow script fixture](workflow-script.md)
+checks the trigger as its origin. The [Workflow loop fixture](workflow-loop.md) runs a Do While body and checks
+its iterations. The [Workflow script fixture](workflow-script.md)
 runs a real Node script step, follows its `when` branch and checks the skipped
 step and the run snapshot. The [Workflow Studio fixture](workflow-studio.md)
 saves a Workflow from the editor, runs a condition step that reads the previous

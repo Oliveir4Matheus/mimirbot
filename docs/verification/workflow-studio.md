@@ -54,14 +54,15 @@ const definition = {
     { name: "nao.mjs", content: nao },
   ],
 };
-const saved = await fetch(`${base}/api/workflows/${id}`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(definition) });
+const workflows = "/api/workflows";
+const saved = await fetch(`${base}${workflows}/${id}`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(definition) });
 if (!saved.ok) throw new Error(`save: ${saved.status} ${await saved.text()}`);
-const started = await fetch(`${base}/api/workflows/${id}/run`, { method: "POST", headers: { "content-type": "application/json" }, body: "{}" });
+const started = await fetch(`${base}${workflows}/${id}/run`, { method: "POST", headers: { "content-type": "application/json" }, body: "{}" });
 const { run } = await started.json();
 let current = run;
 for (let i = 0; i < 60; i += 1) {
   await new Promise((resolve) => setTimeout(resolve, 250));
-  current = (await (await fetch(`${base}/api/workflows/runs/${run.id}`)).json()).run;
+  current = (await (await fetch(`${base}${workflows}/runs/${run.id}`)).json()).run;
   if (["succeeded", "failed", "cancelled"].includes(current.status)) break;
 }
 console.log(JSON.stringify({ status: current.status, error: current.error, steps: current.steps.map((step) => [step.id, step.status]) }, null, 2));
@@ -163,7 +164,7 @@ the turn's `systemPrompt` is the evidence for the three origins.
    ```
 
    Repeat the template call for `fixture-own-b`. The options route must list
-   both: `GET /api/workflows/skill-options?botId=BOT_ID`.
+   both: the `skill-options` route with `?botId=BOT_ID`.
 
 2. Save one Workflow per case and run it, reading the dump after each terminal
    run:

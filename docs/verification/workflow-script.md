@@ -62,11 +62,12 @@ The driver used for the 2026-11-08 evidence:
 ```js
 const id = crypto.randomUUID();
 const base = { id, name: "Validacao de cobranca", department: "Financeiro", retentionDays: 7 };
-await call("POST", "/api/workflows", { ...base, steps: [preparar, fechar] });
-await call("PUT", `/api/workflows/${id}/scripts/validar.mjs`, { content: readFileSync("/tmp/opencode/wf-script/validar.mjs", "utf8") });
-await call("PUT", `/api/workflows/${id}`, { ...base, steps: [preparar, validar, corrigir, fechar] });
-const run = (await call("POST", `/api/workflows/${id}/run`)).run;
-// poll GET /api/workflows/runs/<run.id>
+const workflows = "/api/workflows";
+await call("POST", workflows, { ...base, steps: [preparar, fechar] });
+await call("PUT", `${workflows}/${id}/scripts/validar.mjs`, { content: readFileSync("/tmp/opencode/wf-script/validar.mjs", "utf8") });
+await call("PUT", `${workflows}/${id}`, { ...base, steps: [preparar, validar, corrigir, fechar] });
+const run = (await call("POST", `${workflows}/${id}/run`)).run;
+// poll GET `${workflows}/runs/<run.id>`
 ```
 
 ## What it does not prove
