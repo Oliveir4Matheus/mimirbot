@@ -2191,8 +2191,19 @@ function createWindow({ deferNavigation = false } = {}) {
                 });
               });
             }
+            const settleCapabilities = async () => {
+              const deadline = Date.now() + 10000;
+              for (;;) {
+                const capabilities = await window.ogb.getCapabilities();
+                const local = capabilities.localComputer;
+                if (local.available || (local.status !== "starting" && local.status !== "checking") || Date.now() >= deadline) {
+                  return capabilities;
+                }
+                await new Promise((resolve) => setTimeout(resolve, 150));
+              }
+            };
             const [initialCapabilities, healthResponse, ownerMutationResponse] = await Promise.all([
-              window.ogb.getCapabilities(),
+              settleCapabilities(),
               fetch("/api/health"),
               fetch("/api/auth/stream-ticket", { method: "POST" }),
             ]);
