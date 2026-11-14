@@ -6,8 +6,8 @@ const path = require("node:path");
 const STAGE_PREFIX = "openmausbot-cua-linux-x64-";
 const LEGACY_STAGE_GRACE_MS = 10 * 60 * 1000;
 const FILES = Object.freeze({
-  "cua-driver": "ed5844fadf07b9b72c4a3b3802e1c47233c166d66d6198608d5991f807aab4ac",
-  "cua-cursor-theme": "e589b2b7521bbfeaf9e2bfce668a38e80ed1b9790b1327b13d374fc331d8312a",
+  "cua-driver": "a8725010f2a01c9b2fbc9a6a6c256a5e15f1ea9e697ea81467ca6dc6d56ac46c",
+  "cua-cursor-theme": "ff85cf18817f0dbcbe2f55446a767ba60a9d2717c268579e526d278e9ec18562",
 });
 
 function sha256(file, fileSystem = fs) {
