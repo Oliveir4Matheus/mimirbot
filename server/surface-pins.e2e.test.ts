@@ -271,7 +271,7 @@ describe("surface pin provenance against the real server", () => {
     await stop();
   });
 
-  it("mounts the built-in browser beside the computer in a thread a teammate opened, and not in a person's thread", async () => {
+  it("mounts the built-in browser beside the computer in a person's thread and in a thread a teammate opened", async () => {
     await start(true);
     const { bot } = await apiOk("POST", "/api/bots", { name: "Delegated Browser Bot" });
     const [own, delegated] = (await Promise.all([
@@ -306,7 +306,7 @@ describe("surface pin provenance against the real server", () => {
       await start(true);
       const person = await turnIn(own.threadId);
       expect(person.computer?.args.some((arg: string) => arg.includes("container-mcp")), `${computer} person`).toBe(true);
-      expect(person.browser, `${computer} person`).toBeUndefined();
+      expect(person.browser, `${computer} person`).toBeDefined();
       const teammate = await turnIn(delegated.threadId);
       expect(teammate.computer?.args.some((arg: string) => arg.includes("container-mcp")), `${computer} teammate`).toBe(true);
       expect(teammate.browser, `${computer} teammate`).toBeDefined();
