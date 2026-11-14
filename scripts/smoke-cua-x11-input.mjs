@@ -221,7 +221,7 @@ try {
   proxy.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", method: "notifications/initialized" })}\n`);
   const listed = await rpc("tools/list");
   const toolNames = new Set(listed.tools.map(({ name }) => name));
-  for (const required of ["start_session", "click", "type_text"]) {
+  for (const required of ["start_session", "get_window_state", "click", "type_text"]) {
     if (!toolNames.has(required)) throw new Error(`Cua MCP did not expose ${required}`);
   }
 
@@ -232,6 +232,15 @@ try {
       arguments: { session, capture_scope: "window" },
     }),
     "start_session",
+  );
+  // Cua Driver 0.40.6 refuses a pixel action on a window whose own screenshot the
+  // session has not read, so the test reads it the way the desktop guidance asks.
+  assertToolResult(
+    await rpc("tools/call", {
+      name: "get_window_state",
+      arguments: { session, pid: xev.pid, window_id: Number(windowId), include_screenshot: true },
+    }),
+    "get_window_state",
   );
   xevOutput = "";
   const target = {
