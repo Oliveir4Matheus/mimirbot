@@ -88,9 +88,11 @@ function ensureLinuxRuntime() {
         onChange: (connection) => stateListener(connection),
       });
     } catch (error) {
-      console.error("[cua] Bundled Linux driver failed integrity validation:", error);
+      console.error("[cua] Linux local control could not start:", error);
       linuxRuntime = createUnavailableLinuxRuntime({
         connectionStore,
+        reasonCode: "linux-runtime-start-failed",
+        message: `Linux local control could not start: ${error instanceof Error ? error.message : String(error)}`,
         onChange: (connection) => stateListener(connection),
       });
     }

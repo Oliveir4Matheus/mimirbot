@@ -318,7 +318,7 @@ try {
   } else {
     if (!initialCapabilities.localComputer.available) {
       throw new Error(
-        `initial Linux CUA runtime was not ready: ${JSON.stringify(initialCapabilities.localComputer)}`,
+        `initial Linux CUA runtime was not ready: ${JSON.stringify(initialCapabilities.localComputer)}\n${output}`,
       );
     }
     if (initialCapabilities.localComputer.support !== "limited") throw new Error("Linux CUA was not marked beta/limited");
