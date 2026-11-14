@@ -324,6 +324,7 @@ describe("shared sentences", () => {
     expect(WORKFLOWS_PROMPT).toContain("ask the three interview questions one per turn");
     expect(WORKFLOWS_PROMPT).toContain("Use list_workflows to find existing Workflows and run_workflow to start one");
     expect(WORKFLOWS_PROMPT).toContain("Never say a Workflow was created, saved or changed unless create_workflow_from_proposal returned that result");
+    expect(WORKFLOWS_PROMPT).toContain("A message that starts with /cworkflow names the process in the rest of its text: call propose_workflow for it in this turn");
     expect(WORKFLOWS_PROMPT).not.toMatch(/trigger action=create/);
     expect(CREDENTIAL_PROMPT).toContain("secure credential request");
     expect(CREDENTIAL_PROMPT).not.toContain("applied immediately");

@@ -25777,7 +25777,8 @@
       "settings.updates.channel.aria": "d4fc4230730665f7ebdf52d3ae8071025bd92e41eb56efc7a0d8200d665addf4",
       "settings.updates.channel.main": "58c78435cf60015f15d44fb52e2d65c964dcb9645679a6975499f9b21a2075c6",
       "settings.updates.channel.beta": "703390318bd55aef50b7823d2b90a846debff99e6e3d401a24a921b733912a6d",
-      "settings.section.updates": "22e2bada8f1c65cd83f4ba976f0027c5dd7cb81d5d2199cd1b0130792841eef4"
+      "settings.section.updates": "22e2bada8f1c65cd83f4ba976f0027c5dd7cb81d5d2199cd1b0130792841eef4",
+      "composer.command.cworkflowDesc": "0eebd7f1e51189aab2f669fb0b4031f90e1b9f37530b04bf36bddcaaac057e36"
     },
     "zh": {
       "highlevel.unavailable": "87b8ac7f7610e6dd69f520bc59058fd92f307b9f4bcf804075f25d08bcaa7533",

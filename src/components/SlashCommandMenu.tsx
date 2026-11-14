@@ -1,5 +1,5 @@
 import type { RefObject } from "react";
-import { BookOpen, Sparkles, Target } from "lucide-react";
+import { BookOpen, Sparkles, Target, Workflow } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { t } from "@/lib/i18n";
 import type { ComposerSlashCommand } from "@/lib/composer-commands";
@@ -45,6 +45,8 @@ export function SlashCommandMenu({ listRef, motion, commands, highlight, onPick,
               <Sparkles size={15} aria-hidden="true" />
             ) : command.id === "goal" ? (
               <Target size={15} aria-hidden="true" />
+            ) : command.id === "cworkflow" ? (
+              <Workflow size={15} aria-hidden="true" />
             ) : (
               <BookOpen size={15} aria-hidden="true" />
             )}

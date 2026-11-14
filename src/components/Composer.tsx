@@ -331,6 +331,12 @@ export function Composer({
       label: "/setup",
       description: t("composer.command.setupDesc"),
     });
+    if (!group && supportsAgents(bot)) available.push({
+      kind: "command",
+      id: "cworkflow",
+      label: "/cworkflow",
+      description: t("composer.command.cworkflowDesc"),
+    });
     available.push(...skillSlashCommands(slashSkills));
     return available.filter((command) => slashCommandMatches(command, slash.query));
   }, [slash, dismissedSlashAt, group, members, bot, state.config, state.instances, locale, slashSkills]);
@@ -395,7 +401,7 @@ export function Composer({
   const pickCommand = (command: ComposerSlashCommand | undefined) => {
     if (!slash || !command) return;
     const replacement = command.kind === "skill" ? `${command.label} `
-      : command.id === "learn" ? "/learn " : command.id === "setup" ? "/setup " : "";
+      : command.id === "learn" ? "/learn " : command.id === "setup" ? "/setup " : command.id === "cworkflow" ? "/cworkflow " : "";
     const next = replaceComposerSlashTrigger(text, slash, replacement);
     editText(next.text);
     setCaret(next.caret);

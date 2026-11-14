@@ -1922,6 +1922,7 @@
   "composer.command.goalBotDesc": "Manter este bot trabalhando até concluir o objetivo",
   "composer.command.learnDesc": "Rascunhar uma habilidade reutilizável a partir desta conversa",
   "composer.command.setupDesc": "Deixar este bot te entrevistar e se configurar sozinho",
+  "composer.command.cworkflowDesc": "Propor um Workflow a partir do processo que você descrever",
   "composer.command.skillTag": "habilidade",
   "composer.busy.team": "A equipe",
   "composer.busy.aBot": "Um bot",
