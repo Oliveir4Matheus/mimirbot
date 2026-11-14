@@ -35,6 +35,10 @@ const release: Release = {
           },
         },
         {
+          title: "The Studio follows your theme",
+          body: "The Studio canvas, cards, palette and dialogs now use the palette of the theme you chose, so the dark themes stay dark from the first step to the last.",
+        },
+        {
           title: "Conditions, loops and scripts",
           body: "IF/Else reads the previous step's result.json and follows the true or false branch. Do While repeats its body while a condition holds, up to a maximum number of turns, and keeps the loop's outputs from the last turn. Script steps run in their own folder with the inputs they declare: .mjs and .js use Node, .ts uses Node's type stripping and .py uses Python. A promised output that never appears fails that step instead of letting the run move on.",
         },
@@ -83,6 +87,10 @@ const release: Release = {
             src: studio,
             caption: "O Studio: uma etapa de agente, uma condição, um Do While e um script, conectados em ordem.",
           },
+        },
+        {
+          title: "O Studio segue o seu tema",
+          body: "O canvas, os cartões, a paleta e os diálogos do Studio agora usam a paleta do tema escolhido, então os temas escuros continuam escuros da primeira à última etapa.",
         },
         {
           title: "Condições, repetições e scripts",

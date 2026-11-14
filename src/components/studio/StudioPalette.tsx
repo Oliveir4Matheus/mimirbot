@@ -15,12 +15,12 @@ interface PaletteItem {
 }
 
 const ITEMS: PaletteItem[] = [
-  { kind: "agent", label: "studio.palette.agent", hint: "studio.palette.agentHint", icon: Sparkles, color: "#6254D6", background: "#F2F0FF" },
-  { kind: "script", label: "studio.palette.script", hint: "studio.palette.scriptHint", icon: Code2, color: "#247B8A", background: "#EAF6F7" },
-  { kind: "condition", label: "studio.palette.condition", hint: "studio.palette.conditionHint", icon: GitBranch, color: "#C08023", background: "#FFF6E8" },
-  { kind: "loop", label: "studio.palette.loop", hint: "studio.palette.loopHint", icon: Repeat, color: "#B97818", background: "#FFF1DA" },
-  { kind: "note", label: "studio.palette.note", hint: "studio.palette.noteHint", icon: StickyNote, color: "#A37A29", background: "#FFF5D6" },
-  { kind: "container", label: "studio.palette.container", hint: "studio.palette.containerHint", icon: Box, color: "#6688A0", background: "#E9F2F9" },
+  { kind: "agent", label: "studio.palette.agent", hint: "studio.palette.agentHint", icon: Sparkles, color: "var(--studio-node-bot)", background: "color-mix(in srgb, var(--studio-node-bot) 16%, var(--color-card))" },
+  { kind: "script", label: "studio.palette.script", hint: "studio.palette.scriptHint", icon: Code2, color: "var(--studio-node-script)", background: "color-mix(in srgb, var(--studio-node-script) 16%, var(--color-card))" },
+  { kind: "condition", label: "studio.palette.condition", hint: "studio.palette.conditionHint", icon: GitBranch, color: "var(--studio-node-condition)", background: "color-mix(in srgb, var(--studio-node-condition) 16%, var(--color-card))" },
+  { kind: "loop", label: "studio.palette.loop", hint: "studio.palette.loopHint", icon: Repeat, color: "var(--studio-node-loop)", background: "color-mix(in srgb, var(--studio-node-loop) 16%, var(--color-card))" },
+  { kind: "note", label: "studio.palette.note", hint: "studio.palette.noteHint", icon: StickyNote, color: "var(--studio-note)", background: "color-mix(in srgb, var(--studio-note) 16%, var(--color-card))" },
+  { kind: "container", label: "studio.palette.container", hint: "studio.palette.containerHint", icon: Box, color: "var(--studio-container)", background: "color-mix(in srgb, var(--studio-container) 16%, var(--color-card))" },
 ];
 
 export function StudioPalette({ onActivate, onDrop, kinds }: {

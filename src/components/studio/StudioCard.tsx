@@ -53,10 +53,10 @@ const LOOP_BRANCHES: BranchSpec[] = [
   { key: "run", label: "studio.branch.run", icon: Play, port: "run" },
 ];
 
-const TRUE_BRANCH: BranchSpec = { key: "true", label: "studio.branch.true", icon: Check, color: "#39876D", port: "true" };
-const FALSE_BRANCH: BranchSpec = { key: "false", label: "studio.branch.false", icon: X, color: "#BC655C", port: "false" };
-const FAILURE_BRANCH: BranchSpec = { key: "failure", label: "studio.branch.failure", icon: AlertTriangle, color: "#BC655C", port: "failure" };
-const TIMEOUT_BRANCH: BranchSpec = { key: "timeout", label: "studio.branch.timeout", icon: Clock, color: "#C08023", port: "timeout" };
+const TRUE_BRANCH: BranchSpec = { key: "true", label: "studio.branch.true", icon: Check, color: "var(--color-success)", port: "true" };
+const FALSE_BRANCH: BranchSpec = { key: "false", label: "studio.branch.false", icon: X, color: "var(--color-danger)", port: "false" };
+const FAILURE_BRANCH: BranchSpec = { key: "failure", label: "studio.branch.failure", icon: AlertTriangle, color: "var(--color-danger)", port: "failure" };
+const TIMEOUT_BRANCH: BranchSpec = { key: "timeout", label: "studio.branch.timeout", icon: Clock, color: "var(--studio-node-condition)", port: "timeout" };
 
 export function StudioCard({ draft, step, index, selected, botName, onSelect, onDragStart, onEntry, onBranch, onPort, onRename, onDuplicate, onDelete, onExpand }: {
   draft: StudioDraft;
@@ -147,8 +147,8 @@ export function StudioCard({ draft, step, index, selected, botName, onSelect, on
     : step.kind === "script" ? <Code2 size={21} strokeWidth={1.8} />
       : step.kind === "loop" ? <Repeat size={21} strokeWidth={1.8} />
         : <GitBranch size={21} strokeWidth={1.8} />;
-  const accent = step.kind === "bot" ? "#6254D6" : step.kind === "script" ? "#247B8A" : step.kind === "loop" ? "#B97818" : "#C08023";
-  const accentSoft = step.kind === "bot" ? "#F2F0FF" : step.kind === "script" ? "#EAF6F7" : step.kind === "loop" ? "#FFF1DA" : "#FFF6E8";
+  const accent = step.kind === "bot" ? "var(--studio-node-bot)" : step.kind === "script" ? "var(--studio-node-script)" : step.kind === "loop" ? "var(--studio-node-loop)" : "var(--studio-node-condition)";
+  const accentSoft = step.kind === "bot" ? "color-mix(in srgb, var(--studio-node-bot) 16%, var(--color-card))" : step.kind === "script" ? "color-mix(in srgb, var(--studio-node-script) 16%, var(--color-card))" : step.kind === "loop" ? "color-mix(in srgb, var(--studio-node-loop) 16%, var(--color-card))" : "color-mix(in srgb, var(--studio-node-condition) 16%, var(--color-card))";
   const waiting = step.kind === "bot" ? t("studio.card.waitingAgent")
     : step.kind === "script" ? t("studio.card.waitingScript")
       : step.kind === "loop" ? t("studio.loop.bodyCount", { count: step.body.length })

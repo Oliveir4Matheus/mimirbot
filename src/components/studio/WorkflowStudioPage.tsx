@@ -411,33 +411,33 @@ export function WorkflowStudioPage({ workflowId, department, onBack, onSaved }: 
       if (step.whenTrue) {
         const from = outputPoint(draft, step.id, "true");
         const to = draft.canvas.nodes[step.whenTrue];
-        if (from && to) links.push({ key: `${step.id}-true`, path: bezier(from, { x: to.x, y: to.y + 57 }), color: "#868F96" });
+        if (from && to) links.push({ key: `${step.id}-true`, path: bezier(from, { x: to.x, y: to.y + 57 }), color: "var(--color-ink-tertiary)" });
       }
       if (step.whenFalse) {
         const from = outputPoint(draft, step.id, "false");
         const to = draft.canvas.nodes[step.whenFalse];
-        if (from && to) links.push({ key: `${step.id}-false`, path: bezier(from, { x: to.x, y: to.y + 57 }), color: "#868F96" });
+        if (from && to) links.push({ key: `${step.id}-false`, path: bezier(from, { x: to.x, y: to.y + 57 }), color: "var(--color-ink-tertiary)" });
       }
       if (step.onFailure) {
         const from = outputPoint(draft, step.id, "failure");
         const to = draft.canvas.nodes[step.onFailure];
-        if (from && to) links.push({ key: `${step.id}-failure`, path: bezier(from, { x: to.x, y: to.y + 57 }), color: "#BC655C" });
+        if (from && to) links.push({ key: `${step.id}-failure`, path: bezier(from, { x: to.x, y: to.y + 57 }), color: "var(--color-danger)" });
       }
     } else {
       if (typeof step.onSuccess === "string") {
         const from = outputPoint(draft, step.id, "run");
         const to = draft.canvas.nodes[step.onSuccess];
-        if (from && to) links.push({ key: `${step.id}-run`, path: bezier(from, { x: to.x, y: to.y + 57 }), color: "#868F96" });
+        if (from && to) links.push({ key: `${step.id}-run`, path: bezier(from, { x: to.x, y: to.y + 57 }), color: "var(--color-ink-tertiary)" });
       }
       if (step.onFailure) {
         const from = outputPoint(draft, step.id, "failure");
         const to = draft.canvas.nodes[step.onFailure];
-        if (from && to) links.push({ key: `${step.id}-failure`, path: bezier(from, { x: to.x, y: to.y + 57 }), color: "#BC655C" });
+        if (from && to) links.push({ key: `${step.id}-failure`, path: bezier(from, { x: to.x, y: to.y + 57 }), color: "var(--color-danger)" });
       }
       if (step.kind !== "loop" && step.onTimeout) {
         const from = outputPoint(draft, step.id, "timeout");
         const to = draft.canvas.nodes[step.onTimeout];
-        if (from && to) links.push({ key: `${step.id}-timeout`, path: bezier(from, { x: to.x, y: to.y + 57 }), color: "#C08023" });
+        if (from && to) links.push({ key: `${step.id}-timeout`, path: bezier(from, { x: to.x, y: to.y + 57 }), color: "var(--studio-node-condition)" });
       }
     }
   }
@@ -458,11 +458,11 @@ export function WorkflowStudioPage({ workflowId, department, onBack, onSaved }: 
     ? link.kind === "flow"
       ? (() => {
         const from = outputPoint(draft, link.from, link.branch);
-        return from ? { path: bezier(from, pointer), color: "#5856CB", dashed: true } : undefined;
+        return from ? { path: bezier(from, pointer), color: "var(--studio-node-bot)", dashed: true } : undefined;
       })()
       : (() => {
         const note = draft.canvas.notes.find((candidate) => candidate.id === link.noteId);
-        return note ? { path: bezier(noteAnchor(note), pointer), color: "#A87A30", dashed: true } : undefined;
+        return note ? { path: bezier(noteAnchor(note), pointer), color: "var(--studio-note)", dashed: true } : undefined;
       })()
     : undefined;
   const balloonStep = balloon ? draft.steps.find((step) => step.id === balloon.stepId) : undefined;
@@ -487,7 +487,7 @@ export function WorkflowStudioPage({ workflowId, department, onBack, onSaved }: 
           <svg className="studio-links" width={1} height={1} aria-hidden="true">
             <defs>
               <marker id="studio-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-                <path d="M 0 0 L 10 5 L 0 10 z" fill="#868F96" />
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--color-ink-tertiary)" />
               </marker>
             </defs>
             {links.map((edge) => <path key={edge.key} d={edge.path} stroke={edge.color} markerEnd="url(#studio-arrow)" />)}
