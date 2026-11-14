@@ -15,6 +15,10 @@ const release: Release = {
           title: "Only the release you updated to",
           body: "Notes from earlier versions no longer pile up here. A fresh install, a first open while setup is on screen, and going back to an earlier version stay quiet, and a version with nothing to say shows no screen.",
         },
+        {
+          title: "Choose which releases you get",
+          body: "Settings → Updates has an update channel. Main follows the official releases; Beta follows the beta branch's newest prereleases, which can be rougher. The app keeps the choice and checks that feed from then on.",
+        },
       ],
       fixes: ["The screen does not come back for the same version, even after a restart."],
     },
@@ -28,6 +32,10 @@ const release: Release = {
         {
           title: "Só a versão para a qual você atualizou",
           body: "As notas de versões anteriores não se acumulam mais aqui. Uma instalação nova, a primeira abertura com a configuração na tela e a volta para uma versão anterior ficam em silêncio, e uma versão sem nada a dizer não mostra tela.",
+        },
+        {
+          title: "Escolha quais versões você recebe",
+          body: "Em Configurações → Atualizações há um canal de atualização. O Principal segue as versões oficiais; o Beta segue as pré-versões mais novas da branch beta, que podem ser mais instáveis. O app guarda a escolha e verifica esse feed a partir daí.",
         },
       ],
       fixes: ["A tela não volta para a mesma versão, nem depois de reiniciar o app."],
