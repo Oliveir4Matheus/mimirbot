@@ -4,6 +4,7 @@
 import type { LocaleKey } from "@/locales";
 import {
   WORKFLOW_CONDITION_ROWS_MAX,
+  isWorkflowModuleSpec,
   isWorkflowScriptName,
   type ConditionLine,
   type ConditionMatch,
@@ -218,7 +219,7 @@ export function createStep(
     }
     : kind === "script"
       ? {
-        id, kind: "script", name: baseName, run: `${id}.mjs`, timeoutMs: 60_000, mode: "auto",
+        id, kind: "script", name: baseName, run: `${id}.mjs`, timeoutMs: 300_000, modules: [], mode: "auto",
         inputs: [], parameters: [], outputs: structuredClone(DEFAULT_OUTPUTS), result: "result.json",
       }
       : kind === "condition"
@@ -666,13 +667,22 @@ function conditionProblem(step: WorkflowBodyStep | WorkflowStep, pool: readonly 
   return undefined;
 }
 
+function scriptProblem(step: WorkflowBodyStep | WorkflowStep): DraftProblem | undefined {
+  if (step.kind !== "script") return undefined;
+  if (!isWorkflowScriptName(step.run)) return { key: "studio.needScriptName", params: { name: step.name } };
+  const invalid = step.modules.find((spec) => !isWorkflowModuleSpec(spec));
+  if (invalid !== undefined) return { key: "studio.needModuleSpec", params: { name: step.name, spec: invalid } };
+  return undefined;
+}
+
 function bodyStepProblem(step: WorkflowBodyStep, pool: readonly WorkflowBodyStep[], botIds: ReadonlySet<string>, skillOptions: Record<string, WorkflowSkillOptions>): DraftProblem | undefined {
   if (step.kind === "bot" && (!step.botId || !botIds.has(step.botId))) return { key: "studio.needBot", params: { name: step.name } };
   if (step.kind === "bot") {
     const skillProblem = skillSelectionProblem(step, skillOptions[step.botId]);
     if (skillProblem) return skillProblem;
   }
-  if (step.kind === "script" && !isWorkflowScriptName(step.run)) return { key: "studio.needScriptName", params: { name: step.name } };
+  const script = scriptProblem(step);
+  if (script) return script;
   if (step.kind !== "condition" && step.onTimeout !== undefined && step.timeoutMs <= 0) {
     return { key: "studio.needTimeout", params: { name: step.name } };
   }
@@ -692,7 +702,8 @@ export function draftProblem(draft: StudioDraft, botIds: ReadonlySet<string>, sk
       const skillProblem = skillSelectionProblem(step, skillOptions[step.botId]);
       if (skillProblem) return skillProblem;
     }
-    if (step.kind === "script" && !isWorkflowScriptName(step.run)) return { key: "studio.needScriptName", params: { name: step.name } };
+    const script = scriptProblem(step);
+    if (script) return script;
     if (step.kind !== "condition" && step.kind !== "loop" && step.onTimeout !== undefined && step.timeoutMs <= 0) {
       return { key: "studio.needTimeout", params: { name: step.name } };
     }
@@ -783,6 +794,12 @@ export function scriptLanguageOf(run: string): ScriptLanguage {
 export function scriptNameForLanguage(run: string, language: ScriptLanguage): string {
   const extension = language === "python" ? "py" : language === "typescript" ? "ts" : "mjs";
   return `${run.replace(/\.(mjs|js|ts|py)$/, "")}.${extension}`;
+}
+
+/** One package per line, so a version range keeps its own commas. */
+export function modulesFromText(value: string): string[] {
+  const specs = value.split(/\r?\n/).map((line) => line.trim()).filter((line) => line.length > 0);
+  return [...new Set(specs)];
 }
 
 /** Move a script's content to its new file name, leaving no stale copy behind. */

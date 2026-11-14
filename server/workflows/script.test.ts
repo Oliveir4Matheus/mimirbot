@@ -1,9 +1,10 @@
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
+import { workflowModulesArgs, workflowModulesRuntime } from "./modules.ts";
 import { runWorkflowScript, workflowScriptCommand } from "./script.ts";
 
 let root: string;
@@ -28,13 +29,16 @@ function script(source: string, name = "run.mjs"): string {
 
 const pythonCommand = process.env.WORKFLOW_PYTHON || (process.platform === "win32" ? "python" : "python3");
 const hasPython = spawnSync(pythonCommand, ["--version"], { stdio: "ignore" }).status === 0;
+// A local folder installs without the registry, so the module tests need npm but no network.
+const hasNpm = spawnSync(process.platform === "win32" ? "npm.cmd" : "npm", ["--version"], { stdio: "ignore" }).status === 0;
 
-const run = (scriptPath: string, timeoutMs = 5_000) => runWorkflowScript({
+const run = (scriptPath: string, timeoutMs = 5_000, modules?: string[]) => runWorkflowScript({
   scriptPath,
   stepDir,
   inputDir: join(stepDir, "input"),
   outputDir: join(stepDir, "output"),
   timeoutMs,
+  ...(modules ? { modules } : {}),
   runId: "20261108-101500-a1b2c3",
   stepId: "validar",
 });
@@ -153,5 +157,72 @@ Path(os.environ["WORKFLOW_STEP_OUTPUT"], "result.json").write_text(json.dumps({
     handle.kill();
     const result = await handle.promise;
     expect(result.ok).toBe(false);
+  });
+});
+
+describe("script modules", () => {
+  const modulesDir = () => join(stepDir, ".workflow-modules");
+
+  function scriptFolder(source: string, name = "run.mjs"): string {
+    const dir = join(root, "scripts");
+    mkdirSync(dir, { recursive: true });
+    const path = join(dir, name);
+    writeFileSync(path, source);
+    return path;
+  }
+
+  function fixturePackage(name: string, source: string): string {
+    const dir = join(root, `pkg-${name}`);
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, "package.json"), JSON.stringify({ name, version: "1.0.0", type: "module", exports: "./index.js" }));
+    writeFileSync(join(dir, "index.js"), source);
+    return dir;
+  }
+
+  it("picks pip for Python and npm for the rest", () => {
+    expect(workflowModulesRuntime("/tmp/run.py")).toBe("python");
+    expect(workflowModulesRuntime("/tmp/run.mjs")).toBe("node");
+    expect(workflowModulesRuntime("/tmp/run.ts")).toBe("node");
+    expect(workflowModulesArgs("python", "/deps", ["requests==2.31.0"])).toEqual([
+      "-m", "pip", "install", "--quiet", "--disable-pip-version-check", "--no-input", "--target", "/deps", "requests==2.31.0",
+    ]);
+    expect(workflowModulesArgs("node", "/work", ["lodash@4"])).toEqual([
+      "install", "--prefix", "/work", "--no-save", "--no-audit", "--no-fund", "--loglevel=error", "lodash@4",
+    ]);
+  });
+
+  it.skipIf(!hasNpm)("installs the declared packages beside a copy of the script and removes them afterwards", async () => {
+    const pkg = fixturePackage("omb-fixture-lib", "export const answer = 42;\n");
+    const path = scriptFolder(`
+      import { writeFileSync } from "node:fs";
+      import { answer } from "omb-fixture-lib";
+      import { label } from "./helper.mjs";
+      writeFileSync(process.env.WORKFLOW_STEP_OUTPUT + "/result.json", JSON.stringify({ answer, label }));
+    `);
+    writeFileSync(join(root, "scripts", "helper.mjs"), 'export const label = "sibling";\n');
+    const result = await run(path, 60_000, [pkg]).promise;
+    expect(result).toEqual({ ok: true });
+    expect(JSON.parse(readFileSync(join(stepDir, "output", "result.json"), "utf8"))).toEqual({ answer: 42, label: "sibling" });
+    expect(existsSync(modulesDir())).toBe(false);
+    expect(readFileSync(path, "utf8")).toContain("omb-fixture-lib");
+  });
+
+  it.skipIf(!hasNpm)("removes the packages when the script fails", async () => {
+    const pkg = fixturePackage("omb-fixture-fail", "export const answer = 1;\n");
+    const path = scriptFolder(`console.error("boom"); process.exit(2);`);
+    const result = await run(path, 60_000, [pkg]).promise;
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error).toContain("code 2");
+    expect(existsSync(modulesDir())).toBe(false);
+  });
+
+  it.skipIf(!hasNpm)("reports an installer failure and leaves no folder behind", async () => {
+    const path = scriptFolder(`console.log("never runs");`);
+    const result = await run(path, 60_000, [join(root, "missing-package")]).promise;
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error).toContain("could not install");
+    expect(existsSync(modulesDir())).toBe(false);
   });
 });

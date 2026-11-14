@@ -11,7 +11,7 @@ import type {
   WorkflowProposalRehearsal,
   WorkflowProposalRehearsalStep,
 } from "../../shared/workflow-proposal.ts";
-import type { WorkflowStep } from "../../shared/workflow.ts";
+import { isWorkflowScriptName, type WorkflowStep } from "../../shared/workflow.ts";
 import { verifyStepOutputs, writeStepParameters } from "./files.ts";
 import { runWorkflowScript } from "./script.ts";
 
@@ -64,6 +64,13 @@ export async function rehearseProposal(proposal: WorkflowProposal, example: Rehe
     }
 
     let firstScript = true;
+    mkdirSync(join(root, "scripts"), { recursive: true });
+    for (const script of proposal.scripts) {
+      // Proposal script names are only length-checked on read; a rehearsal writes
+      // into a fresh folder, so a name that is not flat stays out of it.
+      if (!isWorkflowScriptName(script.name)) continue;
+      writeFileSync(join(root, "scripts", script.name), script.content, { mode: 0o600 });
+    }
     for (const [index, step] of proposal.definition.steps.entries()) {
       if (step.kind !== "script") {
         steps.push({ id: step.id, name: step.name, label: "untested", detail: step.kind === "bot" ? "needs the bot engine; not run in a rehearsal" : "branch step; not run in a rehearsal" });
@@ -98,14 +105,13 @@ export async function rehearseProposal(proposal: WorkflowProposal, example: Rehe
         continue;
       }
       const scriptPath = join(root, "scripts", script.name);
-      mkdirSync(join(root, "scripts"), { recursive: true });
-      writeFileSync(scriptPath, script.content, { mode: 0o600 });
       const run = runWorkflowScript({
         scriptPath,
         stepDir: dir,
         inputDir: join(dir, "input"),
         outputDir: join(dir, "output"),
         timeoutMs: step.timeoutMs,
+        modules: step.modules,
         runId: "rehearsal",
         stepId: step.id,
       });

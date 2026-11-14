@@ -1,8 +1,9 @@
-import { useMemo, useRef, type ReactNode } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
 import { Check, Upload, X } from "lucide-react";
 
 import {
   WORKFLOW_CONDITION_ROWS_MAX,
+  WORKFLOW_SCRIPT_TIMEOUT_MAX_MS,
   type ConditionLine,
   type ConditionMatch,
   type ConditionOp,
@@ -16,7 +17,7 @@ import { t } from "@/lib/i18n";
 import { cn } from "@/lib/cn";
 import type { BranchKey } from "./StudioCard";
 import {
-  conditionOpLabel, nextConditionValue, outputsOf, scriptLanguageOf, scriptNameForLanguage, skillSelection, skillsWithGroup,
+  conditionOpLabel, modulesFromText, nextConditionValue, outputsOf, scriptLanguageOf, scriptNameForLanguage, skillSelection, skillsWithGroup,
   type StudioBranch, type StudioDraft, type StudioSkillGroup,
 } from "./studio-model";
 
@@ -61,6 +62,8 @@ export function StudioBalloon({ draft, step, branch, anchor, bots, scripts, skil
   onClose: () => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const [modulesDraft, setModulesDraft] = useState<{ stepId: string; text: string } | null>(null);
+  const modulesText = modulesDraft?.stepId === step.id ? modulesDraft.text : step.kind === "script" ? step.modules.join("\n") : "";
   const index = draft.steps.findIndex((candidate) => candidate.id === step.id);
   const nameOf = (id: string) => draft.steps.find((candidate) => candidate.id === id)?.name ?? id;
   const outputs = outputsOf(step);
@@ -228,14 +231,29 @@ export function StudioBalloon({ draft, step, branch, anchor, bots, scripts, skil
               <UploadRow label={t("studio.script.load")} onClick={() => inputRef.current?.click()} />
               <input ref={inputRef} type="file" accept=".js,.mjs,.ts,.py,.txt" className="hidden" onChange={() => void readFile(READ.script, (text) => onScript(step.run, text))} />
             </Field>
-            <Field label={t("studio.script.timeout")}>
+            <Field label={t("studio.script.modules")} help={t("studio.script.modulesHelp", { manager: scriptLanguageOf(step.run) === "python" ? "pip" : "npm" })}>
+              <textarea
+                className="studio-input"
+                rows={2}
+                value={modulesText}
+                placeholder={scriptLanguageOf(step.run) === "python" ? "requests==2.31.0" : "lodash@4.17.21"}
+                onChange={(event) => {
+                  const text = event.target.value;
+                  setModulesDraft({ stepId: step.id, text });
+                  onChange({ modules: modulesFromText(text) } as Partial<WorkflowStep>);
+                }}
+              />
+            </Field>
+            <Field label={t("studio.script.timeout")} help={t("studio.script.timeoutHelp")}>
               <input
                 type="number"
                 min={1}
-                max={300}
+                max={WORKFLOW_SCRIPT_TIMEOUT_MAX_MS / 1000}
                 className="studio-input"
                 value={Math.round(step.timeoutMs / 1000)}
-                onChange={(event) => onChange({ timeoutMs: Math.max(1, Math.min(300, Number(event.target.value) || 1)) * 1000 } as Partial<WorkflowStep>)}
+                onChange={(event) => onChange({
+                  timeoutMs: Math.max(1, Math.min(WORKFLOW_SCRIPT_TIMEOUT_MAX_MS / 1000, Number(event.target.value) || 1)) * 1000,
+                } as Partial<WorkflowStep>)}
               />
             </Field>
           </>

@@ -1988,7 +1988,7 @@
                 }
               }
             },
-            "description": "The workflow steps, each with id, kind, name, inputs, parameters, outputs, result and either botId/instructions or run. The first step must be a bot or script step in mode manual."
+            "description": "The workflow steps, each with id, kind, name, inputs, parameters, outputs, result and either botId/instructions or run. A script step may also list modules: the packages it installs for the run (npm names for .mjs/.js/.ts, pip names for .py). The first step must be a bot or script step in mode manual."
           },
           "scripts": {
             "type": "array",

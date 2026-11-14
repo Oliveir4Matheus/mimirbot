@@ -313,6 +313,7 @@ export function createWorkflowEngine(deps: WorkflowEngineDeps): WorkflowEngine {
       inputDir: stepInputDir(runDir, index + 1),
       outputDir: stepOutputDir(runDir, index + 1),
       timeoutMs: step.timeoutMs,
+      modules: step.modules,
       runId: run.id,
       stepId: step.id,
     });
@@ -530,6 +531,7 @@ export function createWorkflowEngine(deps: WorkflowEngineDeps): WorkflowEngine {
       inputDir: iterationStepInputDir(runDir, iteration.index, step.id),
       outputDir: iterationStepOutputDir(runDir, iteration.index, step.id),
       timeoutMs: step.timeoutMs,
+      modules: step.modules,
       runId: run.id,
       stepId: step.id,
     });

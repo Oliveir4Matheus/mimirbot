@@ -114,6 +114,12 @@ curl -s http://127.0.0.1:8999/api/workflows | \
   node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>console.log(JSON.stringify(JSON.parse(d).workflows[0].steps,null,2)))"
 ```
 
+A Script card's **Script** row opens the balloon with **Módulos** (one package
+per line) and **Tempo limite (segundos)**, which accepts up to 3600. With
+`lodash@4.17.21` and `nanoid` at 600 seconds, the same `curl` shows those
+`modules` and `timeoutMs: 600000`, and the step panel shows **MÓDULOS**. Checked
+2026-11-14 against this fixture.
+
 ## Live view while a run happens
 
 A bot step is not an HTTP request: the engine calls `startTurn` inside the same

@@ -67,7 +67,7 @@ function proofLines(step: WorkflowStep): string[] {
 
 function processLine(step: WorkflowStep): string {
   if (step.kind === "bot") return step.instructions;
-  if (step.kind === "script") return `Executa ${step.run}`;
+  if (step.kind === "script") return `Executa ${step.run}${step.modules.length > 0 ? ` · instala ${step.modules.join(", ")}` : ""}`;
   if (step.kind === "condition") return conditionText(step);
   return `Repete ${step.body.length} etapa(s) até a condição`;
 }

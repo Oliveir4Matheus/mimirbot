@@ -280,8 +280,41 @@ describe("script steps and flow edges", () => {
     expect(script.kind).toBe("script");
     if (script.kind !== "script") throw new Error("expected a script step");
     expect(script.run).toBe("validar.mjs");
-    expect(script.timeoutMs).toBe(60_000);
+    expect(script.timeoutMs).toBe(300_000);
+    expect(script.modules).toEqual([]);
     expect(script.mode).toBe("auto");
+  });
+  it("accepts a script limit longer than the five-minute default, up to an hour", () => {
+    const workflow = branchWorkflow();
+    (workflow.steps[1] as Record<string, unknown>).timeoutMs = 900_000;
+    expect(issues(workflow)).toEqual([]);
+    const parsed = workflowDefinitionSchema.parse(workflow);
+    expect(parsed.steps[1]!.kind === "script" && parsed.steps[1]!.timeoutMs).toBe(900_000);
+    const tooLong = branchWorkflow();
+    (tooLong.steps[1] as Record<string, unknown>).timeoutMs = 3_600_001;
+    expect(issues(tooLong)).toContain("steps.1.timeoutMs");
+  });
+  it("parses the packages a script installs, trimmed and without repeats", () => {
+    const workflow = branchWorkflow();
+    (workflow.steps[1] as Record<string, unknown>).modules = [" lodash@4.17.21 ", "@scope/pkg@^1", "requests[socks]==2.31.0", "django>=4,<5", "lodash@4.17.21"];
+    expect(issues(workflow)).toEqual([]);
+    const parsed = workflowDefinitionSchema.parse(workflow);
+    expect(parsed.steps[1]!.kind === "script" && parsed.steps[1]!.modules).toEqual([
+      "lodash@4.17.21", "@scope/pkg@^1", "requests[socks]==2.31.0", "django>=4,<5",
+    ]);
+  });
+  it("refuses a package that is a path, a URL or a flag", () => {
+    for (const spec of ["../evil", "/tmp/pkg", "file:../x", "https://x.test/pkg", "-g", "@lodash", "pkg name", "pkg;rm", "pkg/../../x"]) {
+      const workflow = branchWorkflow();
+      (workflow.steps[1] as Record<string, unknown>).modules = [spec];
+      expect(issues(workflow)).toContain("steps.1.modules.0");
+    }
+  });
+  it("does not give a bot step a modules field", () => {
+    const workflow = branchWorkflow();
+    (workflow.steps[0] as Record<string, unknown>).modules = ["lodash"];
+    const parsed = workflowDefinitionSchema.parse(workflow);
+    expect(parsed.steps[0]).not.toHaveProperty("modules");
   });
 
   it("keeps a manual mode on bot and script steps", () => {

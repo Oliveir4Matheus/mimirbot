@@ -104,6 +104,12 @@ export function StepPanel({ workflow, step, index, botName, onClose }: {
                   seconds: Math.round(step.timeoutMs / 1000),
                 })}
               </div>
+              {step.modules.length > 0 && (
+                <div className="mt-2">
+                  <div className={LABEL}>{t("workflows.step.modules")}</div>
+                  <div className="font-mono text-[10.5px] text-ink-secondary">{step.modules.join(", ")}</div>
+                </div>
+              )}
               <div className="mt-1.5 text-[10px] text-ink-tertiary">
                 {t("workflows.step.mode")}: {step.mode === "manual" ? t("workflows.step.modeManual") : t("workflows.step.modeAuto")}
               </div>

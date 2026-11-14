@@ -25778,7 +25778,12 @@
       "settings.updates.channel.main": "58c78435cf60015f15d44fb52e2d65c964dcb9645679a6975499f9b21a2075c6",
       "settings.updates.channel.beta": "703390318bd55aef50b7823d2b90a846debff99e6e3d401a24a921b733912a6d",
       "settings.section.updates": "22e2bada8f1c65cd83f4ba976f0027c5dd7cb81d5d2199cd1b0130792841eef4",
-      "composer.command.cworkflowDesc": "0eebd7f1e51189aab2f669fb0b4031f90e1b9f37530b04bf36bddcaaac057e36"
+      "composer.command.cworkflowDesc": "0eebd7f1e51189aab2f669fb0b4031f90e1b9f37530b04bf36bddcaaac057e36",
+      "studio.needModuleSpec": "7a82e25676923b7c626a1abafbfd6306ee776a5ce17b1e68ead657072d33a970",
+      "studio.script.modules": "76c86c4c32432be30bdd4037aae3c816045cc2a34a0b41b2322bb2c37927323e",
+      "studio.script.modulesHelp": "4650b0865899e9f5c936d6f7974b1eef2c0988be85e12939be4895e24697c36d",
+      "studio.script.timeoutHelp": "ca1db1af36b05ec0e82da35715abef117ea0352eeec97aea4c90aaee85025673",
+      "workflows.step.modules": "50964deae0f4d193bd7a256d4aaa5e7e0311b87b2654d9ec47b87e5e69e7383d"
     },
     "zh": {
       "highlevel.unavailable": "87b8ac7f7610e6dd69f520bc59058fd92f307b9f4bcf804075f25d08bcaa7533",

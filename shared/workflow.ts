@@ -12,8 +12,12 @@ export const WORKFLOW_RETENTION_DEFAULT_DAYS = 90;
 export const WORKFLOW_RETENTION_MAX_DAYS = 3_650;
 /** A script the Workflow can reference: a flat name; the extension picks the runtime. */
 export const WORKFLOW_SCRIPT_MAX_BYTES = 256 * 1024;
-export const WORKFLOW_SCRIPT_TIMEOUT_DEFAULT_MS = 60_000;
-export const WORKFLOW_SCRIPT_TIMEOUT_MAX_MS = 300_000;
+/** Five minutes unless the person sets more; an hour is the ceiling for any step. */
+export const WORKFLOW_SCRIPT_TIMEOUT_DEFAULT_MS = 5 * 60 * 1000;
+export const WORKFLOW_SCRIPT_TIMEOUT_MAX_MS = 3_600_000;
+/** Packages a script step installs for its run, then removes: a name with an optional version. */
+export const WORKFLOW_MODULES_MAX = 20;
+export const WORKFLOW_MODULE_SPEC_MAX = 120;
 /** The longest an executable step may declare; 0 turns the limit off. */
 export const WORKFLOW_STEP_TIMEOUT_MAX_MS = 3_600_000;
 export const WORKFLOW_BOT_TIMEOUT_DEFAULT_MS = 0;
@@ -40,6 +44,7 @@ export const WORKFLOW_SKILL_NAME_MAX = 64;
 
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const SCRIPT_NAME = /^[a-z0-9][a-z0-9-]{0,62}\.(?:mjs|js|ts|py)$/;
+const MODULE_SPEC = /^@?[A-Za-z0-9][A-Za-z0-9._-]*(?:\/[A-Za-z0-9][A-Za-z0-9._-]*)?(?:\[[A-Za-z0-9._-]+(?:,[A-Za-z0-9._-]+)*\])?(?:[@=<>!~^][A-Za-z0-9^~<>=!.*+|,-]*)?$/;
 const RESULT_FIELD = /^[A-Za-z0-9_-]{1,64}(?:\.[A-Za-z0-9_-]{1,64})*$/;
 
 /** C0 controls and DEL: never in a folder or file name the engine writes. */
@@ -59,6 +64,15 @@ export function isWorkflowSlug(value: string): boolean {
  * The extension picks the runtime: `.mjs`/`.js` Node, `.ts` Node strip-types, `.py` Python. */
 export function isWorkflowScriptName(value: string): boolean {
   return value.length <= 67 && SCRIPT_NAME.test(value);
+}
+
+/** A package a script step installs for its run: `lodash`, `lodash@4.17.21`,
+ * `@scope/pkg@^1`, `requests[socks]==2.31.0` or `django>=4,<5`. Never a path, a
+ * URL or a flag, so the installer cannot be pointed somewhere else. */
+export function isWorkflowModuleSpec(value: string): boolean {
+  if (value.length === 0 || value.length > WORKFLOW_MODULE_SPEC_MAX) return false;
+  if (value.startsWith("@") && !value.includes("/")) return false;
+  return MODULE_SPEC.test(value);
 }
 
 /** A path a step may declare: relative, no `.`/`..` segment, no absolute
@@ -275,6 +289,10 @@ const scriptStepSchema = stepBaseSchema.extend({
   kind: z.literal("script"),
   /** A file name inside the Workflow's `scripts/` folder, never a path. */
   run: z.string().refine(isWorkflowScriptName, { message: "must be a flat .mjs, .js, .ts or .py file name" }),
+  /** Installed before the script starts and removed when it ends; npm for JS/TS, pip for Python. */
+  modules: z.array(z.string().max(WORKFLOW_MODULE_SPEC_MAX).trim().min(1).refine(isWorkflowModuleSpec, {
+    message: "must be a package name with an optional version",
+  })).max(WORKFLOW_MODULES_MAX).default([]).transform((specs) => [...new Set(specs)]),
   timeoutMs: z.number().int().min(1_000).max(WORKFLOW_SCRIPT_TIMEOUT_MAX_MS).default(WORKFLOW_SCRIPT_TIMEOUT_DEFAULT_MS),
   mode: stepModeSchema,
 });

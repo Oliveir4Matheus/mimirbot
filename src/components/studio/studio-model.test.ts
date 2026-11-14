@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { workflowDefinitionSchema } from "../../../shared/workflow";
 import {
   addConditionLine, allDraftSteps, autoLayout, bodyDraft, conditionLines, connect, containedBy, createStep, disconnect, draftProblem, duplicateLoop, fromDefinition,
-  newDraft, removeConditionLine, removeStep, renameScript, scriptLanguageOf, scriptNameForLanguage, selectAllSkills,
+  modulesFromText, newDraft, removeConditionLine, removeStep, renameScript, scriptLanguageOf, scriptNameForLanguage, selectAllSkills,
   setSkillGroup, skillCount, skillSelection, skillSelectionProblem, skillsWithGroup, toDefinition, toggleSkill, toggleSkillGroup,
   updateConditionLine, updateConditionMatch, updateNote, withBodyDraft, type StudioDraft,
 } from "./studio-model";
@@ -88,6 +88,23 @@ describe("studio model", () => {
     };
     const saved = toDefinition(manual);
     expect(saved.steps[0]!.kind === "bot" && saved.steps[0]!.mode).toBe("manual");
+  });
+
+  it("reads one package per line and flags a package that is not a name", () => {
+    const draft = { ...step(newDraft("Financeiro"), "script", 200, 200).draft, name: "Test" };
+    const script = draft.steps[0]!;
+    expect(script.kind === "script" && script.modules).toEqual([]);
+    expect(modulesFromText(" lodash@4.17.21\n\n@scope/pkg\nlodash@4.17.21 \n")).toEqual(["lodash@4.17.21", "@scope/pkg"]);
+    const chosen: StudioDraft = {
+      ...draft,
+      steps: draft.steps.map((candidate) => candidate.kind === "script" ? { ...candidate, modules: ["lodash@4.17.21"] } : candidate),
+    };
+    expect(draftProblem(chosen, new Set())).toBeUndefined();
+    const unsafe: StudioDraft = {
+      ...draft,
+      steps: draft.steps.map((candidate) => candidate.kind === "script" ? { ...candidate, modules: ["../evil"] } : candidate),
+    };
+    expect(draftProblem(unsafe, new Set())).toEqual({ key: "studio.needModuleSpec", params: { name: script.name, spec: "../evil" } });
   });
 
   it("reports a condition without a source and a bot without a bot", () => {
