@@ -9,6 +9,7 @@ const require = createRequire(import.meta.url);
 const { createCuaConnectionStore } = require("./cua-connection.cjs");
 const { validateDriverCandidate } = require("./cua-linux.cjs");
 const {
+  CERTIFIED_CONTRACT_VERSION,
   cleanupStaleRuntimeDirectories,
   createLinuxCuaPreferenceStore,
   createLinuxCuaRuntime,
@@ -688,5 +689,12 @@ describe("Linux CUA handshake validation", () => {
       }),
     ).resolves.toMatchObject({ health: { overall: "ok" } });
     expect(calls.at(-1)).toEqual({ method: "call", name: "health_report", args: {} });
+  });
+});
+
+describe("packaged Linux smoke fixture", () => {
+  it("advertises the certified Cua Driver contract", () => {
+    const source = fs.readFileSync(new URL("../scripts/smoke-linux-package.mjs", import.meta.url), "utf8");
+    expect(source.match(/contract_version: "([^"]+)"/)?.[1]).toBe(CERTIFIED_CONTRACT_VERSION);
   });
 });
