@@ -20,6 +20,7 @@ import {
   LEARN_PROMPT,
   PROFILE_PROMPT,
   TRIGGER_PROMPT,
+  WORKFLOWS_PROMPT,
   ROUTINE_EXECUTION_PROMPT,
   WEBHOOK_PROMPT,
   AUTOMATION_REPLY_PROMPT,
@@ -317,6 +318,13 @@ describe("shared sentences", () => {
     expect(TRIGGER_PROMPT).toContain("use wait_until instead of staying busy or making a short-interval routine");
     expect(TRIGGER_PROMPT).toContain("give follow_up only when they asked for something to be done at that moment");
     expect(TRIGGER_PROMPT).not.toMatch(/pending|explicitly asks/);
+    // A Workflow is the Studio's process, not an automation; the bot must propose it and never claim it exists.
+    expect(WORKFLOWS_PROMPT).toContain("It is not an automation");
+    expect(WORKFLOWS_PROMPT).toContain("call propose_workflow");
+    expect(WORKFLOWS_PROMPT).toContain("ask the three interview questions one per turn");
+    expect(WORKFLOWS_PROMPT).toContain("Use list_workflows to find existing Workflows and run_workflow to start one");
+    expect(WORKFLOWS_PROMPT).toContain("Never say a Workflow was created, saved or changed unless create_workflow_from_proposal returned that result");
+    expect(WORKFLOWS_PROMPT).not.toMatch(/trigger action=create/);
     expect(CREDENTIAL_PROMPT).toContain("secure credential request");
     expect(CREDENTIAL_PROMPT).not.toContain("applied immediately");
   });

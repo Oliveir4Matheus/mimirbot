@@ -411,6 +411,7 @@ import {
   PROFILE_PROMPT,
   TEAM_MEMORY_PROMPT,
   TRIGGER_PROMPT,
+  WORKFLOWS_PROMPT,
   ROUTINE_EXECUTION_PROMPT,
   WEBHOOK_PROMPT, AUTOMATION_REPLY_PROMPT,
   resolveComputerPromptKind,
@@ -3136,6 +3137,7 @@ function previewSystemPrompt(bot: BotRecord) {
     { id: "coordination", label: "Team", text: agentsMounted && coordination ? ` ${coordination}` : "" },
     { id: "credential", label: "Credentials", text: agentsMounted ? CREDENTIAL_PROMPT : "" },
     { id: "routine", label: "Triggers", text: agentsMounted ? TRIGGER_PROMPT : "" },
+    { id: "workflows", label: "Workflows", text: agentsMounted ? WORKFLOWS_PROMPT : "" },
     { id: "profile", label: "Profile changes", text: agentsMounted ? PROFILE_PROMPT : "" },
     { id: "section-context", label: "Section context", text: sectionContextSystemPrompt(bot.section) },
     { id: "team-memory", label: "Team memory", text: teamMemory.systemPrompt(bot.section) + (agentsMounted ? TEAM_MEMORY_PROMPT : "") },
@@ -8581,6 +8583,7 @@ async function startTurn(
           : "";
       const credentialPrompt = integrations.agents ? CREDENTIAL_PROMPT + THREADS_PROMPT + WIDGET_PROMPT : "";
       const routinePrompt = integrations.agents ? TRIGGER_PROMPT : "";
+      const workflowsPrompt = integrations.agents ? WORKFLOWS_PROMPT : "";
       const profilePrompt = integrations.agents ? PROFILE_PROMPT : "";
       const recallPrompt = integrations.agents && bot.memoryEnabled !== false && opts?.workflowStep === undefined ? SESSION_SEARCH_SYSTEM_PROMPT : "";
       const learnPrompt = skillAuthoring ? LEARN_PROMPT : "";
@@ -8689,6 +8692,7 @@ async function startTurn(
         { id: "credential", label: "Credentials", text: credentialPrompt },
         { id: "recall", label: "Recall", text: recallPrompt },
         { id: "routine", label: "Routines", text: routinePrompt },
+        { id: "workflows", label: "Workflows", text: workflowsPrompt },
         { id: "routine-execution", label: "Routine execution", text: opts?.automationSource === "schedule" || opts?.automationSource === "manual" || opts?.automationSource === "startup" ? ROUTINE_EXECUTION_PROMPT : "" },
         { id: "profile", label: "Profile changes", text: profilePrompt },
         { id: "learn", label: "Skill authoring", text: learnPrompt },
@@ -10459,6 +10463,7 @@ async function runClaimedGroupMemberTurn(
     integrations.agents && (CREDENTIAL_PROMPT + (orchestration && !orchestration.roomHandoffId ? THREADS_PROMPT : "")).trim(),
     integrations.agents && (!orchestration || orchestration.roomHandoffId) && "For actual MimirBot teamwork, discover IDs with list_room_targets and use coordinate_bots for advice or work in this or another room. Do not substitute native coding helpers for these named bots. Consult only when needed to make a decision; no discussion step is mandatory. Give concrete responsibilities, exact accessible paths and acceptance checks. End your turn after assigning; busy teammates queue and results automatically resume you. When they return, finish the requested verification and give the user one final answer. Native helper names are not evidence that an MimirBot teammate participated. Plain @mentions are only for conversational replies in this room." + requesterRule,
     integrations.agents && TRIGGER_PROMPT.trim(),
+    integrations.agents && WORKFLOWS_PROMPT.trim(),
     integrations.agents && PROFILE_PROMPT.trim(),
     integrations.agents && skillAuthoringEnabled(cfg) && LEARN_PROMPT.trim(),
     orchestration?.systemInstructions,
