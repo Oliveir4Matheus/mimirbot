@@ -155,4 +155,10 @@ describe.skipIf(process.platform === "win32")("AppImage CUA private staging", ()
     expect(fs.existsSync(active)).toBe(true);
     expect(fs.existsSync(stale)).toBe(false);
   });
+
+  it("pins the AppImage staging hashes to the bundled Cua Driver release", async () => {
+    const { LINUX_CUA_RELEASE } = await import("../scripts/cua-linux-release.mjs");
+    expect(FILES["cua-driver"]).toBe(LINUX_CUA_RELEASE.driverSha256);
+    expect(FILES["cua-cursor-theme"]).toBe(LINUX_CUA_RELEASE.cursorThemeSha256);
+  });
 });
