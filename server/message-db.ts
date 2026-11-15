@@ -59,6 +59,10 @@ function open(): DatabaseSync {
     CREATE INDEX IF NOT EXISTS messages_thread_order ON messages(thread_id, ${ORDERING_AT}) WHERE ${ORDERING_ROW};
     CREATE INDEX IF NOT EXISTS messages_work_at ON messages(kind, at) WHERE ${WORK_KINDS};
     CREATE INDEX IF NOT EXISTS messages_failed_at ON messages(at) WHERE ${FAILED_CALL};
+    -- For the periodic scans, whose WHERE clauses no index above repeats.
+    CREATE INDEX IF NOT EXISTS messages_goal_run ON messages(at) WHERE kind = 'goal.run';
+    CREATE INDEX IF NOT EXISTS messages_app ON messages(at) WHERE kind = 'app';
+    CREATE INDEX IF NOT EXISTS messages_open_rescue ON messages(at) WHERE kind = 'activity' AND json_extract(json, '$.tool.rescue') IS NOT NULL AND json_extract(json, '$.tool.rescue.settled') IS NULL AND json_extract(json, '$.tool.rescue.over') IS NULL;
     CREATE TABLE IF NOT EXISTS thread_state (
       thread_id TEXT PRIMARY KEY,
       active_leaf_id TEXT
