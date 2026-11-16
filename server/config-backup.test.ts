@@ -38,13 +38,18 @@ describe("reading the settings file", () => {
   });
 });
 
+const refusalOf = (read: ReturnType<typeof readConfigFile>, path: string) => {
+  if (read.state !== "invalid" && read.state !== "unreadable") throw new Error(`unexpected read state ${read.state}`);
+  return configSaveRefusal(read, path);
+};
+
 describe("a save that cannot read the file", () => {
   it("refuses to replace it and says how to recover", () => {
     const dir = tempDir();
     writeFileSync(configPath(dir), "{ not json");
     const read = readConfigFile(configPath(dir));
     expect(read.state).toBe("invalid");
-    const error = configSaveRefusal(read as { state: string; reason: string }, configPath(dir));
+    const error = refusalOf(read, configPath(dir));
     expect((error as { status?: number }).status).toBe(503);
     expect(error.message).toContain(configPath(dir));
     expect(error.message).toContain("openmausbot config restore");
@@ -54,7 +59,7 @@ describe("a save that cannot read the file", () => {
     const dir = tempDir();
     writeFileSync(configPath(dir), "{ not json");
     const read = readConfigFile(configPath(dir));
-    configSaveRefusal(read as { state: string; reason: string }, configPath(dir));
+    refusalOf(read, configPath(dir));
     const aside = readdirSync(dir).filter((name) => name.startsWith("config.json.unreadable-"));
     expect(aside).toHaveLength(1);
     expect(readFileSync(join(dir, aside[0]!), "utf8")).toBe("{ not json");

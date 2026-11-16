@@ -29,7 +29,7 @@ export interface ConfigCliArgs {
   dryRun: boolean;
 }
 
-export function parseConfigArgs(argv: string[], env: NodeJS.ProcessEnv = process.env): ConfigCliArgs | { error: string } {
+export function parseConfigArgs(argv: string[], env: NodeJS.ProcessEnv = process.env): ConfigCliArgs | { error: string; json?: boolean } {
   const json = argv.includes("--json");
   const help = argv.includes("--help") || argv.includes("-h");
   const dryRun = argv.includes("--dry-run");
@@ -44,13 +44,13 @@ export function parseConfigArgs(argv: string[], env: NodeJS.ProcessEnv = process
     const arg = words[index]!;
     if (arg === "--data-dir") {
       const value = words[index + 1];
-      if (value === undefined || value.startsWith("--")) return { error: "--data-dir needs the folder that holds config.json" };
+      if (value === undefined || value.startsWith("--")) return { error: "--data-dir needs the folder that holds config.json", json };
       dataDir = resolve(value);
       index += 1;
     } else if (command === "restore" && name === undefined && !arg.startsWith("-")) name = arg;
-    else return { error: `unknown argument "${arg}"; see openmausbot config --help` };
+    else return { error: `unknown argument "${arg}"; see openmausbot config --help`, json };
   }
-  if (command === "restore" && name === undefined) return { error: "restore needs the name of a copy, or \"latest\"; run openmausbot config backups to see them" };
+  if (command === "restore" && name === undefined) return { error: "restore needs the name of a copy, or \"latest\"; run openmausbot config backups to see them", json };
   return { command, dataDir, name, json, help, dryRun };
 }
 
