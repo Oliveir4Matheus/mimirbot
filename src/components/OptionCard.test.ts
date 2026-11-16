@@ -153,6 +153,18 @@ describe("Workflow proposal cards", () => {
     expect(shouldHideOnboardingCard(proposalCard, [proposalCard, later])).toBe(false);
   });
 
+  it("keeps Criar Workflow disabled until the interview is confirmed", () => {
+    const markup = renderToStaticMarkup(createElement(StoreProvider, null, createElement(OptionCard, { botId: "atlas", message: proposalCard })));
+    const createAt = markup.indexOf(">Criar Workflow</span>");
+    const createButton = markup.slice(markup.lastIndexOf("<button", createAt), createAt);
+    const archiveAt = markup.indexOf(">Agora não</span>");
+    const archiveButton = markup.slice(markup.lastIndexOf("<button", archiveAt), archiveAt);
+    expect(createAt).toBeGreaterThan(-1);
+    expect(createButton).toContain('disabled=""');
+    expect(archiveButton).not.toContain('disabled=""');
+    expect(markup).toContain(t("workflows.proposals.interviewCreateBlocked"));
+  });
+
   it("still hides an ordinary onboarding card once the person speaks again", () => {
     const quiz = msg({
       id: "ordinary",

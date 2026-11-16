@@ -6,12 +6,14 @@ import {
   WORKFLOW_SKILLS_IMPORTED_MAX,
   WORKFLOW_SKILL_NAME_MAX,
   WORKFLOW_STEP_MAX,
+  isWorkflowJsonPath,
   isWorkflowRelativePath,
+  isWorkflowScriptName,
   isWorkflowSlug,
   workflowDefinitionSchema,
+  workflowFileExtension,
   workflowStartsManual,
-  requireMatches,
-  requireMismatch,
+  workflowUnknownFields,
   resultField,
 } from "./workflow.ts";
 
@@ -35,7 +37,6 @@ const definition = (overrides: Record<string, unknown> = {}) => ({
       instructions: "Check numbers.csv and answer with a decision.",
       inputs: [{ as: "numbers.csv", from: { step: "coletar", output: "numbers.csv" } }],
       outputs: [{ path: "decision.json" }],
-      result: "decision.json",
     },
   ],
   createdAt: 1,
@@ -54,7 +55,6 @@ describe("workflowDefinitionSchema", () => {
     expect(parsed.retentionDays).toBe(90);
     expect(parsed.steps[0]!.inputs).toEqual([]);
     expect(parsed.steps[0]!.outputs).toEqual([{ path: "numbers.csv", required: true }]);
-    expect(parsed.steps[1]!.result).toBe("decision.json");
   });
 
   it("keeps a retention the owner chose", () => {
@@ -69,7 +69,7 @@ describe("workflowDefinitionSchema", () => {
 
   it("rejects an input that points at a later step", () => {
     const workflow = definition();
-    workflow.steps[0]!.inputs = [{ as: "x", from: { step: "revisar", output: "decision.json" } }] as never;
+    workflow.steps[0]!.inputs = [{ as: "x", from: { step: "revisar", output: "numbers.csv" } }] as never;
     expect(issues(workflow)).toContain("steps.0.inputs.0.from.step");
   });
 
@@ -85,10 +85,28 @@ describe("workflowDefinitionSchema", () => {
     expect(issues(workflow)).toContain("steps.1.inputs.0.from.output");
   });
 
-  it("rejects a result that is not one of the step's outputs", () => {
+  it("keeps a legacy result, which the engine no longer reads", () => {
     const workflow = definition();
-    workflow.steps[1]!.result = "answer.json";
+    (workflow.steps[1] as Record<string, unknown>).result = "decision.json";
+    const parsed = workflowDefinitionSchema.parse(workflow);
+    expect(parsed.steps[1]!.result).toBe("decision.json");
+  });
+
+  it("rejects a legacy result that is not one of the step's outputs", () => {
+    const workflow = definition();
+    (workflow.steps[1] as Record<string, unknown>).result = "answer.json";
     expect(issues(workflow)).toContain("steps.1.result");
+  });
+
+  it("keeps a legacy require and when so the save can explain them", () => {
+    const workflow = definition();
+    const review = workflow.steps[1] as Record<string, unknown>;
+    review.require = { ok: true };
+    review.when = [{ field: "ok", equals: true, next: "revisar2" }];
+    workflow.steps.push({ id: "revisar2", name: "Again", botId: "bot-reviewer", instructions: "Again.", outputs: [{ path: "again.txt" }] } as never);
+    const parsed = workflowDefinitionSchema.parse(workflow);
+    expect(parsed.steps[1]!.require).toEqual({ ok: true });
+    expect(parsed.steps[1]!.kind !== "condition" && parsed.steps[1]!.when?.[0]?.next).toBe("revisar2");
   });
 
   it("rejects the same output declared twice", () => {
@@ -130,19 +148,6 @@ describe("workflowDefinitionSchema", () => {
 
   it("rejects a workflow id that is not a uuid", () => {
     expect(issues(definition({ id: "contrato-mensal" }))).toContain("id");
-  });
-
-  it("keeps the step's require object", () => {
-    const workflow = definition();
-    workflow.steps[1]!.require = { ok: true, reason: "done" };
-    expect(workflowDefinitionSchema.parse(workflow).steps[1]!.require).toEqual({ ok: true, reason: "done" });
-  });
-
-  it("rejects require without a declared result", () => {
-    const workflow = definition();
-    workflow.steps[1]!.result = undefined;
-    workflow.steps[1]!.require = { ok: true };
-    expect(issues(workflow)).toContain("steps.1.require");
   });
 
   it("rejects an input that comes from an optional output", () => {
@@ -192,35 +197,47 @@ describe("workflowDefinitionSchema", () => {
   it("does not give script or condition steps a skills field", () => {
     const workflow = definition({
       steps: [
-        { id: "run", kind: "script", name: "Run", run: "run.mjs", outputs: [{ path: "out.txt" }], result: "out.txt", skills: { bot: ["ignored"] } },
-        { id: "check", kind: "condition", name: "Check", from: "run", conditions: [{ field: "ok", op: "exists" }], skills: { bot: ["ignored"] } },
+        { id: "run", kind: "script", name: "Run", run: "run.mjs", outputs: [{ path: "out.txt" }], skills: { bot: ["ignored"] } },
+        { id: "check", kind: "condition", name: "Check", from: { step: "run", output: "out.txt" }, conditions: [{ field: "ok", op: "exists" }], skills: { bot: ["ignored"] } },
       ],
     });
     const parsed = workflowDefinitionSchema.parse(workflow);
     expect(parsed.steps[0]).not.toHaveProperty("skills");
     expect(parsed.steps[1]).not.toHaveProperty("skills");
   });
+
+  it("keeps a shape as a JSON Schema object", () => {
+    const workflow = definition({
+      steps: [{
+        id: "run",
+        kind: "script",
+        name: "Run",
+        run: "run.mjs",
+        outputs: [{ path: "out.json", shape: { type: "object", required: ["total"], properties: { total: { type: "integer" } } } }],
+      }],
+    });
+    const step = workflowDefinitionSchema.parse(workflow).steps[0]!;
+    expect(step.kind === "script" && step.outputs[0]!.shape).toEqual({ type: "object", required: ["total"], properties: { total: { type: "integer" } } });
+  });
 });
 
-describe("requireMismatch", () => {
-  it("accepts a result whose declared fields match by equality", () => {
-    expect(requireMismatch({ ok: true, reason: "done", nested: { at: 1 } }, { ok: true, nested: { at: 1 } })).toBeUndefined();
-    expect(requireMatches({ ok: false }, { ok: false })).toBe(true);
+describe("file names", () => {
+  it("reads an output extension in lowercase and parses only .json", () => {
+    expect(workflowFileExtension("link.txt")).toBe("txt");
+    expect(workflowFileExtension("clips/clip1.mp4")).toBe("mp4");
+    expect(workflowFileExtension("no-extension")).toBeUndefined();
+    expect(workflowFileExtension("dot.")).toBeUndefined();
+    expect(isWorkflowJsonPath("result.json")).toBe(true);
+    expect(isWorkflowJsonPath("final.result.json")).toBe(true);
+    expect(isWorkflowJsonPath("RESULT.JSON")).toBe(true);
+    expect(isWorkflowJsonPath("result.json.txt")).toBe(false);
   });
 
-  it("names the field that differs or is missing", () => {
-    expect(requireMismatch({ ok: false }, { ok: true })).toContain('"ok" is false');
-    expect(requireMismatch({}, { ok: true })).toContain('no "ok" field');
-  });
-
-  it("compares arrays and nested objects by value, not by reference", () => {
-    expect(requireMatches({ list: [1, { a: "b" }] }, { list: [1, { a: "b" }] })).toBe(true);
-    expect(requireMatches({ list: [1, 2] }, { list: [2, 1] })).toBe(false);
-  });
-
-  it("refuses a result that is not an object", () => {
-    expect(requireMismatch([], { ok: true })).toContain("not a JSON object");
-    expect(requireMismatch(null, { ok: true })).toContain("not a JSON object");
+  it("accepts only a flat .mjs script name", () => {
+    for (const run of ["validar.mjs", "a1-b2.mjs"]) expect(isWorkflowScriptName(run)).toBe(true);
+    for (const run of ["validar.js", "validar.ts", "validar.py", "validar.sh", "sub/validar.mjs", "Validar.mjs", ""]) {
+      expect(isWorkflowScriptName(run)).toBe(false);
+    }
   });
 });
 
@@ -252,7 +269,7 @@ describe("isWorkflowRelativePath", () => {
   });
 });
 
-const branchWorkflow = (overrides: Record<string, unknown> = {}) => definition({
+const scriptWorkflow = (overrides: Record<string, unknown> = {}) => definition({
   steps: [
     { id: "coletar", kind: "bot", name: "Collect", botId: "bot-a", instructions: "Collect.", outputs: [{ path: "numbers.csv", required: true }] },
     {
@@ -261,18 +278,18 @@ const branchWorkflow = (overrides: Record<string, unknown> = {}) => definition({
       name: "Validate",
       run: "validar.mjs",
       outputs: [{ path: "result.json", required: true }],
-      result: "result.json",
-      when: [{ field: "ok", equals: false, next: "corrigir" }],
+      onFailure: "corrigir",
+      onTimeout: "fechar",
     },
-    { id: "corrigir", kind: "bot", name: "Fix", botId: "bot-b", instructions: "Fix.", outputs: [{ path: "result.json" }], onSuccess: "fechar" },
-    { id: "fechar", kind: "bot", name: "Close", botId: "bot-b", instructions: "Close.", outputs: [{ path: "result.json" }], result: "result.json" },
+    { id: "corrigir", kind: "bot", name: "Fix", botId: "bot-b", instructions: "Fix.", outputs: [{ path: "fixed.txt" }], onSuccess: "fechar" },
+    { id: "fechar", kind: "bot", name: "Close", botId: "bot-b", instructions: "Close.", outputs: [{ path: "done.txt" }] },
   ],
   ...overrides,
 });
 
 describe("script steps and flow edges", () => {
   it("parses bot and script steps, defaulting the script timeout and leaving the bot unlimited", () => {
-    const parsed = workflowDefinitionSchema.parse(branchWorkflow());
+    const parsed = workflowDefinitionSchema.parse(scriptWorkflow());
     expect(parsed.steps[0]!.kind).toBe("bot");
     expect(parsed.steps[0]!.kind === "bot" && parsed.steps[0]!.timeoutMs).toBe(0);
     expect(parsed.steps[0]!.kind === "bot" && parsed.steps[0]!.mode).toBe("auto");
@@ -283,6 +300,23 @@ describe("script steps and flow edges", () => {
     expect(script.timeoutMs).toBe(300_000);
     expect(script.modules).toEqual([]);
     expect(script.mode).toBe("auto");
+    expect(script.modules).toEqual([]);
+  });
+
+  it("keeps the modules a script step declares", () => {
+    const workflow = scriptWorkflow();
+    (workflow.steps[1] as Record<string, unknown>).modules = ["yt-dlp", "ffmpeg", "faster-whisper", "gpu"];
+    const step = workflowDefinitionSchema.parse(workflow).steps[1]!;
+    expect(step.kind === "script" && step.modules).toEqual([
+      { name: "yt-dlp", runtime: "bin" },
+      { name: "ffmpeg", runtime: "bin" },
+      { name: "faster-whisper", runtime: "bin" },
+      { name: "gpu", runtime: "bin" },
+    ]);
+
+    const bad = scriptWorkflow();
+    (bad.steps[1] as Record<string, unknown>).modules = ["../escape"];
+    expect(issues(bad)).toContain("steps.1.modules.0.name");
   });
   it("accepts a script limit longer than the five-minute default, up to an hour", () => {
     const workflow = branchWorkflow();
@@ -318,7 +352,7 @@ describe("script steps and flow edges", () => {
   });
 
   it("keeps a manual mode on bot and script steps", () => {
-    const workflow = branchWorkflow();
+    const workflow = scriptWorkflow();
     (workflow.steps[0] as Record<string, unknown>).mode = "manual";
     (workflow.steps[1] as Record<string, unknown>).mode = "manual";
     const parsed = workflowDefinitionSchema.parse(workflow);
@@ -330,8 +364,8 @@ describe("script steps and flow edges", () => {
   it("does not give a condition a mode", () => {
     const workflow = definition({
       steps: [
-        { id: "revisar", name: "Review", botId: "bot-b", instructions: "Review.", outputs: [{ path: "decision.json" }], result: "decision.json" },
-        { id: "checar", kind: "condition", name: "Check", from: "revisar", field: "ok", op: "equals", value: true, mode: "manual" },
+        { id: "revisar", name: "Review", botId: "bot-b", instructions: "Review.", outputs: [{ path: "decision.json" }] },
+        { id: "checar", kind: "condition", name: "Check", from: { step: "revisar", output: "decision.json" }, field: "ok", op: "equals", value: true, mode: "manual" },
       ],
     });
     const parsed = workflowDefinitionSchema.parse(workflow);
@@ -346,86 +380,60 @@ describe("script steps and flow edges", () => {
   });
 
   it("reads the old next field as onSuccess and drops it", () => {
-    const workflow = branchWorkflow();
+    const workflow = scriptWorkflow();
     (workflow.steps[2] as Record<string, unknown>).onSuccess = undefined;
     (workflow.steps[2] as Record<string, unknown>).next = "fechar";
     const parsed = workflowDefinitionSchema.parse(workflow);
     expect(parsed.steps[2]!.kind === "bot" && parsed.steps[2]!.onSuccess).toBe("fechar");
     expect((parsed.steps[2] as Record<string, unknown>).next).toBeUndefined();
-    expect(parsed.steps[1]!.kind === "script" && parsed.steps[1]!.when?.[0]?.next).toBe("corrigir");
   });
 
   it("keeps an explicit end and every forward destination", () => {
-    const workflow = branchWorkflow();
+    const workflow = scriptWorkflow();
     (workflow.steps[2] as Record<string, unknown>).onSuccess = null;
     const parsed = workflowDefinitionSchema.parse(workflow);
     expect(parsed.steps[2]!.kind === "bot" && parsed.steps[2]!.onSuccess).toBeNull();
-    expect(parsed.steps[1]!.kind === "script" && parsed.steps[1]!.when?.[0]?.next).toBe("corrigir");
   });
 
   it("refuses an edge that points backwards", () => {
-    const backwardNext = branchWorkflow();
+    const backwardNext = scriptWorkflow();
     (backwardNext.steps[2] as Record<string, unknown>).onSuccess = "coletar";
     expect(issues(backwardNext)).toContain("steps.2.onSuccess");
 
-    const backwardFailure = branchWorkflow();
+    const backwardFailure = scriptWorkflow();
     (backwardFailure.steps[2] as Record<string, unknown>).onFailure = "validar";
     expect(issues(backwardFailure)).toContain("steps.2.onFailure");
 
-    const backwardTimeout = branchWorkflow();
+    const backwardTimeout = scriptWorkflow();
     (backwardTimeout.steps[1] as Record<string, unknown>).onTimeout = "coletar";
     expect(issues(backwardTimeout)).toContain("steps.1.onTimeout");
-
-    const backwardWhen = branchWorkflow();
-    (backwardWhen.steps[1] as Record<string, unknown>).when = [{ field: "ok", equals: false, next: "coletar" }];
-    expect(issues(backwardWhen)).toContain("steps.1.when.0.next");
   });
 
   it("refuses onTimeout without a maximum time", () => {
-    const workflow = branchWorkflow();
+    const workflow = scriptWorkflow();
     (workflow.steps[2] as Record<string, unknown>).onTimeout = "fechar";
     expect(issues(workflow)).toContain("steps.2.onTimeout");
   });
 
   it("rejects a script name that is a path or another extension", () => {
-    for (const run of ["../validar.mjs", "sub/validar.mjs", "validar.sh", "validar.rb", "validar.pyc", "Validar.mjs", ""]) {
-      const workflow = branchWorkflow();
+    for (const run of ["../validar.mjs", "sub/validar.mjs", "validar.sh", "validar.js", "validar.ts", "validar.py", "Validar.mjs", ""]) {
+      const workflow = scriptWorkflow();
       (workflow.steps[1] as Record<string, unknown>).run = run;
       expect(issues(workflow)).toContain("steps.1.run");
     }
   });
 
-  it("accepts JavaScript, TypeScript and Python script names", () => {
-    for (const run of ["validar.mjs", "validar.js", "validar.ts", "validar.py"]) {
-      const workflow = branchWorkflow();
-      (workflow.steps[1] as Record<string, unknown>).run = run;
-      expect(issues(workflow)).toEqual([]);
-      const parsed = workflowDefinitionSchema.parse(workflow);
-      expect(parsed.steps[1]!.kind === "script" && parsed.steps[1]!.run).toBe(run);
-    }
-  });
-
-  it("rejects an unknown onSuccess, onFailure or when target", () => {
-    const unknownNext = branchWorkflow();
+  it("rejects an unknown destination", () => {
+    const unknownNext = scriptWorkflow();
     (unknownNext.steps[2] as Record<string, unknown>).onSuccess = "nope";
     expect(issues(unknownNext)).toContain("steps.2.onSuccess");
 
-    const unknownFailure = branchWorkflow();
+    const unknownFailure = scriptWorkflow();
     (unknownFailure.steps[2] as Record<string, unknown>).onFailure = "nope";
     expect(issues(unknownFailure)).toContain("steps.2.onFailure");
-
-    const unknownBranch = branchWorkflow();
-    (unknownBranch.steps[1] as Record<string, unknown>).when = [{ field: "ok", equals: false, next: "nope" }];
-    expect(issues(unknownBranch)).toContain("steps.1.when.0.next");
   });
 
-  it("rejects when without a declared result", () => {
-    const workflow = branchWorkflow();
-    (workflow.steps[1] as Record<string, unknown>).result = undefined;
-    expect(issues(workflow)).toContain("steps.1.when");
-  });
-
-  it("reads a dotted field out of the result", () => {
+  it("reads a dotted field out of a JSON output", () => {
     expect(resultField({ ok: true, check: { total: 3 } }, "check.total")).toEqual({ found: true, value: 3 });
     expect(resultField({ check: { total: 3 } }, "check.missing")).toEqual({ found: false, value: undefined });
     expect(resultField({ ok: true }, "a.b.c")).toEqual({ found: false, value: undefined });
@@ -442,6 +450,12 @@ describe("condition steps and the Studio canvas", () => {
       { id: "corrigir", name: "Fix", botId: "bot-a", instructions: "Fix.", outputs: [{ path: "fixed.txt" }] },
     ],
     ...overrides,
+  });
+
+  it("normalizes a legacy source step id into a step and output pair", () => {
+    const parsed = workflowDefinitionSchema.parse(withCondition());
+    const condition = parsed.steps[1]!;
+    expect(condition.kind === "condition" && condition.from).toEqual({ step: "revisar", output: "decision.json" });
   });
 
   it("parses a condition and its two routes", () => {
@@ -589,10 +603,14 @@ describe("condition steps and the Studio canvas", () => {
     expect(issues(workflow)).toContain("steps.1.conditions.0.value");
   });
 
-  it("requires the source step to declare a result", () => {
-    const workflow = withCondition();
-    delete (workflow.steps[0] as Record<string, unknown>).result;
-    expect(issues(workflow)).toContain("steps.1.from");
+  it("refuses a condition whose source declares no output, and one reading an optional output", () => {
+    const noResult = withCondition();
+    delete (noResult.steps[0] as Record<string, unknown>).result;
+    expect(issues(noResult)).toContain("steps.1.from.output");
+
+    const optional = withCondition();
+    optional.steps[0]!.outputs = [{ path: "decision.json", required: false }] as never;
+    expect(issues(optional)).toContain("steps.1.from.output");
   });
 
   it("refuses a condition that points at a step that does not exist", () => {
@@ -611,8 +629,8 @@ describe("condition steps and the Studio canvas", () => {
     expect(issues(backwardFalse)).toContain("steps.1.whenFalse");
 
     const backwardSource = withCondition();
-    (backwardSource.steps[1] as Record<string, unknown>).from = "fechar";
-    expect(issues(backwardSource)).toContain("steps.1.from");
+    (backwardSource.steps[1] as Record<string, unknown>).from = { step: "fechar", output: "done.txt" };
+    expect(issues(backwardSource)).toContain("steps.1.from.step");
   });
 
   it("keeps the canvas with positions, notes and containers", () => {
@@ -636,5 +654,131 @@ describe("condition steps and the Studio canvas", () => {
       },
     });
     expect(issues(workflow)).toContain("canvas.notes.0.link.id");
+  });
+});
+
+describe("parameter origins", () => {
+  const shape = {
+    type: "object",
+    required: ["clips", "total"],
+    properties: {
+      total: { type: "integer" },
+      clips: { type: "array", items: { type: "string" } },
+    },
+  };
+
+  const origins = (parameters: unknown[], extra: Record<string, unknown> = {}) => definition({
+    steps: [
+      { id: "escolher", kind: "script", name: "Escolher", run: "escolher.mjs", outputs: [{ path: "trechos.json", shape }] },
+      {
+        id: "renderizar",
+        name: "Renderizar",
+        botId: "bot-b",
+        instructions: "Corte os trechos.",
+        outputs: [{ path: "clip1.mp4" }],
+        parameters,
+        ...extra,
+      },
+    ],
+  });
+
+  it("accepts one origin per parameter: an earlier output's field, or a manual step", () => {
+    const parsed = workflowDefinitionSchema.parse(origins([
+      { name: "total", type: "integer", from: { step: "escolher", output: "trechos.json", field: "total" } },
+      { name: "clips", type: "string", list: true, from: { step: "escolher", output: "trechos.json", field: "clips" } },
+      { name: "link", type: "string", collectedBy: "renderizar" },
+    ], { mode: "manual" }));
+    const step = parsed.steps[1]!;
+    expect(step.kind !== "condition" && step.kind !== "loop" && step.parameters.map((parameter) => parameter.list)).toEqual([false, true, false]);
+  });
+
+  it("refuses two origins, and an optional parameter with one", () => {
+    expect(issues(origins([
+      { name: "total", type: "integer", from: { step: "escolher", output: "trechos.json", field: "total" }, collectedBy: "renderizar" },
+    ], { mode: "manual" }))).toContain("steps.1.parameters.0.from");
+    expect(issues(origins([
+      { name: "link", type: "string", required: false, whenAbsent: "rule:padrao", collectedBy: "renderizar" },
+    ], { mode: "manual" }))).toContain("steps.1.parameters.0.required");
+  });
+
+  it("refuses an origin that is missing, later, optional or not JSON", () => {
+    expect(issues(origins([
+      { name: "total", type: "integer", from: { step: "faltando", output: "trechos.json", field: "total" } },
+    ]))).toContain("steps.1.parameters.0.from.step");
+    expect(issues(origins([
+      { name: "total", type: "integer", from: { step: "renderizar", output: "clip1.mp4", field: "total" } },
+    ]))).toContain("steps.1.parameters.0.from.step");
+    expect(issues(origins([
+      { name: "total", type: "integer", from: { step: "escolher", output: "outro.json", field: "total" } },
+    ]))).toContain("steps.1.parameters.0.from.output");
+  });
+
+  it("refuses a parameter read from an output that is not a required .json", () => {
+    const optional = definition({
+      steps: [
+        { id: "escolher", kind: "script", name: "Escolher", run: "escolher.mjs", outputs: [{ path: "trechos.json", required: false, shape }] },
+        { id: "renderizar", name: "Renderizar", botId: "bot-b", instructions: "Corte.", outputs: [{ path: "clip1.mp4" }],
+          parameters: [{ name: "total", type: "integer", from: { step: "escolher", output: "trechos.json", field: "total" } }] },
+      ],
+    });
+    expect(issues(optional)).toContain("steps.1.parameters.0.from.output");
+
+    const text = definition({
+      steps: [
+        { id: "escolher", kind: "script", name: "Escolher", run: "escolher.mjs", outputs: [{ path: "trechos.txt" }] },
+        { id: "renderizar", name: "Renderizar", botId: "bot-b", instructions: "Corte.", outputs: [{ path: "clip1.mp4" }],
+          parameters: [{ name: "total", type: "integer", from: { step: "escolher", output: "trechos.txt", field: "total" } }] },
+      ],
+    });
+    expect(issues(text)).toContain("steps.1.parameters.0.from.output");
+  });
+
+  it("refuses collectedBy on a step that never asks a person", () => {
+    expect(issues(origins([
+      { name: "link", type: "string", collectedBy: "escolher" },
+    ]))).toContain("steps.1.parameters.0.collectedBy");
+    expect(issues(origins([
+      { name: "link", type: "string", collectedBy: "renderizar" },
+    ]))).toContain("steps.1.parameters.0.collectedBy");
+  });
+});
+
+describe("a save refuses what the reading schema would drop", () => {
+  it("names a field that does not exist on that kind of step", () => {
+    const raw = definition({
+      steps: [
+        { id: "revisar", name: "Review", botId: "bot-a", instructions: "Review.", outputs: [{ path: "ok.txt" }], format: "json" },
+        { id: "fechar", kind: "script", name: "Close", run: "fechar.mjs", instructions: "Close.", outputs: [{ path: "done.txt" }] },
+      ],
+    });
+    expect(workflowUnknownFields(raw).map((issue) => issue.path)).toEqual(["steps.0.format", "steps.1.instructions"]);
+  });
+
+  it("names an unknown field inside an input, an output and a parameter", () => {
+    const raw = definition({
+      steps: [
+        {
+          id: "revisar", name: "Review", botId: "bot-a", instructions: "Review.",
+          inputs: [{ as: "fonte.json", from: { step: "revisar", output: "ok.txt" }, mode: "copy" }],
+          outputs: [{ path: "ok.txt", format: "text" }],
+          parameters: [{ name: "link", type: "string", source: "step" }],
+        },
+      ],
+    });
+    expect(workflowUnknownFields(raw).map((issue) => issue.path)).toEqual([
+      "steps.0.inputs.0.mode",
+      "steps.0.outputs.0.format",
+      "steps.0.parameters.0.source",
+    ]);
+  });
+
+  it("keeps the legacy names the reading schema still normalizes", () => {
+    const raw = definition({
+      steps: [
+        { id: "revisar", name: "Review", botId: "bot-a", instructions: "Review.", outputs: [{ path: "ok.json" }], next: "fechar" },
+        { id: "fechar", kind: "condition", name: "Close", field: "ok", op: "equals", value: true, conditions: [{ field: "ok", op: "equals", value: true }] },
+      ],
+    });
+    expect(workflowUnknownFields(raw)).toEqual([]);
   });
 });

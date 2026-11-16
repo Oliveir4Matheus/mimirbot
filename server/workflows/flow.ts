@@ -1,6 +1,6 @@
 // Where a step sends the run next. The definition is validated first, so an
 // id that is not in `steps` means the Workflow was edited under a live run.
-import { resultField, sameJsonValue, type WorkflowBodyStep, type WorkflowStep } from "../../shared/workflow.ts";
+import type { WorkflowBodyStep, WorkflowStep } from "../../shared/workflow.ts";
 
 export type StepFailureKind = "failure" | "timeout" | "limit";
 
@@ -15,15 +15,9 @@ function bodyIndexOf(steps: readonly WorkflowBodyStep[], id: string): number | n
 }
 
 /** The next step after `index` passes, or null when this step ends the run. */
-export function nextStepIndex(steps: readonly WorkflowStep[], index: number, result: unknown): number | null {
+export function nextStepIndex(steps: readonly WorkflowStep[], index: number): number | null {
   const step = steps[index];
   if (!step || step.kind === "condition") return null;
-  if (step.kind === "bot" || step.kind === "script") {
-    for (const branch of step.when ?? []) {
-      const { found, value } = resultField(result, branch.field);
-      if (found && sameJsonValue(value, branch.equals)) return indexOf(steps, branch.next);
-    }
-  }
   if (step.onSuccess === null) return null;
   if (step.onSuccess !== undefined) return indexOf(steps, step.onSuccess);
   return index + 1 < steps.length ? index + 1 : null;
@@ -39,16 +33,12 @@ export function failureStepIndex(steps: readonly WorkflowStep[], index: number, 
 }
 
 /** Where a body step sends the next round step, or null when the round ends. */
-export function bodyNextStepIndex(body: readonly WorkflowBodyStep[], index: number, result: unknown): number | null {
+export function bodyNextStepIndex(body: readonly WorkflowBodyStep[], index: number, match?: boolean): number | null {
   const step = body[index];
   if (!step) return null;
   if (step.kind === "condition") {
-    const target = result ? step.whenTrue : step.whenFalse;
+    const target = match ? step.whenTrue : step.whenFalse;
     return target === undefined || target === null ? null : bodyIndexOf(body, target);
-  }
-  for (const branch of step.when ?? []) {
-    const { found, value } = resultField(result, branch.field);
-    if (found && sameJsonValue(value, branch.equals)) return bodyIndexOf(body, branch.next);
   }
   if (step.onSuccess === null) return null;
   if (step.onSuccess !== undefined) return bodyIndexOf(body, step.onSuccess);

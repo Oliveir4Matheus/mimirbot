@@ -57,7 +57,7 @@ Do While:
 
 | Scenario | Top-level steps | Body | Expected |
 |---|---|---|---|
-| 1 · Lote em 3 voltas | Agente → Prepara → Checa → Do While → Fecha | `processa.mjs` writes `{ lote, restantes }` 150 → 50 → 0 | `succeeded`, 3 rounds, third round `conditionMatched: true`, loop `verified: ["result.json"]`, downstream reads the loop output, `result: { final: true, restantes: 0 }` |
+| 1 · Lote em 3 voltas | Agente → Prepara → Checa → Do While → Fecha | `processa.mjs` writes `{ lote, restantes }` 150 → 50 → 0 | `succeeded`, 3 rounds, third round `conditionMatched: true`, loop `verified: ["result.json"]`, downstream reads the loop output, last round `result: { lote: 3, restantes: 0 }` |
 | 2 · Limite com onFailure | Agente → Prepara → Checa → Do While → Resgate | `nunca.mjs` always writes `{ restantes: 99 }`; `maxIterations: 2` | loop `failed`, `failureKind: "limit"`, message `step "laco" reached the iteration limit of 2`, `resgate` `succeeded`, run `succeeded` |
 | 3 · Corpo manual | Agente → Do While → Conclui | `manual.mjs`, `mode: "manual"`, writes `{ restantes: 0 }` | run `waiting_manual`, `hold.path = [1, 0, 0]`; Continue resumes and finishes one round |
 
@@ -78,8 +78,8 @@ flow in the Studio, with every component:
    condition's True branch to the Do While;
 4. open the Do While substudio, add the body **Script**, edit its code, see the
    **Entrada do Do While** / **Fim da volta** markers, and close;
-5. in the loop balloon choose the body script as `from`, maximum **3**, the
-   `result.json` output and the loop result;
+5. in the loop balloon choose the body script as the source step and its
+   `result.json` output, maximum **3**, and the stop condition;
 6. **Salvar**, **Executar**, and expand the Do While row: Volta 1 and 2 show
    “Condição não satisfeita”, Volta 3 shows “Parou porque restantes lte 0”.
 

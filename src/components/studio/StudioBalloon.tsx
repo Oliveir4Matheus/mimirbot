@@ -1,15 +1,20 @@
-import { useMemo, useRef, useState, type ReactNode } from "react";
-import { Check, Upload, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { AlertTriangle, Ban, Check, ChevronRight, Upload, X } from "lucide-react";
 
 import {
   WORKFLOW_CONDITION_ROWS_MAX,
-  WORKFLOW_SCRIPT_TIMEOUT_MAX_MS,
   type ConditionLine,
   type ConditionMatch,
   type ConditionOp,
   type StepOutput,
+  type WorkflowModule,
+  type WorkflowModuleRuntime,
+  type WorkflowParameter,
+  type WorkflowParameterType,
   type WorkflowSkillOptions,
   type WorkflowStep,
+  workflowModuleRuntimes,
+  workflowParameterTypes,
 } from "../../../shared/workflow";
 import type { LocaleKey } from "@/locales";
 import { Select } from "@/components/Select";
@@ -17,22 +22,24 @@ import { t } from "@/lib/i18n";
 import { cn } from "@/lib/cn";
 import type { BranchKey } from "./StudioCard";
 import {
-  conditionOpLabel, modulesFromText, nextConditionValue, outputsOf, scriptLanguageOf, scriptNameForLanguage, skillSelection, skillsWithGroup,
-  type StudioBranch, type StudioDraft, type StudioSkillGroup,
+  addModule, addParameter as addStepParameter, conditionOpLabel, consumedOutputs, moduleProblems,
+  nextConditionValue, outputsOf, parameterChannels, parameterOrigin, parameterProblems, removeModule, removeParameter,
+  setParameterOrigin, skillSelection, skillsWithGroup, suggestOutputPath, updateModule, updateParameter,
+  type ParameterOrigin, type StudioBranch, type StudioDraft, type StudioSkillGroup,
 } from "./studio-model";
 
 const MAX_PREVIEW = 512_000;
 
-const READ = { instructions: [".txt", ".md", ".json"], context: [".txt", ".md", ".json", ".csv"], script: [".js", ".mjs", ".ts", ".py", ".txt"] };
+const READ = { instructions: [".txt", ".md", ".json"], context: [".txt", ".md", ".json", ".csv"], script: [".mjs", ".txt"] };
 
 const BRANCH_TITLE: Record<BranchKey, LocaleKey> = {
   instructions: "studio.branch.instructions",
-  context: "studio.branch.context",
+  context: "studio.branch.inputs",
   tools: "studio.branch.tools",
   skills: "studio.branch.skills",
   return: "studio.branch.return",
   run: "studio.branch.run",
-  input: "studio.branch.input",
+  input: "studio.branch.inputs",
   output: "studio.branch.output",
   script: "studio.branch.script",
   condition: "studio.branch.condition",
@@ -42,9 +49,48 @@ const BRANCH_TITLE: Record<BranchKey, LocaleKey> = {
   timeout: "studio.branch.timeout",
 };
 
+const PARAMETER_TYPES: Record<WorkflowParameterType, LocaleKey> = {
+  string: "studio.inputs.type.string",
+  number: "studio.inputs.type.number",
+  integer: "studio.inputs.type.integer",
+  boolean: "studio.inputs.type.boolean",
+  date: "studio.inputs.type.date",
+  enum: "studio.inputs.type.enum",
+};
+
+const MODULE_RUNTIMES: Record<WorkflowModuleRuntime, LocaleKey> = {
+  bin: "studio.modules.bin",
+  python: "studio.modules.python",
+  node: "studio.modules.node",
+};
+
+const ORIGINS: Array<{ origin: ParameterOrigin; label: LocaleKey }> = [
+  { origin: "none", label: "studio.inputs.originNone" },
+  { origin: "collected", label: "studio.inputs.originCollected" },
+  { origin: "from", label: "studio.inputs.originFrom" },
+];
+
 export interface BalloonBot { id: string; name: string; section?: string }
 
-export function StudioBalloon({ draft, step, branch, anchor, bots, scripts, skillOptions, skillOptionsLoading, skillOptionsError, onChange, onScript, onRenameScript, onToast, onDisconnect, onClose }: {
+/** What the installation's script environment answers; the Studio only reads it. */
+export interface BalloonEnvironment {
+  prepared: boolean;
+  stale: boolean;
+  preparedAt?: number;
+  changed: number;
+  declared: number;
+}
+
+export interface BalloonFocus { field: string; token: number }
+
+/** `DD/MM · HH:MM` in the computer's time zone. */
+export function formatPreparedAt(preparedAt: number): string {
+  const date = new Date(preparedAt);
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${pad(date.getDate())}/${pad(date.getMonth() + 1)} · ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+export function StudioBalloon({ draft, step, branch, anchor, bots, scripts, skillOptions, skillOptionsLoading, skillOptionsError, environment, preparingEnvironment, onPrepareEnvironment, consumed, focus, onChange, onScript, onRenameScript, onToast, onDisconnect, onOpenInputs, onClose }: {
   draft: StudioDraft;
   step: WorkflowStep;
   branch: BranchKey;
@@ -54,16 +100,22 @@ export function StudioBalloon({ draft, step, branch, anchor, bots, scripts, skil
   skillOptions?: WorkflowSkillOptions;
   skillOptionsLoading?: boolean;
   skillOptionsError?: string;
+  environment?: BalloonEnvironment;
+  preparingEnvironment?: boolean;
+  onPrepareEnvironment?: () => void;
+  consumed?: ReadonlySet<string>;
+  focus?: BalloonFocus;
   onChange: (patch: Partial<WorkflowStep>) => void;
   onScript: (name: string, content: string) => void;
   onRenameScript: (from: string, to: string) => void;
   onToast: (key: LocaleKey) => void;
   onDisconnect: (branch: StudioBranch) => void;
+  onOpenInputs: (field: string) => void;
   onClose: () => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const [modulesDraft, setModulesDraft] = useState<{ stepId: string; text: string } | null>(null);
-  const modulesText = modulesDraft?.stepId === step.id ? modulesDraft.text : step.kind === "script" ? step.modules.join("\n") : "";
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [focusRequest, setFocusRequest] = useState<BalloonFocus | undefined>(focus);
   const index = draft.steps.findIndex((candidate) => candidate.id === step.id);
   const nameOf = (id: string) => draft.steps.find((candidate) => candidate.id === id)?.name ?? id;
   const outputs = outputsOf(step);
@@ -74,6 +126,31 @@ export function StudioBalloon({ draft, step, branch, anchor, bots, scripts, skil
   const subtitle = t("studio.balloon.subtitle", { name: step.name, branch: title });
 
   const earlier = useMemo(() => draft.steps.slice(0, index).filter((candidate) => candidate.kind !== "condition"), [draft.steps, index]);
+
+  useEffect(() => {
+    if (focus === undefined) return;
+    setFocusRequest({ field: focus.field, token: focus.token });
+  }, [focus?.field, focus?.token]);
+
+  useEffect(() => {
+    if (focusRequest === undefined) return;
+    const root = rootRef.current;
+    if (!root) return;
+    const base = focusRequest.field.split(".").slice(0, 2).join(".");
+    const exact = root.querySelector<HTMLElement>(`[data-studio-field="${focusRequest.field}"]`);
+    const nearby = root.querySelector<HTMLElement>(`[data-studio-field^="${base}."]`);
+    const target = exact ?? nearby ?? root.querySelector<HTMLElement>("input,select,textarea,button");
+    if (!target) return;
+    target.scrollIntoView?.({ block: "center" });
+    target.focus();
+    target.classList.add("studio-field-focus");
+    const clear = () => {
+      target.classList.remove("studio-field-focus");
+      target.removeEventListener("blur", clear);
+    };
+    target.addEventListener("blur", clear);
+    return clear;
+  }, [focusRequest, branch, step.id]);
 
   const readFile = async (accept: readonly string[], apply: (text: string) => void) => {
     const file = inputRef.current?.files?.[0];
@@ -91,21 +168,39 @@ export function StudioBalloon({ draft, step, branch, anchor, bots, scripts, skil
     if (inputRef.current) inputRef.current.value = "";
   };
 
-  const addOutput = (path: string) => {
-    const clean = path.trim();
-    if (!clean || outputs.some((output) => output.path === clean)) return;
-    onChange({ outputs: [...outputs, { path: clean, required: true }] } as Partial<WorkflowStep>);
+  const setOutputs = (next: StepOutput[]) => onChange({ outputs: next } as Partial<WorkflowStep>);
+
+  const addParameter = () => {
+    if (step.kind === "condition" || step.kind === "loop") return;
+    const next = addStepParameter(draft, step.id);
+    const updated = next.draft.steps.find((candidate) => candidate.id === step.id);
+    if (updated && updated.kind !== "condition" && updated.kind !== "loop") onChange({ parameters: updated.parameters } as Partial<WorkflowStep>);
+    setFocusRequest({ field: `parameters.${next.index}.name`, token: Date.now() });
   };
 
-  const removeOutput = (path: string) => {
-    if (outputs.length <= 1) return;
-    const next = outputs.filter((output) => output.path !== path);
-    const result = step.kind !== "condition" && step.result === path ? next[0]?.path : undefined;
-    onChange({ outputs: next, ...(result ? { result } : {}) } as Partial<WorkflowStep>);
+  const addCollectedParameter = () => {
+    if (step.kind === "condition" || step.kind === "loop") return;
+    const next = addStepParameter(draft, step.id, { collectedBy: step.id });
+    const updated = next.draft.steps.find((candidate) => candidate.id === step.id);
+    if (updated && updated.kind !== "condition" && updated.kind !== "loop") onChange({ parameters: updated.parameters } as Partial<WorkflowStep>);
+    onOpenInputs(`parameters.${next.index}.name`);
   };
+
+  const manualMissing = (step.kind === "bot" || step.kind === "script")
+    && step.mode === "manual"
+    && !step.parameters.some((parameter) => parameter.collectedBy === step.id);
+
+  const conditionSources = step.kind === "condition"
+    ? earlier.filter((candidate) => outputsOf(candidate).some((output) => output.path.toLowerCase().endsWith(".json")))
+    : [];
+  const conditionSource = step.kind === "condition" ? earlier.find((candidate) => candidate.id === step.from.step) : undefined;
+  const conditionOutputs = conditionSource
+    ? outputsOf(conditionSource).filter((output) => output.path.toLowerCase().endsWith(".json"))
+    : [];
 
   return (
     <div
+      ref={rootRef}
       className="studio-balloon"
       role="dialog"
       aria-label={title}
@@ -126,7 +221,7 @@ export function StudioBalloon({ draft, step, branch, anchor, bots, scripts, skil
         {step.kind === "bot" && branch === "instructions" && (
           <>
             <Field label={t("studio.agent.bot")}>
-              <Select className="w-full" size="sm" value={step.botId} onChange={(event) => onChange({ botId: event.target.value })}>
+              <Select className="w-full" size="sm" value={step.botId} data-studio-field="bot" onChange={(event) => onChange({ botId: event.target.value })}>
                 <option value="">{t("studio.agent.pickBot")}</option>
                 {bots.map((bot) => <option key={bot.id} value={bot.id}>{bot.name}</option>)}
               </Select>
@@ -134,6 +229,7 @@ export function StudioBalloon({ draft, step, branch, anchor, bots, scripts, skil
             <Field label={t("studio.agent.instructions")} help={t("studio.agent.instructionsHelp")}>
               <textarea
                 className="studio-input studio-textarea"
+                data-studio-field="instructions"
                 value={step.instructions}
                 placeholder={t("studio.agent.instructionsPlaceholder")}
                 onChange={(event) => onChange({ instructions: event.target.value })}
@@ -145,7 +241,14 @@ export function StudioBalloon({ draft, step, branch, anchor, bots, scripts, skil
         )}
 
         {step.kind === "bot" && branch === "context" && (
-          <FileLinks step={step} earlier={earlier} onChange={onChange} help={t("studio.agent.contextHelp")} label={t("studio.agent.context")} />
+          <InputsFields
+            draft={draft}
+            step={step}
+            earlier={earlier}
+            consumed={consumed ?? consumedOutputs(draft)}
+            onChange={onChange}
+            onAdd={addParameter}
+          />
         )}
 
         {step.kind === "bot" && branch === "tools" && (
@@ -166,60 +269,46 @@ export function StudioBalloon({ draft, step, branch, anchor, bots, scripts, skil
 
         {step.kind === "bot" && branch === "return" && (
           <>
-            <OutputList outputs={outputs} onAdd={addOutput} onRemove={removeOutput} />
-            <Field label={t("studio.agent.return")} help={t("studio.agent.returnHelp")}>
-              <Select
-                className="w-full"
-                size="sm"
-                value={step.result ?? ""}
-                onChange={(event) => onChange({ result: event.target.value || undefined } as Partial<WorkflowStep>)}
-              >
-                <option value="">{t("studio.agent.resultNone")}</option>
-                {outputs.map((output) => <option key={output.path} value={output.path}>{output.path}</option>)}
-              </Select>
-            </Field>
+            <OutputList outputs={outputs} consumed={consumed ?? consumedOutputs(draft)} stepId={step.id} onChange={setOutputs} />
+            {step.result !== undefined && <LegacyResultRow onRemove={() => onChange({ result: undefined } as Partial<WorkflowStep>)} />}
           </>
         )}
 
         {step.kind === "script" && branch === "input" && (
-          <FileLinks step={step} earlier={earlier} onChange={onChange} help={t("studio.script.inputHelp")} label={t("studio.script.input")} />
+          <InputsFields
+            draft={draft}
+            step={step}
+            earlier={earlier}
+            consumed={consumed ?? consumedOutputs(draft)}
+            onChange={onChange}
+            onAdd={addParameter}
+          />
         )}
 
         {step.kind === "script" && branch === "output" && (
           <>
-            <OutputList outputs={outputs} onAdd={addOutput} onRemove={removeOutput} />
-            <Field label={t("studio.script.output")} help={t("studio.script.outputHelp")}>
-              <Select
-                className="w-full"
-                size="sm"
-                value={step.result ?? ""}
-                onChange={(event) => onChange({ result: event.target.value || undefined } as Partial<WorkflowStep>)}
-              >
-                <option value="">{t("studio.agent.resultNone")}</option>
-                {outputs.map((output) => <option key={output.path} value={output.path}>{output.path}</option>)}
-              </Select>
-            </Field>
+            <OutputList outputs={outputs} consumed={consumed ?? consumedOutputs(draft)} stepId={step.id} onChange={setOutputs} />
+            {step.result !== undefined && <LegacyResultRow onRemove={() => onChange({ result: undefined } as Partial<WorkflowStep>)} />}
           </>
         )}
 
         {step.kind === "script" && branch === "script" && (
           <>
-            <Field label={t("studio.script.language")}>
-              <Select
-                className="w-full"
-                size="sm"
-                value={scriptLanguageOf(step.run)}
+            <Field label={t("studio.script.name")} help={t("studio.script.nameHelp")}>
+              <input
+                className={cn("studio-input font-mono", !isScriptFieldValid(step.run) && "studio-input-invalid")}
+                data-studio-field="run"
+                aria-invalid={!isScriptFieldValid(step.run)}
+                value={step.run}
                 onChange={(event) => {
-                  const next = scriptNameForLanguage(step.run, event.target.value as "javascript" | "typescript" | "python");
+                  const raw = event.target.value.trim();
+                  const next = raw.endsWith(".mjs") ? raw : `${raw.replace(/\.(mjs|js|ts|py)$/, "")}.mjs`;
                   if (next === step.run) return;
                   onRenameScript(step.run, next);
                   onChange({ run: next } as Partial<WorkflowStep>);
                 }}
-              >
-                <option value="javascript">JavaScript</option>
-                <option value="typescript">TypeScript</option>
-                <option value="python">Python</option>
-              </Select>
+              />
+              {!isScriptFieldValid(step.run) && <div className="studio-field-error">{t("studio.needScriptName", { name: step.name })}</div>}
             </Field>
             <Field label={t("studio.script.code")} help={t("studio.script.codeHelp")}>
               <textarea
@@ -229,42 +318,69 @@ export function StudioBalloon({ draft, step, branch, anchor, bots, scripts, skil
                 spellCheck={false}
               />
               <UploadRow label={t("studio.script.load")} onClick={() => inputRef.current?.click()} />
-              <input ref={inputRef} type="file" accept=".js,.mjs,.ts,.py,.txt" className="hidden" onChange={() => void readFile(READ.script, (text) => onScript(step.run, text))} />
+              <input ref={inputRef} type="file" accept=".mjs,.txt" className="hidden" onChange={() => void readFile(READ.script, (text) => onScript(step.run, text))} />
             </Field>
-            <Field label={t("studio.script.modules")} help={t("studio.script.modulesHelp", { manager: scriptLanguageOf(step.run) === "python" ? "pip" : "npm" })}>
-              <textarea
-                className="studio-input"
-                rows={2}
-                value={modulesText}
-                placeholder={scriptLanguageOf(step.run) === "python" ? "requests==2.31.0" : "lodash@4.17.21"}
-                onChange={(event) => {
-                  const text = event.target.value;
-                  setModulesDraft({ stepId: step.id, text });
-                  onChange({ modules: modulesFromText(text) } as Partial<WorkflowStep>);
-                }}
-              />
-            </Field>
+            <ModulesFields
+              draft={draft}
+              step={step}
+              environment={environment}
+              preparing={preparingEnvironment}
+              onPrepare={onPrepareEnvironment}
+              onChange={(modules) => onChange({ modules } as Partial<WorkflowStep>)}
+            />
             <Field label={t("studio.script.timeout")} help={t("studio.script.timeoutHelp")}>
               <input
                 type="number"
                 min={1}
-                max={WORKFLOW_SCRIPT_TIMEOUT_MAX_MS / 1000}
+                max={3600}
+                data-studio-field="timeout"
                 className="studio-input"
                 value={Math.round(step.timeoutMs / 1000)}
-                onChange={(event) => onChange({
-                  timeoutMs: Math.max(1, Math.min(WORKFLOW_SCRIPT_TIMEOUT_MAX_MS / 1000, Number(event.target.value) || 1)) * 1000,
-                } as Partial<WorkflowStep>)}
+                onChange={(event) => onChange({ timeoutMs: Math.max(1, Math.min(3600, Number(event.target.value) || 1)) * 1000 } as Partial<WorkflowStep>)}
               />
             </Field>
           </>
         )}
 
         {step.kind === "condition" && branch === "condition" && (
-          <ConditionFields
-            match={step.match}
-            conditions={step.conditions}
-            onChange={(patch) => onChange(patch as Partial<WorkflowStep>)}
-          />
+          <>
+            <Field label={t("studio.condition.from")} help={t("studio.condition.fromHelp")}>
+              <Select
+                className="w-full"
+                size="sm"
+                value={step.from.step}
+                data-studio-field="from"
+                onChange={(event) => {
+                  const source = earlier.find((candidate) => candidate.id === event.target.value);
+                  const outputs = source ? outputsOf(source).filter((output) => output.path.toLowerCase().endsWith(".json")) : [];
+                  const output = outputs.find((candidate) => candidate.shape !== undefined) ?? outputs[0];
+                  onChange({ from: { step: event.target.value, output: output?.path ?? "" } } as Partial<WorkflowStep>);
+                }}
+              >
+                <option value="">{t("studio.condition.pickFrom")}</option>
+                {conditionSources.map((candidate) => <option key={candidate.id} value={candidate.id}>{candidate.name}</option>)}
+              </Select>
+              {conditionSources.length === 0 && <div className="studio-help">{t("studio.condition.noFrom")}</div>}
+            </Field>
+            <Field label={t("studio.condition.fromOutput")}>
+              <Select
+                className="w-full"
+                size="sm"
+                value={step.from.output}
+                disabled={conditionOutputs.length === 0}
+                data-studio-field="from.output"
+                onChange={(event) => onChange({ from: { ...step.from, output: event.target.value } } as Partial<WorkflowStep>)}
+              >
+                <option value="">{t("studio.condition.pickOutput")}</option>
+                {conditionOutputs.map((output) => <option key={output.path} value={output.path}>{output.path}</option>)}
+              </Select>
+            </Field>
+            <ConditionFields
+              match={step.match}
+              conditions={step.conditions}
+              onChange={(patch) => onChange(patch as Partial<WorkflowStep>)}
+            />
+          </>
         )}
 
         {step.kind === "loop" && branch === "condition" && (
@@ -313,12 +429,21 @@ export function StudioBalloon({ draft, step, branch, anchor, bots, scripts, skil
                 <DisconnectRow label={t("studio.disconnect")} onClick={() => onDisconnect("run")} />
               )}
             </Field>
+            {(step.kind === "bot" || step.kind === "script") && step.when !== undefined && (
+              <LegacyBranchRow onRemove={() => onChange({ when: undefined } as Partial<WorkflowStep>)} />
+            )}
+            {(step.kind === "bot" || step.kind === "script") && step.require !== undefined && (
+              <LegacyRequireRow onRemove={() => onChange({ require: undefined } as Partial<WorkflowStep>)} />
+            )}
             {(step.kind === "bot" || step.kind === "script") && (
               <Field label={t("studio.step.mode")} help={t("studio.step.modeHelp")}>
                 <Select
-                  className="w-full"
+                  className={cn("w-full", manualMissing && "studio-select-invalid")}
                   size="sm"
                   value={step.mode}
+                  data-studio-field="mode"
+                  aria-invalid={manualMissing}
+                  aria-describedby={manualMissing ? "studio-manual-warning" : undefined}
                   onChange={(event) => onChange({ mode: event.target.value as "auto" | "manual" } as Partial<WorkflowStep>)}
                 >
                   <option value="auto">{t("studio.step.modeAuto")}</option>
@@ -326,12 +451,25 @@ export function StudioBalloon({ draft, step, branch, anchor, bots, scripts, skil
                 </Select>
               </Field>
             )}
+            {(step.kind === "bot" || step.kind === "script") && manualMissing && (
+              <div className="studio-callout" id="studio-manual-warning" role="status">
+                <div className="studio-callout-head">
+                  <AlertTriangle size={13} aria-hidden="true" />
+                  <strong>{t("studio.manual.title")}</strong>
+                </div>
+                <div className="studio-callout-help">{t("studio.manual.help")}</div>
+                <button type="button" className="studio-callout-action" onClick={addCollectedParameter}>
+                  {t("studio.manual.add")}
+                </button>
+              </div>
+            )}
             {step.kind === "bot" && (
               <Field label={t("studio.agent.timeout")} help={t("studio.agent.timeoutHelp")}>
                 <input
                   type="number"
                   min={0}
                   max={3_600}
+                  data-studio-field="timeout"
                   className="studio-input"
                   placeholder={t("studio.agent.timeoutNone")}
                   value={step.timeoutMs > 0 ? Math.round(step.timeoutMs / 1000) : ""}
@@ -351,6 +489,10 @@ export function StudioBalloon({ draft, step, branch, anchor, bots, scripts, skil
   );
 }
 
+function isScriptFieldValid(run: string): boolean {
+  return /^[a-z0-9][a-z0-9._-]*\.mjs$/.test(run);
+}
+
 function Field({ label, help, children }: { label: string; help?: string; children: ReactNode }) {
   return (
     <div className="studio-field">
@@ -358,6 +500,18 @@ function Field({ label, help, children }: { label: string; help?: string; childr
       {children}
       {help && <div className="studio-help">{help}</div>}
     </div>
+  );
+}
+
+function Section({ label, action, children }: { label: string; action?: ReactNode; children: ReactNode }) {
+  return (
+    <section className="studio-balloon-section">
+      <div className="studio-section-head">
+        <span className="studio-section-label">{label}</span>
+        {action}
+      </div>
+      {children}
+    </section>
   );
 }
 
@@ -468,33 +622,420 @@ function DisconnectRow({ label, onClick }: { label: string; onClick: () => void 
   );
 }
 
-function OutputList({ outputs, onAdd, onRemove }: {
-  outputs: Array<{ path: string; required: boolean }>;
-  onAdd: (path: string) => void;
-  onRemove: (path: string) => void;
+function InputsFields({ draft, step, earlier, consumed, onChange, onAdd }: {
+  draft: StudioDraft;
+  step: Extract<WorkflowStep, { kind: "bot" | "script" }>;
+  earlier: WorkflowStep[];
+  consumed: ReadonlySet<string>;
+  onChange: (patch: Partial<WorkflowStep>) => void;
+  onAdd: () => void;
+}) {
+  const channels = parameterChannels(step);
+  const setParameter = (index: number, patch: Partial<WorkflowParameter>) => {
+    const next = updateParameter(draft, step.id, index, patch);
+    const updated = next.steps.find((candidate) => candidate.id === step.id);
+    if (updated && updated.kind !== "condition" && updated.kind !== "loop") onChange({ parameters: updated.parameters } as Partial<WorkflowStep>);
+  };
+  const setOrigin = (index: number, origin: ParameterOrigin) => {
+    const next = setParameterOrigin(draft, step.id, index, origin);
+    const updated = next.steps.find((candidate) => candidate.id === step.id);
+    if (updated && updated.kind !== "condition" && updated.kind !== "loop") onChange({ parameters: updated.parameters } as Partial<WorkflowStep>);
+  };
+  const problems = parameterProblems(step, earlier);
+
+  return (
+    <>
+      <Section label={t("studio.inputs.documents")}>
+        <FileLinks
+          step={step}
+          earlier={earlier}
+          consumed={consumed}
+          channels={channels}
+          onChange={onChange}
+        />
+      </Section>
+      <Section
+        label={t("studio.inputs.parameters")}
+        action={(
+          <button type="button" className="studio-section-add" data-studio-field="parameters.add" onClick={onAdd}>
+            + {t("studio.inputs.add")}
+          </button>
+        )}
+      >
+        {step.parameters.length === 0 ? (
+          <div className="studio-empty-box">{t("studio.inputs.empty")}</div>
+        ) : (
+          <div className="studio-param-list">
+            {step.parameters.map((parameter, index) => (
+              <ParameterCard
+                key={index}
+                parameter={parameter}
+                index={index}
+                earlier={earlier}
+                problems={problems.filter((problem) => problem.index === index)}
+                onChange={(patch) => setParameter(index, patch)}
+                onOrigin={(origin) => setOrigin(index, origin)}
+                onRemove={() => {
+                  const next = removeParameter(draft, step.id, index);
+                  const updated = next.steps.find((candidate) => candidate.id === step.id);
+                  if (updated && updated.kind !== "condition" && updated.kind !== "loop") onChange({ parameters: updated.parameters } as Partial<WorkflowStep>);
+                }}
+              />
+            ))}
+          </div>
+        )}
+        {step.parameters.some((parameter) => parameter.collectedBy === step.id) && (
+          <div className="studio-help studio-param-note">{t("studio.manual.collected")}</div>
+        )}
+      </Section>
+    </>
+  );
+}
+
+function ParameterCard({ parameter, index, earlier, problems, onChange, onOrigin, onRemove }: {
+  parameter: WorkflowParameter;
+  index: number;
+  earlier: WorkflowStep[];
+  problems: ReturnType<typeof parameterProblems>;
+  onChange: (patch: Partial<WorkflowParameter>) => void;
+  onOrigin: (origin: ParameterOrigin) => void;
+  onRemove: () => void;
+}) {
+  const origin = parameterOrigin(parameter);
+  const nameProblem = problems.find((problem) => problem.field === "name");
+  const valuesProblem = problems.find((problem) => problem.field === "values");
+  const whenAbsentProblem = problems.find((problem) => problem.field === "whenAbsent");
+  const fromProblem = problems.find((problem) => problem.field === "from");
+  const sources = earlier.filter((candidate): candidate is Extract<WorkflowStep, { kind: "bot" | "script" }> => candidate.kind !== "condition" && candidate.kind !== "loop");
+  const source = parameter.from === undefined ? undefined : sources.find((candidate) => candidate.id === parameter.from!.step);
+  const sourceOutputs = source?.outputs.filter((output) => output.path.toLowerCase().endsWith(".json")) ?? [];
+  const nameErrorId = `parameter-${index}-name-error`;
+
+  return (
+    <div className={cn("studio-param", nameProblem && "studio-param-invalid")}>
+      <div className="studio-param-head">
+        <input
+          className={cn("studio-input font-mono", nameProblem && "studio-input-invalid")}
+          data-studio-field={`parameters.${index}.name`}
+          aria-label={t("studio.inputs.name")}
+          aria-invalid={Boolean(nameProblem)}
+          aria-describedby={nameProblem ? nameErrorId : undefined}
+          value={parameter.name}
+          placeholder="total"
+          onChange={(event) => onChange({ name: event.target.value })}
+        />
+        <button type="button" className="studio-param-remove" aria-label={t("studio.inputs.remove", { name: parameter.name })} onClick={onRemove}>
+          <X size={12} aria-hidden="true" />
+        </button>
+      </div>
+      {nameProblem && <div className="studio-field-error" id={nameErrorId} role="alert">{t(nameProblem.key as LocaleKey)}</div>}
+
+      <div className="studio-param-types">
+        <Select
+          className="w-full"
+          size="sm"
+          value={parameter.type}
+          data-studio-field={`parameters.${index}.type`}
+          aria-label={t("studio.inputs.type")}
+          onChange={(event) => onChange({ type: event.target.value as WorkflowParameterType })}
+        >
+          {workflowParameterTypes.map((type) => <option key={type} value={type}>{t(PARAMETER_TYPES[type])}</option>)}
+        </Select>
+        <label className="studio-check studio-param-list">
+          <input
+            type="checkbox"
+            checked={parameter.list}
+            data-studio-field={`parameters.${index}.list`}
+            onChange={(event) => onChange({ list: event.target.checked })}
+          />
+          <span className="text-[11px]">{t("studio.inputs.list")}</span>
+        </label>
+      </div>
+
+      {parameter.type === "enum" && (
+        <div className="studio-field">
+          <div className="studio-label">{t("studio.inputs.values")}</div>
+          <input
+            className={cn("studio-input", valuesProblem && "studio-input-invalid")}
+            data-studio-field={`parameters.${index}.values`}
+            aria-invalid={Boolean(valuesProblem)}
+            value={(parameter.values ?? []).join(", ")}
+            placeholder="azul, verde"
+            onChange={(event) => onChange({ values: event.target.value.split(",").map((value) => value.trim()).filter(Boolean) })}
+          />
+          <div className={cn("studio-help", valuesProblem && "studio-field-error")}>
+            {valuesProblem ? t(valuesProblem.key as LocaleKey) : t("studio.inputs.valuesHelp")}
+          </div>
+        </div>
+      )}
+
+      <div className="studio-label">{t("studio.inputs.origin")}</div>
+      <div className="studio-origin" role="group" aria-label={t("studio.inputs.origin")}>
+        {ORIGINS.map((entry) => (
+          <button
+            key={entry.origin}
+            type="button"
+            className={cn("studio-origin-button", origin === entry.origin && "studio-origin-active")}
+            aria-pressed={origin === entry.origin}
+            data-studio-field={origin === entry.origin ? `parameters.${index}.origin` : undefined}
+            onClick={() => onOrigin(entry.origin)}
+          >
+            {t(entry.label)}
+          </button>
+        ))}
+      </div>
+      {origin === "none" && <div className="studio-help">{t("studio.inputs.originNoneHelp")}</div>}
+      {origin === "collected" && <div className="studio-help">{t("studio.inputs.originCollectedHelp")}</div>}
+
+      {origin === "none" && (
+        <>
+          <label className="studio-check studio-param-required">
+            <input
+              type="checkbox"
+              checked={parameter.required}
+              data-studio-field={`parameters.${index}.required`}
+              onChange={(event) => onChange({ required: event.target.checked })}
+            />
+            <span className="text-[11px]">{t("studio.inputs.required")}</span>
+          </label>
+          {!parameter.required && (
+            <div className="studio-field">
+              <div className="studio-label">{t("studio.inputs.whenAbsent")}</div>
+              <input
+                className={cn("studio-input font-mono", whenAbsentProblem && "studio-input-invalid")}
+                data-studio-field={`parameters.${index}.whenAbsent`}
+                aria-invalid={Boolean(whenAbsentProblem)}
+                value={parameter.whenAbsent ?? ""}
+                placeholder={t("studio.inputs.whenAbsentPlaceholder")}
+                onChange={(event) => onChange({ whenAbsent: event.target.value })}
+              />
+              <div className={cn("studio-help", whenAbsentProblem && "studio-field-error")}>
+                {whenAbsentProblem ? t(whenAbsentProblem.key as LocaleKey) : t("studio.inputs.whenAbsentHelp")}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {origin === "from" && (
+        <>
+          <div className="studio-field">
+            <div className="studio-label">{t("studio.inputs.fromStep")}</div>
+            <Select
+              className="w-full"
+              size="sm"
+              value={parameter.from?.step ?? ""}
+              data-studio-field={`parameters.${index}.from.step`}
+              onChange={(event) => {
+                const next = sources.find((candidate) => candidate.id === event.target.value);
+                const output = next?.outputs.find((candidate) => candidate.path.toLowerCase().endsWith(".json"));
+                onChange({ from: { step: event.target.value, output: output?.path ?? "", field: parameter.from?.field ?? "" } });
+              }}
+            >
+              <option value="">{t("studio.inputs.pickStep")}</option>
+              {sources.map((candidate) => <option key={candidate.id} value={candidate.id}>{candidate.name}</option>)}
+            </Select>
+            {sources.length === 0 && <div className="studio-help">{t("studio.inputs.noEarlierStep")}</div>}
+          </div>
+          <div className="studio-field">
+            <div className="studio-label">{t("studio.inputs.fromOutput")}</div>
+            <Select
+              className="w-full"
+              size="sm"
+              value={parameter.from?.output ?? ""}
+              disabled={sourceOutputs.length === 0}
+              data-studio-field={`parameters.${index}.from.output`}
+              onChange={(event) => onChange({ from: { step: parameter.from?.step ?? "", output: event.target.value, field: parameter.from?.field ?? "" } })}
+            >
+              <option value="">{t("studio.inputs.pickOutput")}</option>
+              {sourceOutputs.map((output) => <option key={output.path} value={output.path}>{output.path}</option>)}
+            </Select>
+            {source !== undefined && sourceOutputs.length === 0 && <div className="studio-help">{t("studio.inputs.noJsonOutputs")}</div>}
+          </div>
+          <div className="studio-field">
+            <div className="studio-label">{t("studio.inputs.fromField")}</div>
+            <input
+              className={cn("studio-input font-mono", fromProblem && "studio-input-invalid")}
+              data-studio-field={`parameters.${index}.from.field`}
+              aria-invalid={Boolean(fromProblem)}
+              value={parameter.from?.field ?? ""}
+              placeholder={t("studio.inputs.fromFieldPlaceholder")}
+              onChange={(event) => onChange({ from: { step: parameter.from?.step ?? "", output: parameter.from?.output ?? "", field: event.target.value } })}
+            />
+          </div>
+          {fromProblem && <div className="studio-field-error" role="alert">{t(fromProblem.key as LocaleKey)}</div>}
+        </>
+      )}
+    </div>
+  );
+}
+
+function ModulesFields({ draft, step, environment, preparing, onPrepare, onChange }: {
+  draft: StudioDraft;
+  step: Extract<WorkflowStep, { kind: "script" }>;
+  environment?: BalloonEnvironment;
+  preparing?: boolean;
+  onPrepare?: () => void;
+  onChange: (modules: WorkflowModule[]) => void;
+}) {
+  const problems = moduleProblems(step.modules);
+  const add = () => {
+    const next = addModule(draft, step.id);
+    const updated = next.draft.steps.find((candidate) => candidate.id === step.id);
+    if (updated && updated.kind === "script") onChange(updated.modules);
+  };
+  const edit = (index: number, patch: Partial<WorkflowModule>) => {
+    const next = updateModule(draft, step.id, index, patch);
+    const updated = next.steps.find((candidate) => candidate.id === step.id);
+    if (updated && updated.kind === "script") onChange(updated.modules);
+  };
+  const remove = (index: number) => {
+    const next = removeModule(draft, step.id, index);
+    const updated = next.steps.find((candidate) => candidate.id === step.id);
+    if (updated && updated.kind === "script") onChange(updated.modules);
+  };
+  const declaresPackage = step.modules.some((module) => module.runtime !== "bin");
+
+  return (
+    <Field label={t("studio.script.modules")} help={t("studio.script.modulesHelp")}>
+      <div className="studio-modules" data-studio-field="modules">
+        {step.modules.map((module, index) => {
+          const nameProblem = problems.find((problem) => problem.index === index && problem.field === "name");
+          const versionProblem = problems.find((problem) => problem.index === index && problem.field === "version");
+          return (
+            <div key={index} className="studio-module">
+              <div className="studio-module-row">
+                <input
+                  className={cn("studio-input font-mono", nameProblem && "studio-input-invalid")}
+                  data-studio-field={`modules.${index}.name`}
+                  aria-label={t("studio.modules.name")}
+                  aria-invalid={Boolean(nameProblem)}
+                  value={module.name}
+                  placeholder="yt-dlp"
+                  onChange={(event) => edit(index, { name: event.target.value })}
+                />
+                <Select
+                  className="w-full"
+                  size="sm"
+                  value={module.runtime}
+                  data-studio-field={`modules.${index}.runtime`}
+                  aria-label={t("studio.modules.runtime")}
+                  onChange={(event) => edit(index, { runtime: event.target.value as WorkflowModuleRuntime })}
+                >
+                  {workflowModuleRuntimes.map((runtime) => (
+                    <option key={runtime} value={runtime}>{t(MODULE_RUNTIMES[runtime])}</option>
+                  ))}
+                </Select>
+                <input
+                  className={cn("studio-input font-mono", versionProblem && "studio-input-invalid")}
+                  data-studio-field={`modules.${index}.version`}
+                  aria-label={t("studio.modules.version")}
+                  aria-invalid={Boolean(versionProblem)}
+                  value={module.version ?? ""}
+                  placeholder={t("studio.modules.versionPlaceholder")}
+                  disabled={module.runtime === "bin"}
+                  onChange={(event) => edit(index, { version: event.target.value.trim() === "" ? undefined : event.target.value })}
+                />
+                <button type="button" className="studio-param-remove" aria-label={t("studio.modules.remove", { name: module.name })} onClick={() => remove(index)}>
+                  <X size={12} aria-hidden="true" />
+                </button>
+              </div>
+              {(nameProblem || versionProblem) && (
+                <div className="studio-field-error" role="alert">
+                  {t((nameProblem ?? versionProblem)!.key as LocaleKey)}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <button type="button" className="studio-section-add studio-module-add" data-studio-field="modules.add" onClick={add}>
+        + {t("studio.modules.add")}
+      </button>
+      {declaresPackage && (
+        <EnvironmentBadge environment={environment} preparing={preparing} onPrepare={onPrepare} />
+      )}
+    </Field>
+  );
+}
+
+function EnvironmentBadge({ environment, preparing, onPrepare }: {
+  environment?: BalloonEnvironment;
+  preparing?: boolean;
+  onPrepare?: () => void;
+}) {
+  if (preparing) {
+    return (
+      <div className="studio-env studio-env-amber studio-env-pulse" role="status">
+        <span className="studio-env-dot" aria-hidden="true" />
+        <span>{t("studio.env.preparing")}</span>
+      </div>
+    );
+  }
+  if (environment === undefined) return null;
+  const ready = environment.prepared && !environment.stale;
+  return (
+    <div className={cn("studio-env", ready ? "studio-env-green" : "studio-env-amber")} role="status">
+      <span className="studio-env-dot" aria-hidden="true" />
+      <span>
+        {environment.prepared
+          ? environment.stale
+            ? (environment.changed === 1 ? t("studio.env.changedOne") : t("studio.env.changed", { count: environment.changed }))
+            : t("studio.env.preparedAt", { date: formatPreparedAt(environment.preparedAt ?? Date.now()) })
+          : t("studio.env.notPrepared")}
+      </span>
+      {!ready && onPrepare && (
+        <button type="button" className="studio-env-action" onClick={onPrepare}>
+          {t("studio.env.prepare")}
+        </button>
+      )}
+    </div>
+  );
+}
+
+function OutputList({ outputs, consumed, stepId, onChange }: {
+  outputs: StepOutput[];
+  consumed: ReadonlySet<string>;
+  stepId: string;
+  onChange: (next: StepOutput[]) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const add = (path: string) => {
+    const clean = path.trim();
+    if (!clean || outputs.some((output) => output.path === clean)) return;
+    onChange([...outputs, { path: clean, required: true }]);
+  };
+  const patch = (index: number, next: Partial<StepOutput>) => {
+    onChange(outputs.map((output, position) => position === index ? { ...output, ...next } : output));
+  };
+  const remove = (index: number) => {
+    if (outputs.length <= 1) return;
+    onChange(outputs.filter((_output, position) => position !== index));
+  };
   return (
     <Field label={t("studio.script.outputFiles")} help={t("studio.script.outputHelp")}>
-      <div className="studio-chips">
-        {outputs.map((output) => (
-          <span key={output.path} className="studio-chip">
-            <span className="font-mono">{output.path}</span>
-            <button type="button" aria-label={t("studio.script.removeOutput", { name: output.path })} disabled={outputs.length <= 1} onClick={() => onRemove(output.path)}>
-              <X size={11} aria-hidden="true" />
-            </button>
-          </span>
+      <div className="studio-output-list">
+        {outputs.map((output, index) => (
+          <OutputRow
+            key={index}
+            output={output}
+            index={index}
+            canRemove={outputs.length > 1}
+            consumed={consumed.has(`${stepId}\u0000${output.path}`)}
+            onPatch={(next) => patch(index, next)}
+            onRemove={() => remove(index)}
+          />
         ))}
       </div>
       <div className="studio-add-row">
         <input ref={inputRef} className="studio-input" placeholder={t("studio.script.addOutput")} onKeyDown={(event) => {
           if (event.key !== "Enter") return;
-          onAdd(event.currentTarget.value);
+          add(event.currentTarget.value);
           event.currentTarget.value = "";
         }} />
         <button type="button" className="studio-add" onClick={() => {
           if (!inputRef.current) return;
-          onAdd(inputRef.current.value);
+          add(inputRef.current.value);
           inputRef.current.value = "";
         }}>+</button>
       </div>
@@ -502,12 +1043,149 @@ function OutputList({ outputs, onAdd, onRemove }: {
   );
 }
 
-function FileLinks({ step, earlier, onChange, help, label }: {
+function OutputRow({ output, index, canRemove, consumed, onPatch, onRemove }: {
+  output: StepOutput;
+  index: number;
+  canRemove: boolean;
+  consumed: boolean;
+  onPatch: (patch: Partial<StepOutput>) => void;
+  onRemove: () => void;
+}) {
+  const suggestion = suggestOutputPath(output.path);
+  const isJson = output.path.toLowerCase().endsWith(".json");
+  const [shapeOpen, setShapeOpen] = useState(isJson);
+  useEffect(() => {
+    if (isJson) setShapeOpen(true);
+  }, [isJson]);
+  const errorId = `output-${index}-error`;
+
+  return (
+    <div className={cn("studio-output", suggestion && "studio-output-warning")}>
+      <div className="studio-output-row">
+        <input
+          className={cn("studio-input font-mono", suggestion && "studio-input-warning")}
+          data-studio-field={`outputs.${index}.path`}
+          aria-label={t("studio.script.outputFiles")}
+          aria-invalid={Boolean(suggestion)}
+          aria-describedby={suggestion ? errorId : undefined}
+          value={output.path}
+          onChange={(event) => onPatch({ path: event.target.value })}
+        />
+        <label className="studio-check studio-output-required">
+          <input
+            type="checkbox"
+            checked={output.required}
+            data-studio-field={`outputs.${index}.required`}
+            onChange={(event) => onPatch({ required: event.target.checked })}
+          />
+          <span className="text-[11px]">{t("studio.outputs.required")}</span>
+        </label>
+        <button type="button" className="studio-param-remove" aria-label={t("studio.script.removeOutput", { name: output.path })} disabled={!canRemove} onClick={onRemove}>
+          <X size={12} aria-hidden="true" />
+        </button>
+      </div>
+      {suggestion && (
+        <div className="studio-field-error" id={errorId}>
+          {t("studio.outputs.needExtension", { name: output.path })}{" "}
+          <button type="button" className="studio-suggestion" onClick={() => onPatch({ path: suggestion })}>
+            {suggestion}
+          </button>
+        </div>
+      )}
+      {isJson && consumed && output.shape === undefined && (
+        <div className="studio-field-warning">
+          <AlertTriangle size={11} aria-hidden="true" /> {t("studio.outputs.shapeMissing")}
+        </div>
+      )}
+      {isJson && (
+        <details className="studio-shape" open={shapeOpen} onToggle={(event) => setShapeOpen(event.currentTarget.open)}>
+          <summary className="studio-shape-summary">
+            <ChevronRight size={12} aria-hidden="true" />
+            {t("studio.script.shape", { name: output.path })}
+          </summary>
+          <ShapeEditor
+            shape={output.shape}
+            onChange={(shape) => onPatch(shape === undefined ? { shape: undefined } : { shape })}
+          />
+        </details>
+      )}
+    </div>
+  );
+}
+
+/** A `.json` output's shape: JSON Schema, kept as text until it parses. */
+function ShapeEditor({ shape, onChange }: {
+  shape: Record<string, unknown> | undefined;
+  onChange: (shape: Record<string, unknown> | undefined) => void;
+}) {
+  const [text, setText] = useState(shape === undefined ? "" : JSON.stringify(shape, null, 2));
+  const [invalid, setInvalid] = useState(false);
+  return (
+    <>
+      <textarea
+        className="studio-input studio-code"
+        value={text}
+        placeholder={t("studio.script.shapePlaceholder")}
+        spellCheck={false}
+        onChange={(event) => {
+          const next = event.target.value;
+          setText(next);
+          if (!next.trim()) {
+            setInvalid(false);
+            onChange(undefined);
+            return;
+          }
+          try {
+            const parsed: unknown = JSON.parse(next);
+            if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+              setInvalid(true);
+              return;
+            }
+            setInvalid(false);
+            onChange(parsed as Record<string, unknown>);
+          } catch {
+            setInvalid(true);
+          }
+        }}
+      />
+      <div className="studio-help">{invalid ? t("studio.script.shapeInvalid") : t("studio.script.shapeHelp")}</div>
+    </>
+  );
+}
+
+function LegacyResultRow({ onRemove }: { onRemove: () => void }) {
+  return (
+    <div className="studio-field" data-studio-field="legacy">
+      <div className="studio-help">{t("studio.legacy.result")}</div>
+      <DisconnectRow label={t("studio.legacy.remove")} onClick={onRemove} />
+    </div>
+  );
+}
+
+function LegacyBranchRow({ onRemove }: { onRemove: () => void }) {
+  return (
+    <div className="studio-field" data-studio-field="legacy">
+      <div className="studio-help">{t("studio.legacy.when")}</div>
+      <DisconnectRow label={t("studio.legacy.remove")} onClick={onRemove} />
+    </div>
+  );
+}
+
+function LegacyRequireRow({ onRemove }: { onRemove: () => void }) {
+  return (
+    <div className="studio-field" data-studio-field="legacy">
+      <div className="studio-help">{t("studio.legacy.require")}</div>
+      <DisconnectRow label={t("studio.legacy.remove")} onClick={onRemove} />
+    </div>
+  );
+}
+
+function FileLinks({ step, earlier, consumed, channels, onChange }: {
   step: Extract<WorkflowStep, { kind: "bot" | "script" }>;
   earlier: WorkflowStep[];
+  consumed: ReadonlySet<string>;
+  channels: Map<string, string>;
   onChange: (patch: Partial<WorkflowStep>) => void;
-  help: string;
-  label: string;
 }) {
   const rows = earlier.flatMap((source) => outputsOf(source).map((output) => ({ source, output })));
   const linked = (sourceId: string, path: string) => step.inputs.some((input) => input.from.step === sourceId && input.from.output === path && input.as === path);
@@ -518,22 +1196,40 @@ function FileLinks({ step, earlier, onChange, help, label }: {
       : [...step.inputs.filter((input) => input.as !== path), { as: path, from: { step: sourceId, output: path } }];
     onChange({ inputs } as Partial<WorkflowStep>);
   };
+  if (rows.length === 0) {
+    return <div className="studio-info">{t("studio.agent.noInputs")}</div>;
+  }
   return (
-    <Field label={label} help={help}>
-      {rows.length === 0 ? <div className="studio-info">{t("studio.agent.noInputs")}</div> : (
-        <div className="studio-check-list">
-          {rows.map(({ source, output }) => (
-            <label key={`${source.id}:${output.path}`} className="studio-check">
-              <input type="checkbox" checked={linked(source.id, output.path)} onChange={() => toggle(source.id, output.path)} />
-              <span className="min-w-0">
-                <span className="block truncate font-mono text-[11px]">{output.path}</span>
-                <span className="block truncate text-[10px] text-ink-tertiary">{source.name}</span>
+    <div className="studio-check-list studio-doc-list">
+      {rows.map(({ source, output }) => {
+        const channel = channels.get(`${source.id}\u0000${output.path}`);
+        const shapeWarning = consumed.has(`${source.id}\u0000${output.path}`)
+          && output.path.toLowerCase().endsWith(".json")
+          && output.shape === undefined;
+        return (
+          <label
+            key={`${source.id}:${output.path}`}
+            className={cn("studio-check", channel !== undefined && "studio-check-disabled")}
+            title={channel !== undefined ? t("studio.inputs.channelConflictTooltip") : undefined}
+          >
+            <input type="checkbox" disabled={channel !== undefined} checked={linked(source.id, output.path)} onChange={() => toggle(source.id, output.path)} />
+            {channel !== undefined && <Ban size={12} className="studio-check-ban" aria-hidden="true" />}
+            <span className="min-w-0">
+              <span className="block truncate font-mono text-[11px]">{output.path}</span>
+              <span className="block truncate text-[10px] text-ink-tertiary">
+                {t("studio.inputs.fromStepLabel", { index: earlier.indexOf(source) + 1, name: source.name })}
               </span>
-            </label>
-          ))}
-        </div>
-      )}
-    </Field>
+              {channel !== undefined && (
+                <span className="studio-check-reason">{t("studio.inputs.channelConflict", { name: channel })}</span>
+              )}
+              {channel === undefined && shapeWarning && (
+                <span className="studio-check-warning">{t("studio.outputs.shapeMissing")}</span>
+              )}
+            </span>
+          </label>
+        );
+      })}
+    </div>
   );
 }
 
@@ -585,7 +1281,7 @@ function ConditionFields({ match, conditions, onChange }: {
           <option value="any">{t("studio.condition.any")}</option>
         </Select>
       </Field>
-      <div className="studio-condition-lines">
+      <div className="studio-condition-lines" data-studio-field="conditions">
         {conditions.map((line, index) => {
           const family = conditionFamily(line.op);
           const valueText = line.value === undefined ? "" : typeof line.value === "string" ? line.value : JSON.stringify(line.value);
@@ -642,7 +1338,9 @@ function LoopConditionFields({ step, onChange }: {
   onChange: (patch: Partial<WorkflowStep>) => void;
 }) {
   const sources = step.body.filter((candidate): candidate is Exclude<WorkflowStep, { kind: "condition" | "loop" }> =>
-    candidate.kind !== "condition" && candidate.result !== undefined);
+    candidate.kind !== "condition");
+  const source = sources.find((candidate) => candidate.id === step.from.step);
+  const sourceOutputs = source ? source.outputs : [];
   const declared = step.body.flatMap((bodyStep): Array<StepOutput & { stepName: string }> =>
     bodyStep.kind === "condition" ? [] : bodyStep.outputs.map((output) => ({ ...output, stepName: bodyStep.name })));
   const toggleOutput = (output: StepOutput) => {
@@ -650,19 +1348,38 @@ function LoopConditionFields({ step, onChange }: {
     const outputs = exists
       ? step.outputs.filter((candidate) => candidate.path !== output.path)
       : [...step.outputs, { path: output.path, required: output.required }];
-    onChange({
-      outputs,
-      ...(step.result !== undefined && !outputs.some((candidate) => candidate.path === step.result) ? { result: undefined } : {}),
-    } as Partial<WorkflowStep>);
+    onChange({ outputs } as Partial<WorkflowStep>);
   };
   return (
     <>
       <Field label={t("studio.loop.from")} help={t("studio.loop.fromHelp")}>
-        <Select className="w-full" size="sm" value={step.from} onChange={(event) => onChange({ from: event.target.value } as Partial<WorkflowStep>)}>
+        <Select
+          className="w-full"
+          size="sm"
+          value={step.from.step}
+          onChange={(event) => {
+            const next = sources.find((candidate) => candidate.id === event.target.value);
+            const output = next?.outputs.find((candidate) => candidate.shape !== undefined)
+              ?? next?.outputs.find((candidate) => candidate.path.toLowerCase().endsWith(".json"));
+            onChange({ from: { step: event.target.value, output: output?.path ?? "" } } as Partial<WorkflowStep>);
+          }}
+        >
           <option value="">{t("studio.loop.pickFrom")}</option>
-          {sources.map((source) => <option key={source.id} value={source.id}>{source.name}</option>)}
+          {sources.map((candidate) => <option key={candidate.id} value={candidate.id}>{candidate.name}</option>)}
         </Select>
         {sources.length === 0 && <div className="studio-help">{t("studio.loop.noFrom")}</div>}
+      </Field>
+      <Field label={t("studio.loop.fromOutput")} help={t("studio.loop.fromOutputHelp")}>
+        <Select
+          className="w-full"
+          size="sm"
+          value={step.from.output}
+          disabled={sourceOutputs.length === 0}
+          onChange={(event) => onChange({ from: { ...step.from, output: event.target.value } } as Partial<WorkflowStep>)}
+        >
+          <option value="">{t("studio.loop.pickOutput")}</option>
+          {sourceOutputs.map((output) => <option key={output.path} value={output.path}>{output.path}</option>)}
+        </Select>
       </Field>
       <ConditionFields
         match={step.match}
@@ -698,18 +1415,7 @@ function LoopConditionFields({ step, onChange }: {
           </div>
         )}
       </Field>
-      <Field label={t("studio.loop.result")} help={t("studio.loop.resultHelp")}>
-        <Select
-          className="w-full"
-          size="sm"
-          value={step.result ?? ""}
-          onChange={(event) => onChange({ result: event.target.value || undefined } as Partial<WorkflowStep>)}
-        >
-          <option value="">{t("studio.agent.resultNone")}</option>
-          {step.outputs.map((output) => <option key={output.path} value={output.path}>{output.path}</option>)}
-        </Select>
-      </Field>
+
     </>
   );
 }
-

@@ -6,7 +6,9 @@ import { mkdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
 import {
+  proposalAssumptionsBase,
   proposalDefinition,
+  workflowProposalAnswersSchema,
   workflowProposalInputSchema,
   workflowProposalSchema,
   evaluateProposal,
@@ -14,12 +16,15 @@ import {
   type WorkflowProposal,
   type WorkflowProposalStatus,
 } from "../../shared/workflow-proposal.ts";
+import { validateWorkflowAuthoring } from "../../shared/workflow-authoring.ts";
+import { authoringRefusal, type WorkflowRefusal } from "../../shared/workflow-refusal.ts";
 import { writeFileAtomic } from "../atomic.ts";
+import { compileToolSchema } from "../mcp-schema-validator.ts";
 import { workflowApprovalHash } from "./approval.ts";
 
 export type ProposalSave =
   | { ok: true; proposal: WorkflowProposal }
-  | { ok: false; error: string };
+  | { ok: false; error: string; refusal?: WorkflowRefusal };
 
 export interface WorkflowProposalStoreOptions {
   dataDir: string;
@@ -32,6 +37,8 @@ export interface WorkflowProposalStore {
   list(status?: WorkflowProposalStatus): WorkflowProposal[];
   read(id: string): WorkflowProposal | undefined;
   create(input: unknown, options?: { createdBy?: WorkflowProposal["createdBy"] }): ProposalSave;
+  /** Writes the person's answers and stamps the confirmation; only a person's route calls this. */
+  confirm(id: string, answers: unknown, by?: string): ProposalSave;
   archive(id: string): ProposalSave;
   markCreated(id: string, workflowId: string): ProposalSave;
   recordRehearsal(id: string, rehearsal: WorkflowProposal["rehearsal"]): ProposalSave;
@@ -81,14 +88,27 @@ export function createWorkflowProposalStore(options: WorkflowProposalStoreOption
     create(input, createOptions) {
       const parsedInput = workflowProposalInputSchema.safeParse(input);
       if (!parsedInput.success) {
-        return { ok: false, error: parsedInput.error.issues.map((issue) => `${issue.path.join(".") || "proposal"}: ${issue.message}`).join("; ") };
+        const issues = parsedInput.error.issues.map((issue) => ({ path: issue.path.join(".") || "proposal", message: issue.message }));
+        const refusal = authoringRefusal(issues);
+        return { ok: false, error: refusal.error, refusal };
       }
       const evaluation = evaluateProposal(parsedInput.data.interview, parsedInput.data.assumptions);
       if (!evaluation.ok) return evaluation;
       const stamp = now();
       const id = parsedInput.data.id ?? randomUUID();
       const built = proposalDefinition(parsedInput.data, id, parsedInput.data.createdAt ?? stamp);
-      if (!built.ok) return built;
+      if (!built.ok) {
+        const refusal = authoringRefusal([{ path: "steps", message: built.error }]);
+        return { ok: false, error: refusal.error, refusal };
+      }
+      const authoring = validateWorkflowAuthoring(built.definition, "save", {
+        compileShape: (shape) => { compileToolSchema(shape); },
+        scripts: parsedInput.data.scripts ?? [],
+      });
+      if (authoring.errors.length > 0) {
+        const refusal = authoringRefusal(authoring.errors, authoring.warnings);
+        return { ok: false, error: refusal.error, refusal };
+      }
       const first = built.definition.steps[0];
       if (!first || (first.kind !== "bot" && first.kind !== "script")) {
         return { ok: false, error: "a proposal must start with a bot or script step; a condition or Do While needs an entry step" };
@@ -109,7 +129,6 @@ export function createWorkflowProposalStore(options: WorkflowProposalStoreOption
         assumptions: evaluation.assumptions,
         annotations: {},
         rounds: 0,
-        approvalHash: workflowApprovalHash(startManualDefinition(built.definition), parsedInput.data.scripts ?? []),
         definition: built.definition,
         scripts: parsedInput.data.scripts ?? [],
       };
@@ -121,6 +140,40 @@ export function createWorkflowProposalStore(options: WorkflowProposalStoreOption
         return { ok: false, error: `could not save ${file}: ${reason(error)}` };
       }
       return { ok: true, proposal };
+    },
+    confirm(id, answers, by = "user") {
+      const index = proposals.findIndex((proposal) => proposal.id === id.trim().toLowerCase());
+      const current = proposals[index];
+      if (!current) return { ok: false, error: "no such proposal" };
+      if (current.status === "created") return { ok: false, error: "this proposal became a Workflow" };
+      const parsedAnswers = workflowProposalAnswersSchema.safeParse(answers);
+      if (!parsedAnswers.success) {
+        return { ok: false, error: parsedAnswers.error.issues.map((issue) => `${issue.path.join(".") || "interview"}: ${issue.message}`).join("; ") };
+      }
+      const evaluation = evaluateProposal(parsedAnswers.data, proposalAssumptionsBase(current.assumptions));
+      if (!evaluation.ok) return evaluation;
+      const stamp = now();
+      let approvalHash: string;
+      try {
+        approvalHash = workflowApprovalHash(startManualDefinition(current.definition), current.scripts, parsedAnswers.data);
+      } catch (error) {
+        return { ok: false, error: reason(error) };
+      }
+      const next: WorkflowProposal = {
+        ...current,
+        interview: { ...parsedAnswers.data, confirmedAt: stamp, confirmedBy: by },
+        assumptions: evaluation.assumptions,
+        approvalHash,
+        updatedAt: stamp,
+      };
+      proposals[index] = next;
+      try {
+        persist();
+      } catch (error) {
+        proposals[index] = current;
+        return { ok: false, error: `could not save ${file}: ${reason(error)}` };
+      }
+      return { ok: true, proposal: next };
     },
     archive(id) {
       const index = proposals.findIndex((proposal) => proposal.id === id.trim().toLowerCase());

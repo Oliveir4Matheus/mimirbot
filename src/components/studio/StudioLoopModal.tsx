@@ -5,17 +5,17 @@ import type { WorkflowSkillOptions, WorkflowStep } from "../../../shared/workflo
 import type { LocaleKey } from "@/locales";
 import { cn } from "@/lib/cn";
 import { t } from "@/lib/i18n";
-import { StudioBalloon } from "./StudioBalloon";
+import { StudioBalloon, type BalloonEnvironment, type BalloonFocus } from "./StudioBalloon";
 import { StudioCard, type BranchKey } from "./StudioCard";
 import { StudioContainer } from "./StudioContainer";
 import { StudioNote } from "./StudioNote";
 import { StudioPalette } from "./StudioPalette";
 import { bezier, entryHit, noteAnchor, noteLinkTarget, outputPoint, type Point } from "./studio-geometry";
 import {
-  CARD_HEIGHT, CARD_WIDTH, DEFAULT_SCRIPT, allDraftSteps, bodyDraft, connect, containedBy, createContainer, createNote,
-  createStep, disconnect, moveContainer, moveNode, moveNote, removeContainer, removeNote,
+  CARD_HEIGHT, CARD_WIDTH, DEFAULT_SCRIPT, allDraftSteps, bodyDraft, connect, consumedOutputs, containedBy, createContainer, createNote,
+  createStep, disconnect, inputsBranch, moveContainer, moveNode, moveNote, removeContainer, removeNote,
   removeStep, renameContainer, resizeContainer, resizeNote, updateNote, updateStep,
-  withBodyDraft, type StudioBranch, type StudioDraft, type StudioKind, type StudioSelection,
+  withBodyDraft, type StudioBranch, type StudioDraft, type StudioKind, type StudioSelection, type StudioTarget,
 } from "./studio-model";
 
 type Drag =
@@ -34,7 +34,7 @@ const clamp = (value: number, min: number, max: number) => Math.min(max, Math.ma
 
 const BODY_PALETTE: StudioKind[] = ["agent", "script", "condition", "note", "container"];
 
-export function StudioLoopModal({ draft, loopId, bots, scripts, skillOptions, skillOptionsLoading, skillOptionsError, onEdit, onScript, onRenameScript, onToast, onClose }: {
+export function StudioLoopModal({ draft, loopId, bots, scripts, skillOptions, skillOptionsLoading, skillOptionsError, environment, preparingEnvironment, onPrepareEnvironment, consumed, focusTarget, onEdit, onScript, onRenameScript, onToast, onClose }: {
   draft: StudioDraft;
   loopId: string;
   bots: ReadonlyArray<{ id: string; name: string; section?: string }>;
@@ -42,6 +42,11 @@ export function StudioLoopModal({ draft, loopId, bots, scripts, skillOptions, sk
   skillOptions: Record<string, WorkflowSkillOptions>;
   skillOptionsLoading: Record<string, boolean>;
   skillOptionsError: Record<string, string>;
+  environment?: BalloonEnvironment;
+  preparingEnvironment?: boolean;
+  onPrepareEnvironment?: () => void;
+  consumed?: ReadonlySet<string>;
+  focusTarget?: (StudioTarget & { token: number }) | null;
   onEdit: (updater: (current: StudioDraft) => StudioDraft) => void;
   onScript: (name: string, content: string) => void;
   onRenameScript: (from: string, to: string) => void;
@@ -61,10 +66,28 @@ export function StudioLoopModal({ draft, loopId, bots, scripts, skillOptions, sk
   const [drag, setDrag] = useState<Drag | null>(null);
   const [noteEditing, setNoteEditing] = useState<string | null>(null);
   const [noteLinkMenu, setNoteLinkMenu] = useState<string | null>(null);
+  const [focus, setFocus] = useState<BalloonFocus | undefined>(undefined);
 
   const body = useMemo(() => bodyDraft(draft, loopId), [draft, loopId]);
+  const bodyRef = useRef(body);
+  bodyRef.current = body;
   const loop = draft.steps.find((step) => step.id === loopId);
   const botName = useCallback((id: string) => bots.find((bot) => bot.id === id)?.name ?? "", [bots]);
+
+  useEffect(() => {
+    if (!focusTarget) return;
+    const current = bodyRef.current;
+    const step = current?.steps.find((candidate) => candidate.id === focusTarget.stepId);
+    if (!current || !step) return;
+    setSelection({ kind: "step", id: step.id });
+    setFocus({ field: focusTarget.field, token: focusTarget.token });
+    const frame = requestAnimationFrame(() => {
+      const card = dialogRef.current?.querySelector(`[data-studio-step="${step.id}"]`);
+      const anchor = card?.getBoundingClientRect() ?? new DOMRect(window.innerWidth / 2, 240, 0, 0);
+      setBalloon({ stepId: step.id, branch: focusTarget.branch, anchor });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [focusTarget]);
 
   const edit = useCallback((updater: (current: StudioDraft) => StudioDraft) => {
     onEdit((current) => {
@@ -112,6 +135,10 @@ export function StudioLoopModal({ draft, loopId, bots, scripts, skillOptions, sk
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault();
+        if (balloon !== null) {
+          setBalloon(null);
+          return;
+        }
         onClose();
         return;
       }
@@ -131,7 +158,7 @@ export function StudioLoopModal({ draft, loopId, bots, scripts, skillOptions, sk
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, [onClose, balloon]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -304,6 +331,15 @@ export function StudioLoopModal({ draft, loopId, bots, scripts, skillOptions, sk
     setLink({ kind: "flow", from: stepId, branch });
     setPointer(canvasPoint(event.clientX, event.clientY));
   }, [canvasPoint]);
+
+  const openInputs = useCallback((stepId: string, field: string) => {
+    const step = body?.steps.find((candidate) => candidate.id === stepId);
+    if (!step) return;
+    const card = dialogRef.current?.querySelector(`[data-studio-step="${stepId}"]`);
+    const anchor = card?.getBoundingClientRect() ?? new DOMRect(window.innerWidth / 2, 240, 0, 0);
+    setBalloon({ stepId, branch: inputsBranch(step), anchor });
+    setFocus({ field, token: Date.now() });
+  }, [body]);
 
   if (!body || !loop || loop.kind !== "loop") return null;
 
@@ -535,12 +571,18 @@ export function StudioLoopModal({ draft, loopId, bots, scripts, skillOptions, sk
               skillOptions={balloonStep.kind === "bot" ? skillOptions[balloonStep.botId] : undefined}
               skillOptionsLoading={balloonStep.kind === "bot" ? skillOptionsLoading[balloonStep.botId] : undefined}
               skillOptionsError={balloonStep.kind === "bot" ? skillOptionsError[balloonStep.botId] : undefined}
+              environment={environment}
+              preparingEnvironment={preparingEnvironment}
+              onPrepareEnvironment={onPrepareEnvironment}
+              consumed={consumed ?? consumedOutputs(draft)}
+              focus={focus}
               onChange={(patch) => edit((current) => updateStep(current, balloonStep.id, patch))}
               onScript={onScript}
               onRenameScript={onRenameScript}
               onToast={onToast}
               onDisconnect={(branch) => edit((current) => disconnect(current, balloonStep.id, branch))}
-              onClose={() => setBalloon(null)}
+              onOpenInputs={(field) => openInputs(balloonStep.id, field)}
+              onClose={() => { setBalloon(null); setFocus(undefined); }}
             />
           )}
 

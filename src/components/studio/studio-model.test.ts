@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { workflowDefinitionSchema } from "../../../shared/workflow";
 import {
   addConditionLine, allDraftSteps, autoLayout, bodyDraft, conditionLines, connect, containedBy, createStep, disconnect, draftProblem, duplicateLoop, fromDefinition,
-  modulesFromText, newDraft, removeConditionLine, removeStep, renameScript, scriptLanguageOf, scriptNameForLanguage, selectAllSkills,
+  newDraft, removeConditionLine, removeStep, renameScript, selectAllSkills,
   setSkillGroup, skillCount, skillSelection, skillSelectionProblem, skillsWithGroup, toDefinition, toggleSkill, toggleSkillGroup,
   updateConditionLine, updateConditionMatch, updateNote, withBodyDraft, type StudioDraft,
 } from "./studio-model";
@@ -31,7 +31,7 @@ describe("studio model", () => {
     const source = result.draft.steps[0]!;
     const target = result.draft.steps[1]!;
     expect(source.kind === "bot" && source.onSuccess).toBe(condition.id);
-    expect(target.kind === "condition" && target.from).toBe(agent.id);
+    expect(target.kind === "condition" && target.from).toEqual({ step: agent.id, output: "result.txt" });
   });
 
   it("refuses self, cycles, an occupied entry and an occupied output", () => {
@@ -90,21 +90,23 @@ describe("studio model", () => {
     expect(saved.steps[0]!.kind === "bot" && saved.steps[0]!.mode).toBe("manual");
   });
 
-  it("reads one package per line and flags a package that is not a name", () => {
-    const draft = { ...step(newDraft("Financeiro"), "script", 200, 200).draft, name: "Test" };
-    const script = draft.steps[0]!;
-    expect(script.kind === "script" && script.modules).toEqual([]);
-    expect(modulesFromText(" lodash@4.17.21\n\n@scope/pkg\nlodash@4.17.21 \n")).toEqual(["lodash@4.17.21", "@scope/pkg"]);
-    const chosen: StudioDraft = {
+  it("refuses to save a manual step that collects nothing", () => {
+    const draft = { ...step(newDraft("Financeiro"), "agent", 200, 200).draft, name: "Test" };
+    const manual: StudioDraft = {
       ...draft,
-      steps: draft.steps.map((candidate) => candidate.kind === "script" ? { ...candidate, modules: ["lodash@4.17.21"] } : candidate),
+      steps: draft.steps.map((candidate) => candidate.kind === "bot" ? { ...candidate, mode: "manual" } : candidate),
     };
-    expect(draftProblem(chosen, new Set())).toBeUndefined();
-    const unsafe: StudioDraft = {
-      ...draft,
-      steps: draft.steps.map((candidate) => candidate.kind === "script" ? { ...candidate, modules: ["../evil"] } : candidate),
+    expect(draftProblem(manual, new Set(["bot-a"]))).toEqual({
+      key: "studio.needManualCollect",
+      params: { name: manual.steps[0]!.name },
+    });
+    const collecting: StudioDraft = {
+      ...manual,
+      steps: manual.steps.map((candidate) => candidate.kind === "bot"
+        ? { ...candidate, parameters: [{ name: "link", type: "string" as const, required: true, list: false, collectedBy: candidate.id }] }
+        : candidate),
     };
-    expect(draftProblem(unsafe, new Set())).toEqual({ key: "studio.needModuleSpec", params: { name: script.name, spec: "../evil" } });
+    expect(draftProblem(collecting, new Set(["bot-a"]))).toBeUndefined();
   });
 
   it("reports a condition without a source and a bot without a bot", () => {
@@ -181,18 +183,8 @@ describe("studio model", () => {
     expect(draftProblem({ ...connected.draft, name: "Test" }, new Set(["bot-a"]))?.key).toBe("studio.needTimeout");
   });
 
-  it("maps a script extension to a language and keeps the base name", () => {
-    expect(scriptLanguageOf("validar.mjs")).toBe("javascript");
-    expect(scriptLanguageOf("validar.js")).toBe("javascript");
-    expect(scriptLanguageOf("validar.ts")).toBe("typescript");
-    expect(scriptLanguageOf("validar.py")).toBe("python");
-    expect(scriptNameForLanguage("validar.mjs", "typescript")).toBe("validar.ts");
-    expect(scriptNameForLanguage("validar.ts", "python")).toBe("validar.py");
-    expect(scriptNameForLanguage("validar.py", "javascript")).toBe("validar.mjs");
-  });
-
-  it("moves the script content when the language renames the file", () => {
-    expect(renameScript({ "validar.mjs": "const ok = true;" }, "validar.mjs", "validar.py")).toEqual({ "validar.py": "const ok = true;" });
+  it("moves the script content when the file is renamed", () => {
+    expect(renameScript({ "validar.mjs": "const ok = true;" }, "validar.mjs", "outro.mjs")).toEqual({ "outro.mjs": "const ok = true;" });
     expect(renameScript({ "validar.mjs": "same" }, "validar.mjs", "validar.mjs")).toEqual({ "validar.mjs": "same" });
   });
 
@@ -304,13 +296,18 @@ describe("Do While in the Studio", () => {
     const loopId = created.stepId;
     let body = bodyDraft(draft, loopId)!;
     const bodyStep = createStep(body, "script", { x: 120, y: 120 });
-    body = bodyStep.draft;
+    body = {
+      ...bodyStep.draft,
+      steps: bodyStep.draft.steps.map((candidate) => candidate.id === bodyStep.stepId
+        ? { ...candidate, outputs: [{ path: "result.json", required: true, shape: { type: "object" } }] }
+        : candidate),
+    };
     const bodyId = bodyStep.stepId;
     draft = withBodyDraft(draft, loopId, body);
     draft = {
       ...draft,
       steps: draft.steps.map((step) => step.id === loopId && step.kind === "loop"
-        ? { ...step, from: bodyId, outputs: [{ path: "result.json", required: true }], result: "result.json" }
+        ? { ...step, from: { step: bodyId, output: "result.json" }, outputs: [{ path: "result.json", required: true, shape: { type: "object" } }] }
         : step),
     };
     return { draft, loopId, bodyId };
@@ -349,19 +346,23 @@ describe("Do While in the Studio", () => {
     const created = createStep(draft, "loop", { x: 500, y: 300 });
     draft = created.draft;
     let body = bodyDraft(draft, created.stepId)!;
-    const bodyStep = createStep(body, "script", { x: 120, y: 120 });
+    const bodyStep = createStep(body, "script", { x: 120, y: 120 }, "bot-a", new Set(allDraftSteps(draft).map((step) => step.id)));
     body = bodyStep.draft;
     body = {
       ...body,
       steps: body.steps.map((step) => step.id === bodyStep.stepId
-        ? { ...step, inputs: [{ as: "x.csv", from: { step: top.stepId, output: "result.json" } }] }
+        ? {
+          ...step,
+          inputs: [{ as: "x.csv", from: { step: top.stepId, output: "result.txt" } }],
+          outputs: [{ path: "result.json", required: true, shape: { type: "object" } }],
+        }
         : step),
     };
     draft = withBodyDraft(draft, created.stepId, body);
     draft = {
       ...draft,
       steps: draft.steps.map((step) => step.id === created.stepId && step.kind === "loop"
-        ? { ...step, from: bodyStep.stepId, outputs: [{ path: "result.json", required: true }], result: "result.json" }
+        ? { ...step, from: { step: bodyStep.stepId, output: "result.json" }, outputs: [{ path: "result.json", required: true, shape: { type: "object" } }] }
         : step),
     };
     expect(draftProblem(draft, new Set())).toBeUndefined();
@@ -389,7 +390,7 @@ describe("Do While in the Studio", () => {
     if (original?.kind !== "loop" || clone?.kind !== "loop") throw new Error("not a loop");
     expect(clone.id).not.toBe(original.id);
     expect(clone.body[0]!.id).not.toBe(original.body[0]!.id);
-    expect(clone.from).toBe(clone.body[0]!.id);
+    expect(clone.from).toEqual({ step: clone.body[0]!.id, output: "result.json" });
     expect(copy.draft.canvas.loops[copy.stepId]?.nodes[clone.body[0]!.id]).toBeDefined();
     expect(clone.onSuccess).toBeUndefined();
   });
@@ -413,9 +414,9 @@ describe("Do While in the Studio", () => {
     const optionalBody = {
       ...draft,
       steps: draft.steps.map((step) => step.id === loopId && step.kind === "loop"
-        ? { ...step, body: step.body.map((bodyStep) => bodyStep.kind === "script" ? { ...bodyStep, outputs: [{ path: "result.json", required: false }] } : bodyStep) }
+        ? { ...step, body: step.body.map((bodyStep) => bodyStep.kind === "script" ? { ...bodyStep, outputs: [{ path: "result.json", required: false, shape: { type: "object" } }] } : bodyStep) }
         : step),
     };
-    expect(draftProblem(optionalBody, new Set(["bot-a"]))?.key).toBe("studio.loop.outputOptional");
+    expect(draftProblem(optionalBody, new Set(["bot-a"]))?.key).toBe("studio.loop.needFrom");
   });
 });

@@ -6,6 +6,8 @@ import { copyText } from "@/lib/copy-text";
 import { cn } from "@/lib/cn";
 import { t } from "@/lib/i18n";
 import { formatDateTime, formatDuration, isActiveStatus, relativeTime, runDurationLabel, stepStatusLabel } from "@/lib/workflow-format";
+import { parameterValues, stepCollectedParameters, type ParameterFormValues } from "@/lib/workflow-inputs";
+import { ParameterFields } from "./ParameterFields";
 import { StatusChip } from "./StatusChip";
 
 type DisplayStatus = WorkflowStepStatus | "waiting_manual" | "waiting_approval";
@@ -52,7 +54,7 @@ export function RunDetail({ run, workflow, now, botName, onCancel, onContinue, o
   now: number;
   botName: (botId: string) => string;
   onCancel: () => void;
-  onContinue: () => void;
+  onContinue: (inputs: Record<string, unknown>) => Promise<string | undefined>;
   onDelete: () => void;
   onRerun: () => void;
   onOpenConversation: (botId: string, threadId: string) => void;
@@ -62,6 +64,9 @@ export function RunDetail({ run, workflow, now, botName, onCancel, onContinue, o
   const [resultOpen, setResultOpen] = useState<boolean | null>(null);
   const [filesOpen, setFilesOpen] = useState(false);
   const [expandedRounds, setExpandedRounds] = useState<Set<string>>(new Set());
+  const [values, setValues] = useState<ParameterFormValues>({});
+  const [continueError, setContinueError] = useState<string | null>(null);
+  const [continuing, setContinuing] = useState(false);
 
   useEffect(() => {
     setCopied(false);
@@ -69,6 +74,11 @@ export function RunDetail({ run, workflow, now, botName, onCancel, onContinue, o
     setFilesOpen(false);
     setExpandedRounds(new Set());
   }, [run.id]);
+
+  useEffect(() => {
+    setValues({});
+    setContinueError(null);
+  }, [run.id, run.status, run.hold?.since]);
 
   const active = isActiveStatus(run.status);
   const definitionStep = (id: string) => workflow?.steps.find((step) => step.id === id);
@@ -107,13 +117,13 @@ export function RunDetail({ run, workflow, now, botName, onCancel, onContinue, o
   const verified = run.steps.filter((step) => (step.verified?.length ?? 0) > 0);
   const failedStep = run.steps[run.currentStep];
   const lastResultFile = useMemo(() => {
-    if (!workflow) return "result.json";
+    if (!workflow) return "";
     for (let index = workflow.steps.length - 1; index >= 0; index -= 1) {
       const step = workflow.steps[index];
-      const declared = step && step.kind !== "condition" ? step.result : undefined;
-      if (declared) return declared;
+      const declared = step && step.kind !== "condition" ? step.outputs.find((output) => output.path.toLowerCase().endsWith(".json")) : undefined;
+      if (declared) return declared.path;
     }
-    return "result.json";
+    return "";
   }, [workflow]);
 
   const copyId = async () => {
@@ -142,6 +152,13 @@ export function RunDetail({ run, workflow, now, botName, onCancel, onContinue, o
   const pausedTarget = run.pause ? pathState(pausedPath) : undefined;
   const approvalConversation = (pausedTarget ? conversationFor(pausedTarget.step, pausedPath) : null)
     ?? (run.requestedBy ? { botId: run.requestedBy.botId, threadId: run.requestedBy.threadId } : null);
+  const collected = workflow && holdTarget ? stepCollectedParameters(workflow, holdTarget.step.id) : [];
+  const submitContinue = async (): Promise<void> => {
+    setContinuing(true);
+    const message = await onContinue(parameterValues(collected, values));
+    setContinuing(false);
+    setContinueError(message ?? null);
+  };
 
   return (
     <div className="min-h-full bg-app">
@@ -227,17 +244,33 @@ export function RunDetail({ run, workflow, now, botName, onCancel, onContinue, o
               })}
             </div>
             <p className="mt-3 text-[12px] leading-relaxed text-[#6E5C34]">{t("workflows.run.manualHelp")}</p>
+            {collected.length > 0 && (
+              <div className="mt-3 rounded-[9px] border border-[#E7D6AE] bg-white/70 px-3 py-2.5">
+                <div className="text-[10.5px] font-semibold text-[#7A6633]">{t("workflows.inputs.collectTitle")}</div>
+                <ParameterFields
+                  parameters={collected}
+                  values={values}
+                  onChange={(name, value) => setValues((current) => ({ ...current, [name]: value }))}
+                  disabled={continuing}
+                  idPrefix={`continue-${run.id}`}
+                />
+              </div>
+            )}
+            {continueError && (
+              <p className="mt-2 rounded-lg border border-danger/30 bg-danger/10 px-2.5 py-2 text-[11px] text-danger">{continueError}</p>
+            )}
             <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
               <span className="text-[10.5px] text-[#7A6633]">
                 {t("workflows.run.manualSince", { time: relativeTime(run.hold?.since ?? run.updatedAt, now) })}
               </span>
               <button
                 type="button"
-                onClick={onContinue}
-                className="flex h-8 items-center gap-1.5 rounded-[8px] bg-[#8A6524] px-3 text-[11px] font-semibold text-white hover:bg-[#74551D]"
+                onClick={() => void submitContinue()}
+                disabled={continuing}
+                className="flex h-8 items-center gap-1.5 rounded-[8px] bg-[#8A6524] px-3 text-[11px] font-semibold text-white hover:bg-[#74551D] disabled:opacity-60"
               >
                 <Play size={12} aria-hidden="true" />
-                {t("workflows.run.continue")}
+                {continuing ? t("workflows.run.continuing") : t("workflows.run.continue")}
               </button>
             </div>
           </section>

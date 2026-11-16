@@ -38,8 +38,8 @@ writeFileSync(join(process.env.WORKFLOW_STEP_OUTPUT, "sim.txt"), "yes\\n");
 const definition = {
   id, version: 1, name: "Fixture condição", department: "General", retentionDays: 90,
   steps: [
-    { id: "preparar", kind: "script", name: "Prepare", run: "preparar.mjs", timeoutMs: 30000, outputs: [{ path: "result.json" }], result: "result.json" },
-    { id: "checar", kind: "condition", name: "Check", from: "preparar", field: "ok", op: "equals", value: true, whenTrue: "sim", whenFalse: "nao" },
+    { id: "preparar", kind: "script", name: "Prepare", run: "preparar.mjs", timeoutMs: 30000, outputs: [{ path: "result.json", shape: { type: "object", required: ["ok"], properties: { ok: { type: "boolean" } } } }] },
+    { id: "checar", kind: "condition", name: "Check", from: { step: "preparar", output: "result.json" }, conditions: [{ field: "ok", op: "equals", value: true }], whenTrue: "sim", whenFalse: "nao" },
     { id: "sim", kind: "script", name: "Yes", run: "sim.mjs", timeoutMs: 30000, outputs: [{ path: "sim.txt" }] },
     { id: "nao", kind: "script", name: "No", run: "nao.mjs", timeoutMs: 30000, outputs: [{ path: "nao.txt" }] },
   ],
@@ -70,8 +70,9 @@ EOF
 ```
 
 Expected: `status: "succeeded"`, `preparar` and `nao` succeeded, `checar`
-succeeded with no verified file, `sim` skipped. The condition read
-`result.json` with `{ "ok": false }`, answered false and followed `whenFalse`.
+succeeded with `branch: false` and no verified file, `sim` skipped. The
+condition read `result.json` with `{ "ok": false }`, answered false and followed
+`whenFalse`.
 
 This also proves the save path the Studio uses: the request carries `scripts`
 next to the definition, the server writes the files before it checks the

@@ -28,7 +28,7 @@ const definition = (overrides: Record<string, unknown> = {}): WorkflowDefinition
   department: "Financeiro",
   steps: [
     { id: "coletar", name: "Collect", botId: "bot-a", instructions: "Collect.", outputs: [{ path: "numbers.csv" }] },
-    { id: "revisar", name: "Review", botId: "bot-b", instructions: "Review.", inputs: [{ as: "numbers.csv", from: { step: "coletar", output: "numbers.csv" } }], outputs: [{ path: "decision.json" }], result: "decision.json" },
+    { id: "revisar", name: "Review", botId: "bot-b", instructions: "Review.", inputs: [{ as: "numbers.csv", from: { step: "coletar", output: "numbers.csv" } }], outputs: [{ path: "decision.json" }] },
   ],
   createdAt: 1,
   updatedAt: 1,
@@ -86,7 +86,7 @@ describe("definitions", () => {
     const scripted = definition({
       steps: [{
         id: "validar", kind: "script", name: "Validate", run: "validar.mjs", timeoutMs: 60_000,
-        outputs: [{ path: "result.json" }], result: "result.json",
+        outputs: [{ path: "result.json" }],
       }],
     });
     const result = store.saveWorkflow(scripted, { scripts: [{ name: "validar.mjs", content: "console.log('ok')\n" }] });
@@ -100,7 +100,7 @@ describe("definitions", () => {
     const scripted = definition({
       steps: [{
         id: "validar", kind: "script", name: "Validate", run: "validar.mjs", timeoutMs: 60_000,
-        outputs: [{ path: "result.json" }], result: "result.json",
+        outputs: [{ path: "result.json" }],
       }],
     });
     expect(store.saveWorkflow(scripted).ok).toBe(false);
@@ -212,12 +212,11 @@ describe("Do While persistence", () => {
       id: "laco",
       kind: "loop",
       name: "Loop",
-      body: [{ id: "atualiza", kind: "bot", name: "Update", botId: "bot-a", instructions: "Update.", outputs: [{ path: "result.json" }], result: "result.json" }],
-      from: "atualiza",
+      body: [{ id: "atualiza", kind: "bot", name: "Update", botId: "bot-a", instructions: "Update.", outputs: [{ path: "result.json", shape: { type: "object" } }] }],
+      from: { step: "atualiza", output: "result.json" },
       conditions: [{ field: "restantes", op: "lte", value: 0 }],
       maxIterations: 3,
       outputs: [{ path: "result.json" }],
-      result: "result.json",
     }],
     ...overrides,
   });
@@ -289,5 +288,104 @@ describe("Do While persistence", () => {
     const read = store.readRun(run.id)!;
     expect(read.hold).toEqual({ step: 0, since: 2 });
     expect(read.steps[0]!.iterations).toBeUndefined();
+  });
+});
+
+describe("the authoring contract on load and on save", () => {
+  const legacyDefinition = {
+    id: "8a5b1c2d-3e4f-4a5b-8c9d-0e1f2a3b4c5d",
+    version: 1,
+    name: "Contrato mensal",
+    department: "Financeiro",
+    createdAt: 1,
+    updatedAt: 1,
+    steps: [
+      { id: "coletar", name: "Collect", botId: "bot-a", instructions: "Collect.", outputs: [{ path: "numbers.csv" }] },
+      {
+        id: "revisar",
+        name: "Review",
+        botId: "bot-b",
+        instructions: "Review.",
+        outputs: [{ path: "decision.json" }],
+        result: "decision.json",
+        require: { ok: true },
+        when: [{ field: "ok", equals: true, next: "fechar" }],
+      },
+      { id: "checar", kind: "condition", name: "Check", from: "revisar", conditions: [{ field: "ok", op: "equals", value: true }], whenTrue: "fechar" },
+      { id: "fechar", name: "Close", botId: "bot-a", instructions: "Close.", outputs: [{ path: "done.txt" }] },
+    ],
+  };
+
+  it("loads a Workflow written before result left the contract, keeping it in the list", () => {
+    mkdirSync(dataDir, { recursive: true });
+    writeFileSync(join(dataDir, "workflows.json"), JSON.stringify({ version: 1, workflows: [legacyDefinition] }));
+    const store = makeStore();
+    const loaded = store.workflow(legacyDefinition.id);
+    expect(loaded?.steps).toHaveLength(4);
+    expect(loaded?.steps[2]).toMatchObject({ kind: "condition", from: { step: "revisar", output: "decision.json" } });
+  });
+
+  it("refuses when and require on save, naming the condition step that replaces them", () => {
+    const store = makeStore();
+    const result = store.saveWorkflow(legacyDefinition);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error).toContain("condition step");
+    expect(result.error).toContain("when is gone");
+    expect(result.error).toContain("require is gone");
+  });
+
+  it("saves a legacy result with a warning instead of a refusal", () => {
+    const store = makeStore();
+    const result = store.saveWorkflow({
+      ...legacyDefinition,
+      steps: [
+        { id: "coletar", name: "Collect", botId: "bot-a", instructions: "Collect.", outputs: [{ path: "numbers.csv" }] },
+        { id: "revisar", name: "Review", botId: "bot-b", instructions: "Review.", outputs: [{ path: "decision.json" }], result: "decision.json" },
+        { id: "fechar", name: "Close", botId: "bot-a", instructions: "Close.", outputs: [{ path: "done.txt" }] },
+      ],
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.warnings.map((issue) => issue.message).join(" ")).toContain("result no longer declares");
+  });
+
+  it("refuses an output without an extension, a glob and a consumed .json without a shape", () => {
+    const store = makeStore();
+    const noExtension = store.saveWorkflow({ ...legacyDefinition, steps: [{ id: "coletar", name: "Collect", botId: "bot-a", instructions: "Collect.", outputs: [{ path: "link" }] }] });
+    expect(noExtension.ok).toBe(false);
+    const glob = store.saveWorkflow({ ...legacyDefinition, steps: [{ id: "coletar", name: "Collect", botId: "bot-a", instructions: "Collect.", outputs: [{ path: "clip1_*_9x16.mp4" }] }] });
+    expect(glob.ok).toBe(false);
+    const noShape = store.saveWorkflow({
+      ...legacyDefinition,
+      steps: [
+        { id: "coletar", name: "Collect", botId: "bot-a", instructions: "Collect.", outputs: [{ path: "numbers.json" }] },
+        { id: "checar", kind: "condition", name: "Check", from: { step: "coletar", output: "numbers.json" }, conditions: [{ field: "ok", op: "exists" }] },
+      ],
+    });
+    expect(noShape.ok).toBe(false);
+    if (noShape.ok) return;
+    expect(noShape.error).toContain("needs a shape");
+  });
+
+  it("accepts only .mjs as a script name", () => {
+    const store = makeStore();
+    for (const run of ["validar.js", "validar.ts", "validar.py"]) {
+      const result = store.saveWorkflow({
+        ...legacyDefinition,
+        steps: [{ id: "validar", kind: "script", name: "Validate", run, outputs: [{ path: "result.json" }] }],
+      });
+      expect(result.ok).toBe(false);
+    }
+    const accepted = store.saveWorkflow({
+      ...legacyDefinition,
+      steps: [{ id: "validar", kind: "script", name: "Validate", run: "validar.mjs", modules: ["ffmpeg", "gpu"], outputs: [{ path: "result.json" }] }],
+    }, { scripts: [{ name: "validar.mjs", content: "console.log('ok')\n" }] });
+    expect(accepted.ok).toBe(true);
+    if (!accepted.ok) return;
+    expect(accepted.workflow.steps[0]).toMatchObject({
+      kind: "script",
+      modules: [{ name: "ffmpeg", runtime: "bin" }, { name: "gpu", runtime: "bin" }],
+    });
   });
 });

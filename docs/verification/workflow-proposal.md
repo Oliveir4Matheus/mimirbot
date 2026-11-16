@@ -2,8 +2,10 @@
 
 Checks that a bot's Workflow proposal stays a draft until the person says yes,
 that “Agora não” archives it, and that creating it writes a real Workflow whose
-first step is manual. It uses the isolated launcher and the fake Claude engine;
-it never touches the installed app or its data.
+first step is manual. The create is gated twice: the person confirms the three
+interview answers on the card, and a rehearsal either passes or is
+acknowledged. It uses the isolated launcher and the fake Claude engine; it never
+touches the installed app or its data.
 
 `control-omb` has no Workflow verbs, so this recipe drives the proposal with the
 fake engine's scripted `agents` tool calls and reads the fixture's JSON files.
@@ -21,8 +23,8 @@ cat > /tmp/opencode/wf-proposal/tools/propose.json <<'JSON'
   "interview":{"recurring":true,"changes":"Só as datas","confirmer":"Eu confirmo"},
   "summary":"Uma mensagem por cliente.",
   "steps":[{"id":"coletar","kind":"script","name":"Coletar","run":"coletar.mjs",
-    "outputs":[{"path":"dados.json"}],"result":"dados.json"}],
-  "scripts":[{"name":"coletar.mjs","content":"console.log('ok')\n"}]
+    "outputs":[{"path":"dados.json"}]}],
+  "scripts":[{"name":"coletar.mjs","content":"import { writeFileSync } from \"node:fs\";\nwriteFileSync(process.env.WORKFLOW_STEP_OUTPUT + \"/dados.json\", JSON.stringify({ rows: 1 }));\n"}]
 }}]
 JSON
 FAKE_CLAUDE_TOOL_CALLS_FILE=/tmp/opencode/wf-proposal/tools/propose.json \
@@ -46,11 +48,34 @@ Use the printed URL and data directory.
 5. Put the propose call back, send again, then replace the file with
    `[{"server":"agents","name":"create_workflow_from_proposal","input":{"proposal_id":"<id>"}}]`
    and send “Criar Workflow.” `workflows.json` now has version 1 and
-   `steps[0].mode === "manual"`.
-6. Open the UI (`OMB_PORT=<port> OMB_UI_PORT=5399 pnpm dev`), choose
+   `steps[0].mode === "manual"`. The script above writes `dados.json`, so the
+   proposal's recorded rehearsal is `passed` and the create needs no
+   acknowledgment; a proposal whose rehearsal is `untested` or `diverged`
+   answers 409 until the tool receives `acknowledge_reason` (see
+   [the authoring contract fixture](workflow-authoring.md)).
+6. A create before the interview is confirmed answers 409 with
+   `needsConfirmation: true`, even when an untested rehearsal is acknowledged.
+   The person's route is the only way to confirm, and it writes the answers it
+   receives — a correction replaces the bot's text:
+
+   ```sh
+   curl -sS -X POST -H 'content-type: application/json' \
+     -d '{"interview":{"recurring":true,"changes":"O link do video do dia","confirmer":"O Matheus aprova os 3 trechos"}}' \
+     http://127.0.0.1:PORT/api/workflow-proposals/<id>/confirm
+   ```
+
+   The stored proposal now carries `interview.confirmedAt`,
+   `interview.confirmedBy: "user"` and an `approvalHash`. The create after that
+   answers 201.
+7. Open the UI (`OMB_PORT=<port> OMB_UI_PORT=5399 pnpm dev`), choose
    **Workflows → Mais opções → Propostas**, select the archived proposal and
-   click **Criar Workflow**. The request is
-   `POST /api/workflow-proposals/<id>/create` and answers 201.
+   click **Criar Workflow**. The preview opens and its footer creates it; the
+   request is `POST /api/workflow-proposals/<id>/create` and answers 201. The
+   preview's interview block shows the bot's answers under
+   **Repete? / O que muda / Quem confirma**; **Criar Workflow** stays disabled
+   until **Confirmar respostas** is pressed, and editing an answer turns the
+   badge back to “Uma resposta mudou — confirme de novo” and disables the
+   create again.
 
 Keep `workflow-proposals.json`, `workflows.json`, the UI screenshots and the
 server log as evidence.
@@ -65,6 +90,23 @@ thread. The routine run mirrors **waiting**.
 A routine cannot supply required parameters. A scheduled Workflow must declare
 its parameters optional with `whenAbsent`, or leave them out; otherwise the
 start fails with `needs_input` and no run is created.
+
+## The interview and its confirmation
+
+The bot asks the three questions one per turn and writes its answers anyway; it
+never confirms them. The preview is the authority: it shows the answers, the
+person confirms or corrects each one, and
+`POST /api/workflow-proposals/<id>/confirm` stamps `interview.confirmedAt` and
+`interview.confirmedBy` and computes the `approvalHash` over the definition, the
+scripts and the interview answers. A different answer, script or definition
+leaves the stored hash stale and the create answers 409 `needsConfirmation`
+until the person confirms again. “Não sei” is still a valid answer: it becomes
+an assumption the person is confirming, and correcting it removes the
+assumption.
+
+The bot's tool descriptions say the same thing: `propose_workflow` asks one
+question per turn, and `create_workflow_from_proposal` never confirms for the
+person.
 
 ## Preview, rehearsal, annotations and rounds
 
@@ -108,6 +150,10 @@ pause. The card pause/resume path itself is proven by QA-B and by
 - The bot's card answer is a normal chat message; the model must call
   `create_workflow_from_proposal`. The QA recipes use the fake engine's scripted
   calls, not a real provider's judgment about when to propose or start a run.
+- The interview confirmation is a person's route; no bot tool can press it. A
+  stored proposal whose answers were edited on disk keeps its old hash, so the
+  create refuses it, but nothing re-runs the bot's three questions for a draft
+  made before this gate existed.
 - The preview shows the top-level steps; the body of a Do While is not expanded
   with its own Process/Proof/code yet.
 - The rehearsal runs script steps only; bot and branch steps stay **not tested**.

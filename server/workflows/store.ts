@@ -12,11 +12,16 @@ import {
   workflowAllSteps,
   workflowDefinitionSchema,
   workflowRunSchema,
+  workflowUnknownFields,
   type WorkflowDefinition,
   type WorkflowRun,
 } from "../../shared/workflow.ts";
+import { validateWorkflowAuthoring, type AuthoringIssue } from "../../shared/workflow-authoring.ts";
+import { authoringRefusal, type WorkflowRefusal } from "../../shared/workflow-refusal.ts";
 import { writeFileAtomic } from "../atomic.ts";
+import { compileToolSchema } from "../mcp-schema-validator.ts";
 import { prepareRunDirectories } from "./files.ts";
+import { isCommandOnPath } from "./preflight.ts";
 import {
   isWorkflowId, isWorkflowRunId, newWorkflowRunId, workflowRunPaths, workflowScriptsDir, workflowsRoot, stepDir,
 } from "./paths.ts";
@@ -30,7 +35,9 @@ export interface WorkflowStoreOptions {
   log?: (line: string) => void;
 }
 
-export type WorkflowSave = { ok: true; workflow: WorkflowDefinition } | { ok: false; error: string };
+export type WorkflowSave =
+  | { ok: true; workflow: WorkflowDefinition; warnings: AuthoringIssue[] }
+  | { ok: false; error: string; refusal?: WorkflowRefusal };
 
 /** A script file a Workflow's `scripts/` folder holds. */
 export interface WorkflowScriptInfo {
@@ -217,6 +224,11 @@ export function createWorkflowStore(options: WorkflowStoreOptions): WorkflowStor
       if (input === null || typeof input !== "object" || Array.isArray(input)) {
         return { ok: false, error: "a Workflow must be a JSON object" };
       }
+      const unknown = workflowUnknownFields(input);
+      if (unknown.length > 0) {
+        const refusal = authoringRefusal(unknown);
+        return { ok: false, error: refusal.error, refusal };
+      }
       const stamp = now();
       const draft: Record<string, unknown> = { ...(input as Record<string, unknown>) };
       draft.createdAt ??= stamp;
@@ -224,14 +236,26 @@ export function createWorkflowStore(options: WorkflowStoreOptions): WorkflowStor
       draft.version ??= 1;
       const parsed = workflowDefinitionSchema.safeParse(draft);
       if (!parsed.success) {
-        return { ok: false, error: parsed.error.issues.map((issue) => `${issue.path.join(".") || "workflow"}: ${issue.message}`).join("; ") };
+        const issues = parsed.error.issues.map((issue) => ({ path: issue.path.join(".") || "workflow", message: issue.message }));
+        const refusal = authoringRefusal(issues);
+        return { ok: false, error: refusal.error, refusal };
       }
+      const authoring = validateWorkflowAuthoring(parsed.data, "save", {
+        compileShape: (shape) => { compileToolSchema(shape); },
+        binOnPath: (name) => isCommandOnPath(name, env),
+        ...(options?.scripts === undefined ? {} : { scripts: options.scripts }),
+      });
+      if (authoring.errors.length > 0) {
+        const refusal = authoringRefusal(authoring.errors, authoring.warnings);
+        return { ok: false, error: refusal.error, refusal };
+      }
+      const warnings = authoring.warnings;
       const id = parsed.data.id.toLowerCase();
       if (options?.scripts && options.scripts.length > 0) {
         const dir = workflowScriptsDir({ department: parsed.data.department, workflowId: id, home, env });
         for (const script of options.scripts) {
           if (!isWorkflowScriptName(script.name)) {
-            return { ok: false, error: `script name ${JSON.stringify(script.name)} must be a flat .mjs or .js file name` };
+            return { ok: false, error: `script name ${JSON.stringify(script.name)} must be a flat .mjs file name` };
           }
           if (Buffer.byteLength(script.content, "utf8") > WORKFLOW_SCRIPT_MAX_BYTES) {
             return { ok: false, error: `script ${JSON.stringify(script.name)} is larger than ${WORKFLOW_SCRIPT_MAX_BYTES / 1024}KB` };
@@ -261,7 +285,7 @@ export function createWorkflowStore(options: WorkflowStoreOptions): WorkflowStor
       const hasCanvas = Object.hasOwn(input as object, "canvas");
       const normalized: WorkflowDefinition = { ...parsed.data, id, ...(hasCanvas || !existing?.canvas ? {} : { canvas: existing.canvas }) };
       if (existing && comparable(existing) === comparable(normalized)) {
-        if (!hasCanvas || JSON.stringify(existing.canvas) === JSON.stringify(normalized.canvas)) return { ok: true, workflow: existing };
+        if (!hasCanvas || JSON.stringify(existing.canvas) === JSON.stringify(normalized.canvas)) return { ok: true, workflow: existing, warnings };
         const index = definitions.findIndex((candidate) => candidate.id === id && candidate.version === existing.version);
         const moved: WorkflowDefinition = { ...existing, canvas: normalized.canvas };
         if (index < 0) return { ok: false, error: `could not find the current version of ${id}` };
@@ -272,7 +296,7 @@ export function createWorkflowStore(options: WorkflowStoreOptions): WorkflowStor
           definitions[index] = existing;
           return { ok: false, error: `could not save ${file}: ${reason(error)}` };
         }
-        return { ok: true, workflow: moved };
+        return { ok: true, workflow: moved, warnings };
       }
       const version = existing ? Math.max(...versionsOf(id).map((candidate) => candidate.version)) + 1 : normalized.version;
       const saved: WorkflowDefinition = { ...normalized, version, createdAt: existing?.createdAt ?? normalized.createdAt, updatedAt: stamp };
@@ -283,7 +307,7 @@ export function createWorkflowStore(options: WorkflowStoreOptions): WorkflowStor
         definitions.pop();
         return { ok: false, error: `could not save ${file}: ${reason(error)}` };
       }
-      return { ok: true, workflow: saved };
+      return { ok: true, workflow: saved, warnings };
     },
     removeWorkflow(id) {
       if (!isWorkflowId(id)) return false;

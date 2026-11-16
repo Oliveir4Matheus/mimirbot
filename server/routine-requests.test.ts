@@ -64,6 +64,7 @@ function harness(
     opensCard: boolean,
   ) => { ok: true } | { ok: false; status: number; error: string },
   autoApply?: DirectApplyCheck,
+  validateWorkflow?: (botId: string, workflowId: string) => string | null,
 ) {
   const clock = { now: start };
   const dir = mkdtempSync(join(tmpdir(), "omb-routine-request-"));
@@ -73,6 +74,7 @@ function harness(
     now: () => clock.now,
     botState: (botId) => (botId === "missing" ? "missing" : "busy"),
     goalState: () => "busy",
+    workflowState: () => "ready",
     createTask: () => null,
     startTurn: async () => {},
   });
@@ -85,6 +87,7 @@ function harness(
     cloudReady,
     canPersist,
     autoApply,
+    validateWorkflow,
   });
   return { clock, routines, service, store };
 }
@@ -2058,5 +2061,43 @@ describe("a bot's own routine changes", () => {
     const applied = await service.submit({ botId: "bot-a", threadId: "ask-thread", proposal: createProposal({ instructions: "Another." }) });
     expect(service.undo({ botId: "bot-b", threadId: "ask-thread", requestId: applied.requestId })).toMatchObject({ state: "invalid", status: 403 });
     expect(undo(service, "missing")).toEqual({ claimed: false });
+  });
+});
+
+describe("a routine that starts a Workflow", () => {
+  const workflowId = "3a042dfb-28e2-4ecf-bfa9-bb9718751048";
+  const proposal = createProposal({ instructions: "", target: "workflow", workflowId });
+
+  it("creates the routine only once its Workflow exists", async () => {
+    const { service, routines } = harness(undefined, undefined, undefined, undefined, (botId, id) =>
+      botId === "bot-a" && id === workflowId ? null : "That Workflow does not exist yet; create it before scheduling it");
+    const applied = await service.submit({ botId: "bot-a", threadId: "thread-1", proposal });
+    expect(applied.state).toBe("applied");
+    expect(routines.listRoutines()[0]).toMatchObject({ target: "workflow", workflowId, prompt: "", runOn: "maus" });
+    expect(applied.detail).toContain("waiting_manual");
+  });
+
+  it("refuses the request when the Workflow is gone, and writes no routine", async () => {
+    const { service, routines } = harness(undefined, undefined, undefined, undefined, () =>
+      "That Workflow does not exist yet; create it before scheduling it");
+    await expect(service.submit({ botId: "bot-a", threadId: "thread-1", proposal })).rejects.toThrow(/does not exist yet/);
+    expect(routines.listRoutines()).toEqual([]);
+  });
+
+  it("keeps the Workflow target in the card payload and its undo snapshot", async () => {
+    const { service, store } = harness();
+    const applied = await service.submit({ botId: "bot-a", threadId: "thread-1", proposal });
+    const card = store.messagesFor("thread-1").at(0)?.card;
+    expect(card?.routineRequest?.operation).toMatchObject({ action: "create", routine: { target: "workflow", workflowId, instructions: "" } });
+    const createdId = card?.routineRequest?.resultId ?? "";
+    expect(createdId).toBeTruthy();
+    await service.submit({
+      botId: "bot-a",
+      threadId: "thread-1",
+      proposal: malformedProposal({ action: "update", routineId: createdId, changes: { name: "Renamed" } }),
+    });
+    const last = store.messagesFor("thread-1").at(-1);
+    expect(last?.card?.routineRequest?.undo?.before).toMatchObject({ target: "workflow", workflowId });
+    expect(applied.state).toBe("applied");
   });
 });

@@ -8,8 +8,11 @@ import { approvedProposalDefinition, type WorkflowProposalStore } from "../workf
 import { workflowApprovalHash } from "../workflows/approval.ts";
 import { rehearseProposal, type RehearsalExample } from "../workflows/rehearsal.ts";
 import type { WorkflowStore } from "../workflows/store.ts";
+import { validateWorkflowAuthoring } from "../../shared/workflow-authoring.ts";
+import { authoringRefusal, workflowRefusal, type WorkflowRefusal } from "../../shared/workflow-refusal.ts";
 import type { WorkflowProposal } from "../../shared/workflow-proposal.ts";
 import type { json as sendJson } from "../harness/http.ts";
+import { compileToolSchema } from "../mcp-schema-validator.ts";
 import { PASS, type RouteHandler } from "./table.ts";
 
 const BASE = "/api/workflow-proposals";
@@ -40,20 +43,64 @@ const sameDepartment = (left: string, right: string): boolean => left.trim().toL
 function createWorkflow(
   proposal: WorkflowProposal,
   workflows: WorkflowStore,
-): { ok: true; workflowId: string; version: number } | { ok: false; error: string } {
+  acknowledge?: { reason: string },
+): { ok: true; workflowId: string; version: number; warnings: string[] } | { ok: false; status: 400 | 409; error: string; refusal: WorkflowRefusal; rehearsal?: WorkflowProposal["rehearsal"]; needsAcknowledgement?: true; needsConfirmation?: true } {
+  if (proposal.interview.confirmedAt === undefined) {
+    const error = "the interview was never confirmed; the person confirms the three questions on the proposal card, and the bot cannot do it";
+    return {
+      ok: false,
+      status: 409,
+      error,
+      refusal: workflowRefusal("needsConfirmation", error),
+      needsConfirmation: true,
+    };
+  }
   let definition;
   try {
     definition = approvedProposalDefinition(proposal);
   } catch (error) {
-    return { ok: false, error: error instanceof Error ? error.message : String(error) };
+    const text = error instanceof Error ? error.message : String(error);
+    return { ok: false, status: 400, error: text, refusal: authoringRefusal([{ path: "steps", message: text }]) };
   }
-  const currentHash = workflowApprovalHash(definition, proposal.scripts);
-  if (proposal.approvalHash !== undefined && proposal.approvalHash !== currentHash) {
-    return { ok: false, error: "the proposal changed after the review; review it again before creating the Workflow" };
+  const authoring = validateWorkflowAuthoring(definition, "save", {
+    compileShape: (shape) => { compileToolSchema(shape); },
+    scripts: proposal.scripts,
+  });
+  if (authoring.errors.length > 0) {
+    const refusal = authoringRefusal(authoring.errors, authoring.warnings);
+    return { ok: false, status: 400, error: refusal.error, refusal };
+  }
+  const currentHash = workflowApprovalHash(definition, proposal.scripts, proposal.interview);
+  if (proposal.approvalHash === undefined || proposal.approvalHash !== currentHash) {
+    const error = "the proposal changed after its interview was confirmed; the person confirms the answers again before the Workflow is created";
+    return {
+      ok: false,
+      status: 409,
+      error,
+      refusal: workflowRefusal("needsConfirmation", error),
+      needsConfirmation: true,
+    };
+  }
+  const rehearsal = proposal.rehearsal;
+  if (rehearsal?.status !== "passed" && !acknowledge?.reason.trim()) {
+    const error = rehearsal === undefined
+      ? "this proposal was never rehearsed; open the preview and rehearse it, or create it acknowledging why it cannot be tested"
+      : `the rehearsal ended ${rehearsal.status}; open the preview, or create the Workflow acknowledging why the run should go ahead`;
+    return {
+      ok: false,
+      status: 409,
+      error,
+      refusal: workflowRefusal("needsAcknowledgement", error),
+      rehearsal,
+      needsAcknowledgement: true,
+    };
   }
   const saved = workflows.saveWorkflow(definition, proposal.scripts.length > 0 ? { scripts: proposal.scripts } : undefined);
-  if (!saved.ok) return saved;
-  return { ok: true, workflowId: saved.workflow.id, version: saved.workflow.version };}
+  if (!saved.ok) {
+    return { ok: false, status: 400, error: saved.error, refusal: saved.refusal ?? workflowRefusal("authoringErrors", saved.error) };
+  }
+  return { ok: true, workflowId: saved.workflow.id, version: saved.workflow.version, warnings: saved.warnings.map((issue) => issue.message) };
+}
 
 export function createWorkflowProposalRoutes(deps: WorkflowProposalRouteDeps): RouteHandler {
   return async ({ req, res, path, method, url, json, readBody }) => {
@@ -82,6 +129,16 @@ export function createWorkflowProposalRoutes(deps: WorkflowProposalRouteDeps): R
         ? void json(res, 200, { proposal: archived.proposal })
         : void json(res, 409, { error: archived.error });
     }
+    if (parts.length === 2 && parts[1] === "confirm" && method === "POST") {
+      const body = await readBody(req);
+      if (!isRecord(body) || !isRecord(body.interview)) {
+        return void json(res, 400, { error: "the confirmation needs the three interview answers: recurring, changes, confirmer" });
+      }
+      const saved = deps.proposals.confirm(id, body.interview, "user");
+      return saved.ok
+        ? void json(res, 200, { proposal: saved.proposal })
+        : void json(res, 409, { error: saved.error });
+    }
     if (parts.length === 2 && parts[1] === "annotate" && method === "POST") {
       const body = await readBody(req);
       if (!isRecord(body) || !isRecord(body.annotations)) return void json(res, 400, { error: "annotations must be an object of step id to text" });
@@ -106,11 +163,27 @@ export function createWorkflowProposalRoutes(deps: WorkflowProposalRouteDeps): R
       if (proposal.status === "created" && proposal.createdWorkflowId) {
         return void json(res, 200, { workflowId: proposal.createdWorkflowId });
       }
-      const created = createWorkflow(proposal, deps.workflows);
-      if (!created.ok) return void json(res, 400, { error: created.error });
+      const body = await readBody(req);
+      const acknowledge = isRecord(body) && isRecord(body.acknowledge) && typeof body.acknowledge.reason === "string"
+        ? { reason: body.acknowledge.reason.slice(0, 2_000) }
+        : undefined;
+      const created = createWorkflow(proposal, deps.workflows, acknowledge);
+      if (!created.ok) {
+        return void json(res, created.status, {
+          ...created.refusal,
+          ...(created.rehearsal === undefined ? {} : { rehearsal: created.rehearsal }),
+          ...(created.needsAcknowledgement === true ? { needsAcknowledgement: true } : {}),
+          ...(created.needsConfirmation === true ? { needsConfirmation: true } : {}),
+        });
+      }
       const marked = deps.proposals.markCreated(id, created.workflowId);
       if (!marked.ok) return void json(res, 500, { error: marked.error });
-      return void json(res, 201, { workflowId: created.workflowId, version: created.version, proposal: marked.proposal });
+      return void json(res, 201, {
+        workflowId: created.workflowId,
+        version: created.version,
+        proposal: marked.proposal,
+        ...(created.warnings.length === 0 ? {} : { warnings: created.warnings }),
+      });
     }
     if (parts.length === 1 && method === "DELETE") {
       if (proposal.status === "created") return void json(res, 409, { error: "this proposal became a Workflow" });
@@ -133,7 +206,7 @@ export function createWorkflowProposalInternalRoutes(deps: WorkflowProposalRoute
         { ...body, department: ctx.department },
         { createdBy: { botId: ctx.botId, threadId: ctx.threadId } },
       );
-      if (!created.ok) return void json(res, 400, { error: created.error });
+      if (!created.ok) return void json(res, 400, created.refusal ?? workflowRefusal("authoringErrors", created.error));
       deps.card?.(created.proposal, ctx.botId, ctx.threadId);
       return void json(res, 201, { proposal: created.proposal });
     }
@@ -150,15 +223,37 @@ export function createWorkflowProposalInternalRoutes(deps: WorkflowProposalRoute
       const archived = deps.proposals.archive(id);
       return archived.ok ? void json(res, 200, { proposal: archived.proposal }) : void json(res, 409, { error: archived.error });
     }
+    if (parts.length === 2 && parts[1] === "rehearse" && ctx.method === "POST") {
+      const body = await ctx.readBody();
+      const example = isRecord(body) && isRecord(body.example) ? body.example as RehearsalExample : {};
+      const rehearsal = await rehearseProposal(proposal, example);
+      const saved = deps.proposals.recordRehearsal(id, rehearsal);
+      return saved.ok ? void json(res, 200, { rehearsal, proposal: saved.proposal }) : void json(res, 409, { error: saved.error });
+    }
     if (parts.length === 2 && parts[1] === "create" && ctx.method === "POST") {
       if (proposal.status === "created" && proposal.createdWorkflowId) {
         return void json(res, 200, { workflowId: proposal.createdWorkflowId });
       }
-      const created = createWorkflow(proposal, deps.workflows);
-      if (!created.ok) return void json(res, 400, { error: created.error });
+      const body = await ctx.readBody();
+      const acknowledge = isRecord(body) && isRecord(body.acknowledge) && typeof body.acknowledge.reason === "string"
+        ? { reason: body.acknowledge.reason.slice(0, 2_000) }
+        : undefined;
+      const created = createWorkflow(proposal, deps.workflows, acknowledge);
+      if (!created.ok) {
+        return void json(res, created.status, {
+          ...created.refusal,
+          ...(created.rehearsal === undefined ? {} : { rehearsal: created.rehearsal }),
+          ...(created.needsAcknowledgement === true ? { needsAcknowledgement: true } : {}),
+          ...(created.needsConfirmation === true ? { needsConfirmation: true } : {}),
+        });
+      }
       const marked = deps.proposals.markCreated(id, created.workflowId);
       if (!marked.ok) return void json(res, 500, { error: marked.error });
-      return void json(res, 201, { workflowId: created.workflowId, version: created.version });
+      return void json(res, 201, {
+        workflowId: created.workflowId,
+        version: created.version,
+        ...(created.warnings.length === 0 ? {} : { warnings: created.warnings }),
+      });
     }
     return void json(res, 405, { error: "method not allowed" });
   };

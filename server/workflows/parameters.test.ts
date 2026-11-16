@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { workflowDefinitionSchema } from "../../shared/workflow.ts";
-import { stepParameterValues, validateWorkflowInputs, workflowParameterNames } from "./parameters.ts";
+import { collectedParameters, resolveStepParameters, stepParameterValues, validateCollectedInputs, validateWorkflowInputs, workflowParameterNames } from "./parameters.ts";
 import { writeStepParameters } from "./files.ts";
 
 const definition = workflowDefinitionSchema.parse({
@@ -84,5 +84,103 @@ describe("workflow parameters", () => {
     const step = { ...definition.steps[0]!, parameters: [] };
     expect(writeStepParameters(root, step, { inicio: "2026-11-01" }).ok).toBe(true);
     expect(() => readFileSync(join(root!, "params.json"))).toThrow();
+  });
+});
+
+const origins = workflowDefinitionSchema.parse({
+  id: "9a5b1c2d-3e4f-4a5b-8c9d-0e1f2a3b4c5d",
+  version: 1,
+  name: "Cortes",
+  department: "Marketing",
+  createdAt: 1,
+  updatedAt: 1,
+  steps: [
+    {
+      id: "pedir", kind: "bot", name: "Pedir o link", botId: "bot-a", mode: "manual",
+      instructions: "Pergunte o link.", outputs: [{ path: "link.txt" }],
+      parameters: [{ name: "link", type: "string", collectedBy: "pedir" }],
+    },
+    {
+      id: "escolher", kind: "script", name: "Escolher", run: "escolher.mjs",
+      outputs: [{
+        path: "trechos.json",
+        shape: {
+          type: "object", required: ["clips", "total"],
+          properties: { total: { type: "integer" }, clips: { type: "array", items: { type: "string" } } },
+        },
+      }],
+    },
+    {
+      id: "renderizar", kind: "bot", name: "Renderizar", botId: "bot-b",
+      instructions: "Corte os trechos.", outputs: [{ path: "clip1.mp4" }],
+      parameters: [
+        { name: "total", type: "integer", from: { step: "escolher", output: "trechos.json", field: "total" } },
+        { name: "clips", type: "string", list: true, from: { step: "escolher", output: "trechos.json", field: "clips" } },
+      ],
+    },
+  ],
+});
+
+describe("parameter origins", () => {
+  it("never asks at the start for a value that has an origin", () => {
+    expect(workflowParameterNames(origins)).toEqual([]);
+    expect(validateWorkflowInputs(origins, {})).toEqual({ ok: true, values: {} });
+    const refused = validateWorkflowInputs(origins, { total: 3 });
+    expect(refused.ok).toBe(false);
+    if (refused.ok) return;
+    expect(refused.failure).toMatchObject({ missing: [], invalid: [], unknown: ["total"], allowed: [] });
+    expect(collectedParameters(origins, "pedir").map((parameter) => parameter.name)).toEqual(["link"]);
+  });
+
+  it("checks what a manual step collects when the person continues it", () => {
+    const missing = validateCollectedInputs(origins, "pedir", {});
+    expect(missing.ok).toBe(false);
+    if (!missing.ok) expect(missing.failure).toMatchObject({ missing: [{ step: "Pedir o link", name: "link" }], allowed: ["link"] });
+
+    const invalid = validateCollectedInputs(origins, "pedir", { link: 7 });
+    expect(invalid.ok).toBe(false);
+    if (!invalid.ok) expect(invalid.failure.invalid[0]).toMatchObject({ name: "link", reason: "must be text" });
+
+    const unknown = validateCollectedInputs(origins, "pedir", { link: "https://x", outro: 1 });
+    expect(unknown.ok).toBe(false);
+    if (!unknown.ok) expect(unknown.failure.unknown).toEqual(["outro"]);
+
+    expect(validateCollectedInputs(origins, "pedir", { link: "https://x" })).toEqual({ ok: true, values: { link: "https://x" } });
+  });
+
+  it("extracts a scalar and a list of scalars from the source output", () => {
+    const step = origins.steps[2]!;
+    const resolved = resolveStepParameters(step, {}, (stepId, output) =>
+      stepId === "escolher" && output === "trechos.json"
+        ? { ok: true, value: { total: 3, clips: ["a", "b"] } }
+        : { ok: false, error: "missing output" });
+    expect(resolved).toEqual({ ok: true, values: { total: 3, clips: ["a", "b"] } });
+  });
+
+  it("fails the consuming step when the field has the wrong type, naming step, output and field", () => {
+    const step = origins.steps[2]!;
+    const resolved = resolveStepParameters(step, {}, () => ({ ok: true, value: { total: "3", clips: ["a"] } }));
+    expect(resolved.ok).toBe(false);
+    if (resolved.ok) return;
+    expect(resolved.error).toContain('parameter "total"');
+    expect(resolved.error).toContain('step "escolher"');
+    expect(resolved.error).toContain('"trechos.json"');
+    expect(resolved.error).toContain('field "total"');
+    expect(resolved.error).toContain("must be an integer");
+  });
+
+  it("fails when the field is not in the source output", () => {
+    const step = origins.steps[2]!;
+    const resolved = resolveStepParameters(step, {}, () => ({ ok: true, value: { total: 3 } }));
+    expect(resolved.ok).toBe(false);
+    if (!resolved.ok) expect(resolved.error).toContain('field "clips" is missing');
+  });
+
+  it("writes params.json with the extracted subset only", () => {
+    root = mkdtempSync(join(tmpdir(), "omb-params-"));
+    const step = origins.steps[2]!;
+    const written = writeStepParameters(root, step, { total: 3, clips: ["a"], outro: "x" });
+    expect(written.ok).toBe(true);
+    expect(JSON.parse(readFileSync(join(root, "params.json"), "utf8"))).toEqual({ total: 3, clips: ["a"] });
   });
 });

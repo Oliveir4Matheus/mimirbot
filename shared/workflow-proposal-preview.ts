@@ -3,6 +3,7 @@
 // from the same definition the engine would run, so the preview cannot drift.
 import type { WorkflowProposal } from "./workflow-proposal.ts";
 import { startManualDefinition } from "./workflow-proposal.ts";
+import { validateWorkflowAuthoring } from "./workflow-authoring.ts";
 import type { WorkflowStep } from "./workflow.ts";
 
 export type ProposalPreviewTag = "bot" | "script" | "condition" | "loop" | "manual";
@@ -29,6 +30,8 @@ export interface ProposalPreview {
   assumptions: string[];
   /** Non-blocking advice about a script's static surface. */
   scriptWarnings: Array<{ step: string; warning: string }>;
+  /** What the authoring contract refuses at create, and the advice it gives now. */
+  authoring: { errors: string[]; warnings: string[] };
   error?: string;
 }
 
@@ -45,8 +48,8 @@ function conditionText(step: Extract<WorkflowStep, { kind: "condition" }>): stri
 }
 
 function inputLines(step: WorkflowStep): string[] {
-  if (step.kind === "condition") return [`result.json de ${step.from}`];
-  if (step.kind === "loop") return [`corpo de ${step.body.length} etapa(s)`, `condição sobre ${step.from}`];
+  if (step.kind === "condition") return [`${step.from.output} de ${step.from.step}`];
+  if (step.kind === "loop") return [`corpo de ${step.body.length} etapa(s)`, `condição sobre ${step.from.output} de ${step.from.step}`];
   const params = (step.parameters ?? []).map((parameter) => `${parameter.name} (${parameter.type})`);
   return [...step.inputs.map((input) => input.as), ...params.map((name) => `params.json · ${name}`)];
 }
@@ -59,10 +62,7 @@ function proofLines(step: WorkflowStep): string[] {
       `até ${step.maxIterations} volta(s); condição satisfeita encerra`,
     ];
   }
-  const proof = step.outputs.map((output) => `${output.path}${output.required ? "" : " (opcional)"}`);
-  if (step.result) proof.push(`resultado JSON: ${step.result}`);
-  if (step.require) proof.push(`require: ${JSON.stringify(step.require)}`);
-  return proof;
+  return step.outputs.map((output) => `${output.path}${output.required ? "" : " (opcional)"}${output.shape === undefined ? "" : " · shape"}`);
 }
 
 function processLine(step: WorkflowStep): string {
@@ -102,6 +102,13 @@ export function proposalPreview(proposal: WorkflowProposal): ProposalPreview {
     version: proposal.definition.version,
     steps,
     assumptions: proposal.assumptions,
+    authoring: (() => {
+      const report = validateWorkflowAuthoring(definition, "preview", { scripts: proposal.scripts });
+      return {
+        errors: report.errors.map((issue) => issue.message),
+        warnings: report.warnings.map((issue) => issue.message),
+      };
+    })(),
     scriptWarnings: definition.steps.flatMap((step) => {
       if (step.kind !== "script") return [];
       const script = proposal.scripts.find((entry) => entry.name === step.run);

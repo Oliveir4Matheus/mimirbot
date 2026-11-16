@@ -112,7 +112,7 @@ function finishRun(run: WorkflowRun, now: number, result?: unknown): void {
 export function completeStep(
   run: WorkflowRun,
   index: number,
-  input: { verified: string[]; result?: unknown },
+  input: { verified: string[]; result?: unknown; branch?: boolean; condition?: WorkflowRunStep["condition"]; source?: WorkflowRunStep["source"] },
   now: number,
   nextIndex?: number | null,
 ): RunTransition {
@@ -124,6 +124,9 @@ export function completeStep(
   target.status = "succeeded";
   target.finishedAt = now;
   target.verified = [...input.verified];
+  if (input.branch !== undefined) target.branch = input.branch;
+  if (input.condition !== undefined) target.condition = input.condition;
+  if (input.source !== undefined) target.source = input.source;
   next.updatedAt = now;
   const destination = nextIndex === undefined
     ? (index + 1 < next.steps.length ? index + 1 : null)
@@ -316,7 +319,7 @@ export function completeBodyStep(
   loopIndex: number,
   iterationIndex: number,
   bodyIndex: number,
-  input: { verified: string[] },
+  input: { verified: string[]; branch?: boolean; condition?: WorkflowRunStep["condition"]; source?: WorkflowRunStep["source"] },
   now: number,
 ): RunTransition {
   if (run.status !== "running") return { ok: false, error: `a ${run.status} run cannot complete a body step` };
@@ -327,6 +330,9 @@ export function completeBodyStep(
   target.status = "succeeded";
   target.finishedAt = now;
   target.verified = [...input.verified];
+  if (input.branch !== undefined) target.branch = input.branch;
+  if (input.condition !== undefined) target.condition = input.condition;
+  if (input.source !== undefined) target.source = input.source;
   next.updatedAt = now;
   return { ok: true, run: next };
 }
@@ -420,12 +426,14 @@ export function holdBodyRun(run: WorkflowRun, loopIndex: number, iterationIndex:
   return { ok: true, run: next };
 }
 
-/** The person continued the manual step: the run may advance it once. */
-export function releaseRun(run: WorkflowRun, now: number): RunTransition {
+/** The person continued the manual step: the run may advance it once, and the values
+ * that step collects join the run's own inputs. */
+export function releaseRun(run: WorkflowRun, now: number, inputs: WorkflowRun["inputs"] = {}): RunTransition {
   if (run.status !== "waiting_manual") return { ok: false, error: `a ${run.status} run is not waiting for a person` };
   const next = clone(run);
   next.status = "running";
   next.hold = undefined;
   next.updatedAt = now;
+  if (Object.keys(inputs).length > 0) next.inputs = { ...next.inputs, ...inputs };
   return { ok: true, run: next };
 }

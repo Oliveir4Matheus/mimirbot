@@ -130,7 +130,7 @@ export function StepPanel({ workflow, step, index, botName, onClose }: {
               <div className={LABEL}>{t("workflows.step.condition")}</div>
               <div className="flex items-center gap-2 text-[11.5px] font-medium text-ink">
                 <GitBranch size={14} aria-hidden="true" />
-                {t("workflows.step.conditionFrom", { name: sourceName(step.from) })}
+                {t("workflows.step.conditionFrom", { name: `${step.from.output} · ${sourceName(step.from.step)}` })}
               </div>
             </>
           )}
@@ -201,7 +201,7 @@ export function StepPanel({ workflow, step, index, botName, onClose }: {
             <section className="mb-4">
               <div className={LABEL}>{t("workflows.step.condition")}</div>
               <div className="mb-2 text-[10.5px] text-ink-secondary">
-                {t("workflows.step.conditionFrom", { name: loopSourceName(loop.from) })}
+                {t("workflows.step.conditionFrom", { name: `${loop.from.output} · ${loopSourceName(loop.from.step)}` })}
               </div>
               <div className="mb-2 text-[10.5px] text-ink-secondary">
                 {t("workflows.step.conditionMatch")}: <span className="text-ink">{loop.match === "any" ? t("workflows.step.matchAny") : t("workflows.step.matchAll")}</span>

@@ -2,10 +2,10 @@ import { useCallback, useEffect, useState } from "react";
 import { Archive, ArrowLeft, Check, FlaskConical, RefreshCw, Trash2, Workflow as WorkflowIcon } from "lucide-react";
 
 import type { WorkflowProposal } from "../../../shared/workflow-proposal";
-import { annotateProposal, archiveProposal, bumpProposalRound, createWorkflowFromProposal, deleteProposal, listProposals, rehearseProposal } from "@/lib/workflows-api";
+import { archiveProposal, deleteProposal, listProposals } from "@/lib/workflows-api";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/cn";
-import { ProposalPreview } from "./ProposalPreview";
+import { ProposalPreviewDialog } from "./ProposalPreviewDialog";
 
 function errorText(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -128,11 +128,7 @@ export function ProposalsPage({ onBack, onCreated, onOpenStudio }: { onBack: () 
                   <button
                     type="button"
                     disabled={busy}
-                    onClick={() => void act(async () => {
-                      const created = await createWorkflowFromProposal(selected.id);
-                      setNotice(t("workflows.proposals.created"));
-                      onCreated(created.workflowId);
-                    })}
+                    onClick={() => setPreviewOpen(true)}
                     className="flex items-center gap-1.5 rounded-lg bg-ink px-3 py-1.5 text-[11.5px] font-semibold text-app hover:opacity-90 disabled:opacity-50"
                   >
                     <Check size={13} /> {t("workflows.proposals.create")}
@@ -180,6 +176,11 @@ export function ProposalsPage({ onBack, onCreated, onOpenStudio }: { onBack: () 
                   <dd className="mt-0.5 text-ink">{selected.interview.confirmer || t("workflows.proposals.unknown")}</dd>
                 </div>
               </dl>
+              <p className={cn("mt-2 text-[11.5px]", selected.interview.confirmedAt === undefined ? "text-warning" : "text-success")}>
+                {selected.interview.confirmedAt === undefined
+                  ? t("workflows.proposals.interviewPending")
+                  : t("workflows.proposals.interviewConfirmed", { when: when(selected.interview.confirmedAt) })}
+              </p>
 
               {selected.assumptions.length > 0 && (
                 <section className="mt-4 rounded-xl border border-warning/30 bg-warning/10 p-4">
@@ -220,28 +221,15 @@ export function ProposalsPage({ onBack, onCreated, onOpenStudio }: { onBack: () 
       </div>
 
       {previewOpen && selected && (
-        <ProposalPreview
-          proposal={selected}
-          busy={busy}
-          onClose={() => setPreviewOpen(false)}
-          onNote={(stepId, text) => void act(async () => {
-            await annotateProposal(selected.id, { ...selected.annotations, [stepId]: text });
-            await refresh();
-          })}
-          onRehearse={() => void act(async () => {
-            const result = await rehearseProposal(selected.id, {});
-            setNotice(`${t("workflows.proposals.rehearsalResult")}: ${result.rehearsal?.status ?? "untested"}`);
-            await refresh();
-          })}
-          onRound={() => void act(async () => {
-            await bumpProposalRound(selected.id);
-            await refresh();
-          })}
-          onOpenStudio={() => void act(async () => {
-            const created = await createWorkflowFromProposal(selected.id);
-            if (onOpenStudio) onOpenStudio(created.workflowId);
-            else onCreated(created.workflowId);
-          })}
+        <ProposalPreviewDialog
+          proposalId={selected.id}
+          onClose={() => { setPreviewOpen(false); void refresh(); }}
+          onCreated={(workflowId) => {
+            setPreviewOpen(false);
+            setNotice(t("workflows.proposals.created"));
+            if (onOpenStudio) onOpenStudio(workflowId);
+            else onCreated(workflowId);
+          }}
         />
       )}
     </div>

@@ -29,9 +29,8 @@ shell's builtin `printf`.
 Use the URL and bot id the fixture prints.
 
 1. `POST /api/workflows` with an `id` (a fresh UUID), `name`, `department` and
-   one step: `outputs: [{path: "result.json", required: true}]`,
-   `result: "result.json"`, `require: {ok: true}`. The route does not mint the
-   id.
+   one step: `outputs: [{path: "result.json", required: true}]`. The route
+   does not mint the id.
 2. `POST /api/routines` with `target: "workflow"`, `workflowId` from step 1,
    the same `botId`, an empty `prompt`, and any schedule.
 3. `POST /api/routines/<routineId>/run`.
@@ -42,7 +41,7 @@ Use the URL and bot id the fixture prints.
      `workflowRunId`;
    - the Workflow run has `triggeredBy: {routineId, routineName}`;
    - the Workflow run is `succeeded`, `steps[0].verified` is
-     `["result.json"]` and `result` is `{ok: true}`;
+     `["result.json"]`;
    - the routine run ends `completed` with the same `workflowRunId`.
 6. `DELETE /api/workflows/<workflowId>` once the run is terminal, then read the
    run again: it keeps `snapshot.name` and `snapshot.steps` so the history stays

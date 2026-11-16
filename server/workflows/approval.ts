@@ -1,8 +1,9 @@
 // An approval is tied to the bytes the person saw: the definition, every
-// script, and the parameter declarations. Notes and review rounds are not part
-// of it, so annotating does not invalidate a review.
+// script, and the interview answers. The confirmation stamp is not part of it,
+// so re-confirming the same answers keeps the same hash.
 import { createHash } from "node:crypto";
 
+import type { WorkflowProposalAnswers } from "../../shared/workflow-proposal.ts";
 import type { WorkflowDefinition } from "../../shared/workflow.ts";
 
 export interface ApprovalScript {
@@ -17,9 +18,14 @@ function stable(value: unknown): string {
   return `{${Object.keys(record).sort().map((key) => `${JSON.stringify(key)}:${stable(record[key])}`).join(",")}}`;
 }
 
-export function workflowApprovalHash(definition: WorkflowDefinition, scripts: readonly ApprovalScript[] = []): string {
+export function workflowApprovalHash(
+  definition: WorkflowDefinition,
+  scripts: readonly ApprovalScript[],
+  interview: WorkflowProposalAnswers,
+): string {
   const sortedScripts = [...scripts]
     .map((script) => ({ name: script.name, content: script.content }))
     .sort((left, right) => left.name.localeCompare(right.name));
-  return createHash("sha256").update(stable({ definition, scripts: sortedScripts })).digest("hex");
+  const answers = { recurring: interview.recurring, changes: interview.changes, confirmer: interview.confirmer };
+  return createHash("sha256").update(stable({ definition, scripts: sortedScripts, interview: answers })).digest("hex");
 }

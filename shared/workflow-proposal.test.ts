@@ -8,6 +8,7 @@ import {
   workflowProposalInputSchema,
   workflowProposalSchema,
 } from "../shared/workflow-proposal.ts";
+import { workflowDefinitionSchema } from "../shared/workflow.ts";
 
 const id = "8a5b1c2d-3e4f-4a5b-8c9d-0e1f2a3b4c5d";
 
@@ -51,6 +52,26 @@ describe("proposal interview", () => {
     expect(evaluated).toEqual({ ok: true, assumptions: ["A planilha mantém o nome"] });
     expect(isUnknownProposalAnswer("  Não sei ")).toBe(true);
     expect(isUnknownProposalAnswer("Só as datas")).toBe(false);
+  });
+
+  it("refuses a confirmation the bot tries to write itself", () => {
+    const parsed = workflowProposalInputSchema.safeParse({
+      ...input,
+      interview: { ...input.interview, confirmedAt: 10, confirmedBy: "bot" },
+    });
+    expect(parsed.success).toBe(false);
+  });
+
+  it("stores the person's confirmation and requires its stamp to carry a time", () => {
+    const definition = workflowDefinitionSchema.parse({
+      id, version: 1, name: "Cobrança mensal", department: "Financeiro", createdAt: 1, updatedAt: 1,
+      steps: [{ id: "coletar", kind: "script", name: "Coletar", run: "coletar.mjs", outputs: [{ path: "dados.json" }] }],
+    });
+    const stored = (interview: unknown) => workflowProposalSchema.safeParse({
+      id, department: "Financeiro", status: "draft", createdAt: 1, updatedAt: 1, interview, definition,
+    });
+    expect(stored({ ...input.interview, confirmedAt: 10, confirmedBy: "user" }).success).toBe(true);
+    expect(stored({ ...input.interview, confirmedBy: "user" }).success).toBe(false);
   });
 });
 

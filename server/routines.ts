@@ -252,6 +252,8 @@ export interface RoutineManagerOptions {
   /** Starts the Workflow a "workflow" routine names, pinned to its current version. */
   startWorkflow?: (routine: Routine, run: RoutineRun) => { runId: string } | { error: string };
   cancelWorkflow?: (workflowRunId: string, reason?: string) => void;
+  /** Runs of one Workflow as the store holds them; the scheduler cancels the ones paused on a person. */
+  pausedWorkflowRuns?: (workflowId: string) => readonly Pick<WorkflowRun, "id" | "status">[];
   /** Whether the routine's Workflow still exists. */
   workflowState?: (workflowId: string | undefined) => "ready" | "missing";
   /** A Workflow run as the store still holds it, for a routine run a restart left active. */
@@ -314,6 +316,12 @@ function cloneRun(run: RoutineRun): RoutineRun {
     attachments: cloneAttachments(run.attachments),
     denials: run.denials ? [...run.denials] : undefined,
   };
+}
+
+function scheduledMoment(ms: number): string {
+  const date = new Date(ms);
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
 export class RoutineManager {
@@ -1100,6 +1108,7 @@ export class RoutineManager {
       // An unanswered wait gives way to its routine's next occurrence, which would otherwise be skipped behind it.
       for (const routine of this.routines.filter(isDue)) {
         if (routine.checks || runsOnce(routine.schedule) || now - routine.nextRunAt! > CATCH_UP_MS) continue;
+        this.settlePreviousWorkflowRun(routine, routine.nextRunAt!);
         const stale = this.runs.filter((run) => run.routineId === routine.id && supersededBy(routine.nextRunAt!, run, this.options.handedOffWorkLive));
         for (const run of stale) await this.cancelRun(run.id, ROUTINE_SUPERSEDED);
       }
@@ -1220,6 +1229,7 @@ export class RoutineManager {
             this.failRun(run, "The routine's Workflow is unavailable");
             continue;
           }
+          this.settlePreviousWorkflowRun(routine, run.scheduledFor);
           const startedAt = this.now();
           let started: { runId: string } | { error: string };
           try {
@@ -1533,6 +1543,24 @@ export class RoutineManager {
       : target === "room-goal"
         ? "The assigned room or coordinator no longer exists"
         : "The assigned bot no longer exists";
+  }
+
+  /** The single point where a scheduled Workflow run deals with an earlier run of the same
+   * Workflow that is still paused: waiting indefinitely for a person would stack one run per
+   * occurrence, so the new one cancels the old. A run that is still running is left alone. */
+  private settlePreviousWorkflowRun(routine: Routine, scheduledFor: number): void {
+    if (!routine.workflowId) return;
+    const paused = (this.options.pausedWorkflowRuns?.(routine.workflowId) ?? [])
+      .filter((run) => run.status === "waiting_approval" || run.status === "waiting_manual");
+    if (paused.length === 0) return;
+    const reason = `substituída pela run agendada de ${scheduledMoment(scheduledFor)}`;
+    for (const { id } of paused) {
+      try {
+        this.options.cancelWorkflow?.(id, reason);
+      } catch (error) {
+        console.error(`routines: could not cancel the paused Workflow run ${id}`, error);
+      }
+    }
   }
 
   private initialOccurrence(schedule: RoutineSchedule, now: number): number | null {

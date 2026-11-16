@@ -2,6 +2,7 @@
 // per-turn limits are the harness's, since one proxy can serve many turns of a warm engine.
 import { agentsCallMember, resolveAgentsCall } from "../../shared/agents-tool-names.ts";
 import { CREDENTIAL_TARGETS, isCredentialTargetId } from "../../shared/credential-request.ts";
+import { parseWorkflowRefusal, type WorkflowRefusal } from "../../shared/workflow-refusal.ts";
 
 import { peerName } from "../peer-roster.ts";
 import { callCardTool, CARD_TOOL_NAMES } from "./agents-call-cards.ts";
@@ -33,6 +34,8 @@ export interface ToolCallResult {
   text: string;
   isError?: boolean;
   passthrough?: Json;
+  /** The parsed contract behind the text, for the host to inspect. */
+  structured?: Json;
 }
 
 export function toolCallContextFromEnv(env: NodeJS.ProcessEnv): ToolCallContext {
@@ -113,10 +116,29 @@ function renderWorkflowRun(body: Json): string {
   for (const [index, step] of steps.entries()) {
     const verified = Array.isArray(step.verified) && step.verified.length ? ` — verified: ${step.verified.map(String).join(", ")}` : "";
     const error = typeof step.error === "string" && step.error.trim() ? ` — ${step.error.trim()}` : "";
-    lines.push(`${index + 1}. ${String(step.id ?? "?")}: ${String(step.status ?? "?")}${verified}${error}`);
+    const source = jsonRecord(step.source) ? step.source : undefined;
+    const line = jsonRecord(step.condition) ? step.condition : undefined;
+    const branch = typeof step.branch === "boolean"
+      ? ` — took its ${step.branch ? "true" : "false"} route${line ? `: ${String(line.field ?? "?")} ${String(line.op ?? "?")}${line.value === undefined ? "" : ` ${JSON.stringify(line.value)}`}` : ""}${source ? ` (read ${String(source.output ?? "?")} from ${String(source.step ?? "?")})` : ""}`
+      : "";
+    lines.push(`${index + 1}. ${String(step.id ?? "?")}: ${String(step.status ?? "?")}${verified}${branch}${error}`);
   }
   if (run.status === "waiting_manual") lines.push("It waits for a person to continue before the next step starts; tell them and check again later rather than waiting in this turn.");
   if (run.status === "running" || run.status === "queued") lines.push("It is still running; its steps start on their own. Check again later rather than waiting in this turn.");
+  return lines.join("\n");
+}
+
+/** A refused save or create, rendered from the parsed contract alone: the header names the
+ * code and the issue count, each line is an issue the API sent, and a refusal with no
+ * authoring report shows only its own error. */
+function renderRefusal(refusal: WorkflowRefusal): string {
+  const issues = refusal.authoring?.errors ?? [];
+  if (issues.length === 0) return `refused: ${refusal.code}\n${refusal.error}`;
+  const lines = [
+    `refused: ${refusal.code} (${issues.length})`,
+    ...issues.map((issue) => `- ${issue.path}: ${issue.message}`),
+  ];
+  if (refusal.authoring?.truncated) lines.push(`${refusal.authoring.truncated} more problems were not shown`);
   return lines.join("\n");
 }
 
@@ -226,9 +248,11 @@ export async function callTool(called: string, input: Json, context: ToolCallCon
     if (!workflows.length) return { text: "No Workflow in your department yet. Only the person can create one." };
     const lines = workflows.map((entry) => {
       const steps = Array.isArray(entry.steps) ? entry.steps : [];
-      const parameters = [...new Set(steps.flatMap((step) => jsonRecord(step) && Array.isArray(step.parameters)
-        ? step.parameters.flatMap((parameter) => jsonRecord(parameter) && typeof parameter.name === "string" ? [parameter.name] : [])
-        : []))];
+      const stages = steps.filter(jsonRecord).flatMap((step) => Array.isArray(step.parameters)
+        ? step.parameters.flatMap((parameter) => jsonRecord(parameter) && typeof parameter.name === "string"
+          && parameter.from === undefined && parameter.collectedBy === undefined ? [parameter.name] : [])
+        : []);
+      const parameters = [...new Set(stages)];
       return `- ${String(entry.name)} [id: ${String(entry.id)}, version ${Number(entry.version)}, ${steps.length} steps${parameters.length ? `; inputs: ${parameters.join(", ")}` : ""}]`;
     });
     return { text: `Workflows you can start:\n${lines.join("\n")}\n\nStart one with run_workflow. The engine runs its steps; you do not run them in this turn.` };
@@ -293,12 +317,25 @@ export async function callTool(called: string, input: Json, context: ToolCallCon
   if (name === "create_workflow_from_proposal") {
     const id = String(args.proposal_id ?? "").trim();
     if (!id) return { text: "create_workflow_from_proposal needs proposal_id from the card.", isError: true };
-    const { ok, status, body } = await apiResponse(`/api/internal/workflows/proposals/${encodeURIComponent(id)}/create`, { method: "POST", body: "{}" });
+    const reason = typeof args.acknowledge_reason === "string" ? args.acknowledge_reason.trim() : "";
+    const { ok, status, body } = await apiResponse(`/api/internal/workflows/proposals/${encodeURIComponent(id)}/create`, {
+      method: "POST",
+      body: JSON.stringify(reason ? { acknowledge: { reason } } : {}),
+    });
     if (!ok) {
-      return { text: status === 404 ? "No proposal with that id in your department." : String(body.error ?? `HTTP ${status}`), isError: true };
+      if (status === 404) return { text: "No proposal with that id in your department.", isError: true };
+      const refusal = parseWorkflowRefusal(body);
+      if (!refusal) {
+        const said = typeof body.error === "string" ? ` The server said: ${body.error}` : "";
+        return { text: `The create response did not follow the WorkflowRefusal contract, so it was not understood. HTTP ${status}; nothing was created.${said}`, isError: true };
+      }
+      return { text: renderRefusal(refusal), isError: true, structured: { refusal } };
     }
     const workflowId = String(body.workflowId ?? "");
-    return { text: `Workflow created (version ${Number(body.version ?? 1)}, id ${workflowId}). Its first step is manual: a run waits for a person to choose Continuar.` };
+    const warnings = Array.isArray(body.warnings) ? body.warnings.map(String) : [];
+    return {
+      text: `Workflow created (version ${Number(body.version ?? 1)}, id ${workflowId}). Its first step is manual: a run waits for the person to send the value that step collects.${warnings.length ? `\n\nWhat to fix next:\n${warnings.map((line) => `- ${line}`).join("\n")}` : ""}\n\nOnly now can a routine start this Workflow: if the person wants it on a schedule, call trigger with action=create, when=schedule, target=workflow and workflow_id ${workflowId}. The routine cannot supply inputs; its runs wait for the first manual step to collect them.`,
+    };
   }
   if (name === "propose_workflow") {
     const interview = jsonRecord(args.interview) ? args.interview : null;
@@ -324,11 +361,27 @@ export async function callTool(called: string, input: Json, context: ToolCallCon
       ...(Number.isSafeInteger(args.retention_days) ? { retentionDays: Number(args.retention_days) } : {}),
     };
     const { ok, body } = await apiResponse("/api/internal/workflows/proposals", { method: "POST", body: JSON.stringify(payload) });
-    if (!ok) return { text: String(body.error ?? "The proposal could not be saved."), isError: true };
+    if (!ok) {
+      const refusal = parseWorkflowRefusal(body);
+      if (!refusal) {
+        const said = typeof body.error === "string" ? ` The server said: ${body.error}` : "";
+        return { text: `The proposal response did not follow the WorkflowRefusal contract, so it was not understood. Nothing was saved.${said}`, isError: true };
+      }
+      return { text: renderRefusal(refusal), isError: true, structured: { refusal } };
+    }
     const proposal = jsonRecord(body.proposal) ? body.proposal : {};
     const id = String(proposal.id ?? "");
+    const name = String(jsonRecord(proposal.definition) ? proposal.definition.name : payload.name);
+    const rehearsed = await apiResponse(`/api/internal/workflows/proposals/${encodeURIComponent(id)}/rehearse`, { method: "POST", body: "{}" });
+    const rehearsal = rehearsed.ok && jsonRecord(rehearsed.body.rehearsal) ? rehearsed.body.rehearsal : undefined;
+    const status = rehearsal === undefined ? "not rehearsed" : String(rehearsal.status);
+    const rehearsalSteps = rehearsal !== undefined && Array.isArray(rehearsal.steps) ? rehearsal.steps.filter(jsonRecord) : [];
+    const details = rehearsalSteps.flatMap((entry) => typeof entry.detail === "string" && entry.detail ? [`- ${String(entry.name ?? entry.id)}: ${String(entry.label)} — ${entry.detail}`] : []);
+    const gate = status === "passed"
+      ? "The rehearsal passed."
+      : "The create will ask the person for a reason before going ahead.";
     return {
-      text: `Proposal saved as a draft: ${String(jsonRecord(proposal.definition) ? proposal.definition.name : payload.name)} (id ${id}). Nothing was created, listed or scheduled. The person now sees a card with Criar Workflow and Agora não; wait for that choice before calling create_workflow_from_proposal or archive_workflow_proposal.`,
+      text: `Proposal saved as a draft: ${name} (id ${id}), rehearsal ${status}. ${gate} Nothing was created, listed or scheduled.${details.length ? `\n\n${details.join("\n")}` : ""}\nThe person now sees a card with Criar Workflow and Agora não; that choice opens the preview. Wait for it before calling create_workflow_from_proposal or archive_workflow_proposal.`,
     };
   }
   // Second lock: with sharing off the catalog already omits these tools.

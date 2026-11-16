@@ -14,17 +14,31 @@ const definition = workflowDefinitionSchema.parse({
 });
 
 const scripts = [{ name: "a.mjs", content: "console.log('ok')\n" }];
+const interview = { recurring: true, changes: "Só as datas", confirmer: "Eu confirmo" };
 
 describe("workflow approval hash", () => {
   it("is stable for the same definition and script order", () => {
-    expect(workflowApprovalHash(definition, scripts)).toBe(workflowApprovalHash(definition, [{ ...scripts[0]! }]));
+    expect(workflowApprovalHash(definition, scripts, interview)).toBe(workflowApprovalHash(definition, [{ ...scripts[0]! }], interview));
   });
 
   it("changes with one byte of the definition or the script", () => {
-    const base = workflowApprovalHash(definition, scripts);
-    const renamed = workflowApprovalHash({ ...definition, name: "Cobrança 2" }, scripts);
-    const changed = workflowApprovalHash(definition, [{ name: "a.mjs", content: "console.log('ok')\n " }]);
+    const base = workflowApprovalHash(definition, scripts, interview);
+    const renamed = workflowApprovalHash({ ...definition, name: "Cobrança 2" }, scripts, interview);
+    const changed = workflowApprovalHash(definition, [{ name: "a.mjs", content: "console.log('ok')\n " }], interview);
     expect(renamed).not.toBe(base);
     expect(changed).not.toBe(base);
+  });
+
+  it("changes with one byte of an interview answer", () => {
+    const base = workflowApprovalHash(definition, scripts, interview);
+    expect(workflowApprovalHash(definition, scripts, { ...interview, changes: "Só o cliente" })).not.toBe(base);
+    expect(workflowApprovalHash(definition, scripts, { ...interview, confirmer: "A Ana" })).not.toBe(base);
+    expect(workflowApprovalHash(definition, scripts, { ...interview, recurring: false })).not.toBe(base);
+  });
+
+  it("does not carry the moment of confirmation", () => {
+    const base = workflowApprovalHash(definition, scripts, interview);
+    const stamped = { ...interview, confirmedAt: 1_794_715_726_827, confirmedBy: "user" };
+    expect(workflowApprovalHash(definition, scripts, stamped)).toBe(base);
   });
 });
