@@ -13,7 +13,7 @@ const LIST_ROUTE = "/api/internal/triggers";
 const EVENTS_ROUTE = "/api/internal/trigger-events";
 const APP_ONLY = ["app", "event", "account"] as const;
 const REQUEST_ROUTE = "/api/internal/trigger-requests";
-const SCHEDULE_ONLY = ["schedule", "timeout_minutes", "timeoutMinutes", "clear_timeout", "continuity", "overlap", "run_on_startup", "runOnStartup"] as const;
+const SCHEDULE_ONLY = ["schedule", "timeout_minutes", "timeoutMinutes", "clear_timeout", "continuity", "overlap", "run_on_startup", "runOnStartup", "target", "workflow_id"] as const;
 
 function jsonRecord(value: unknown): value is Json {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -338,7 +338,7 @@ async function request(body: Json, context: ToolCallContext, done: string): Prom
 
 /** Everything a trigger call may carry beyond the fields it sets. */
 const CALL_KEYS = new Set(["action", "trigger_id", "for_bot_id"]);
-const CREATE_ONLY = ["when", "app", "event", "account", "engine", "repeat"] as const;
+const CREATE_ONLY = ["when", "app", "event", "account", "engine", "repeat", "target", "workflow_id"] as const;
 
 export async function callTriggerTool(name: string, args: Json, context: ToolCallContext): Promise<ToolCallResult> {
   const forBotId = typeof args.for_bot_id === "string" && args.for_bot_id.trim() ? args.for_bot_id.trim() : undefined;
@@ -412,12 +412,28 @@ async function listEvents(args: Json, context: ToolCallContext): Promise<ToolCal
 async function createTrigger(args: Json, forBotId: string | undefined, context: ToolCallContext): Promise<ToolCallResult> {
   const when = args.when;
   if (when !== "schedule" && when !== "webhook" && when !== "app_event" && when !== "limit_reset") return { text: 'trigger action=create needs when: "schedule", "app_event", "webhook" or "limit_reset".', isError: true };
+  const workflowTarget = args.target !== undefined && args.target !== null;
+  if (workflowTarget && args.target !== "workflow") return { text: 'target runs a Workflow; use target="workflow" with workflow_id, or leave target out for a bot turn.', isError: true };
+  if (workflowTarget && when !== "schedule") return { text: "target=workflow applies only to when=schedule.", isError: true };
+  if (!workflowTarget && args.workflow_id != null) return { text: "workflow_id needs target=workflow, and only after the Workflow exists.", isError: true };
   if (when !== "limit_reset") {
     const limitOnly = ["engine", "repeat"].find((key) => args[key] !== undefined && args[key] !== null);
     if (limitOnly) return { text: `${limitOnly} applies only to when=limit_reset.`, isError: true };
   }
   const { fields, error } = triggerFields(args);
   if (error) return { text: error, isError: true };
+  if (workflowTarget) {
+    if (!fields.name) return { text: "trigger action=create needs name.", isError: true };
+    if (!fields.schedule) return { text: "A workflow routine needs schedule.", isError: true };
+    if (args.instructions != null) return { text: "A workflow routine runs the Workflow's steps, so it takes no instructions.", isError: true };
+    const workflowId = typeof args.workflow_id === "string" ? args.workflow_id.trim() : "";
+    if (!workflowId) return { text: "A workflow routine needs workflow_id, from create_workflow_from_proposal; the Workflow must already exist.", isError: true };
+    return request(
+      { action: "create", kind: "schedule", routine: { ...fields, instructions: "", target: "workflow", workflowId }, ...(forBotId ? { forBotId } : {}) },
+      context,
+      `Scheduled the Workflow as “${String(fields.name)}”`,
+    );
+  }
   if (!fields.name || !fields.instructions) return { text: "trigger action=create needs name and instructions.", isError: true };
   if (when !== "app_event") {
     const appOnly = [...APP_ONLY, "filter", "event_config"].find((key) => args[key] !== undefined && args[key] !== null);

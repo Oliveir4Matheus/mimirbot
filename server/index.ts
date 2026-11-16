@@ -9147,6 +9147,9 @@ routines = new RoutineManager({
     return started.ok ? { runId: started.run.id } : { error: started.error };
   },
   cancelWorkflow: (runId, reason) => { workflows.engine.cancel(runId, reason); },
+  pausedWorkflowRuns: (workflowId) => workflows.store
+    .listRuns({ workflowId, limit: Number.POSITIVE_INFINITY })
+    .map((run) => ({ id: run.id, status: run.status })),
   workflowState: (workflowId) => workflowId && workflows.store.workflow(workflowId) ? "ready" : "missing",
   workflowRunState: (runId) => {
     const run = runId ? workflows.store.readRun(runId) : undefined;
@@ -9304,6 +9307,15 @@ const routineRequests = new RoutineRequestService({
     if (!targetBot) return `@${target.name} no longer exists, so this routine request cannot be confirmed for it`;
     if (!proposer || !canReachPeer(proposer, targetBot)) {
       return `@${target.name} is no longer in this section, so this routine request cannot be confirmed for it`;
+    }
+    return null;
+  },
+  validateWorkflow: (botId, workflowId) => {
+    const workflow = workflows.store.workflow(workflowId);
+    if (!workflow) return "That Workflow does not exist yet; create it before scheduling it";
+    const department = store.bot(botId)?.section?.trim() || "General";
+    if (workflow.department.trim().toLowerCase() !== department.toLowerCase()) {
+      return "That Workflow belongs to another department";
     }
     return null;
   },

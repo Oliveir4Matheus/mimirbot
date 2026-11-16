@@ -8,7 +8,8 @@ import { workflowDefinitionSchema, type WorkflowDefinition, type WorkflowRun, ty
 import { createWorkflowEngine } from "../workflows/engine.ts";
 import { WORKFLOWS_ROOT_ENV } from "../workflows/paths.ts";
 import { createWorkflowStore } from "../workflows/store.ts";
-import { createWorkflowInternalRoutes, createWorkflowRoutes, type WorkflowInternalContext } from "./workflows.ts";
+import { createWorkflowInternalRoutes, createWorkflowRoutes, type WorkflowInternalContext, type WorkflowRoutesDeps } from "./workflows.ts";
+import { requiredScope } from "../request-auth.ts";
 import { PASS, type RouteContext } from "./table.ts";
 
 const NOW = new Date("2026-11-07T12:00:00.000Z").getTime();
@@ -34,7 +35,11 @@ const definition = (overrides: Record<string, unknown> = {}): WorkflowDefinition
   ...overrides,
 });
 
-function harness(botSection = "Financeiro", skillOptions?: (botId: string) => WorkflowSkillOptions | undefined) {
+function harness(
+  botSection = "Financeiro",
+  skillOptions?: (botId: string) => WorkflowSkillOptions | undefined,
+  extra: Partial<WorkflowRoutesDeps> = {},
+) {
   const store = createWorkflowStore({
     dataDir: join(root, "data"),
     env: { [WORKFLOWS_ROOT_ENV]: join(root, "runs") },
@@ -56,6 +61,7 @@ function harness(botSection = "Financeiro", skillOptions?: (botId: string) => Wo
     engine,
     bot: (id: string) => id === "bot-a" ? { id, name: "A", section: botSection } : undefined,
     ...(skillOptions ? { skillOptions } : {}),
+    ...extra,
   };
   const publicRoutes = createWorkflowRoutes(deps);
   const internalRoutes = createWorkflowInternalRoutes(deps);
@@ -93,7 +99,7 @@ describe("the person's routes", () => {
     const scripted = definition({
       steps: [{
         id: "validar", kind: "script", name: "Validate", run: "validar.mjs", timeoutMs: 60_000,
-        outputs: [{ path: "result.json" }], result: "result.json",
+        outputs: [{ path: "result.json", shape: { type: "object" } }],
       }],
     });
     await call("PUT", `/api/workflows/${def.id}`, {
@@ -116,7 +122,7 @@ describe("the person's routes", () => {
     const routed = definition({
       steps: [
         { id: "coletar", name: "Collect", botId: "bot-a", instructions: "Collect.", timeoutMs: 30_000, onSuccess: "revisar", onFailure: "revisar", onTimeout: "revisar", outputs: [{ path: "numbers.csv" }] },
-        { id: "revisar", name: "Review", botId: "bot-a", instructions: "Review.", outputs: [{ path: "decision.json" }], result: "decision.json", onSuccess: null },
+        { id: "revisar", name: "Review", botId: "bot-a", instructions: "Review.", outputs: [{ path: "decision.json" }], onSuccess: null },
       ],
     });
     await call("POST", "/api/workflows", { ...routed, id: def.id });
@@ -138,7 +144,7 @@ describe("the person's routes", () => {
       department: "Financeiro",
       steps: [
         { id: "coletar", name: "Collect", botId: "bot-a", instructions: "Collect.", outputs: [{ path: "numbers.csv" }], next: "revisar" },
-        { id: "revisar", name: "Review", botId: "bot-a", instructions: "Review.", outputs: [{ path: "decision.json" }], result: "decision.json" },
+        { id: "revisar", name: "Review", botId: "bot-a", instructions: "Review.", outputs: [{ path: "decision.json" }] },
       ],
       createdAt: 1,
       updatedAt: 1,
@@ -159,7 +165,7 @@ describe("the person's routes", () => {
       department: "Financeiro",
       steps: [
         { id: "coletar", name: "Collect", botId: "bot-a", instructions: "Collect.", outputs: [{ path: "numbers.csv" }], onSuccess: "revisar" },
-        { id: "revisar", name: "Review", botId: "bot-a", instructions: "Review.", outputs: [{ path: "decision.json" }], result: "decision.json", onSuccess: "coletar" },
+        { id: "revisar", name: "Review", botId: "bot-a", instructions: "Review.", outputs: [{ path: "decision.json" }], onSuccess: "coletar" },
       ],
       createdAt: 1,
       updatedAt: 1,
@@ -232,7 +238,7 @@ describe("the person's routes", () => {
     const { call, state, store } = harness();
     const manual = definition({
       id: "11111111-2222-4333-8444-555555555555",
-      steps: [{ id: "coletar", name: "Collect", botId: "bot-a", instructions: "Collect.", mode: "manual", outputs: [{ path: "numbers.csv" }] }],
+      steps: [{ id: "coletar", name: "Collect", botId: "bot-a", instructions: "Collect.", mode: "manual", parameters: [{ name: "link", type: "string", collectedBy: "coletar" }], outputs: [{ path: "numbers.csv" }] }],
     });
     const saved = store.saveWorkflow(manual);
     if (!saved.ok) throw new Error(saved.error);
@@ -244,7 +250,7 @@ describe("the person's routes", () => {
     await call("DELETE", `/api/workflows/${saved.workflow.id}`);
     expect(state.status).toBe(409);
 
-    await call("POST", `/api/workflows/runs/${run.id}/continue`);
+    await call("POST", `/api/workflows/runs/${run.id}/continue`, { inputs: { link: "https://x" } });
     expect(state.status).toBe(200);
     expect((state.body as { run: { status: string } }).run.status).toBe("running");
 
@@ -253,6 +259,67 @@ describe("the person's routes", () => {
 
     await call("POST", "/api/workflows/runs/missing-run/continue");
     expect(state.status).toBe(404);
+  });
+
+  it("refuses a save with a field of another kind instead of dropping it", async () => {
+    const { call, state, definition: def } = harness();
+    await call("POST", "/api/workflows", {
+      id: def.id,
+      name: "Validate",
+      department: "Financeiro",
+      steps: [{ id: "validar", kind: "script", name: "Validate", run: "validar.mjs", instructions: "Not a script field.", outputs: [{ path: "result.json" }] }],
+    });
+    expect(state.status).toBe(400);
+    expect(String((state.body as { error: string }).error)).toContain("steps.0.instructions");
+    expect(String((state.body as { error: string }).error)).toContain("is not a field of this contract");
+  });
+
+  it("asks a manual step's fields at continue, and stores the answers before the step runs", async () => {
+    const { call, state, store } = harness();
+    const manual = definition({
+      id: "22222222-3333-4444-8555-666666666666",
+      steps: [{
+        id: "coletar", name: "Collect", botId: "bot-a", instructions: "Ask for the link.", mode: "manual",
+        outputs: [{ path: "link.txt" }],
+        parameters: [{ name: "link", type: "string", collectedBy: "coletar" }],
+      }],
+    });
+    const saved = store.saveWorkflow(manual);
+    if (!saved.ok) throw new Error(saved.error);
+    const run = store.createRun(saved.workflow);
+    store.writeRun({ ...run, status: "waiting_manual", startedAt: NOW, hold: { step: 0, since: NOW } });
+
+    await call("POST", `/api/workflows/runs/${run.id}/continue`, {});
+    expect(state.status).toBe(400);
+    expect((state.body as { missing: unknown[] }).missing).toEqual([{ step: "Collect", name: "link" }]);
+
+    await call("POST", `/api/workflows/runs/${run.id}/continue`, { inputs: { link: "https://x" } });
+    expect(state.status).toBe(200);
+    expect(store.readRun(run.id)!.inputs).toEqual({ link: "https://x" });
+  });
+
+  it("refuses a save with every authoring problem as a WorkflowRefusal", async () => {
+    const { call, state, definition: def } = harness();
+    await call("PUT", `/api/workflows/${def.id}`, {
+      ...def,
+      id: def.id,
+      steps: [
+        { id: "pedir", kind: "bot", name: "Pedir", botId: "bot-a", instructions: "Ask.", mode: "manual", outputs: [{ path: "link.txt" }] },
+        { id: "entregar", kind: "bot", name: "Entregar", botId: "bot-a", instructions: "Deliver.", outputs: [{ path: "resumo" }, { path: "clip_*.mp4" }] },
+      ],
+    });
+    expect(state.status).toBe(400);
+    const refusal = state.body as { code: string; error: string; authoring: { errors: Array<{ path: string; message: string }> } };
+    expect(refusal.code).toBe("authoringErrors");
+    expect(refusal.authoring.errors.map((issue) => issue.path)).toEqual(["steps.0.mode", "steps.1.outputs.0.path", "steps.1.outputs.1.path"]);
+    expect(refusal.error).toContain("steps.0.mode");
+  });
+
+  it("answers a valid save without an authoring report", async () => {
+    const { call, state, definition: def } = harness();
+    await call("PUT", `/api/workflows/${def.id}`, { ...def, id: def.id });
+    expect(state.status).toBe(200);
+    expect(state.body).not.toHaveProperty("authoring");
   });
 
   it("passes a path that is not its own", async () => {
@@ -296,7 +363,7 @@ describe("a bot's routes", () => {
 });
 
 describe("Workflow scripts", () => {
-  const scriptStep = { id: "validar", kind: "script", name: "Validate", run: "validar.mjs", outputs: [{ path: "result.json" }], result: "result.json" } as const;
+  const scriptStep = { id: "validar", kind: "script", name: "Validate", run: "validar.mjs", outputs: [{ path: "result.json", shape: { type: "object" } }] } as const;
 
   it("uploads, lists and reads a script", async () => {
     const { call, state, definition: def } = harness();
@@ -355,12 +422,11 @@ describe("Do While routes", () => {
       id: "laco",
       kind: "loop",
       name: "Loop",
-      body: [{ id: "atualiza", kind: "bot", name: "Update", botId: "bot-a", instructions: "Update.", outputs: [{ path: "result.json" }], result: "result.json" }],
-      from: "atualiza",
+      body: [{ id: "atualiza", kind: "bot", name: "Update", botId: "bot-a", instructions: "Update.", outputs: [{ path: "result.json", shape: { type: "object" } }] }],
+      from: { step: "atualiza", output: "result.json" },
       conditions: [{ field: "restantes", op: "lte", value: 0 }],
       maxIterations: 3,
-      outputs: [{ path: "result.json" }],
-      result: "result.json",
+      outputs: [{ path: "result.json", shape: { type: "object" } }],
     }],
     ...overrides,
   });
@@ -374,12 +440,12 @@ describe("Do While routes", () => {
         name: "Loop",
         body: [{
           id: "atualiza", kind: "script", name: "Update", run: "atualiza.mjs", timeoutMs: 60_000,
-          outputs: [{ path: "result.json" }], result: "result.json",
+          outputs: [{ path: "result.json", shape: { type: "object" } }],
         }],
-        from: "atualiza",
+        from: { step: "atualiza", output: "result.json" },
         conditions: [{ field: "restantes", op: "lte", value: 0 }],
         maxIterations: 3,
-        outputs: [{ path: "result.json" }],
+        outputs: [{ path: "result.json", shape: { type: "object" } }],
       }],
       canvas: {
         nodes: { laco: { x: 10, y: 20 } },
@@ -407,10 +473,10 @@ describe("Do While routes", () => {
         id: "laco", kind: "loop", name: "Loop",
         body: [{
           id: "inner", kind: "loop", name: "Inner",
-          body: [{ id: "atualiza", kind: "bot", name: "Update", botId: "bot-a", instructions: "Update.", outputs: [{ path: "result.json" }], result: "result.json" }],
-          from: "atualiza", conditions: [{ field: "ok", op: "equals", value: true }], maxIterations: 1, outputs: [{ path: "result.json" }],
+          body: [{ id: "atualiza", kind: "bot", name: "Update", botId: "bot-a", instructions: "Update.", outputs: [{ path: "result.json", shape: { type: "object" } }] }],
+          from: { step: "atualiza", output: "result.json" }, conditions: [{ field: "ok", op: "equals", value: true }], maxIterations: 1, outputs: [{ path: "result.json", shape: { type: "object" } }],
         }],
-        from: "atualiza", conditions: [{ field: "ok", op: "equals", value: true }], maxIterations: 1, outputs: [{ path: "result.json" }],
+        from: { step: "atualiza", output: "result.json" }, conditions: [{ field: "ok", op: "equals", value: true }], maxIterations: 1, outputs: [{ path: "result.json", shape: { type: "object" } }],
       }],
     };
     await call("PUT", `/api/workflows/${def.id}`, { ...nested, id: def.id });
@@ -421,10 +487,10 @@ describe("Do While routes", () => {
       steps: [{
         id: "laco", kind: "loop", name: "Loop",
         body: [
-          { id: "a", kind: "bot", name: "A", botId: "bot-a", instructions: "A.", outputs: [{ path: "result.json" }], result: "result.json" },
-          { id: "b", kind: "bot", name: "B", botId: "bot-a", instructions: "B.", outputs: [{ path: "result.json" }], result: "result.json" },
+          { id: "a", kind: "bot", name: "A", botId: "bot-a", instructions: "A.", outputs: [{ path: "result.json", shape: { type: "object" } }] },
+          { id: "b", kind: "bot", name: "B", botId: "bot-a", instructions: "B.", outputs: [{ path: "result.json", shape: { type: "object" } }] },
         ],
-        from: "a", conditions: [{ field: "ok", op: "equals", value: true }], maxIterations: 1, outputs: [{ path: "result.json" }],
+        from: { step: "a", output: "result.json" }, conditions: [{ field: "ok", op: "equals", value: true }], maxIterations: 1, outputs: [{ path: "result.json", shape: { type: "object" } }],
       }],
     };
     await call("PUT", `/api/workflows/${def.id}`, { ...ambiguous, id: def.id });
@@ -434,8 +500,8 @@ describe("Do While routes", () => {
       ...valid,
       steps: [{
         id: "laco", kind: "loop", name: "Loop",
-        body: [{ id: "a", kind: "bot", name: "A", botId: "bot-a", instructions: "A.", outputs: [{ path: "result.json" }], result: "result.json" }],
-        from: "sumiu", conditions: [{ field: "ok", op: "equals", value: true }], maxIterations: 1, outputs: [{ path: "result.json" }],
+        body: [{ id: "a", kind: "bot", name: "A", botId: "bot-a", instructions: "A.", outputs: [{ path: "result.json", shape: { type: "object" } }] }],
+        from: { step: "sumiu", output: "result.json" }, conditions: [{ field: "ok", op: "equals", value: true }], maxIterations: 1, outputs: [{ path: "result.json", shape: { type: "object" } }],
       }],
     };
     await call("PUT", `/api/workflows/${def.id}`, { ...missingSource, id: def.id });
@@ -501,12 +567,12 @@ describe("Do While routes", () => {
         name: "Loop",
         body: [{
           id: "atualiza", kind: "bot", name: "Update", botId: "bot-a", instructions: "Update.",
-          mode: "manual", outputs: [{ path: "result.json" }], result: "result.json",
+          mode: "manual", parameters: [{ name: "link", type: "string", collectedBy: "atualiza" }], outputs: [{ path: "result.json", shape: { type: "object" } }],
         }],
-        from: "atualiza",
+        from: { step: "atualiza", output: "result.json" },
         conditions: [{ field: "restantes", op: "lte", value: 0 }],
         maxIterations: 3,
-        outputs: [{ path: "result.json" }],
+        outputs: [{ path: "result.json", shape: { type: "object" } }],
       }],
     });
     await call("PUT", `/api/workflows/${def.id}`, { ...manual, id: def.id });
@@ -523,7 +589,7 @@ describe("Do While routes", () => {
         iterations: [{ index: 1, status: "running", startedAt: NOW, steps: [{ id: "atualiza", status: "pending" }] }],
       }],
     });
-    await call("POST", `/api/workflows/runs/${run.id}/continue`, {});
+    await call("POST", `/api/workflows/runs/${run.id}/continue`, { inputs: { link: "https://x" } });
     expect(state.status).toBe(200);
     expect((state.body as { run: WorkflowRun }).run.status).toBe("running");
     await engine.idle();
@@ -586,5 +652,46 @@ describe("step skill options", () => {
     expect(state.status).toBe(200);
     expect((state.body as { workflow: WorkflowDefinition }).workflow.version).toBe(1);
     expect(store.versions(def.id)).toHaveLength(1);
+  });
+});
+
+describe("the environment routes", () => {
+  const env = () => ({ [WORKFLOWS_ROOT_ENV]: join(root, "runs") });
+
+  it("prepares the union of saved Workflows and draft proposals", async () => {
+    const draft = definition({
+      id: "11111111-1111-4111-8111-111111111111",
+      steps: [{
+        id: "baixar", kind: "script", name: "Download", run: "baixar.mjs",
+        modules: [{ name: "faster-whisper", runtime: "python", version: "1.2.1" }],
+        outputs: [{ path: "transcript.json" }],
+      }],
+    });
+    let seen: readonly WorkflowDefinition[] = [];
+    const { call, state, definition: saved } = harness("Financeiro", undefined, {
+      env: env(),
+      draftDefinitions: () => [draft],
+      prepareEnvironment: async (options) => {
+        seen = options.definitions;
+        return { ok: true, preparedAt: NOW, hash: "sha256:test", installed: [], missing: [] };
+      },
+    });
+
+    await call("POST", "/api/workflows/environment/prepare");
+    expect(state.status).toBe(200);
+    expect(state.body).toMatchObject({ ok: true, preparedAt: NOW, hash: "sha256:test" });
+    expect(seen.map((entry) => entry.id).sort()).toEqual([saved.id, draft.id].sort());
+  });
+
+  it("reports the panel status without touching the real installation", async () => {
+    const { call, state } = harness("Financeiro", undefined, { env: env() });
+    await call("GET", "/api/workflows/environment");
+    expect(state.status).toBe(200);
+    expect(state.body).toMatchObject({ prepared: false, stale: false, declared: 0, modules: [] });
+  });
+
+  it("keeps both environment routes admin-only", () => {
+    expect(requiredScope("POST", "/api/workflows/environment/prepare")).toBe("admin");
+    expect(requiredScope("GET", "/api/workflows/environment")).toBe("admin");
   });
 });

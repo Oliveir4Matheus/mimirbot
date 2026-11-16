@@ -1,9 +1,10 @@
 // The run folder's file rules: a step only writes inside its own output/,
-// the engine verifies what it declared, and the engine alone copies one
-// step's declared output into the next step's input/.
+// the engine verifies what it declared (including each declared `shape`), and
+// the engine alone copies one step's declared output into the next step's input/.
 import { chmodSync, copyFileSync, lstatSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 
+import { compileToolSchema } from "../mcp-schema-validator.ts";
 import {
   isWorkflowRelativePath,
   type LoopWorkflowStep,
@@ -20,7 +21,8 @@ import {
   stepOutputDir,
 } from "./paths.ts";
 
-export const WORKFLOW_RESULT_MAX_BYTES = 64 * 1024;
+/** A JSON output read by a condition stays small enough to compare in memory. */
+export const WORKFLOW_JSON_MAX_BYTES = 64 * 1024;
 
 /** A declared path resolved under `root`, or null when it would leave it. */
 export function safeWorkflowPath(root: string, declared: string): string | null {
@@ -31,18 +33,31 @@ export function safeWorkflowPath(root: string, declared: string): string | null 
   return inside && !inside.startsWith("..") && !isAbsolute(inside) ? full : null;
 }
 
-export type OutputVerification =
-  | { ok: true; verified: string[]; result?: unknown }
-  | { ok: false; error: string };
+export type OutputVerification = { ok: true; verified: string[] } | { ok: false; error: string };
 
-/** D2/D3: every required output exists as a plain, non-empty file; the
- * declared result is a small JSON object. Links are refused, since a step
- * could otherwise point the engine at a file it does not own. */
-export function verifyStepOutputs(
-  outputDir: string,
-  outputs: readonly StepOutput[],
-  resultPath?: string,
-): OutputVerification {
+function shapeMismatch(file: string, path: string, shape: Record<string, unknown>): string | undefined {
+  let value: unknown;
+  try {
+    value = JSON.parse(readFileSync(file, "utf8"));
+  } catch {
+    return `output ${JSON.stringify(path)} is not valid JSON`;
+  }
+  let validate;
+  try {
+    validate = compileToolSchema(shape);
+  } catch {
+    return `output ${JSON.stringify(path)} declares a shape that does not compile`;
+  }
+  if (validate(value)) return undefined;
+  const first = validate.errors?.[0];
+  const detail = first === undefined ? "" : `: ${first.instancePath || "/"} ${first.message ?? "does not match"}`;
+  return `output ${JSON.stringify(path)} does not match its shape${detail}`;
+}
+
+/** D2/D3: every required output exists as a plain, non-empty file, and every output that
+ * declares a `shape` holds JSON that matches it. Links are refused, since a step could
+ * otherwise point the engine at a file it does not own. */
+export function verifyStepOutputs(outputDir: string, outputs: readonly StepOutput[]): OutputVerification {
   const verified: string[] = [];
   for (const output of outputs) {
     const full = safeWorkflowPath(outputDir, output.path);
@@ -57,33 +72,40 @@ export function verifyStepOutputs(
     if (info.isSymbolicLink()) return { ok: false, error: `output ${JSON.stringify(output.path)} is a link; a step writes plain files` };
     if (!info.isFile()) return { ok: false, error: `output ${JSON.stringify(output.path)} is not a file` };
     if (output.required && info.size === 0) return { ok: false, error: `output ${JSON.stringify(output.path)} is empty` };
+    if (output.shape !== undefined) {
+      const mismatch = shapeMismatch(full, output.path, output.shape);
+      if (mismatch) return { ok: false, error: mismatch };
+    }
     verified.push(output.path);
   }
-  if (resultPath === undefined) return { ok: true, verified };
-  if (!outputs.some((output) => output.path === resultPath)) {
-    return { ok: false, error: `result ${JSON.stringify(resultPath)} must be one of the step's outputs` };
-  }
-  const full = safeWorkflowPath(outputDir, resultPath);
-  if (!full) return { ok: false, error: `result ${JSON.stringify(resultPath)} is not a safe relative path` };
+  return { ok: true, verified };
+}
+
+export type JsonRead = { ok: true; value: unknown } | { ok: false; error: string };
+
+/** The value a condition compares: one declared `.json` output of an earlier step. */
+export function readStepJson(outputDir: string, path: string): JsonRead {
+  const full = safeWorkflowPath(outputDir, path);
+  if (!full) return { ok: false, error: `output ${JSON.stringify(path)} is not a safe relative path` };
   let info;
   try {
     info = lstatSync(full);
   } catch {
-    return { ok: false, error: `missing result ${JSON.stringify(resultPath)}` };
+    return { ok: false, error: `missing output ${JSON.stringify(path)}` };
   }
-  if (info.isSymbolicLink() || !info.isFile()) return { ok: false, error: `result ${JSON.stringify(resultPath)} is not a plain file` };
-  if (info.size === 0) return { ok: false, error: `result ${JSON.stringify(resultPath)} is empty` };
-  if (info.size > WORKFLOW_RESULT_MAX_BYTES) return { ok: false, error: `result ${JSON.stringify(resultPath)} is larger than ${WORKFLOW_RESULT_MAX_BYTES / 1024}KB` };
-  let result: unknown;
+  if (info.isSymbolicLink() || !info.isFile()) return { ok: false, error: `output ${JSON.stringify(path)} is not a plain file` };
+  if (info.size === 0) return { ok: false, error: `output ${JSON.stringify(path)} is empty` };
+  if (info.size > WORKFLOW_JSON_MAX_BYTES) return { ok: false, error: `output ${JSON.stringify(path)} is larger than ${WORKFLOW_JSON_MAX_BYTES / 1024}KB` };
+  let value: unknown;
   try {
-    result = JSON.parse(readFileSync(full, "utf8"));
+    value = JSON.parse(readFileSync(full, "utf8"));
   } catch {
-    return { ok: false, error: `result ${JSON.stringify(resultPath)} is not valid JSON` };
+    return { ok: false, error: `output ${JSON.stringify(path)} is not valid JSON` };
   }
-  if (result === null || typeof result !== "object" || Array.isArray(result)) {
-    return { ok: false, error: `result ${JSON.stringify(resultPath)} must be a JSON object` };
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    return { ok: false, error: `output ${JSON.stringify(path)} must be a JSON object` };
   }
-  return { ok: true, verified, result };
+  return { ok: true, value };
 }
 
 export type StepInputsCopy = { ok: true; copied: string[] } | { ok: false; error: string };

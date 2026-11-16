@@ -1,5 +1,6 @@
-import type { WorkflowDefinition, WorkflowRun, WorkflowRunStatus, WorkflowSkillOptions } from "../../shared/workflow";
-import type { WorkflowProposal, WorkflowProposalStatus } from "../../shared/workflow-proposal";
+import type { WorkflowDefinition, WorkflowModule, WorkflowRun, WorkflowRunStatus, WorkflowSkillOptions } from "../../shared/workflow";
+import type { AuthoringIssue } from "../../shared/workflow-authoring";
+import type { WorkflowProposal, WorkflowProposalAnswers, WorkflowProposalStatus } from "../../shared/workflow-proposal";
 import { api } from "@/state/api";
 
 export interface WorkflowDetail {
@@ -38,17 +39,56 @@ export function readWorkflowSkillOptions(botId: string): Promise<WorkflowSkillOp
     .then((answer) => answer.options);
 }
 
+/** The installation's script environment: prepared or not, when, and what changed since. */
+export interface WorkflowEnvironmentStatus {
+  prepared: boolean;
+  stale: boolean;
+  preparedAt?: number;
+  hash?: string;
+  changed: number;
+  declared: number;
+  python?: string;
+  node?: string;
+  modules: WorkflowModule[];
+}
+
+export interface WorkflowEnvironmentPreparation {
+  ok: boolean;
+  preparedAt?: number;
+  hash?: string;
+  installed: WorkflowModule[];
+  missing: string[];
+  tail?: string;
+}
+
+export function readEnvironment(): Promise<WorkflowEnvironmentStatus> {
+  return api<WorkflowEnvironmentStatus>("/api/workflows/environment");
+}
+
+export function prepareEnvironment(): Promise<WorkflowEnvironmentPreparation> {
+  return api<WorkflowEnvironmentPreparation>("/api/workflows/environment/prepare", json({}));
+}
+
 export function readRun(id: string): Promise<WorkflowRun> {
   return api<{ run: WorkflowRun }>(`/api/workflows/runs/${encodeURIComponent(id)}`).then((answer) => answer.run);
 }
 
-export function startRun(id: string, version?: number): Promise<WorkflowRun> {
-  return api<{ run: WorkflowRun }>(`/api/workflows/${encodeURIComponent(id)}/run`, json(version === undefined ? {} : { version }))
+export interface StartRunOptions {
+  version?: number;
+  /** Only the parameters the version takes at the start; a value with an origin is never typed here. */
+  inputs?: Record<string, unknown>;
+}
+
+export function startRun(id: string, options: StartRunOptions = {}): Promise<WorkflowRun> {
+  const body: Record<string, unknown> = {};
+  if (options.version !== undefined) body.version = options.version;
+  if (options.inputs !== undefined && Object.keys(options.inputs).length > 0) body.inputs = options.inputs;
+  return api<{ run: WorkflowRun }>(`/api/workflows/${encodeURIComponent(id)}/run`, json(body))
     .then((answer) => answer.run);
 }
 
-export function continueRun(id: string): Promise<WorkflowRun> {
-  return api<{ run: WorkflowRun }>(`/api/workflows/runs/${encodeURIComponent(id)}/continue`, json({}))
+export function continueRun(id: string, inputs: Record<string, unknown> = {}): Promise<WorkflowRun> {
+  return api<{ run: WorkflowRun }>(`/api/workflows/runs/${encodeURIComponent(id)}/continue`, json(Object.keys(inputs).length > 0 ? { inputs } : {}))
     .then((answer) => answer.run);
 }
 
@@ -76,8 +116,11 @@ export function readProposal(id: string): Promise<WorkflowProposal> {
   return api<{ proposal: WorkflowProposal }>(`/api/workflow-proposals/${encodeURIComponent(id)}`).then((answer) => answer.proposal);
 }
 
-export function createWorkflowFromProposal(id: string): Promise<{ workflowId: string; version: number }> {
-  return api<{ workflowId: string; version: number }>(`/api/workflow-proposals/${encodeURIComponent(id)}/create`, json({}));
+export function createWorkflowFromProposal(id: string, acknowledge?: { reason: string }): Promise<{ workflowId: string; version: number }> {
+  return api<{ workflowId: string; version: number }>(
+    `/api/workflow-proposals/${encodeURIComponent(id)}/create`,
+    json(acknowledge === undefined ? {} : { acknowledge }),
+  );
 }
 
 export function archiveProposal(id: string): Promise<WorkflowProposal> {
@@ -115,6 +158,14 @@ export function bumpProposalRound(id: string): Promise<WorkflowProposal> {
     .then((answer) => answer.proposal);
 }
 
+/** The person's answers under the three interview questions; the bot cannot confirm them. */
+export function confirmProposal(id: string, interview: WorkflowProposalAnswers): Promise<WorkflowProposal> {
+  return api<{ proposal: WorkflowProposal }>(`/api/workflow-proposals/${encodeURIComponent(id)}/confirm`, {
+    method: "POST",
+    body: JSON.stringify({ interview }),
+  }).then((answer) => answer.proposal);
+}
+
 export interface WorkflowScriptUpload {
   name: string;
   content: string;
@@ -125,15 +176,22 @@ const saveBody = (definition: WorkflowDefinition, scripts?: readonly WorkflowScr
   body: JSON.stringify(scripts && scripts.length > 0 ? { ...definition, scripts } : definition),
 });
 
-export function createWorkflow(definition: WorkflowDefinition, scripts?: readonly WorkflowScriptUpload[]): Promise<WorkflowDefinition> {
-  return api<{ workflow: WorkflowDefinition }>("/api/workflows", saveBody(definition, scripts)).then((answer) => answer.workflow);
+export interface WorkflowSaveResult {
+  workflow: WorkflowDefinition;
+  /** What the author should look at without blocking the save. */
+  warnings: AuthoringIssue[];
 }
 
-export function updateWorkflow(definition: WorkflowDefinition, scripts?: readonly WorkflowScriptUpload[]): Promise<WorkflowDefinition> {
-  return api<{ workflow: WorkflowDefinition }>(`/api/workflows/${encodeURIComponent(definition.id)}`, {
+export function createWorkflow(definition: WorkflowDefinition, scripts?: readonly WorkflowScriptUpload[]): Promise<WorkflowSaveResult> {
+  return api<{ workflow: WorkflowDefinition; warnings?: AuthoringIssue[] }>("/api/workflows", saveBody(definition, scripts))
+    .then((answer) => ({ workflow: answer.workflow, warnings: answer.warnings ?? [] }));
+}
+
+export function updateWorkflow(definition: WorkflowDefinition, scripts?: readonly WorkflowScriptUpload[]): Promise<WorkflowSaveResult> {
+  return api<{ workflow: WorkflowDefinition; warnings?: AuthoringIssue[] }>(`/api/workflows/${encodeURIComponent(definition.id)}`, {
     ...saveBody(definition, scripts),
     method: "PUT",
-  }).then((answer) => answer.workflow);
+  }).then((answer) => ({ workflow: answer.workflow, warnings: answer.warnings ?? [] }));
 }
 
 export function listScripts(id: string): Promise<Array<{ name: string }>> {

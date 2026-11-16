@@ -1,15 +1,16 @@
 // The engine is the only code that decides what runs next. It copies a step's
 // declared inputs, opens one thread with cwd = step-N (or runs the step's
 // script), waits for that turn's single onSettled, verifies the declared
-// outputs (and `require`), and only then moves on. A run advances one step at
-// a time, always forward: a step that fails stops the run unless the Workflow
-// declared an `onFailure` (or, for a timeout, an `onTimeout`) path. A Do While
-// runs a nested body one round at a time and never becomes a cycle on the canvas.
+// outputs, and only then moves on. A step never judges its own content: a
+// `condition` reads the named `.json` output and chooses the route. A run
+// advances one step at a time, always forward: a step that fails stops the run
+// unless the Workflow declared an `onFailure` (or, for a timeout, an
+// `onTimeout`) path. A Do While runs a nested body one round at a time and
+// never becomes a cycle on the canvas.
 import { lstatSync } from "node:fs";
 import { join } from "node:path";
 
 import {
-  requireMismatch,
   type BotWorkflowStep,
   type ConditionWorkflowStep,
   type LoopWorkflowStep,
@@ -28,6 +29,7 @@ import {
   copyStepInputs,
   prepareIterationDirectories,
   projectLoopOutputs,
+  readStepJson,
   verifyStepOutputs,
   writeStepParameters,
   type OutputVerification,
@@ -40,7 +42,9 @@ import {
   type StepFailureKind,
 } from "./flow.ts";
 import { iterationStepDir, iterationStepInputDir, iterationStepOutputDir, stepInputDir, stepOutputDir } from "./paths.ts";
-import { validateWorkflowInputs, type ParameterFailure, type WorkflowInputs } from "./parameters.ts";
+import { validateWorkflowInputs, resolveStepParameters, validateCollectedInputs, type ParameterFailure, type WorkflowInputs } from "./parameters.ts";
+import { missingWorkflowModules, binWorkflowModules } from "./preflight.ts";
+import { environmentPreflightIssue, workflowEnvironmentPaths } from "./environment.ts";
 import { runWorkflowScript, type WorkflowScriptHandle } from "./script.ts";
 import {
   beginBodyStep,
@@ -69,6 +73,13 @@ import type { WorkflowStore } from "./store.ts";
 /** The reason a refused card leaves on the run. */
 export const APPROVAL_REFUSED = "aprovação negada";
 
+/** A manual step's failure says what continuing cannot deliver when the step collects nothing. */
+function manualFailure(step: BotWorkflowStep | ScriptWorkflowStep, error: string): string {
+  if (step.mode !== "manual") return error;
+  if (step.parameters.some((parameter) => parameter.collectedBy === step.id)) return error;
+  return `${error}; this manual step declares no collectedBy, so continuing delivers no value — write the outputs from input/ and params.json`;
+}
+
 export interface WorkflowTurnOptions {
   threadId: string;
   workflowStep: { runId: string; stepId: string };
@@ -78,6 +89,8 @@ export interface WorkflowTurnOptions {
 
 export interface WorkflowEngineDeps {
   store: WorkflowStore;
+  home?: string;
+  env?: NodeJS.ProcessEnv;
   startTurn(botId: string, text: string, options: WorkflowTurnOptions): Promise<unknown>;
   createThread(input: { botId: string; title: string; cwd: string }): string | null;
   broadcast(frame: Record<string, unknown>): void;
@@ -87,11 +100,19 @@ export interface WorkflowEngineDeps {
   /** Every persisted transition, for a trigger that mirrors the run's state. */
   onRun?(run: WorkflowRun): void;
   missingSkills?(botId: string, skills: WorkflowStepSkills | undefined): readonly string[];
+  /** The machine dependencies this deployment does not have; tests inject it, a run reads the machine. */
+  checkModules?(modules: readonly string[]): readonly string[];
+  /** Whether the prepared environment fits this definition; tests inject it, a run reads state.json. */
+  checkEnvironment?(definition: WorkflowDefinition): string | undefined;
   now?: () => number;
   log?: (line: string) => void;
 }
 
 export type StartResult = { ok: true; run: WorkflowRun } | { ok: false; error: string; needsInput?: ParameterFailure };
+
+export type ResumeResult =
+  | { ok: true; run: WorkflowRun }
+  | { ok: false; error: string; needsInput?: ParameterFailure };
 
 export interface WorkflowStartOptions {
   version?: number;
@@ -105,8 +126,9 @@ export interface WorkflowEngine {
   start(workflowId: string, options?: WorkflowStartOptions): StartResult;
   status(runId: string): WorkflowRun | undefined;
   cancel(runId: string, reason?: string): RunTransition;
-  /** The person continued a manual step: release it once and resume the same run. */
-  resume(runId: string): RunTransition;
+  /** The person continued a manual step: release it once and resume the same run.
+   * The values the step collects are checked here and stored on the run before it advances. */
+  resume(runId: string, inputs?: WorkflowInputs): ResumeResult;
   /** A turn on a step's conversation settled: a run waiting on that step re-checks its outputs. */
   turnSettled(threadId: string, generation: string, outcome: HostTurnResult): void;
   /** The person refused the card a waiting run paused on; the run is cancelled. */
@@ -135,6 +157,18 @@ const samePath = (left: readonly number[], right: readonly number[]): boolean =>
 export function createWorkflowEngine(deps: WorkflowEngineDeps): WorkflowEngine {
   const now = deps.now ?? Date.now;
   const log = deps.log ?? ((line: string) => console.warn(line));
+  const environmentIssue = (definition: WorkflowDefinition): string | undefined => {
+    const missingBinaries = deps.checkModules
+      ? deps.checkModules(binWorkflowModules(definition).map((module) => module.name))
+      : missingWorkflowModules(definition, deps.env);
+    if (missingBinaries.length > 0) {
+      return `this machine does not have ${missingBinaries.map((name) => JSON.stringify(name)).join(", ")}; a script step declares it in modules, and the engine never installs it`;
+    }
+    return deps.checkEnvironment
+      ? deps.checkEnvironment(definition)
+      : environmentPreflightIssue(definition, { home: deps.home, env: deps.env });
+  };
+  const scriptEnvironment = workflowEnvironmentPaths({ home: deps.home, env: deps.env });
   const chains = new Map<string, Promise<void>>();
   /** Step conversations a live run owns, so a settled turn finds its run without scanning every run.json. */
   const stepThreads = new Map<string, { runId: string; path: StepPath }>();
@@ -197,6 +231,15 @@ export function createWorkflowEngine(deps: WorkflowEngineDeps): WorkflowEngine {
     return true;
   };
 
+  /** The step a manual hold parks, top-level or inside a Do While round. */
+  const heldStep = (run: WorkflowRun, definition: WorkflowDefinition): WorkflowStep | undefined => {
+    const path = run.hold?.path ?? (run.hold?.step === undefined ? undefined : [run.hold.step]);
+    if (!path) return undefined;
+    if (path.length === 1) return definition.steps[path[0]!];
+    const loop = definition.steps[path[0]!];
+    return loop?.kind === "loop" ? loop.body[path[2]!] : undefined;
+  };
+
   const waitingCards = (
     threadId: string | undefined,
     resolved: ReadonlySet<string>,
@@ -221,23 +264,15 @@ export function createWorkflowEngine(deps: WorkflowEngineDeps): WorkflowEngine {
     if (moved) void enqueue(run.id, () => advance(run.id));
   };
 
-  /** The step delivered: check `require`, pick the declared next step and complete it. */
+  /** The step delivered: pick the declared next step and complete it. No step judges its own content. */
   const passStep = (
     run: WorkflowRun,
     index: number,
-    step: BotWorkflowStep | ScriptWorkflowStep,
     definition: WorkflowDefinition,
     verification: Extract<OutputVerification, { ok: true }>,
   ): void => {
-    if (step.require !== undefined) {
-      const mismatch = requireMismatch(verification.result, step.require);
-      if (mismatch) {
-        failOrRoute(run, index, resultReason(verification.result) ?? mismatch, definition);
-        return;
-      }
-    }
-    const target = nextStepIndex(definition.steps, index, verification.result);
-    const completed = apply(completeStep(run, index, { verified: verification.verified, result: verification.result }, now(), target));
+    const target = nextStepIndex(definition.steps, index);
+    const completed = apply(completeStep(run, index, { verified: verification.verified }, now(), target));
     if (completed && !isTerminalRun(completed.status)) void enqueue(run.id, () => advance(run.id));
   };
 
@@ -273,12 +308,12 @@ export function createWorkflowEngine(deps: WorkflowEngineDeps): WorkflowEngine {
       apply(pauseRun(run, { stepId: step.id, question: waiting.question, cardIds: waiting.ids, askedAt: now(), path: [index] }, now()));
       return;
     }
-    const verification = verifyStepOutputs(stepOutputDir(deps.store.runDir(run), index + 1), step.outputs, step.result);
+    const verification = verifyStepOutputs(stepOutputDir(deps.store.runDir(run), index + 1), step.outputs);
     if (!verification.ok) {
-      failOrRoute(run, index, verification.error, definition);
+      failOrRoute(run, index, manualFailure(step, verification.error), definition);
       return;
     }
-    passStep(run, index, step, definition, verification);
+    passStep(run, index, definition, verification);
   };
 
   /** Runs a script step's file and then verifies it exactly like a bot step's output. */
@@ -288,6 +323,11 @@ export function createWorkflowEngine(deps: WorkflowEngineDeps): WorkflowEngine {
     step: Extract<WorkflowStep, { kind: "script" }>,
     definition: WorkflowDefinition,
   ): Promise<void> => {
+    const issue = environmentIssue(definition);
+    if (issue !== undefined) {
+      failOrRoute(run, index, issue, definition);
+      return;
+    }
     const scriptsFolder = deps.store.scriptsFolder(run.workflowId);
     const scriptPath = scriptsFolder ? join(scriptsFolder, step.run) : undefined;
     let plain = false;
@@ -315,6 +355,7 @@ export function createWorkflowEngine(deps: WorkflowEngineDeps): WorkflowEngine {
       timeoutMs: step.timeoutMs,
       runId: run.id,
       stepId: step.id,
+      environment: scriptEnvironment,
     });
     scripts.set(run.id, handle);
     let outcome;
@@ -329,15 +370,15 @@ export function createWorkflowEngine(deps: WorkflowEngineDeps): WorkflowEngine {
       failOrRoute(current, index, outcome.error, definition, outcome.timedOut ? "timeout" : "failure");
       return;
     }
-    const verification = verifyStepOutputs(stepOutputDir(runDir, index + 1), step.outputs, step.result);
+    const verification = verifyStepOutputs(stepOutputDir(runDir, index + 1), step.outputs);
     if (!verification.ok) {
-      failOrRoute(current, index, verification.error, definition);
+      failOrRoute(current, index, manualFailure(step, verification.error), definition);
       return;
     }
-    passStep(current, index, step, definition, verification);
+    passStep(current, index, definition, verification);
   };
 
-  /** A condition reads its source step's result.json and sends the run down one of two routes. */
+  /** A condition reads the output it names and sends the run down one of two routes. */
   const runConditionStep = (
     run: WorkflowRun,
     index: number,
@@ -346,18 +387,18 @@ export function createWorkflowEngine(deps: WorkflowEngineDeps): WorkflowEngine {
   ): void => {
     const started = apply(beginStep(run, index, {}, now()));
     if (!started) return;
-    const sourceIndex = definition.steps.findIndex((candidate) => candidate.id === step.from);
+    const sourceIndex = definition.steps.findIndex((candidate) => candidate.id === step.from.step);
     const source = definition.steps[sourceIndex];
-    if (!source || source.kind === "condition" || source.kind === "loop" || source.result === undefined) {
-      failOrRoute(started, index, `condition ${JSON.stringify(step.id)} reads ${JSON.stringify(step.from)}, which declares no result`, definition);
+    if (!source || source.kind === "condition") {
+      failOrRoute(started, index, `condition ${JSON.stringify(step.id)} reads ${JSON.stringify(step.from.step)}, which is not an earlier step`, definition);
       return;
     }
-    const verification = verifyStepOutputs(stepOutputDir(deps.store.runDir(started), sourceIndex + 1), source.outputs, source.result);
-    if (!verification.ok) {
-      failOrRoute(started, index, `condition ${JSON.stringify(step.id)} could not read step ${JSON.stringify(source.id)}: ${verification.error}`, definition);
+    const read = readStepJson(stepOutputDir(deps.store.runDir(started), sourceIndex + 1), step.from.output);
+    if (!read.ok) {
+      failOrRoute(started, index, `condition ${JSON.stringify(step.id)} could not read step ${JSON.stringify(source.id)}: ${read.error}`, definition);
       return;
     }
-    const outcome = evaluateConditionGroup(verification.result, step);
+    const outcome = evaluateConditionGroup(read.value, step);
     if (!outcome.ok) {
       failOrRoute(started, index, outcome.error, definition);
       return;
@@ -368,7 +409,13 @@ export function createWorkflowEngine(deps: WorkflowEngineDeps): WorkflowEngine {
       failOrRoute(started, index, `condition ${JSON.stringify(step.id)} points at ${JSON.stringify(targetId)}, which does not exist`, definition);
       return;
     }
-    const completed = apply(completeStep(started, index, { verified: [] }, now(), target));
+    const matched = matchedConditionLine(read.value, step);
+    const completed = apply(completeStep(started, index, {
+      verified: [],
+      branch: outcome.match,
+      source: { step: source.id, output: step.from.output },
+      ...(outcome.match ? (matched === undefined ? {} : { condition: matched }) : {}),
+    }, now(), target));
     if (completed && !isTerminalRun(completed.status)) void enqueue(started.id, () => advance(started.id));
   };
 
@@ -420,7 +467,7 @@ export function createWorkflowEngine(deps: WorkflowEngineDeps): WorkflowEngine {
     if (step.kind === "condition") return { ok: true, verified: [] };
     const iteration = run.steps[loopIndex]?.iterations?.[iterationIndex];
     if (!iteration) return { ok: false, error: "the round does not exist" };
-    return verifyStepOutputs(iterationStepOutputDir(deps.store.runDir(run), iteration.index, step.id), step.outputs, step.result);
+    return verifyStepOutputs(iterationStepOutputDir(deps.store.runDir(run), iteration.index, step.id), step.outputs);
   };
 
   /** Completes a body step and lets the round continue where its edge points. */
@@ -431,17 +478,8 @@ export function createWorkflowEngine(deps: WorkflowEngineDeps): WorkflowEngine {
     bodyIndex: number,
     loop: LoopWorkflowStep,
     verification: Extract<OutputVerification, { ok: true }>,
-    definition: WorkflowDefinition,
   ): void => {
-    const step = loop.body[bodyIndex]!;
-    if (step.kind !== "condition" && step.require !== undefined) {
-      const mismatch = requireMismatch(verification.result, step.require);
-      if (mismatch) {
-        failBodyOrLoop(run, loopIndex, iterationIndex, bodyIndex, resultReason(verification.result) ?? mismatch, definition);
-        return;
-      }
-    }
-    const target = bodyNextStepIndex(loop.body, bodyIndex, verification.result);
+    const target = bodyNextStepIndex(loop.body, bodyIndex);
     const completed = apply(completeBodyStep(run, loopIndex, iterationIndex, bodyIndex, { verified: verification.verified }, now()));
     if (completed) void enqueue(run.id, () => advanceLoop(run.id, loopIndex, { iteration: iterationIndex, body: target }));
   };
@@ -488,10 +526,10 @@ export function createWorkflowEngine(deps: WorkflowEngineDeps): WorkflowEngine {
     }
     const verification = bodyStepOutput(run, loopIndex, iterationIndex, step);
     if (!verification.ok) {
-      failBodyOrLoop(run, loopIndex, iterationIndex, bodyIndex, verification.error, definition);
+      failBodyOrLoop(run, loopIndex, iterationIndex, bodyIndex, manualFailure(step, verification.error), definition);
       return;
     }
-    passBodyStep(run, loopIndex, iterationIndex, bodyIndex, loop, verification, definition);
+    passBodyStep(run, loopIndex, iterationIndex, bodyIndex, loop, verification);
   };
 
   const runBodyScriptStep = async (
@@ -505,6 +543,11 @@ export function createWorkflowEngine(deps: WorkflowEngineDeps): WorkflowEngine {
     const loop = loopAt(definition, loopIndex);
     const iteration = run.steps[loopIndex]?.iterations?.[iterationIndex];
     if (!loop || !iteration) return;
+    const issue = environmentIssue(definition);
+    if (issue !== undefined) {
+      failBodyOrLoop(run, loopIndex, iterationIndex, bodyIndex, issue, definition);
+      return;
+    }
     const scriptsFolder = deps.store.scriptsFolder(run.workflowId);
     const scriptPath = scriptsFolder ? join(scriptsFolder, step.run) : undefined;
     let plain = false;
@@ -532,6 +575,7 @@ export function createWorkflowEngine(deps: WorkflowEngineDeps): WorkflowEngine {
       timeoutMs: step.timeoutMs,
       runId: run.id,
       stepId: step.id,
+      environment: scriptEnvironment,
     });
     scripts.set(run.id, handle);
     let outcome;
@@ -550,10 +594,10 @@ export function createWorkflowEngine(deps: WorkflowEngineDeps): WorkflowEngine {
     }
     const verification = bodyStepOutput(current, loopIndex, iterationIndex, step);
     if (!verification.ok) {
-      failBodyOrLoop(current, loopIndex, iterationIndex, bodyIndex, verification.error, definition);
+      failBodyOrLoop(current, loopIndex, iterationIndex, bodyIndex, manualFailure(step, verification.error), definition);
       return;
     }
-    passBodyStep(current, loopIndex, iterationIndex, bodyIndex, loop, verification, definition);
+    passBodyStep(current, loopIndex, iterationIndex, bodyIndex, loop, verification);
   };
 
   const runBodyConditionStep = (
@@ -569,33 +613,35 @@ export function createWorkflowEngine(deps: WorkflowEngineDeps): WorkflowEngine {
     if (!loop || !iteration) return;
     const started = apply(beginBodyStep(run, loopIndex, iterationIndex, bodyIndex, {}, now()));
     if (!started) return;
-    const sourceIndex = loop.body.findIndex((candidate) => candidate.id === step.from);
+    const sourceIndex = loop.body.findIndex((candidate) => candidate.id === step.from.step);
     const source = loop.body[sourceIndex];
-    if (sourceIndex < 0 || !source || source.kind === "condition" || source.result === undefined) {
-      failBodyOrLoop(started, loopIndex, iterationIndex, bodyIndex, `condition ${JSON.stringify(step.id)} reads ${JSON.stringify(step.from)}, which declares no result`, definition);
+    if (sourceIndex < 0 || !source || source.kind === "condition") {
+      failBodyOrLoop(started, loopIndex, iterationIndex, bodyIndex, `condition ${JSON.stringify(step.id)} reads ${JSON.stringify(step.from.step)}, which is not an earlier body step`, definition);
       return;
     }
-    const verification = verifyStepOutputs(
-      iterationStepOutputDir(deps.store.runDir(started), iteration.index, source.id),
-      source.outputs,
-      source.result,
-    );
-    if (!verification.ok) {
-      failBodyOrLoop(started, loopIndex, iterationIndex, bodyIndex, `condition ${JSON.stringify(step.id)} could not read step ${JSON.stringify(source.id)}: ${verification.error}`, definition);
+    const read = readStepJson(iterationStepOutputDir(deps.store.runDir(started), iteration.index, source.id), step.from.output);
+    if (!read.ok) {
+      failBodyOrLoop(started, loopIndex, iterationIndex, bodyIndex, `condition ${JSON.stringify(step.id)} could not read step ${JSON.stringify(source.id)}: ${read.error}`, definition);
       return;
     }
-    const outcome = evaluateConditionGroup(verification.result, step);
+    const outcome = evaluateConditionGroup(read.value, step);
     if (!outcome.ok) {
       failBodyOrLoop(started, loopIndex, iterationIndex, bodyIndex, outcome.error, definition);
       return;
     }
+    const matched = matchedConditionLine(read.value, step);
     const targetId = outcome.match ? step.whenTrue : step.whenFalse;
     const target = targetId === undefined || targetId === null ? null : loop.body.findIndex((candidate) => candidate.id === targetId);
     if (target !== null && target < 0) {
       failBodyOrLoop(started, loopIndex, iterationIndex, bodyIndex, `condition ${JSON.stringify(step.id)} points at ${JSON.stringify(targetId)}, which is not in the body`, definition);
       return;
     }
-    const completed = apply(completeBodyStep(started, loopIndex, iterationIndex, bodyIndex, { verified: [] }, now()));
+    const completed = apply(completeBodyStep(started, loopIndex, iterationIndex, bodyIndex, {
+      verified: [],
+      branch: outcome.match,
+      source: { step: source.id, output: step.from.output },
+      ...(outcome.match ? (matched === undefined ? {} : { condition: matched }) : {}),
+    }, now()));
     if (completed) void enqueue(started.id, () => advanceLoop(started.id, loopIndex, { iteration: iterationIndex, body: target }));
   };
 
@@ -612,20 +658,13 @@ export function createWorkflowEngine(deps: WorkflowEngineDeps): WorkflowEngine {
       failLoop(run, loopIndex, projected.error, definition);
       return;
     }
-    const verification = verifyStepOutputs(stepOutputDir(runDir, loopIndex + 1), loop.outputs, loop.result);
+    const verification = verifyStepOutputs(stepOutputDir(runDir, loopIndex + 1), loop.outputs);
     if (!verification.ok) {
       failLoop(run, loopIndex, verification.error, definition);
       return;
     }
-    if (loop.require !== undefined) {
-      const mismatch = requireMismatch(verification.result, loop.require);
-      if (mismatch) {
-        failLoop(run, loopIndex, resultReason(verification.result) ?? mismatch, definition);
-        return;
-      }
-    }
-    const target = nextStepIndex(definition.steps, loopIndex, verification.result);
-    const completed = apply(completeStep(run, loopIndex, { verified: verification.verified, result: verification.result }, now(), target));
+    const target = nextStepIndex(definition.steps, loopIndex);
+    const completed = apply(completeStep(run, loopIndex, { verified: verification.verified }, now(), target));
     if (completed && !isTerminalRun(completed.status)) void enqueue(run.id, () => advance(run.id));
   };
 
@@ -633,35 +672,32 @@ export function createWorkflowEngine(deps: WorkflowEngineDeps): WorkflowEngine {
   const endRound = (run: WorkflowRun, loopIndex: number, iterationIndex: number, definition: WorkflowDefinition, loop: LoopWorkflowStep): void => {
     const iteration = run.steps[loopIndex]?.iterations?.[iterationIndex];
     if (!iteration) return;
-    const fromIndex = loop.body.findIndex((step) => step.id === loop.from);
+    const fromIndex = loop.body.findIndex((step) => step.id === loop.from.step);
     const source = loop.body[fromIndex];
-    if (fromIndex < 0 || !source || source.kind === "condition" || source.result === undefined) {
-      let current = apply(failIteration(run, loopIndex, iterationIndex, `could not read step ${JSON.stringify(loop.from)}: it is not a body step with a result`, now()));
-      if (current) failLoop(current, loopIndex, `could not read step ${JSON.stringify(loop.from)}: it is not a body step with a result`, definition);
+    if (fromIndex < 0 || !source || source.kind === "condition") {
+      const reason = `could not read step ${JSON.stringify(loop.from.step)}: it is not a body step with a declared output`;
+      let current = apply(failIteration(run, loopIndex, iterationIndex, reason, now()));
+      if (current) failLoop(current, loopIndex, reason, definition);
       return;
     }
-    const verification = verifyStepOutputs(
-      iterationStepOutputDir(deps.store.runDir(run), iteration.index, source.id),
-      source.outputs,
-      source.result,
-    );
-    if (!verification.ok) {
-      const reason = `could not read step ${JSON.stringify(loop.from)}: ${verification.error}`;
+    const read = readStepJson(iterationStepOutputDir(deps.store.runDir(run), iteration.index, source.id), loop.from.output);
+    if (!read.ok) {
+      const reason = `could not read step ${JSON.stringify(loop.from.step)}: ${read.error}`;
       const current = apply(failIteration(run, loopIndex, iterationIndex, reason, now()));
       if (current) failLoop(current, loopIndex, reason, definition);
       return;
     }
-    const outcome = evaluateConditionGroup(verification.result, loop);
+    const outcome = evaluateConditionGroup(read.value, loop);
     if (!outcome.ok) {
       const current = apply(failIteration(run, loopIndex, iterationIndex, outcome.error, now()));
       if (current) failLoop(current, loopIndex, outcome.error, definition);
       return;
     }
-    const matched = outcome.match ? matchedConditionLine(verification.result, loop) : undefined;
+    const matched = outcome.match ? matchedConditionLine(read.value, loop) : undefined;
     const finished = apply(finishIteration(run, loopIndex, iterationIndex, {
       conditionMatched: outcome.match,
       ...(matched === undefined ? {} : { condition: matched }),
-      result: verification.result,
+      result: read.value,
     }, now()));
     if (!finished) return;
     if (outcome.match) {
@@ -796,7 +832,22 @@ export function createWorkflowEngine(deps: WorkflowEngineDeps): WorkflowEngine {
       failBodyOrLoop(run, loopIndex, iterationIndex, bodyIndex, copied.error, definition);
       return;
     }
-    const wroteParams = writeStepParameters(iterationStepInputDir(deps.store.runDir(run), iteration.index, step.id), step, run.inputs);
+    const resolved = resolveStepParameters(step, run.inputs ?? {}, (sourceStep, output) => {
+      const bodySource = loop.body.findIndex((candidate) => candidate.id === sourceStep);
+      if (bodySource >= 0 && bodySource < bodyIndex) {
+        return readStepJson(iterationStepOutputDir(deps.store.runDir(run), iteration.index, loop.body[bodySource]!.id), output);
+      }
+      const topSource = definition.steps.findIndex((candidate) => candidate.id === sourceStep);
+      if (bodySource < 0 && topSource >= 0 && topSource < loopIndex) {
+        return readStepJson(stepOutputDir(deps.store.runDir(run), topSource + 1), output);
+      }
+      return { ok: false, error: "the source is not an earlier body step or an earlier top-level step" };
+    });
+    if (!resolved.ok) {
+      failBodyOrLoop(run, loopIndex, iterationIndex, bodyIndex, resolved.error, definition);
+      return;
+    }
+    const wroteParams = writeStepParameters(iterationStepInputDir(deps.store.runDir(run), iteration.index, step.id), step, resolved.values);
     if (!wroteParams.ok) {
       failBodyOrLoop(run, loopIndex, iterationIndex, bodyIndex, wroteParams.error, definition);
       return;
@@ -943,7 +994,16 @@ export function createWorkflowEngine(deps: WorkflowEngineDeps): WorkflowEngine {
       failOrRoute(run, index, copied.error, definition);
       return;
     }
-    const wroteParams = writeStepParameters(stepInputDir(deps.store.runDir(run), index + 1), step, run.inputs);
+    const resolved = resolveStepParameters(step, run.inputs ?? {}, (sourceStep, output) => {
+      const sourceIndex = definition.steps.findIndex((candidate) => candidate.id === sourceStep);
+      if (sourceIndex < 0 || sourceIndex >= index) return { ok: false, error: "the source step is not an earlier step" };
+      return readStepJson(stepOutputDir(deps.store.runDir(run), sourceIndex + 1), output);
+    });
+    if (!resolved.ok) {
+      failOrRoute(run, index, resolved.error, definition);
+      return;
+    }
+    const wroteParams = writeStepParameters(stepInputDir(deps.store.runDir(run), index + 1), step, resolved.values);
     if (!wroteParams.ok) {
       failOrRoute(run, index, wroteParams.error, definition);
       return;
@@ -1046,6 +1106,8 @@ export function createWorkflowEngine(deps: WorkflowEngineDeps): WorkflowEngine {
       if (!definition) {
         return { ok: false, error: `no Workflow ${JSON.stringify(workflowId)}${options.version === undefined ? "" : ` version ${options.version}`}` };
       }
+      const issue = environmentIssue(definition);
+      if (issue !== undefined) return { ok: false, error: issue };
       const inputs = validateWorkflowInputs(definition, options.inputs);
       if (!inputs.ok) {
         return {
@@ -1072,9 +1134,26 @@ export function createWorkflowEngine(deps: WorkflowEngineDeps): WorkflowEngine {
     status(runId) {
       return deps.store.readRun(runId);
     },
-    resume(runId) {
+    resume(runId, inputs = {}) {
       const run = deps.store.readRun(runId);
       if (!run) return { ok: false, error: "no such run" };
+      if (run.status === "waiting_manual") {
+        const definition = deps.store.workflow(run.workflowId, run.workflowVersion);
+        if (!definition) return { ok: false, error: `definition ${run.workflowId} version ${run.workflowVersion} is not available` };
+        const step = heldStep(run, definition);
+        if (!step) return { ok: false, error: "the run's held step is not in the definition" };
+        const collected = validateCollectedInputs(definition, step.id, inputs);
+        if (!collected.ok) {
+          return { ok: false, error: "the step's fields are missing or invalid", needsInput: collected.failure };
+        }
+        const releasedRun = releaseRun(run, now(), collected.values);
+        if (!releasedRun.ok) return releasedRun;
+        const holdPath = run.hold?.path ?? (run.hold?.step === undefined ? undefined : [run.hold.step]);
+        if (holdPath) released.set(runId, holdPath);
+        const applied = apply(releasedRun);
+        if (applied) void enqueue(runId, () => advance(runId));
+        return releasedRun;
+      }
       const holdPath = run.hold?.path ?? (run.hold?.step === undefined ? undefined : [run.hold.step]);
       const releasedRun = releaseRun(run, now());
       if (!releasedRun.ok) return releasedRun;
@@ -1179,11 +1258,4 @@ export function createWorkflowEngine(deps: WorkflowEngineDeps): WorkflowEngine {
       while (chains.size > 0) await Promise.all(chains.values());
     },
   };
-}
-
-/** The step's own words for a failed requirement, when it left a reason. */
-function resultReason(result: unknown): string | undefined {
-  if (result === null || typeof result !== "object" || Array.isArray(result)) return undefined;
-  const reason = (result as Record<string, unknown>).reason;
-  return typeof reason === "string" && reason.trim() ? reason.trim() : undefined;
 }

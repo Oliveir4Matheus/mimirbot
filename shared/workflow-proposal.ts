@@ -17,13 +17,22 @@ export const WORKFLOW_PROPOSAL_ASSUMPTIONS_MAX = 30;
 export const workflowProposalStatuses = ["draft", "archived", "created"] as const;
 export type WorkflowProposalStatus = (typeof workflowProposalStatuses)[number];
 
-const interviewSchema = z.object({
+const interviewAnswersSchema = z.object({
   /** A one-time task is not a Workflow; the bot says so instead of proposing one. */
   recurring: z.boolean(),
   /** What changes between runs; "não sei" is a valid answer and becomes an assumption. */
   changes: z.string().trim().max(WORKFLOW_PROPOSAL_ANSWER_MAX).default(""),
   /** Who answers a missing field and who confirms an irreversible effect. */
   confirmer: z.string().trim().max(WORKFLOW_PROPOSAL_ANSWER_MAX).default(""),
+});
+
+export type WorkflowProposalAnswers = z.output<typeof interviewAnswersSchema>;
+export const workflowProposalAnswersSchema = interviewAnswersSchema;
+
+const interviewSchema = interviewAnswersSchema.extend({
+  /** Set by the person confirming the three answers on the card, never by the bot. */
+  confirmedAt: z.number().int().nonnegative().optional(),
+  confirmedBy: z.string().trim().min(1).max(80).optional(),
 });
 
 export type WorkflowProposalInterview = z.output<typeof interviewSchema>;
@@ -68,7 +77,8 @@ export const workflowProposalSchema = z.object({
   /** How many review rounds this proposal has had; the ladder appears at 3. */
   rounds: z.number().int().nonnegative().default(0),
   rehearsal: rehearsalSchema.optional(),
-  /** The content hash the person approved; changing any byte changes it. */
+  /** The content hash the person approved: definition, scripts and interview answers.
+   * Changing any of them changes it, and a create then asks for a new confirmation. */
   approvalHash: z.string().regex(/^[a-f0-9]{64}$/).optional(),
   definition: workflowDefinitionSchema,
   /** The script files the definition names, kept with the proposal until the yes. */
@@ -81,6 +91,9 @@ export const workflowProposalSchema = z.object({
   }
   if (proposal.definition.department !== proposal.department) {
     context.addIssue({ code: "custom", path: ["definition", "department"], message: "the definition department must match the proposal department" });
+  }
+  if (proposal.interview.confirmedBy !== undefined && proposal.interview.confirmedAt === undefined) {
+    context.addIssue({ code: "custom", path: ["interview", "confirmedBy"], message: "a confirmation carries its time" });
   }
 });
 
@@ -113,7 +126,8 @@ export const workflowProposalInputSchema = z.object({
   department: z.string().trim().min(1).max(60),
   retentionDays: z.number().int().min(1).max(3_650).optional(),
   createdAt: z.number().int().nonnegative().optional(),
-  interview: interviewSchema,
+  /** The bot's answers only: the confirmation belongs to the person and is refused here. */
+  interview: interviewAnswersSchema.strict(),
   summary: z.string().trim().max(WORKFLOW_PROPOSAL_SUMMARY_MAX).default(""),
   assumptions: z.array(assumptionSchema).max(WORKFLOW_PROPOSAL_ASSUMPTIONS_MAX).default([]),
   createdBy: z.object({ botId: z.string().min(1), threadId: z.string().min(1) }).optional(),
@@ -129,6 +143,15 @@ export function isUnknownProposalAnswer(value: string): boolean {
   return UNKNOWN_ANSWERS.test(value.trim());
 }
 
+const UNKNOWN_CHANGES_ASSUMPTION = "O que muda a cada execução não foi respondido.";
+const UNKNOWN_CONFIRMER_ASSUMPTION = "Quem confirma antes de um efeito irreversível não foi respondido.";
+
+/** The bot's own assumptions, without the two the interview derives from an unanswered question:
+ * when the person corrects an answer, its assumption leaves with the old answer. */
+export function proposalAssumptionsBase(assumptions: readonly string[]): string[] {
+  return assumptions.filter((line) => line !== UNKNOWN_CHANGES_ASSUMPTION && line !== UNKNOWN_CONFIRMER_ASSUMPTION);
+}
+
 export type ProposalEvaluation =
   | { ok: true; assumptions: string[] }
   | { ok: false; error: string };
@@ -138,12 +161,12 @@ export function evaluateProposal(interview: WorkflowProposalInterview, assumptio
   if (!interview.recurring) {
     return { ok: false, error: "a one-time task is not a Workflow; finish the task instead of proposing one" };
   }
-  const list = [...assumptions];
+  const list = proposalAssumptionsBase(assumptions);
   if (isUnknownProposalAnswer(interview.changes)) {
-    list.push("O que muda a cada execução não foi respondido.");
+    list.push(UNKNOWN_CHANGES_ASSUMPTION);
   }
   if (isUnknownProposalAnswer(interview.confirmer)) {
-    list.push("Quem confirma antes de um efeito irreversível não foi respondido.");
+    list.push(UNKNOWN_CONFIRMER_ASSUMPTION);
   }
   return { ok: true, assumptions: [...new Set(list)] };
 }
@@ -161,12 +184,45 @@ export function startManualDefinition(definition: WorkflowDefinition): WorkflowD
   };
 }
 
+const STEP_BASE_FIELDS = ["id", "kind", "name", "inputs", "outputs", "parameters", "onSuccess", "onFailure", "onTimeout", "result", "require", "when"] as const;
+
+/** Every field the reading schema knows for a step kind. A bot's mistyped or invented field is
+ * refused here instead of being dropped by the schema, so the author learns the contract. */
+const STEP_FIELDS: Record<string, readonly string[]> = {
+  bot: [...STEP_BASE_FIELDS, "botId", "instructions", "skills", "timeoutMs", "mode"],
+  script: [...STEP_BASE_FIELDS, "run", "timeoutMs", "modules", "mode"],
+  condition: ["id", "kind", "name", "onSuccess", "onFailure", "onTimeout", "result", "require", "when", "from", "match", "conditions", "whenTrue", "whenFalse"],
+  loop: ["id", "kind", "name", "onSuccess", "onFailure", "onTimeout", "result", "require", "from", "match", "conditions", "maxIterations", "outputs", "body"],
+};
+
+/** The first field a step record carries that its kind does not declare. */
+export function unknownStepField(steps: readonly unknown[]): string | undefined {
+  for (const [index, step] of steps.entries()) {
+    if (step === null || typeof step !== "object" || Array.isArray(step)) continue;
+    const record = step as Record<string, unknown>;
+    const kind = typeof record.kind === "string" ? record.kind : "bot";
+    const allowed = STEP_FIELDS[kind];
+    if (!allowed) return `steps.${index}.kind: ${JSON.stringify(kind)} is not a step kind`;
+    const unknown = Object.keys(record).find((key) => !allowed.includes(key));
+    if (unknown !== undefined) {
+      return `steps.${index}.${unknown}: a ${kind} step does not declare ${JSON.stringify(unknown)}; use only ${allowed.join(", ")}`;
+    }
+    if (kind === "loop" && Array.isArray(record.body)) {
+      const nested = unknownStepField(record.body);
+      if (nested !== undefined) return `steps.${index}.body.${nested.slice("steps.".length)}`;
+    }
+  }
+  return undefined;
+}
+
 /** Builds the definition from the bot's flat input; the schema is the only authority. */
 export function proposalDefinition(
   input: z.output<typeof workflowProposalInputSchema>,
   id: string,
   createdAt = input.createdAt ?? 0,
 ): { ok: true; definition: WorkflowDefinition } | { ok: false; error: string } {
+  const unknown = unknownStepField(input.steps);
+  if (unknown !== undefined) return { ok: false, error: unknown };
   const parsed = workflowDefinitionSchema.safeParse({
     id,
     version: 1,

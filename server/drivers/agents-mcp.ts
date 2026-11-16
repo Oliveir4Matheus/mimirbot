@@ -57,10 +57,18 @@ export function agentsMcp(env: NodeJS.ProcessEnv): (msg: Json) => Promise<Json |
         }
         const startedAt = Date.now();
         try {
-          const { text, isError, passthrough } = await callTool(name, args, context);
+          const { text, isError, passthrough, structured } = await callTool(name, args, context);
           await sendToolReceipt(context, name, args, startedAt, { ok: !isError, error: text });
           if (passthrough) return ok(id, passthrough);
-          return textResult(id, name === "tool_result_read" ? text : await capResult(text, context), isError);
+          const capped = name === "tool_result_read" ? text : await capResult(text, context);
+          if (structured) {
+            return ok(id, {
+              content: [{ type: "text", text: capped }],
+              ...(isError ? { isError: true } : {}),
+              structuredContent: structured,
+            });
+          }
+          return textResult(id, capped, isError);
         } catch (e) {
           await sendToolReceipt(context, name, args, startedAt, { ok: false, error: (e as Error).message });
           return textResult(id, await capResult((e as Error).message, context), true);

@@ -5,12 +5,13 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import type { BotWorkflowStep, LoopWorkflowStep, StepOutput } from "../../shared/workflow.ts";
 import {
-  WORKFLOW_RESULT_MAX_BYTES,
+  WORKFLOW_JSON_MAX_BYTES,
   copyBodyStepInputs,
   copyStepInputs,
   prepareIterationDirectories,
   prepareRunDirectories,
   projectLoopOutputs,
+  readStepJson,
   safeWorkflowPath,
   verifyStepOutputs,
 } from "./files.ts";
@@ -124,59 +125,49 @@ describe("verifyStepOutputs", () => {
     expect(verifyStepOutputs(dir, required("numbers.csv"))).toEqual({ ok: false, error: expect.stringContaining("is a link") });
   });
 
-  it("reads a declared result as a small JSON object", () => {
+  it("reads a declared output as a small JSON object", () => {
     const dir = writeOutput("decision.json", JSON.stringify({ approved: true, reason: "ok" }));
-    expect(verifyStepOutputs(dir, required("decision.json"), "decision.json")).toEqual({
-      ok: true,
-      verified: ["decision.json"],
-      result: { approved: true, reason: "ok" },
-    });
+    expect(readStepJson(dir, "decision.json")).toEqual({ ok: true, value: { approved: true, reason: "ok" } });
   });
 
-  it("fails when the result is not declared as an output", () => {
-    const dir = writeOutput("decision.json", "{}");
-    expect(verifyStepOutputs(dir, required("decision.json"), "other.json")).toEqual({
-      ok: false,
-      error: expect.stringContaining("must be one of the step's outputs"),
-    });
-  });
-
-  it("fails when the result is missing, empty or not JSON", () => {
+  it("fails when the JSON output is missing, empty or not JSON", () => {
     const dir = outputDir();
-    const optional: StepOutput[] = [{ path: "decision.json", required: false }];
-    expect(verifyStepOutputs(dir, optional, "decision.json")).toEqual({
-      ok: false,
-      error: expect.stringContaining("missing result"),
-    });
+    expect(readStepJson(dir, "decision.json")).toEqual({ ok: false, error: expect.stringContaining("missing output") });
     writeFileSync(join(dir, "decision.json"), "");
-    expect(verifyStepOutputs(dir, optional, "decision.json")).toEqual({
-      ok: false,
-      error: expect.stringContaining("is empty"),
-    });
+    expect(readStepJson(dir, "decision.json")).toEqual({ ok: false, error: expect.stringContaining("is empty") });
     writeFileSync(join(dir, "decision.json"), "{not json");
-    expect(verifyStepOutputs(dir, optional, "decision.json")).toEqual({
-      ok: false,
-      error: expect.stringContaining("is not valid JSON"),
-    });
+    expect(readStepJson(dir, "decision.json")).toEqual({ ok: false, error: expect.stringContaining("is not valid JSON") });
   });
 
-  it("fails when the result is an array, a scalar or null", () => {
+  it("fails when the JSON output is an array, a scalar or null", () => {
     const dir = outputDir();
     for (const text of ["[]", '"yes"', "null", "3"]) {
       writeFileSync(join(dir, "decision.json"), text);
-      expect(verifyStepOutputs(dir, required("decision.json"), "decision.json")).toEqual({
-        ok: false,
-        error: expect.stringContaining("must be a JSON object"),
-      });
+      expect(readStepJson(dir, "decision.json")).toEqual({ ok: false, error: expect.stringContaining("must be a JSON object") });
     }
   });
 
-  it("fails when the result is larger than the limit", () => {
-    const dir = writeOutput("decision.json", JSON.stringify({ text: "x".repeat(WORKFLOW_RESULT_MAX_BYTES) }));
-    expect(verifyStepOutputs(dir, required("decision.json"), "decision.json")).toEqual({
-      ok: false,
-      error: expect.stringContaining("larger than"),
-    });
+  it("fails when the JSON output is larger than the limit", () => {
+    const dir = writeOutput("decision.json", JSON.stringify({ text: "x".repeat(WORKFLOW_JSON_MAX_BYTES) }));
+    expect(readStepJson(dir, "decision.json")).toEqual({ ok: false, error: expect.stringContaining("larger than") });
+  });
+
+  it("verifies a declared shape against the file", () => {
+    const dir = writeOutput("decision.json", JSON.stringify({ approved: true }));
+    const shaped: StepOutput[] = [{
+      path: "decision.json",
+      required: true,
+      shape: { type: "object", required: ["approved"], properties: { approved: { type: "boolean" } } },
+    }];
+    expect(verifyStepOutputs(dir, shaped)).toEqual({ ok: true, verified: ["decision.json"] });
+    writeFileSync(join(dir, "decision.json"), JSON.stringify({ approved: "yes" }));
+    expect(verifyStepOutputs(dir, shaped)).toEqual({ ok: false, error: expect.stringContaining("does not match its shape") });
+  });
+
+  it("fails a declared shape that does not compile", () => {
+    const dir = writeOutput("decision.json", "{}");
+    const broken: StepOutput[] = [{ path: "decision.json", required: true, shape: { type: "no-such-type" } }];
+    expect(verifyStepOutputs(dir, broken)).toEqual({ ok: false, error: expect.stringContaining("does not compile") });
   });
 });
 
@@ -295,12 +286,11 @@ describe("Do While folders", () => {
     kind: "loop",
     name: "Loop",
     body,
-    from: body[0]!.id,
+    from: { step: body[0]!.id, output: "result.json" },
     match: "all",
     conditions: [{ field: "restantes", op: "lte", value: 0 }],
     maxIterations: 3,
     outputs,
-    result: "result.json",
     onSuccess: undefined,
   } as LoopWorkflowStep);
 

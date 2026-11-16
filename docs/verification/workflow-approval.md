@@ -33,7 +33,8 @@ Use the URL and bot id the fixture prints. A credential card stands in for any
 card the person must answer; the step only needs one that ends the turn.
 
 1. `POST /api/workflows` with one step: `outputs: [{path: "result.json",
-   required: true}]`, `result: "result.json"`, `require: {ok: true}`.
+   required: true}]`. No `result` and no `require`: the engine checks presence,
+   and a `shape` when the file declares one.
 2. `POST /api/workflows/<id>/run` and read
    `GET /api/workflows/runs/<runId>`: the run is `waiting_approval`, the step
    is `running`, and `pause.cardIds` names the card message.
@@ -47,7 +48,7 @@ card the person must answer; the step only needs one that ends the turn.
 4. `POST /api/bots/<botId>/secret-cards/<messageId>/dismiss` with
    `{"threadId": "<run.steps[0].threadId>"}`.
 5. `GET /api/workflows/runs/<runId>` again: `succeeded`,
-   `steps[0].verified` is `["result.json"]` and `result` is `{ok: true}`.
+   `steps[0].verified` is `["result.json"]`; the run has no `result` field.
 
 ## What it does not prove
 

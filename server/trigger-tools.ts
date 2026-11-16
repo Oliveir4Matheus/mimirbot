@@ -61,6 +61,7 @@ export function agentRoutine(routine: Routine, latestRun?: RoutineRun) {
     id: routine.id,
     kind: "schedule" as const,
     name: redactSecretsInText(routine.name),
+    ...(routine.target === "workflow" && routine.workflowId ? { target: "workflow" as const, workflowId: routine.workflowId } : {}),
     ...instructionsOf(routine.prompt),
     continuity: routine.continuity === true,
     overlap: routine.overlap ?? "skip",

@@ -59,20 +59,81 @@ describe("propose_workflow", () => {
     const result = await callTool("propose_workflow", {
       name: "Enviar uma vez",
       interview: { recurring: false },
-      steps: [{ id: "a", kind: "bot", name: "A", botId: "bot-a", instructions: "Do it.", outputs: [{ path: "x" }] }],
+      steps: [{ id: "a", kind: "bot", name: "A", botId: "bot-a", instructions: "Do it.", outputs: [{ path: "x.txt" }] }],
     }, context({ ok: true, status: 201, body: { proposal } }));
     expect(result.isError).toBe(true);
     expect(result.text).toContain("one-time task is not a Workflow");
   });
 
-  it("surfaces the server's validation error", async () => {
+  it("renders a WorkflowRefusal as one line per issue the server sent", async () => {
+    const refusal = {
+      code: "authoringErrors",
+      error: "three problems",
+      authoring: {
+        errors: [
+          { path: "steps.0.mode", message: "step \"Pedir\" must collect a value" },
+          { path: "steps.1.outputs.0.path", message: "output \"resumo\" needs a file extension" },
+          { path: "steps.1.outputs.1.path", message: "output \"clip_*.mp4\" cannot hold *" },
+        ],
+        warnings: [],
+      },
+    };
     const result = await callTool("propose_workflow", {
       name: "Sem prova",
       interview: { recurring: true },
-      steps: [{ id: "a", kind: "bot", name: "A", botId: "bot-a", instructions: "Do it.", outputs: [] }],
-    }, context({ ok: false, status: 400, body: { error: "steps.0.outputs: too small" } }));
+      steps: [{ id: "a", kind: "bot", name: "A", botId: "bot-a", instructions: "Do it.", outputs: [{ path: "x.txt" }] }],
+    }, context({ ok: false, status: 400, body: refusal }));
     expect(result.isError).toBe(true);
-    expect(result.text).toBe("steps.0.outputs: too small");
+    expect(result.text.split("\n")).toEqual([
+      "refused: authoringErrors (3)",
+      "- steps.0.mode: step \"Pedir\" must collect a value",
+      "- steps.1.outputs.0.path: output \"resumo\" needs a file extension",
+      "- steps.1.outputs.1.path: output \"clip_*.mp4\" cannot hold *",
+    ]);
+    expect(result.structured).toEqual({ refusal });
+  });
+
+  it("shows only the code and the error when the refusal carries no authoring", async () => {
+    const result = await callTool("create_workflow_from_proposal", { proposal_id: proposal.id }, context({
+      ok: false, status: 409, body: { code: "needsAcknowledgement", error: "the rehearsal ended diverged", needsAcknowledgement: true },
+    }));
+    expect(result.isError).toBe(true);
+    expect(result.text).toBe("refused: needsAcknowledgement\nthe rehearsal ended diverged");
+    expect(result.structured).toEqual({ refusal: { code: "needsAcknowledgement", error: "the rehearsal ended diverged" } });
+  });
+
+  it("counts the issues the cap left out", async () => {
+    const result = await callTool("create_workflow_from_proposal", { proposal_id: proposal.id }, context({
+      ok: false,
+      status: 400,
+      body: {
+        code: "authoringErrors",
+        error: "many problems",
+        authoring: { errors: [{ path: "steps.0.mode", message: "one problem" }], warnings: [], truncated: 7 },
+      },
+    }));
+    expect(result.text).toBe("refused: authoringErrors (1)\n- steps.0.mode: one problem\n7 more problems were not shown");
+  });
+
+  it("falls back when the failure body does not follow the contract", async () => {
+    const result = await callTool("propose_workflow", {
+      name: "Sem prova",
+      interview: { recurring: true },
+      steps: [{ id: "a", kind: "bot", name: "A", botId: "bot-a", instructions: "Do it.", outputs: [{ path: "x.txt" }] }],
+    }, context({ ok: false, status: 400, body: { error: "the department no longer exists" } }));
+    expect(result.isError).toBe(true);
+    expect(result.text).toContain("did not follow the WorkflowRefusal contract");
+    expect(result.text).toContain("the department no longer exists");
+    expect(result.structured).toBeUndefined();
+  });
+
+  it("refuses an output without an extension before the server sees it", async () => {
+    const result = await callTool("propose_workflow", {
+      name: "Sem extensão",
+      interview: { recurring: true },
+      steps: [{ id: "a", kind: "bot", name: "A", botId: "bot-a", instructions: "Do it.", outputs: [{ path: "link" }] }],
+    }, context({ ok: true, status: 201, body: { proposal } }));
+    expect(result.isError).toBe(true);
   });
 });
 

@@ -1200,7 +1200,7 @@
     },
     {
       "name": "trigger",
-      "description": "Set up or change work that happens on its own (was create_trigger / manage_trigger): when <something happens>, a bot does <instructions>. create in this turn whenever the person describes recurring or event-based work (\"every morning send me…\", \"whenever I get an email from…\", \"when another app calls…\"); never ask for confirmation first. when=schedule runs on a time rule, cron included (call trigger_info first for relative dates: it has the authoritative time and timezone); when=app_event runs when something happens in a connected app (trigger_info action=events first; prefer it to a schedule that keeps checking); when=webhook gives an address another app sends to: the result carries its private address, so you can paste it into that app's setup yourself (never anywhere else). when=limit_reset runs when an AI's usage limit resets (\"run this when my limit resets\", or to finish work your own limit stopped). To the person these are automations: write name and instructions as they would say them. Something to do once, now, is not a trigger. update (only the fields to change), pause, resume and run_now (an app event or webhook gets a test event) act on one of the bot's routines, app events or webhooks, by its trigger_id from trigger_info; delete_trigger deletes one. Each applies at once; the person sees it with Edit, Pause and Undo. for_bot_id: a trigger of ANOTHER bot in your section, which keeps that bot's engine and permissions.",
+      "description": "Set up or change work that happens on its own (was create_trigger / manage_trigger): when <something happens>, a bot does <instructions>. create in this turn whenever the person describes recurring or event-based work (\"every morning send me…\", \"whenever I get an email from…\", \"when another app calls…\"); never ask for confirmation first. when=schedule runs on a time rule, cron included (call trigger_info first for relative dates: it has the authoritative time and timezone); when=app_event runs when something happens in a connected app (trigger_info action=events first; prefer it to a schedule that keeps checking); when=webhook gives an address another app sends to: the result carries its private address, so you can paste it into that app's setup yourself (never anywhere else). when=limit_reset runs when an AI's usage limit resets (\"run this when my limit resets\", or to finish work your own limit stopped). target=workflow with workflow_id schedules an existing Workflow instead of a bot turn, only after it was created, and its runs wait at the first manual step for the person. To the person these are automations: write name and instructions as they would say them. Something to do once, now, is not a trigger. update (only the fields to change), pause, resume and run_now (an app event or webhook gets a test event) act on one of the bot's routines, app events or webhooks, by its trigger_id from trigger_info; delete_trigger deletes one. Each applies at once; the person sees it with Edit, Pause and Undo. for_bot_id: a trigger of ANOTHER bot in your section, which keeps that bot's engine and permissions.",
       "inputSchema": {
         "type": "object",
         "additionalProperties": false,
@@ -1362,6 +1362,18 @@
               "box"
             ],
             "description": "Omit normally: maus (default) keeps the bot's model and configured computer, INCLUDING a self-hosted VPS. box runs on the bot's cloud computer, same model, once cloud computers are set up; a legacy cloud value from trigger_info means box."
+          },
+          "target": {
+            "type": "string",
+            "enum": [
+              "workflow"
+            ],
+            "description": "Schedules only: workflow runs one existing Workflow instead of a bot turn. It needs workflow_id returned by create_workflow_from_proposal; a routine never supplies a Workflow's inputs, so the first manual step collects them and every run waits there."
+          },
+          "workflow_id": {
+            "type": "string",
+            "maxLength": 128,
+            "description": "Schedules only, with target=workflow: the Workflow's id. It must already exist; never create the routine before the Workflow."
           },
           "timeout_minutes": {
             "type": "integer",
@@ -1836,7 +1848,7 @@
     },
     {
       "name": "list_workflows",
-      "description": "List the Workflows of your department that you can start. A Workflow is a fixed sequence of steps the engine runs; you start it, the engine decides who runs next.",
+      "description": "List the Workflows of your department that you can start, with only the values a person must supply before the run starts. A Workflow is a fixed sequence of steps the engine runs; you start it, the engine decides who runs next.",
       "inputSchema": {
         "type": "object",
         "additionalProperties": false,
@@ -1851,7 +1863,7 @@
     },
     {
       "name": "run_workflow",
-      "description": "Start a Workflow from list_workflows. The engine runs its steps in order, each in its own folder with its own bot. This starts the run; it does not run the steps inside this turn.",
+      "description": "Start a Workflow from list_workflows. The engine runs its steps in order, each in its own folder with its own bot. inputs carries only the start values list_workflows shows; a value that is produced during the run is never asked here. A step may ask the person to confirm something: approval: open a request card (request_credential) and end the turn; the run waits indefinitely for a person; there is no timeout and no fallback; a refused card cancels the run. In a step's instructions, never promise a fallback such as \"continue if there is no answer\"; without an answer the step waits. This starts the run; it does not run the steps inside this turn.",
       "inputSchema": {
         "type": "object",
         "additionalProperties": false,
@@ -1882,7 +1894,7 @@
     },
     {
       "name": "workflow_status",
-      "description": "Show a Workflow run's current step, each step's status and verified outputs, and why it failed.",
+      "description": "Show a Workflow run's current step, each step's status and verified outputs, what a paused run is waiting for, the comparison a condition took, and why it failed.",
       "inputSchema": {
         "type": "object",
         "additionalProperties": false,
@@ -1924,7 +1936,7 @@
     },
     {
       "name": "propose_workflow",
-      "description": "Turn a conversation into a Workflow proposal. Call only when the person explicitly asks for a Workflow; a one-time task is not a Workflow. First ask the three interview questions one per turn: does it repeat, what changes each run, and who confirms. Then describe each step with its files, result and proof. Nothing is created, listed or run until the person chooses Criar Workflow on the card.",
+      "description": "Turn a conversation into a Workflow proposal. Call only when the person explicitly asks for a Workflow; a one-time task is not a Workflow. First ask the three interview questions one per turn: does it repeat, what changes each run, and who confirms. Nothing you write in the interview is confirmed: the person confirms or corrects each answer on the proposal card, and only that confirmation lets the Workflow be created, so never say the interview is agreed. Every output is a file whose name ends in an extension; the engine parses a .json only when a condition or a parameter from reads it, and that .json must declare a shape. A script is one flat .mjs file: it gets input/params.json and WORKFLOW_STEP_INPUT/WORKFLOW_STEP_OUTPUT, never arguments, and declares what it needs in modules. A document reaches a step only through inputs, from an earlier step's output. A parameter without an origin is supplied when the run starts; from extracts one field of an earlier .json output and collectedBy names the manual step that asks the person, so neither is ever required at the start. A manual step exists to receive a value from the person: it is not a pause, the answer never arrives through the chat, and a manual step without a parameter whose collectedBy is that step is refused. When the proposal is refused, the response is a WorkflowRefusal: it lists every problem with its path and the fix; correct all of them and propose again in the same turn. Inside a step, approval: open a request card (request_credential) and end the turn; the run waits indefinitely for a person; there is no timeout and no fallback; a refused card cancels the run. In a step's instructions, never promise a fallback such as \"continue if there is no answer\"; without an answer the step waits. Unknown fields are refused, not ignored. Three linked steps, exactly: {\"steps\":[{\"id\":\"pedir-link\",\"kind\":\"bot\",\"name\":\"Pedir o link\",\"botId\":\"<a bot id from list_bots>\",\"mode\":\"manual\",\"instructions\":\"Ask the person for today's video link and write it to output/link.txt.\",\"parameters\":[{\"name\":\"link\",\"type\":\"string\",\"collectedBy\":\"pedir-link\"}],\"outputs\":[{\"path\":\"link.txt\",\"required\":true}]},{\"id\":\"baixar-transcrever\",\"kind\":\"script\",\"name\":\"Baixar e transcrever\",\"run\":\"fetchshorts.mjs\",\"timeoutMs\":1800000,\"modules\":[\"yt-dlp\",\"ffmpeg\",{\"name\":\"faster-whisper\",\"runtime\":\"python\",\"version\":\"1.2.1\"},\"gpu\"],\"inputs\":[{\"as\":\"link.txt\",\"from\":{\"step\":\"pedir-link\",\"output\":\"link.txt\"}}],\"outputs\":[{\"path\":\"transcript.json\",\"required\":true,\"shape\":{\"type\":\"object\",\"required\":[\"segments\"],\"properties\":{\"segments\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"required\":[\"start\",\"end\",\"text\"],\"properties\":{\"start\":{\"type\":\"number\"},\"end\":{\"type\":\"number\"},\"text\":{\"type\":\"string\"}}}}}}}]},{\"id\":\"escolher-trechos\",\"kind\":\"bot\",\"name\":\"Escolher trechos\",\"botId\":\"<a bot id from list_bots>\",\"instructions\":\"Leia input/transcript.json e escreva output/trechos.json with the chosen clips.\",\"inputs\":[{\"as\":\"transcript.json\",\"from\":{\"step\":\"baixar-transcrever\",\"output\":\"transcript.json\"}}],\"outputs\":[{\"path\":\"trechos.json\",\"required\":true,\"shape\":{\"type\":\"object\",\"required\":[\"clips\"],\"properties\":{\"clips\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}}}}]}]} Nothing is created, listed or run until the person chooses Criar Workflow on the card; that choice opens the preview, which rehearses the scripts and carries the interview confirmation.",
       "inputSchema": {
         "type": "object",
         "additionalProperties": false,
@@ -1976,19 +1988,341 @@
             "type": "array",
             "items": {
               "type": "object",
-              "additionalProperties": true,
+              "additionalProperties": false,
               "properties": {
+                "id": {
+                  "type": "string",
+                  "maxLength": 64,
+                  "description": "Lowercase letters, digits and single hyphens."
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "bot",
+                    "script",
+                    "condition",
+                    "loop"
+                  ]
+                },
+                "name": {
+                  "type": "string",
+                  "maxLength": 120
+                },
+                "inputs": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "as": {
+                        "type": "string",
+                        "description": "The file name this step sees under input/."
+                      },
+                      "from": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                          "step": {
+                            "type": "string",
+                            "maxLength": 64,
+                            "description": "An earlier step id."
+                          },
+                          "output": {
+                            "type": "string",
+                            "description": "That step's declared output, exactly."
+                          }
+                        },
+                        "required": [
+                          "step",
+                          "output"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "as",
+                      "from"
+                    ]
+                  },
+                  "description": "Documents from earlier steps. A step sees only what it declares here."
+                },
+                "outputs": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "path": {
+                        "type": "string",
+                        "pattern": "^[^*]+\\.[A-Za-z0-9]{1,12}$",
+                        "description": "Exact file name with an extension, never a glob. A .json read by a condition needs a shape."
+                      },
+                      "required": {
+                        "type": "boolean",
+                        "description": "Defaults to true."
+                      },
+                      "shape": {
+                        "type": "object",
+                        "additionalProperties": true,
+                        "description": "JSON Schema (draft-07 or 2020-12) of this file's content."
+                      }
+                    },
+                    "required": [
+                      "path"
+                    ]
+                  }
+                },
                 "parameters": {
                   "type": "array",
                   "items": {
                     "type": "object",
-                    "additionalProperties": true
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "maxLength": 64,
+                        "description": "Lowercase letters, digits and _."
+                      },
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "string",
+                          "number",
+                          "integer",
+                          "boolean",
+                          "date",
+                          "enum"
+                        ],
+                        "description": "A list holds values of this type when list is true."
+                      },
+                      "required": {
+                        "type": "boolean",
+                        "description": "Defaults to true."
+                      },
+                      "values": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "The closed list an enum accepts."
+                      },
+                      "whenAbsent": {
+                        "type": "string",
+                        "description": "An optional parameter names a rule: rule:<name>."
+                      },
+                      "list": {
+                        "type": "boolean",
+                        "description": "True when params.json holds a list of scalars of type, never a list of objects."
+                      },
+                      "from": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                          "step": {
+                            "type": "string",
+                            "description": "An earlier step id."
+                          },
+                          "output": {
+                            "type": "string",
+                            "description": "Its required .json output, which carries a shape."
+                          },
+                          "field": {
+                            "type": "string",
+                            "description": "Dotted path into that JSON, such as total or check.clips."
+                          }
+                        },
+                        "required": [
+                          "step",
+                          "output",
+                          "field"
+                        ],
+                        "description": "The value is a field of an earlier step's JSON output. That document is then not also an input of this step."
+                      },
+                      "collectedBy": {
+                        "type": "string",
+                        "description": "The id of the manual step that asks the person for this value."
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "type"
+                    ]
                   },
-                  "description": "Values the run must supply: {name, type: string|number|integer|boolean|date|enum, required, values? for enum, whenAbsent? as rule:<name> when optional}."
+                  "description": "A parameter without from or collectedBy is supplied when the run starts. Never require at the start a value that an earlier step writes."
+                },
+                "onSuccess": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "Next step id; null ends the flow; omit for the next step in order."
+                },
+                "onFailure": {
+                  "type": "string",
+                  "description": "Step to continue at when this step fails."
+                },
+                "onTimeout": {
+                  "type": "string",
+                  "description": "Step to continue at when this step times out; needs timeoutMs."
+                },
+                "mode": {
+                  "type": "string",
+                  "enum": [
+                    "auto",
+                    "manual"
+                  ],
+                  "description": "manual collects one of this step's parameters from the person before the step starts; it is not a pause, and a manual step without such a parameter is refused."
+                },
+                "timeoutMs": {
+                  "type": "integer",
+                  "maximum": 3600000,
+                  "description": "Per step: 0 means no limit for a bot step."
+                },
+                "botId": {
+                  "type": "string",
+                  "description": "Bot steps only: a bot id from list_bots."
+                },
+                "instructions": {
+                  "type": "string",
+                  "description": "Bot steps only: what the bot does, naming the exact output files."
+                },
+                "skills": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "description": "Bot steps only."
+                },
+                "run": {
+                  "type": "string",
+                  "maxLength": 67,
+                  "description": "Script steps only: a flat .mjs file name listed in scripts."
+                },
+                "modules": {
+                  "type": "array",
+                  "maxItems": 16,
+                  "items": {
+                    "type": [
+                      "string",
+                      "object"
+                    ],
+                    "maxLength": 64,
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "maxLength": 64
+                      },
+                      "runtime": {
+                        "type": "string",
+                        "enum": [
+                          "bin",
+                          "python",
+                          "node"
+                        ],
+                        "description": "bin checks PATH; python and node install in this installation's own environment."
+                      },
+                      "version": {
+                        "type": "string",
+                        "maxLength": 64,
+                        "description": "Install exactly this version."
+                      }
+                    },
+                    "description": "A string is a binary on PATH. An object names a package and its runtime."
+                  },
+                  "description": "Script steps only: a binary such as ffmpeg, a package such as {\"name\":\"faster-whisper\",\"runtime\":\"python\",\"version\":\"1.2.1\"}, or gpu. Checked before a run; only Prepare environment installs a package."
+                },
+                "from": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "step": {
+                      "type": "string",
+                      "description": "An earlier step id."
+                    },
+                    "output": {
+                      "type": "string",
+                      "description": "Its required .json output."
+                    }
+                  },
+                  "required": [
+                    "step",
+                    "output"
+                  ],
+                  "description": "Condition and Do While steps only: the step and output they read."
+                },
+                "match": {
+                  "type": "string",
+                  "enum": [
+                    "all",
+                    "any"
+                  ],
+                  "description": "Condition and Do While steps only; defaults to all."
+                },
+                "conditions": {
+                  "type": "array",
+                  "maxItems": 20,
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "field": {
+                        "type": "string",
+                        "description": "Dotted path into the .json read, such as total or check.ok."
+                      },
+                      "op": {
+                        "type": "string",
+                        "enum": [
+                          "equals",
+                          "not_equals",
+                          "exists",
+                          "contains",
+                          "gt",
+                          "gte",
+                          "lt",
+                          "lte"
+                        ]
+                      },
+                      "value": {
+                        "description": "Compared as JSON; leave it out only for exists."
+                      }
+                    },
+                    "required": [
+                      "field",
+                      "op"
+                    ]
+                  },
+                  "description": "Condition and Do While steps only."
+                },
+                "whenTrue": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "Condition steps only."
+                },
+                "whenFalse": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "Condition steps only."
+                },
+                "body": {
+                  "type": "array",
+                  "maxItems": 20,
+                  "description": "Do While steps only: one round's steps, with no nested Do While."
+                },
+                "maxIterations": {
+                  "type": "integer",
+                  "description": "Do While steps only; defaults to 1."
                 }
-              }
+              },
+              "required": [
+                "id",
+                "kind",
+                "name",
+                "outputs"
+              ]
             },
-            "description": "The workflow steps, each with id, kind, name, inputs, parameters, outputs, result and either botId/instructions or run. The first step must be a bot or script step in mode manual."
+            "description": "The steps, in order. The first is a bot or script step in mode manual. A condition reads one earlier step's required .json output by from {step, output}; a Do While reads its body the same way."
           },
           "scripts": {
             "type": "array",
@@ -1999,7 +2333,7 @@
                 "name": {
                   "type": "string",
                   "maxLength": 67,
-                  "description": "Flat file name ending in .mjs, .js, .ts or .py."
+                  "description": "Flat file name ending in .mjs."
                 },
                 "content": {
                   "type": "string",
@@ -2023,7 +2357,7 @@
     },
     {
       "name": "create_workflow_from_proposal",
-      "description": "Create the Workflow the person approved by choosing Criar Workflow on a proposal card. Never call it before that choice. Returns the Workflow id; the first step stays manual.",
+      "description": "Create the Workflow the person approved by confirming the three interview answers and choosing Criar Workflow on the proposal card, then reviewing its preview. Never call it before that choice, and never confirm the interview for the person: without their confirmation the route refuses and says what is missing. Creation also requires a passing rehearsal; without one, the person must write a reason, which you pass as acknowledge_reason. When the save refuses, the response is a WorkflowRefusal: it lists every problem with its path and the fix; correct all of them and propose again in the same turn. Returns the Workflow id; the first step stays manual.",
       "inputSchema": {
         "type": "object",
         "additionalProperties": false,
@@ -2032,6 +2366,10 @@
             "type": "string",
             "maxLength": 64,
             "description": "The proposal id shown on the card."
+          },
+          "acknowledge_reason": {
+            "type": "string",
+            "description": "The reason the person gave for creating a proposal whose rehearsal did not pass. Omit when the rehearsal passed."
           }
         },
         "required": [

@@ -10,10 +10,18 @@ export const WORKFLOW_INSTRUCTIONS_MAX = 12_000;
 export const WORKFLOW_PATH_MAX = 200;
 export const WORKFLOW_RETENTION_DEFAULT_DAYS = 90;
 export const WORKFLOW_RETENTION_MAX_DAYS = 3_650;
-/** A script the Workflow can reference: a flat name; the extension picks the runtime. */
+/** A script the Workflow can reference: a flat `.mjs` name; Node is the only runtime. */
 export const WORKFLOW_SCRIPT_MAX_BYTES = 256 * 1024;
 export const WORKFLOW_SCRIPT_TIMEOUT_DEFAULT_MS = 60_000;
-export const WORKFLOW_SCRIPT_TIMEOUT_MAX_MS = 300_000;
+export const WORKFLOW_SCRIPT_TIMEOUT_MAX_MS = 3_600_000;
+/** A declared JSON Schema per output: the bytes the definition may carry for one `shape`. */
+export const WORKFLOW_SHAPE_MAX_BYTES = 16 * 1024;
+/** The longest file extension an output may declare; longer than any real one. */
+export const WORKFLOW_EXTENSION_MAX = 12;
+/** How many machine dependencies one script step may name. */
+export const WORKFLOW_MODULES_MAX = 16;
+export const WORKFLOW_MODULE_NAME_MAX = 64;
+export const WORKFLOW_MODULE_VERSION_MAX = 64;
 /** The longest an executable step may declare; 0 turns the limit off. */
 export const WORKFLOW_STEP_TIMEOUT_MAX_MS = 3_600_000;
 export const WORKFLOW_BOT_TIMEOUT_DEFAULT_MS = 0;
@@ -39,7 +47,10 @@ export const WORKFLOW_SKILLS_IMPORTED_MAX = 200;
 export const WORKFLOW_SKILL_NAME_MAX = 64;
 
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-const SCRIPT_NAME = /^[a-z0-9][a-z0-9-]{0,62}\.(?:mjs|js|ts|py)$/;
+const SCRIPT_NAME = /^[a-z0-9][a-z0-9-]{0,59}\.mjs$/;
+const BIN_MODULE_NAME = /^[a-z0-9][a-z0-9._-]*$/;
+const NODE_MODULE_NAME = /^(@[a-z0-9._-]+\/)?[a-z0-9][a-z0-9._-]*$/;
+const MODULE_VERSION = /^[0-9A-Za-z.+!_*-]+$/;
 const RESULT_FIELD = /^[A-Za-z0-9_-]{1,64}(?:\.[A-Za-z0-9_-]{1,64})*$/;
 
 /** C0 controls and DEL: never in a folder or file name the engine writes. */
@@ -56,9 +67,52 @@ export function isWorkflowSlug(value: string): boolean {
 }
 
 /** The file name a script step points at inside the Workflow's `scripts/` folder.
- * The extension picks the runtime: `.mjs`/`.js` Node, `.ts` Node strip-types, `.py` Python. */
+ * Only `.mjs` runs: the engine is Node, so timeout, kill and rehearsal need no second runtime. */
 export function isWorkflowScriptName(value: string): boolean {
   return value.length <= 67 && SCRIPT_NAME.test(value);
+}
+
+/** The extension of a declared output, in lowercase, or undefined when the name has none.
+ * The engine parses an output as JSON exactly when this ends with `json`. */
+export function workflowFileExtension(path: string): string | undefined {
+  const name = path.slice(path.lastIndexOf("/") + 1);
+  const dot = name.lastIndexOf(".");
+  if (dot <= 0 || dot === name.length - 1) return undefined;
+  const extension = name.slice(dot + 1);
+  return extension.length <= WORKFLOW_EXTENSION_MAX && /^[A-Za-z0-9]+$/.test(extension) ? extension.toLowerCase() : undefined;
+}
+
+/** Whether the engine parses this output as JSON: the name ends in `.json`, compared lowercase. */
+export function isWorkflowJsonPath(path: string): boolean {
+  return workflowFileExtension(path) === "json";
+}
+
+/** How a module is provided: a binary on PATH, or a package in the installation's own
+ * python venv (`~/.workflow-env/`) or `node_modules` (`~/MimirBot/node_modules`). */
+export const workflowModuleRuntimes = ["bin", "python", "node"] as const;
+export type WorkflowModuleRuntime = (typeof workflowModuleRuntimes)[number];
+
+/** One entry of a script step's `modules`. A version pins the package exactly and is compared at preflight. */
+export interface WorkflowModule {
+  name: string;
+  runtime: WorkflowModuleRuntime;
+  version?: string;
+}
+
+/** `gpu` names the machine's GPU rather than a package; only a binary entry may use it. */
+const SPECIAL_BIN = "gpu";
+
+export function isWorkflowModuleName(value: string, runtime: WorkflowModuleRuntime = "bin"): boolean {
+  if (value.length === 0 || value.length > WORKFLOW_MODULE_NAME_MAX) return false;
+  if (value === SPECIAL_BIN) return runtime === "bin";
+  return (runtime === "node" ? NODE_MODULE_NAME : BIN_MODULE_NAME).test(value);
+}
+
+/** A version, never a URL, a path, a flag or anything with a space. */
+export function isWorkflowModuleVersion(value: string): boolean {
+  if (value.length === 0 || value.length > WORKFLOW_MODULE_VERSION_MAX) return false;
+  if (value.startsWith("-") || value.includes("/") || value.includes(":")) return false;
+  return MODULE_VERSION.test(value);
 }
 
 /** A path a step may declare: relative, no `.`/`..` segment, no absolute
@@ -86,9 +140,21 @@ const stepInputSchema = z.object({
 
 const stepOutputSchema = z.object({
   path: workflowPath,
-  /** A missing optional output does not fail the step; a declared result always does. */
+  /** A missing optional output does not fail the step; a required one always does. */
   required: z.boolean().default(true),
+  /** A JSON Schema for the file's content, validated with the same compiler MCP tools use.
+   * A `.json` a `condition` reads must declare one; a last-step `.json` may. */
+  shape: z.record(z.string(), z.unknown()).optional(),
 });
+
+const conditionSourceSchema = z.object({
+  /** The step whose output this condition reads; it must be earlier in the same list. */
+  step: z.string().refine(isWorkflowSlug, { message: "must be a step id" }),
+  /** That step's declared output, which must be a required file. */
+  output: workflowPath,
+});
+
+const stepIdSchema = z.string().refine(isWorkflowSlug, { message: "must be lowercase letters, digits and single hyphens" });
 
 const parameterName = z.string()
   .trim()
@@ -96,20 +162,41 @@ const parameterName = z.string()
   .max(WORKFLOW_PARAMETER_NAME_MAX)
   .regex(/^[a-z][a-z0-9_]*$/, { message: "must start with a lowercase letter and use letters, digits or _ only" });
 
+/** A value a later step extracts from an earlier step's JSON output. */
+const workflowParameterSourceSchema = z.object({
+  step: stepIdSchema,
+  output: workflowPath,
+  /** A dotted path into that JSON, such as `total` or `check.clips`. */
+  field: z.string().regex(RESULT_FIELD, { message: "must be a dotted path of letters, digits, _ or -" }),
+});
+
 export const workflowParameterSchema = z.object({
   name: parameterName,
   type: z.enum(workflowParameterTypes),
   /** The closed list an `enum` parameter accepts. */
   values: z.array(z.string().trim().min(1).max(200)).min(1).max(100).optional(),
+  /** The value is a list of scalars of `type`; a list of objects is never a parameter. */
+  list: z.boolean().default(false),
   required: z.boolean().default(true),
   /** An optional parameter must say what happens when it is absent: `rule:<name>`. */
   whenAbsent: z.string().trim().regex(/^rule:[a-z0-9]+(?:[-_][a-z0-9]+)*$/, { message: "must name a rule as rule:<name>" }).optional(),
+  /** Where a value that does not come from the start comes from: one field of an earlier
+   * step's `.json` output, or the person answering a manual step. */
+  from: workflowParameterSourceSchema.optional(),
+  collectedBy: stepIdSchema.optional(),
 }).superRefine((parameter, context) => {
   if (parameter.type === "enum" && parameter.values === undefined) {
     context.addIssue({ code: "custom", path: ["values"], message: "an enum parameter needs its values" });
   }
   if (parameter.type !== "enum" && parameter.values !== undefined) {
     context.addIssue({ code: "custom", path: ["values"], message: "only an enum parameter declares values" });
+  }
+  const origins = (parameter.from === undefined ? 0 : 1) + (parameter.collectedBy === undefined ? 0 : 1);
+  if (origins > 1) {
+    context.addIssue({ code: "custom", path: ["from"], message: "a parameter has one origin: from, collectedBy, or the start of the run" });
+  }
+  if (origins > 0 && !parameter.required) {
+    context.addIssue({ code: "custom", path: ["required"], message: "a parameter with an origin is always required; its value comes from the run, not from a fallback" });
   }
   if (!parameter.required && parameter.whenAbsent === undefined) {
     context.addIssue({ code: "custom", path: ["whenAbsent"], message: "an optional parameter needs whenAbsent, such as rule:periodo_padrao" });
@@ -183,15 +270,15 @@ export const workflowCanvasSchema = z.object({
 export type WorkflowSubcanvas = z.output<typeof workflowSubcanvasSchema>;
 export type WorkflowCanvas = z.output<typeof workflowCanvasSchema>;
 
-const requireSchema = z.record(z.string().min(1).max(64), z.unknown()).refine(
+/** A legacy field the engine no longer reads: accepted on load so an existing Workflow never
+ * disappears from the list, refused on save with a message that names the condition step. */
+const legacyResultSchema = workflowPath;
+const legacyRequireSchema = z.record(z.string().min(1).max(64), z.unknown()).refine(
   (value) => Object.keys(value).length <= 64 && JSON.stringify(value).length <= 4_096,
   { message: "require must be a small JSON object" },
 );
 
-const stepIdSchema = z.string().refine(isWorkflowSlug, { message: "must be lowercase letters, digits and single hyphens" });
-
-const whenSchema = z.object({
-  /** Dotted path into the step's declared result, e.g. `ok` or `check.total`. */
+const legacyWhenSchema = z.object({
   field: z.string().regex(RESULT_FIELD, { message: "must be a dotted path of letters, digits, _ or -" }),
   equals: z.unknown(),
   next: stepIdSchema,
@@ -204,18 +291,15 @@ const stepBaseSchema = z.object({
   outputs: z.array(stepOutputSchema).min(1).max(50),
   /** The values a run supplies to this step; each step receives only its own subset. */
   parameters: z.array(workflowParameterSchema).max(WORKFLOW_PARAMETER_MAX).default([]),
-  /** The short JSON object a later branch reads; must be one of the outputs. */
-  result: workflowPath.optional(),
-  /** Fields of the declared result that must match by equality for the step to pass. */
-  require: requireSchema.optional(),
   /** Where to go after this step passes. null ends the flow; absent means the next step in array order. */
   onSuccess: stepIdSchema.nullable().optional(),
   /** Where to go when this step fails. Without it the run stops, as it always did. */
   onFailure: stepIdSchema.optional(),
   /** Where to go when this step times out; needs `timeoutMs` greater than 0. */
   onTimeout: stepIdSchema.optional(),
-  /** The first branch whose field matches the declared result chooses the next step. */
-  when: z.array(whenSchema).min(1).max(WORKFLOW_BRANCH_MAX).optional(),
+  result: legacyResultSchema.optional(),
+  require: legacyRequireSchema.optional(),
+  when: z.array(legacyWhenSchema).min(1).max(WORKFLOW_BRANCH_MAX).optional(),
 });
 
 const skillNameSchema = z.string().trim().min(1).max(WORKFLOW_SKILL_NAME_MAX);
@@ -271,18 +355,54 @@ const botStepSchema = stepBaseSchema.extend({
   mode: stepModeSchema,
 });
 
+/** A module entry as read: a bare string is a binary, and an object names its runtime. */
+const workflowModuleObjectSchema = z.object({
+  name: z.string(),
+  runtime: z.enum(workflowModuleRuntimes).default("bin"),
+  /** Installs exactly this version, and preflight compares the prepared one against it. */
+  version: z.string().optional(),
+}).superRefine((module, context) => {
+  if (!isWorkflowModuleName(module.name, module.runtime)) {
+    context.addIssue({
+      code: "custom",
+      path: ["name"],
+      message: module.runtime === "node"
+        ? 'must be a node package name, such as sharp or @scope/sharp'
+        : 'must be a lowercase name of letters, digits, dots, hyphens or underscores',
+    });
+  }
+  if (module.version !== undefined && !isWorkflowModuleVersion(module.version)) {
+    context.addIssue({ code: "custom", path: ["version"], message: "must be a version such as 1.2.1, with no URL, path, flag or space" });
+  }
+  if (module.runtime === "bin" && module.version !== undefined) {
+    context.addIssue({
+      code: "custom",
+      path: ["version"],
+      message: "a binary is checked on PATH and has no version; remove version or declare the package with runtime python or node",
+    });
+  }
+});
+
+export const workflowModuleSchema = z.preprocess(
+  (value) => typeof value === "string" ? { name: value, runtime: "bin" } : value,
+  workflowModuleObjectSchema,
+);
+
 const scriptStepSchema = stepBaseSchema.extend({
   kind: z.literal("script"),
   /** A file name inside the Workflow's `scripts/` folder, never a path. */
-  run: z.string().refine(isWorkflowScriptName, { message: "must be a flat .mjs, .js, .ts or .py file name" }),
+  run: z.string().refine(isWorkflowScriptName, { message: "must be a flat .mjs file name" }),
   timeoutMs: z.number().int().min(1_000).max(WORKFLOW_SCRIPT_TIMEOUT_MAX_MS).default(WORKFLOW_SCRIPT_TIMEOUT_DEFAULT_MS),
+  /** What the machine must provide: a binary on PATH, or a package in the installation's
+   * python/node environment. Checked before a run, never installed during one. */
+  modules: z.array(workflowModuleSchema).max(WORKFLOW_MODULES_MAX).default([]),
   mode: stepModeSchema,
 });
 
 export const conditionOps = ["equals", "not_equals", "exists", "contains", "gt", "gte", "lt", "lte"] as const;
 
 const conditionLineSchema = z.object({
-  /** Dotted path into the source result, e.g. `ok` or `check.total`. */
+  /** Dotted path into the source output, e.g. `ok` or `check.total`. */
   field: z.string().regex(RESULT_FIELD, { message: "must be a dotted path of letters, digits, _ or -" }),
   op: z.enum(conditionOps),
   /** Compared as JSON; required for every operator except `exists`. */
@@ -293,8 +413,8 @@ const conditionStepSchema = z.object({
   id: stepIdSchema,
   kind: z.literal("condition"),
   name: z.string().trim().min(1).max(120),
-  /** The step whose result.json this condition reads. It must declare a result. */
-  from: stepIdSchema,
+  /** The step and output this condition reads: one `.json` file, declared by an earlier step. */
+  from: conditionSourceSchema,
   /** Which comparisons must hold: all of them, or at least one. */
   match: z.enum(["all", "any"]).default("all"),
   conditions: z.array(conditionLineSchema).min(1).max(WORKFLOW_CONDITION_ROWS_MAX),
@@ -312,16 +432,16 @@ const loopStepSchema = z.object({
   name: z.string().trim().min(1).max(120),
   /** The steps of one round, in execution order. A Do While cannot hold another one. */
   body: z.array(bodyStepUnionSchema).min(1).max(WORKFLOW_LOOP_BODY_MAX),
-  /** The body step whose result.json the stop condition reads. */
-  from: stepIdSchema,
+  /** The body step and output the stop condition reads after each round. */
+  from: conditionSourceSchema,
   match: z.enum(["all", "any"]).default("all"),
   conditions: z.array(conditionLineSchema).min(1).max(WORKFLOW_CONDITION_ROWS_MAX),
   /** Integer at least 1; there is no product maximum. It is not a timeout. */
   maxIterations: z.number().int().min(1).default(1),
   /** Projected from the last round; each path belongs to exactly one body step. */
   outputs: z.array(stepOutputSchema).min(1).max(50),
-  result: workflowPath.optional(),
-  require: requireSchema.optional(),
+  result: legacyResultSchema.optional(),
+  require: legacyRequireSchema.optional(),
   onSuccess: stepIdSchema.nullable().optional(),
   onFailure: stepIdSchema.optional(),
 }).strict();
@@ -351,11 +471,117 @@ function normalizeStepRecord(value: unknown): unknown {
   return record;
 }
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  value !== null && typeof value === "object" && !Array.isArray(value);
+
+/** A Workflow saved before `result` left the contract still reads: a condition or Do While
+ * that named one step becomes a pair of step and output, the output being that step's old `result`.
+ * An unknown source keeps an empty output so the definition is refused, exactly as before. */
+function normalizeDefinitionRecord(value: unknown): unknown {
+  if (!isRecord(value) || !Array.isArray(value.steps)) return value;
+  const steps = value.steps.map(normalizeStepRecord);
+  const legacyResults = new Map<string, string>();
+  const collect = (record: unknown): void => {
+    if (!isRecord(record)) return;
+    if (typeof record.id === "string" && typeof record.result === "string") legacyResults.set(record.id, record.result);
+    if (Array.isArray(record.body)) record.body.forEach(collect);
+  };
+  steps.forEach(collect);
+  const sourcePair = (from: unknown): unknown => typeof from === "string"
+    ? { step: from, output: legacyResults.get(from) ?? "" }
+    : from;
+  const clean = (record: unknown): unknown => {
+    if (!isRecord(record)) return record;
+    const next = { ...record };
+    if (next.kind === "condition") next.from = sourcePair(next.from);
+    if (next.kind === "loop") {
+      next.from = sourcePair(next.from);
+      if (Array.isArray(next.body)) next.body = next.body.map(clean);
+    }
+    return next;
+  };
+  return { ...value, steps: steps.map(clean) };
+}
+
 export const workflowBodyStepSchema = z.preprocess(normalizeStepRecord, bodyStepUnionSchema);
 
 export const workflowStepSchema = z.preprocess(normalizeStepRecord, stepUnionSchema);
 
-export const workflowDefinitionSchema = z.object({
+/** Where an origin may point: the step's own list (top level or one Do While body) first,
+ * then the top-level steps that ran before the Do While. */
+interface OriginPools {
+  local: ReadonlyMap<string, number>;
+  localIndex: number;
+  localSteps: readonly WorkflowStep[];
+  top: ReadonlyMap<string, number>;
+  topIndex: number;
+  topSteps: readonly WorkflowStep[];
+}
+
+function originSource(
+  stepId: string,
+  pools: OriginPools,
+  allowSelf: boolean,
+): { step: WorkflowStep } | { error: string } {
+  const local = pools.local.get(stepId);
+  if (local !== undefined) {
+    if (local > pools.localIndex || (!allowSelf && local === pools.localIndex)) {
+      return { error: "a parameter origin must read an earlier step" };
+    }
+    return { step: pools.localSteps[local]! };
+  }
+  const top = pools.top.get(stepId);
+  if (top !== undefined) {
+    if (top > pools.topIndex || (!allowSelf && top === pools.topIndex)) {
+      return { error: "a parameter origin must read an earlier step" };
+    }
+    return { step: pools.topSteps[top]! };
+  }
+  return { error: `the origin step ${JSON.stringify(stepId)} does not exist` };
+}
+
+function checkParameterOrigins(
+  step: { name: string; parameters: readonly WorkflowParameter[] },
+  path: Array<string | number>,
+  pools: OriginPools,
+  context: z.RefinementCtx,
+): void {
+  step.parameters.forEach((parameter, parameterIndex) => {
+    const issue = (field: string, message: string) =>
+      context.addIssue({ code: "custom", path: [...path, "parameters", parameterIndex, ...field.split(".")], message });
+    const label = `parameter ${JSON.stringify(parameter.name)} in step ${JSON.stringify(step.name)}`;
+    const origin = parameter.from;
+    if (origin !== undefined) {
+      const source = originSource(origin.step, pools, false);
+      if ("error" in source) {
+        issue("from.step", `${label}: ${source.error}`);
+      } else if (source.step.kind === "condition") {
+        issue("from.step", `${label}: a parameter origin must read a bot, script or Do While step`);
+      } else {
+        const output = source.step.outputs.find((candidate) => candidate.path === origin.output);
+        if (!output) {
+          issue("from.output", `${label}: step ${JSON.stringify(origin.step)} does not declare the output ${JSON.stringify(origin.output)}`);
+        } else if (!output.required) {
+          issue("from.output", `${label}: a parameter origin may only read a required output`);
+        } else if (!isWorkflowJsonPath(output.path)) {
+          issue("from.output", `${label}: a parameter origin reads a .json output`);
+        }
+      }
+    }
+    if (parameter.collectedBy !== undefined) {
+      const collector = originSource(parameter.collectedBy, pools, true);
+      if ("error" in collector) {
+        issue("collectedBy", `${label}: ${collector.error}`);
+      } else if (collector.step.kind === "condition" || collector.step.kind === "loop") {
+        issue("collectedBy", `${label}: a manual bot or script step collects the value`);
+      } else if (collector.step.mode !== "manual") {
+        issue("collectedBy", `${label}: step ${JSON.stringify(parameter.collectedBy)} is not manual, so it never asks a person`);
+      }
+    }
+  });
+}
+
+const workflowDefinitionObjectSchema = z.object({
   id: z.uuid(),
   version: z.number().int().min(1),
   name: z.string().trim().min(1).max(80),
@@ -412,17 +638,22 @@ export const workflowDefinitionSchema = z.object({
     const bodyStepOutputs = new Map<string, Map<string, z.output<typeof stepOutputSchema>>>();
     step.body.forEach((bodyStep, bodyIndex) => {
       if (bodyStep.kind === "condition") {
-        const sourceIndex = bodyPositions.get(bodyStep.from);
+        const sourceIndex = bodyPositions.get(bodyStep.from.step);
         if (sourceIndex === undefined) {
-          context.addIssue({ code: "custom", path: ["steps", loopIndex, "body", bodyIndex, "from"], message: `source step ${JSON.stringify(bodyStep.from)} is not in the body` });
+          context.addIssue({ code: "custom", path: ["steps", loopIndex, "body", bodyIndex, "from", "step"], message: `source step ${JSON.stringify(bodyStep.from.step)} is not in the body` });
         } else if (sourceIndex >= bodyIndex) {
-          context.addIssue({ code: "custom", path: ["steps", loopIndex, "body", bodyIndex, "from"], message: "a condition must read an earlier body step" });
+          context.addIssue({ code: "custom", path: ["steps", loopIndex, "body", bodyIndex, "from", "step"], message: "a condition must read an earlier body step" });
         } else {
           const source = step.body[sourceIndex]!;
           if (source.kind === "condition") {
-            context.addIssue({ code: "custom", path: ["steps", loopIndex, "body", bodyIndex, "from"], message: "a condition must read a bot or script step" });
-          } else if (source.result === undefined) {
-            context.addIssue({ code: "custom", path: ["steps", loopIndex, "body", bodyIndex, "from"], message: `step ${JSON.stringify(source.id)} must declare a result` });
+            context.addIssue({ code: "custom", path: ["steps", loopIndex, "body", bodyIndex, "from", "step"], message: "a condition must read a bot or script step" });
+          } else {
+            const output = source.outputs.find((candidate) => candidate.path === bodyStep.from.output);
+            if (!output) {
+              context.addIssue({ code: "custom", path: ["steps", loopIndex, "body", bodyIndex, "from", "output"], message: "the source step does not declare that output" });
+            } else if (!output.required) {
+              context.addIssue({ code: "custom", path: ["steps", loopIndex, "body", bodyIndex, "from", "output"], message: "a condition may only read a required output" });
+            }
           }
         }
         validateConditionGroup(
@@ -454,12 +685,6 @@ export const workflowDefinitionSchema = z.object({
       });
       if (bodyStep.result !== undefined && !own.has(bodyStep.result)) {
         context.addIssue({ code: "custom", path: ["steps", loopIndex, "body", bodyIndex, "result"], message: "result must be one of this step's outputs" });
-      }
-      if (bodyStep.require !== undefined && bodyStep.result === undefined) {
-        context.addIssue({ code: "custom", path: ["steps", loopIndex, "body", bodyIndex, "require"], message: "require needs a declared result" });
-      }
-      if (bodyStep.when !== undefined && bodyStep.result === undefined) {
-        context.addIssue({ code: "custom", path: ["steps", loopIndex, "body", bodyIndex, "when"], message: "when needs a declared result" });
       }
       for (const [field, target] of [["onSuccess", bodyStep.onSuccess], ["onFailure", bodyStep.onFailure], ["onTimeout", bodyStep.onTimeout]] as const) {
         if (target === undefined || target === null) continue;
@@ -512,15 +737,20 @@ export const workflowDefinitionSchema = z.object({
       bodyStepOutputs.set(bodyStep.id, own);
     });
 
-    const fromIndex = bodyPositions.get(step.from);
+    const fromIndex = bodyPositions.get(step.from.step);
     if (fromIndex === undefined) {
-      context.addIssue({ code: "custom", path: ["steps", loopIndex, "from"], message: `source step ${JSON.stringify(step.from)} is not in the body` });
+      context.addIssue({ code: "custom", path: ["steps", loopIndex, "from", "step"], message: `source step ${JSON.stringify(step.from.step)} is not in the body` });
     } else {
       const source = step.body[fromIndex]!;
       if (source.kind === "condition") {
-        context.addIssue({ code: "custom", path: ["steps", loopIndex, "from"], message: "a Do While must read a bot or script step" });
-      } else if (source.result === undefined) {
-        context.addIssue({ code: "custom", path: ["steps", loopIndex, "from"], message: `step ${JSON.stringify(source.id)} must declare a result` });
+        context.addIssue({ code: "custom", path: ["steps", loopIndex, "from", "step"], message: "a Do While must read a bot or script step" });
+      } else {
+        const output = source.outputs.find((candidate) => candidate.path === step.from.output);
+        if (!output) {
+          context.addIssue({ code: "custom", path: ["steps", loopIndex, "from", "output"], message: "the source step does not declare that output" });
+        } else if (!output.required) {
+          context.addIssue({ code: "custom", path: ["steps", loopIndex, "from", "output"], message: "a Do While may only read a required output" });
+        }
       }
     }
     validateConditionGroup(step.conditions, ["steps", loopIndex, "conditions"], `Do While ${JSON.stringify(step.id)}`);
@@ -547,9 +777,6 @@ export const workflowDefinitionSchema = z.object({
     if (step.result !== undefined && !loopOutputPaths.has(step.result)) {
       context.addIssue({ code: "custom", path: ["steps", loopIndex, "result"], message: "result must be one of the Do While's outputs" });
     }
-    if (step.require !== undefined && step.result === undefined) {
-      context.addIssue({ code: "custom", path: ["steps", loopIndex, "require"], message: "require needs a declared result" });
-    }
     for (const [field, target] of [["onSuccess", step.onSuccess], ["onFailure", step.onFailure]] as const) {
       if (target === undefined || target === null) continue;
       const targetIndex = positions.get(target);
@@ -566,19 +793,22 @@ export const workflowDefinitionSchema = z.object({
 
   definition.steps.forEach((step, index) => {
     if (step.kind !== "condition") return;
-    const sourceIndex = positions.get(step.from);
+    const sourceIndex = positions.get(step.from.step);
     if (sourceIndex === undefined) {
-      context.addIssue({ code: "custom", path: ["steps", index, "from"], message: `source step ${JSON.stringify(step.from)} does not exist` });
+      context.addIssue({ code: "custom", path: ["steps", index, "from", "step"], message: `source step ${JSON.stringify(step.from.step)} does not exist` });
     } else if (sourceIndex >= index) {
-      context.addIssue({ code: "custom", path: ["steps", index, "from"], message: "a condition must read an earlier step" });
+      context.addIssue({ code: "custom", path: ["steps", index, "from", "step"], message: "a condition must read an earlier step" });
     } else {
       const source = definition.steps[sourceIndex]!;
       if (source.kind === "condition") {
-        context.addIssue({ code: "custom", path: ["steps", index, "from"], message: "a condition must read a bot or script step" });
-      } else if (source.kind === "loop") {
-        context.addIssue({ code: "custom", path: ["steps", index, "from"], message: "a condition must read a bot or script step" });
-      } else if (source.result === undefined) {
-        context.addIssue({ code: "custom", path: ["steps", index, "from"], message: `step ${JSON.stringify(source.id)} must declare a result` });
+        context.addIssue({ code: "custom", path: ["steps", index, "from", "step"], message: "a condition must read a bot, script or Do While step" });
+      } else {
+        const output = source.outputs.find((candidate) => candidate.path === step.from.output);
+        if (!output) {
+          context.addIssue({ code: "custom", path: ["steps", index, "from", "output"], message: "the source step does not declare that output" });
+        } else if (!output.required) {
+          context.addIssue({ code: "custom", path: ["steps", index, "from", "output"], message: "a condition may only read a required output" });
+        }
       }
     }
     validateConditionGroup(step.conditions, ["steps", index, "conditions"], `condition ${JSON.stringify(step.id)}`);
@@ -606,13 +836,7 @@ export const workflowDefinitionSchema = z.object({
     if (step.result !== undefined && !own.has(step.result)) {
       context.addIssue({ code: "custom", path: ["steps", index, "result"], message: "result must be one of this step's outputs" });
     }
-    if (step.require !== undefined && step.result === undefined) {
-      context.addIssue({ code: "custom", path: ["steps", index, "require"], message: "require needs a declared result" });
-    }
     if (step.kind === "bot" || step.kind === "script") {
-      if (step.when !== undefined && step.result === undefined) {
-        context.addIssue({ code: "custom", path: ["steps", index, "when"], message: "when needs a declared result" });
-      }
       for (const [field, target] of [["onSuccess", step.onSuccess], ["onFailure", step.onFailure], ["onTimeout", step.onTimeout]] as const) {
         if (target === undefined || target === null) continue;
         const targetIndex = positions.get(target);
@@ -675,7 +899,7 @@ export const workflowDefinitionSchema = z.object({
         context.addIssue({ code: "custom", path: [...path, "parameters", parameterIndex, "name"], message: `parameter ${JSON.stringify(parameter.name)} is declared more than once` });
       }
       seen.add(parameter.name);
-      const kind = `${parameter.type}|${JSON.stringify(parameter.values ?? [])}`;
+      const kind = `${parameter.type}|${JSON.stringify(parameter.values ?? [])}|${parameter.list ? "list" : "one"}`;
       const previous = parameterKinds.get(parameter.name);
       if (!previous) {
         parameterKinds.set(parameter.name, { type: kind, values: kind, step: step.id });
@@ -686,7 +910,27 @@ export const workflowDefinitionSchema = z.object({
   };
   definition.steps.forEach((step, index) => {
     checkParameters(step, ["steps", index]);
-    if (step.kind === "loop") step.body.forEach((body, bodyIndex) => checkParameters(body, ["steps", index, "body", bodyIndex]));
+    if (step.kind === "loop") {
+      const bodyPositions = new Map(step.body.map((entry, position) => [entry.id, position] as const));
+      step.body.forEach((body, bodyIndex) => {
+        checkParameters(body, ["steps", index, "body", bodyIndex]);
+        if (body.kind === "condition") return;
+        checkParameterOrigins(
+          body,
+          ["steps", index, "body", bodyIndex],
+          { local: bodyPositions, localIndex: bodyIndex, localSteps: step.body, top: positions, topIndex: index, topSteps: definition.steps },
+          context,
+        );
+      });
+      return;
+    }
+    if (step.kind === "condition") return;
+    checkParameterOrigins(
+      step,
+      ["steps", index],
+      { local: positions, localIndex: index, localSteps: definition.steps, top: positions, topIndex: index, topSteps: definition.steps },
+      context,
+    );
   });
 
   if (definition.canvas) {
@@ -722,6 +966,106 @@ export const workflowDefinitionSchema = z.object({
   }
 });
 
+/** Reads a definition from disk or a request. It only normalizes: refusing here would make an
+ * existing Workflow disappear from the list instead of appearing to be corrected. */
+export const workflowDefinitionSchema = z.preprocess(normalizeDefinitionRecord, workflowDefinitionObjectSchema);
+
+type ObjectSchema = { shape: Record<string, unknown> };
+const keysOf = (schema: ObjectSchema): Set<string> => new Set(Object.keys(schema.shape));
+
+const DEFINITION_FIELDS = keysOf(workflowDefinitionObjectSchema);
+const STEP_FIELDS: Record<WorkflowStep["kind"], Set<string>> = {
+  bot: keysOf(botStepSchema),
+  script: keysOf(scriptStepSchema),
+  condition: keysOf(conditionStepSchema),
+  loop: keysOf(loopStepSchema),
+};
+const STEP_INPUT_FIELDS = keysOf(stepInputSchema);
+const STEP_INPUT_SOURCE_FIELDS = keysOf(stepInputSchema.shape.from as ObjectSchema);
+const STEP_OUTPUT_FIELDS = keysOf(stepOutputSchema);
+const MODULE_FIELDS = keysOf(workflowModuleObjectSchema);
+const PARAMETER_FIELDS = keysOf(workflowParameterSchema);
+const PARAMETER_SOURCE_FIELDS = keysOf(workflowParameterSourceSchema);
+const CONDITION_LINE_FIELDS = keysOf(conditionLineSchema);
+/** Fields an older save may still carry: the reading schema turns them into their current form. */
+const LEGACY_STEP_FIELDS = new Set(["next"]);
+const LEGACY_CONDITION_STEP_FIELDS = new Set(["field", "op", "value"]);
+
+function unknownKey(
+  entry: Record<string, unknown>,
+  allowed: ReadonlySet<string>,
+  path: string,
+  label: string,
+  issues: Array<{ path: string; message: string }>,
+): boolean {
+  let found = false;
+  for (const key of Object.keys(entry)) {
+    if (allowed.has(key)) continue;
+    found = true;
+    issues.push({ path: `${path}.${key}`, message: `${label}: ${JSON.stringify(key)} is not a field of this contract` });
+  }
+  return found;
+}
+
+/** Every field a save may carry. The reading schema drops what it does not know, so an existing
+ * Workflow never disappears from the list; a save refuses the same field instead of dropping it. */
+export function workflowUnknownFields(input: unknown): Array<{ path: string; message: string }> {
+  const issues: Array<{ path: string; message: string }> = [];
+  if (!isRecord(input)) return issues;
+  unknownKey(input, DEFINITION_FIELDS, "workflow", "A Workflow", issues);
+  if (!Array.isArray(input.steps)) return issues;
+  const walkStep = (record: unknown, path: string, topLevel: boolean): void => {
+    if (!isRecord(record)) return;
+    const kind = record.kind === undefined ? "bot" : record.kind;
+    const allowed = typeof kind === "string" && Object.hasOwn(STEP_FIELDS, kind)
+      ? new Set([...STEP_FIELDS[kind as WorkflowStep["kind"]], ...LEGACY_STEP_FIELDS, ...(kind === "condition" ? LEGACY_CONDITION_STEP_FIELDS : [])])
+      : new Set<string>(LEGACY_STEP_FIELDS);
+    const label = typeof record.name === "string" ? `step ${JSON.stringify(record.name)}` : "a step";
+    unknownKey(record, allowed, path, label, issues);
+    if (Array.isArray(record.inputs)) {
+      record.inputs.forEach((entry, index) => {
+        if (!isRecord(entry)) return;
+        unknownKey(entry, STEP_INPUT_FIELDS, `${path}.inputs.${index}`, `input ${index + 1} of ${label}`, issues);
+        if (isRecord(entry.from)) {
+          unknownKey(entry.from, STEP_INPUT_SOURCE_FIELDS, `${path}.inputs.${index}.from`, `input ${index + 1} of ${label}`, issues);
+        }
+      });
+    }
+    if (Array.isArray(record.outputs)) {
+      record.outputs.forEach((entry, index) => {
+        if (!isRecord(entry)) return;
+        unknownKey(entry, STEP_OUTPUT_FIELDS, `${path}.outputs.${index}`, `output ${index + 1} of ${label}`, issues);
+      });
+    }
+    if (Array.isArray(record.modules)) {
+      record.modules.forEach((entry, index) => {
+        if (!isRecord(entry)) return;
+        unknownKey(entry, MODULE_FIELDS, `${path}.modules.${index}`, `module ${index + 1} of ${label}`, issues);
+      });
+    }
+    if (Array.isArray(record.parameters)) {
+      record.parameters.forEach((entry, index) => {
+        if (!isRecord(entry)) return;
+        unknownKey(entry, PARAMETER_FIELDS, `${path}.parameters.${index}`, `parameter ${index + 1} of ${label}`, issues);
+        if (isRecord(entry.from)) {
+          unknownKey(entry.from, PARAMETER_SOURCE_FIELDS, `${path}.parameters.${index}.from`, `parameter ${index + 1} of ${label}`, issues);
+        }
+      });
+    }
+    if (kind === "condition" && Array.isArray(record.conditions)) {
+      record.conditions.forEach((entry, index) => {
+        if (!isRecord(entry)) return;
+        unknownKey(entry, CONDITION_LINE_FIELDS, `${path}.conditions.${index}`, `comparison ${index + 1} of ${label}`, issues);
+      });
+    }
+    if (topLevel && kind === "loop" && Array.isArray(record.body)) {
+      record.body.forEach((entry, index) => walkStep(entry, `${path}.body.${index}`, false));
+    }
+  };
+  input.steps.forEach((step, index) => walkStep(step, `steps.${index}`, true));
+  return issues;
+}
+
 export type StepInput = z.output<typeof stepInputSchema>;
 export type StepOutput = z.output<typeof stepOutputSchema>;
 export type BotWorkflowStep = z.output<typeof botStepSchema>;
@@ -756,6 +1100,18 @@ export function workflowAllSteps(definition: { steps: readonly WorkflowStep[] })
   return definition.steps.flatMap((step) => step.kind === "loop" ? [step, ...step.body] : [step]);
 }
 
+/** The modules its script steps declare, each once. Preparation unions these across every Workflow. */
+export function workflowModules(definition: { steps: readonly WorkflowStep[] }): WorkflowModule[] {
+  const unique = new Map<string, WorkflowModule>();
+  for (const step of workflowAllSteps(definition)) {
+    if (step.kind !== "script") continue;
+    for (const module of step.modules) {
+      unique.set(`${module.runtime}\u0000${module.name}\u0000${module.version ?? ""}`, module);
+    }
+  }
+  return [...unique.values()];
+}
+
 /** Whether a person must continue the Workflow before its first step can run. A routine cannot start such a Workflow. */
 export function workflowStartsManual(definition: Pick<WorkflowDefinition, "steps">): boolean {
   const first = definition.steps[0];
@@ -779,6 +1135,11 @@ export interface WorkflowRunStep {
   failureKind?: WorkflowRunFailureKind;
   /** The declared outputs the engine found, in declaration order. */
   verified?: string[];
+  /** The answer a condition step gave, and the comparison that produced it. */
+  branch?: boolean;
+  condition?: ConditionLine;
+  /** The step and output a condition read. */
+  source?: { step: string; output: string };
   /** Marks a Do While among the top-level steps. */
   kind?: "loop";
   /** One entry per round; only a Do While has them. */
@@ -898,6 +1259,9 @@ const workflowRunStepSchema: z.ZodType<WorkflowRunStep> = z.lazy(() => z.object(
   error: z.string().optional(),
   failureKind: z.enum(["failure", "timeout", "limit"]).optional(),
   verified: z.array(z.string()).optional(),
+  branch: z.boolean().optional(),
+  condition: conditionLineSchema.optional(),
+  source: z.object({ step: z.string().min(1).max(WORKFLOW_SLUG_MAX), output: z.string().min(1).max(WORKFLOW_PATH_MAX) }).optional(),
   kind: z.literal("loop").optional(),
   iterations: z.array(workflowRunIterationSchema).optional(),
 }));
@@ -973,24 +1337,7 @@ export function sameJsonValue(left: unknown, right: unknown): boolean {
   return false;
 }
 
-/** Why `result.json` does not satisfy the step's `require`, or undefined when it does. */
-export function requireMismatch(result: unknown, requirement: Record<string, unknown>): string | undefined {
-  if (result === null || typeof result !== "object" || Array.isArray(result)) return "the declared result is not a JSON object";
-  const record = result as Record<string, unknown>;
-  for (const [key, expected] of Object.entries(requirement)) {
-    if (!Object.hasOwn(record, key)) return `the result has no ${JSON.stringify(key)} field`;
-    if (!sameJsonValue(record[key], expected)) {
-      return `the result's ${JSON.stringify(key)} is ${JSON.stringify(record[key])}, but the step requires ${JSON.stringify(expected)}`;
-    }
-  }
-  return undefined;
-}
-
-export function requireMatches(result: unknown, requirement: Record<string, unknown>): boolean {
-  return requireMismatch(result, requirement) === undefined;
-}
-
-/** A dotted path read out of a step's `result.json`; `found` is false when a segment is missing. */
+/** A dotted path read out of a step's JSON output; `found` is false when a segment is missing. */
 export function resultField(result: unknown, field: string): { found: boolean; value: unknown } {
   let current: unknown = result;
   for (const segment of field.split(".")) {

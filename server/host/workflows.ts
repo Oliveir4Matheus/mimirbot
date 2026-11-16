@@ -62,6 +62,8 @@ export function createWorkflowHost(deps: WorkflowHostDeps) {
   };
   const engine: WorkflowEngine = createWorkflowEngine({
     store,
+    home: deps.home,
+    env: deps.env,
     startTurn: deps.startTurn,
     createThread: (input) => deps.createTask(input.botId, input.title, input.cwd),
     broadcast: deps.broadcast,
@@ -72,7 +74,16 @@ export function createWorkflowHost(deps: WorkflowHostDeps) {
     now: deps.now,
     log: deps.log,
   });
-  const routes = createWorkflowRoutes({ store, engine, bot: deps.bot, skillOptions: deps.skillOptions });
+  const routes = createWorkflowRoutes({
+    store,
+    engine,
+    bot: deps.bot,
+    skillOptions: deps.skillOptions,
+    draftDefinitions: () => proposals.list("draft").map((proposal) => proposal.definition),
+    ...(deps.home === undefined ? {} : { home: deps.home }),
+    ...(deps.env === undefined ? {} : { env: deps.env }),
+    ...(deps.now === undefined ? {} : { now: deps.now }),
+  });
   const internal = createWorkflowInternalRoutes({ store, engine, bot: deps.bot });
   const proposalDeps = { proposals, workflows: store, ...(deps.proposalCard ? { card: deps.proposalCard } : {}) };
   const proposalRoutes = createWorkflowProposalRoutes(proposalDeps);

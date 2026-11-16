@@ -5,8 +5,15 @@
 import type { ServerResponse } from "node:http";
 
 import type { json as sendJson } from "../harness/http.ts";
-import { isBotStep, isWorkflowScriptName, workflowAllSteps, workflowDefinitionSchema, type WorkflowSkillOptions, type WorkflowStep } from "../../shared/workflow.ts";
+import { isBotStep, isWorkflowScriptName, workflowAllSteps, workflowDefinitionSchema, workflowUnknownFields, type WorkflowDefinition, type WorkflowSkillOptions, type WorkflowStep } from "../../shared/workflow.ts";
+import { authoringRefusal, workflowRefusal } from "../../shared/workflow-refusal.ts";
 import type { WorkflowEngine } from "../workflows/engine.ts";
+import {
+  prepareWorkflowEnvironment,
+  workflowEnvironmentStatus,
+  type WorkflowEnvironmentPrepareOptions,
+  type WorkflowEnvironmentPrepareResult,
+} from "../workflows/environment.ts";
 import { isWorkflowId } from "../workflows/paths.ts";
 import { isActiveRun } from "../workflows/state.ts";
 import type { WorkflowStore } from "../workflows/store.ts";
@@ -20,6 +27,13 @@ export interface WorkflowRoutesDeps {
   engine: WorkflowEngine;
   bot(id: string): { id: string; name: string; section?: string } | undefined;
   skillOptions?(botId: string): WorkflowSkillOptions | undefined;
+  /** Draft proposals: their modules are prepared too, so a Workflow can be tested before it is created. */
+  draftDefinitions?(): readonly WorkflowDefinition[];
+  home?: string;
+  env?: NodeJS.ProcessEnv;
+  now?: () => number;
+  /** Tests inject a stand-in so no package manager runs; a real server installs locally. */
+  prepareEnvironment?(options: WorkflowEnvironmentPrepareOptions): Promise<WorkflowEnvironmentPrepareResult>;
 }
 
 export interface WorkflowInternalContext {
@@ -57,27 +71,31 @@ const missingStepSkill = (steps: readonly WorkflowStep[], deps: WorkflowRoutesDe
 
 export function createWorkflowRoutes(deps: WorkflowRoutesDeps): RouteHandler {
   const save = async (res: ServerResponse, json: typeof sendJson, body: unknown, id: string | undefined): Promise<void> => {
-    if (!isRecord(body)) return void json(res, 400, { error: "a Workflow must be a JSON object" });
+    if (!isRecord(body)) return void json(res, 400, workflowRefusal("authoringErrors", "a Workflow must be a JSON object"));
     const { scripts, ...definition } = body;
     if (id !== undefined) {
-      if (!isWorkflowId(id)) return void json(res, 400, { error: "the Workflow id must be a uuid" });
+      if (!isWorkflowId(id)) return void json(res, 400, workflowRefusal("authoringErrors", "the Workflow id must be a uuid"));
       const claimed = definition.id;
       if (claimed !== undefined && String(claimed).toLowerCase() !== id.toLowerCase()) {
-        return void json(res, 400, { error: "the body id does not match the path" });
+        return void json(res, 400, workflowRefusal("authoringErrors", "the body id does not match the path"));
       }
       definition.id = id.toLowerCase();
     }
     let uploads: Array<{ name: string; content: string }> | undefined;
     if (scripts !== undefined) {
-      if (!Array.isArray(scripts)) return void json(res, 400, { error: "scripts must be a list" });
+      if (!Array.isArray(scripts)) return void json(res, 400, workflowRefusal("authoringErrors", "scripts must be a list"));
       uploads = scripts.map((entry) => isRecord(entry) && typeof entry.name === "string" && typeof entry.content === "string"
         ? { name: entry.name, content: entry.content }
         : null).filter((entry): entry is { name: string; content: string } => entry !== null);
-      if (uploads.length !== scripts.length) return void json(res, 400, { error: "a script needs a name and a content string" });
+      if (uploads.length !== scripts.length) return void json(res, 400, workflowRefusal("authoringErrors", "a script needs a name and a content string"));
       const workflowId = typeof definition.id === "string" ? definition.id : undefined;
       if (workflowId && deps.store.hasActiveRuns(workflowId)) {
         return void json(res, 409, { error: "this Workflow has active runs; cancel them before changing a script" });
       }
+    }
+    const unknown = workflowUnknownFields(definition);
+    if (unknown.length > 0) {
+      return void json(res, 400, authoringRefusal(unknown));
     }
     const candidate = workflowDefinitionSchema.safeParse({
       ...definition,
@@ -87,11 +105,11 @@ export function createWorkflowRoutes(deps: WorkflowRoutesDeps): RouteHandler {
     });
     if (candidate.success) {
       const missing = missingStepSkill(candidate.data.steps, deps);
-      if (missing) return void json(res, 400, { error: missing });
+      if (missing) return void json(res, 400, authoringRefusal([{ path: "steps", message: missing }]));
     }
     const saved = deps.store.saveWorkflow(definition, uploads && uploads.length > 0 ? { scripts: uploads } : undefined);
-    if (!saved.ok) return void json(res, 400, { error: saved.error });
-    return void json(res, 200, { workflow: saved.workflow });
+    if (!saved.ok) return void json(res, 400, saved.refusal ?? workflowRefusal("authoringErrors", saved.error));
+    return void json(res, 200, { workflow: saved.workflow, ...(saved.warnings.length === 0 ? {} : { warnings: saved.warnings }) });
   };
 
   return async ({ req, res, path, method, url, json, readBody }) => {
@@ -110,6 +128,26 @@ export function createWorkflowRoutes(deps: WorkflowRoutesDeps): RouteHandler {
     if (parts.length === 0) {
       if (method === "GET") return void json(res, 200, { workflows: deps.store.workflows() });
       if (method === "POST") return save(res, json, await readBody(req), undefined);
+      return void json(res, 405, { error: "method not allowed" });
+    }
+
+    if (parts[0] === "environment") {
+      const definitions = [...deps.store.workflows(), ...(deps.draftDefinitions?.() ?? [])];
+      const location = {
+        ...(deps.home === undefined ? {} : { home: deps.home }),
+        ...(deps.env === undefined ? {} : { env: deps.env }),
+      };
+      if (parts.length === 1 && method === "GET") {
+        return void json(res, 200, workflowEnvironmentStatus(definitions, location));
+      }
+      if (parts.length === 2 && parts[1] === "prepare" && method === "POST") {
+        const prepared = await (deps.prepareEnvironment ?? prepareWorkflowEnvironment)({
+          definitions,
+          ...location,
+          ...(deps.now === undefined ? {} : { now: deps.now }),
+        });
+        return void json(res, 200, prepared);
+      }
       return void json(res, 405, { error: "method not allowed" });
     }
 
@@ -139,8 +177,11 @@ export function createWorkflowRoutes(deps: WorkflowRoutesDeps): RouteHandler {
         return void json(res, 200, { removed: deps.store.deleteRun(run.id) });
       }
       if (parts.length === 3 && parts[2] === "continue" && method === "POST") {
-        const resumed = deps.engine.resume(runId);
+        const body = await readBody(req);
+        const inputs = isRecord(body) && isRecord(body.inputs) ? body.inputs : {};
+        const resumed = deps.engine.resume(runId, inputs);
         if (!resumed.ok) {
+          if (resumed.needsInput) return void json(res, 400, { ...resumed.needsInput, error: resumed.error });
           return void json(res, resumed.error === "no such run" ? 404 : 409, { error: resumed.error });
         }
         return void json(res, 200, { run: resumed.run });
@@ -165,7 +206,7 @@ export function createWorkflowRoutes(deps: WorkflowRoutesDeps): RouteHandler {
       }
       const name = parts[2];
       if (!name || parts.length !== 3) return void json(res, 400, { error: "give a script name" });
-      if (!isWorkflowScriptName(name)) return void json(res, 400, { error: "a script name must be a flat .mjs or .js file name" });
+      if (!isWorkflowScriptName(name)) return void json(res, 400, { error: "a script name must be a flat .mjs file name" });
       if (method === "GET") {
         const script = deps.store.readScript(id, name);
         return script ? void json(res, 200, { script }) : void json(res, 404, { error: "no such script" });

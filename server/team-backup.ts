@@ -93,6 +93,10 @@ export function createTeamBackup(store: Store, routines: Routine[], name: string
     };
   });
   const validRoutines = routines.filter((routine) => {
+    if (routine.target === "workflow") {
+      warnings.push(`Routine “${routine.name}” is not included because its Workflow stays in this workspace.`);
+      return false;
+    }
     const room = groups.find((group) => group.key === routine.groupId);
     const valid = botIds.has(routine.botId) && (routine.target !== "room-goal" || !routine.groupId || (room && !room.dm && room.memberIds.includes(routine.botId)));
     if (!valid) warnings.push(`Routine “${routine.name}” is not included because its bot, room or coordinator was deleted.`);

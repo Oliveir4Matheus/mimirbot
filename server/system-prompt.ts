@@ -7,6 +7,7 @@ import type { ConnectorToolGrant } from "../shared/wire.ts";
 import { loginLabel, type LoginPlace } from "../shared/logins.ts";
 import { isConversational, type ReplyStyle } from "../shared/reply-style.ts";
 import { useMyComputerLink } from "../shared/use-my-computer.ts";
+import { WORKFLOW_APPROVAL_RULE } from "../shared/workflow-approval.ts";
 
 export type PromptPart = { id: string; label: string; text: string };
 export type PromptSection = PromptPart & { bytes: number };
@@ -31,7 +32,9 @@ const VOLATILE_SECTIONS = new Set(["memory", "mentions", "outstanding", "recent"
 
 /** The rules every Workflow step shares. The task itself (its files, its words) travels in the user message. */
 export const WORKFLOW_STEP_PROMPT =
-  "\n\nWorkflow step: you are running one step of a Workflow. Read the files the task names under input/, write every file it names inside output/, and write nothing outside output/. Do not ask the person anything and do not wait for an answer: the engine checks your files and moves the run on when your turn ends. Leave the input files as they are.";
+  "\n\nWorkflow step: you are running one step of a Workflow. Read the files the task names under input/, write every file it names inside output/, and write nothing outside output/. If the task asks for a person's confirmation, " +
+  WORKFLOW_APPROVAL_RULE +
+  "; show_widget does not pause. Otherwise do not wait for an answer: the engine checks your files and moves the run on when your turn ends. Leave the input files as they are.";
 
 export function workflowStepPart(enabled: boolean): PromptPart {
   return { id: "workflow-step", label: "Workflow step", text: enabled ? WORKFLOW_STEP_PROMPT : "" };

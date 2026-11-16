@@ -1,24 +1,30 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Check, X } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Check, X } from "lucide-react";
 
 import { isBotStep, isScriptStep, workflowAllSteps, type WorkflowSkillOptions, type WorkflowStep } from "../../../shared/workflow";
+import { parseWorkflowRefusal } from "../../../shared/workflow-refusal";
 import type { LocaleKey } from "@/locales";
 import { cn } from "@/lib/cn";
 import { t } from "@/lib/i18n";
 import { useStore } from "@/state/store";
-import { createWorkflow, listScripts, readScript, readWorkflow, readWorkflowSkillOptions, updateWorkflow } from "@/lib/workflows-api";
-import { StudioBalloon } from "./StudioBalloon";
+import { ApiError } from "@/state/api";
+import {
+  createWorkflow, listScripts, prepareEnvironment, readEnvironment, readScript, readWorkflow, readWorkflowSkillOptions,
+  updateWorkflow, type WorkflowEnvironmentStatus,
+} from "@/lib/workflows-api";
+import { StudioBalloon, type BalloonFocus } from "./StudioBalloon";
 import { StudioCard, type BranchKey } from "./StudioCard";
 import { StudioContainer } from "./StudioContainer";
 import { StudioLoopModal } from "./StudioLoopModal";
 import { StudioNote } from "./StudioNote";
 import { StudioPalette } from "./StudioPalette";
+import { StudioProblemsPanel, type StudioProblems } from "./StudioProblemsPanel";
 import { bezier, entryHit, noteAnchor, noteLinkTarget, outputPoint, type Point } from "./studio-geometry";
 import {
-  CARD_HEIGHT, CARD_WIDTH, DEFAULT_SCRIPT, allDraftSteps, containedBy, connect, createContainer, createNote, createStep,
-  disconnect, draftProblem, duplicateLoop, fromDefinition, moveContainer, moveNode, moveNote, newDraft,
+  CARD_HEIGHT, CARD_WIDTH, DEFAULT_SCRIPT, allDraftSteps, consumedOutputs, containedBy, connect, createContainer, createNote, createStep,
+  disconnect, draftProblems, draftWarnings, duplicateLoop, fromDefinition, inputsBranch, legacyFields, moveContainer, moveNode, moveNote, newDraft,
   removeContainer, removeNote, removeStep, renameContainer, renameScript, resizeContainer, resizeNote,
-  toDefinition, updateNote, updateStep, type StudioBranch, type StudioDraft, type StudioKind, type StudioSelection,
+  targetForPath, toDefinition, updateNote, updateStep, type StudioBranch, type StudioDraft, type StudioKind, type StudioSelection, type StudioTarget,
 } from "./studio-model";
 
 type Drag =
@@ -72,6 +78,14 @@ export function WorkflowStudioPage({ workflowId, department, onBack, onSaved }: 
   const skillOptionsCache = useRef(new Map<string, WorkflowSkillOptions>());
   const skillOptionsPending = useRef(new Set<string>());
   const toastTimer = useRef<number | undefined>(undefined);
+  const nameInputRef = useRef<HTMLInputElement>(null);
+  const [problems, setProblems] = useState<StudioProblems | null>(null);
+  const [problemsToken, setProblemsToken] = useState(0);
+  const [focusRequest, setFocusRequest] = useState<(BalloonFocus & { stepId: string }) | null>(null);
+  const [loopFocus, setLoopFocus] = useState<(StudioTarget & { token: number }) | null>(null);
+  const [legacyIndex, setLegacyIndex] = useState(0);
+  const [environment, setEnvironment] = useState<WorkflowEnvironmentStatus | null>(null);
+  const [preparingEnvironment, setPreparingEnvironment] = useState(false);
 
   const showToast = useCallback((text: string) => {
     setToast(text);
@@ -110,6 +124,88 @@ export function WorkflowStudioPage({ workflowId, department, onBack, onSaved }: 
         });
       });
   }, []);
+
+  const refreshEnvironment = useCallback(() => {
+    readEnvironment().then(setEnvironment).catch(() => setEnvironment(null));
+  }, []);
+
+  const prepare = useCallback(() => {
+    setPreparingEnvironment(true);
+    prepareEnvironment()
+      .then((prepared) => {
+        if (!prepared.ok) showToast(prepared.tail ?? t("studio.env.failed"));
+      })
+      .catch((cause) => showToast(message(cause)))
+      .finally(() => {
+        setPreparingEnvironment(false);
+        refreshEnvironment();
+      });
+  }, [refreshEnvironment, showToast]);
+
+  useEffect(() => { refreshEnvironment(); }, [refreshEnvironment]);
+
+  const botIds = useMemo(() => new Set(bots.map((bot) => bot.id)), [bots]);
+  const issues = useMemo(() => draft ? draftProblems(draft, botIds, skillOptions) : [], [draft, botIds, skillOptions]);
+  const clientWarnings = useMemo(() => draft ? draftWarnings(draft) : [], [draft]);
+  const consumed = useMemo(() => draft ? consumedOutputs(draft) : new Set<string>(), [draft]);
+  const legacy = useMemo(() => draft ? legacyFields(draft) : [], [draft]);
+  const saveBlockedTitle = issues.length === 0 ? undefined : issues.length === 1
+    ? t("studio.saveBlockedTooltipOne", { paths: issues[0]!.path })
+    : t("studio.saveBlockedTooltip", { count: issues.length, paths: issues.slice(0, 3).map((issue) => issue.path).join(", ") });
+
+  const showProblemList = useCallback((next: StudioProblems) => {
+    setProblems(next);
+    setProblemsToken((token) => token + 1);
+  }, []);
+
+  const showDraftIssues = useCallback((errors: typeof issues, warnings: typeof clientWarnings) => {
+    showProblemList({
+      errors: errors.map((issue) => ({ path: issue.path, message: t(issue.key as LocaleKey, issue.params) })),
+      warnings: warnings.map((issue) => ({ path: issue.path, message: t(issue.key as LocaleKey, issue.params) })),
+    });
+  }, [showProblemList]);
+
+  const reveal = useCallback((target: StudioTarget | undefined) => {
+    setProblems(null);
+    if (target === undefined) return;
+    setSelection({ kind: "step", id: target.stepId });
+    if (target.loopId !== undefined) {
+      setBalloon(null);
+      setEditingLoop(target.loopId);
+      setLoopFocus({ ...target, token: Date.now() });
+      return;
+    }
+    const card = document.querySelector(`[data-studio-step="${target.stepId}"]`);
+    const anchor = card?.getBoundingClientRect() ?? new DOMRect(window.innerWidth / 2, 240, 0, 0);
+    setLoopFocus(null);
+    setBalloon({ stepId: target.stepId, branch: target.branch, anchor });
+    setFocusRequest({ stepId: target.stepId, field: target.field, token: Date.now() });
+  }, []);
+
+  const revealPath = useCallback((path: string) => {
+    if (path === "name") {
+      setProblems(null);
+      nameInputRef.current?.focus();
+      return;
+    }
+    reveal(targetForPath(draft?.steps ?? [], path));
+  }, [draft, reveal]);
+
+  const reviewLegacy = useCallback(() => {
+    const field = legacy[legacyIndex % Math.max(1, legacy.length)];
+    if (field === undefined) return;
+    setLegacyIndex((index) => index + 1);
+    reveal(field.target);
+  }, [legacy, legacyIndex, reveal]);
+
+  const openInputs = useCallback((stepId: string, field: string) => {
+    const step = draft?.steps.find((candidate) => candidate.id === stepId);
+    if (step === undefined) return;
+    const card = document.querySelector(`[data-studio-step="${stepId}"]`);
+    const anchor = card?.getBoundingClientRect() ?? new DOMRect(window.innerWidth / 2, 240, 0, 0);
+    setBalloon({ stepId, branch: inputsBranch(step), anchor });
+    setFocusRequest({ stepId, field, token: Date.now() });
+  }, [draft]);
 
   const fit = useCallback((next: StudioDraft) => {
     const rect = canvasRef.current?.getBoundingClientRect();
@@ -298,7 +394,14 @@ export function WorkflowStudioPage({ workflowId, department, onBack, onSaved }: 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        setBalloon(null);
+        if (problems !== null) {
+          setProblems(null);
+          return;
+        }
+        if (balloon !== null) {
+          setBalloon(null);
+          return;
+        }
         setLink(null);
         setPointer(null);
         setNoteLinkMenu(null);
@@ -317,7 +420,7 @@ export function WorkflowStudioPage({ workflowId, department, onBack, onSaved }: 
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [selection, edit]);
+  }, [selection, edit, problems, balloon]);
 
   const add = useCallback((kind: StudioKind, clientX?: number, clientY?: number) => {
     if (!draft) return;
@@ -373,9 +476,9 @@ export function WorkflowStudioPage({ workflowId, department, onBack, onSaved }: 
 
   const save = async () => {
     if (!draft) return;
-    const problem = draftProblem(draft, new Set(bots.map((bot) => bot.id)), skillOptions);
-    if (problem) {
-      setError(t(problem.key as LocaleKey, problem.params));
+    const current = draftProblems(draft, botIds, skillOptions);
+    if (current.length > 0) {
+      showDraftIssues(current, clientWarnings);
       return;
     }
     setSaving(true);
@@ -384,12 +487,23 @@ export function WorkflowStudioPage({ workflowId, department, onBack, onSaved }: 
       const definition = toDefinition(draft);
       const uploads = workflowAllSteps(definition).filter(isScriptStep).map((step) => ({ name: step.run, content: scripts[step.run] ?? DEFAULT_SCRIPT }));
       const saved = draft.version ? await updateWorkflow(definition, uploads) : await createWorkflow(definition, uploads);
-      setDraft(fromDefinition(saved));
+      setDraft(fromDefinition(saved.workflow));
       setDirty(false);
       showToast(t("studio.saved"));
-      onSaved(saved.id);
+      refreshEnvironment();
+      if (saved.warnings.length > 0) {
+        // A save with warnings keeps the editor open: the list would hide what to review.
+        showProblemList({ errors: [], warnings: saved.warnings.map((issue) => ({ path: issue.path, message: issue.message })) });
+      } else {
+        onSaved(saved.workflow.id);
+      }
     } catch (cause) {
-      setError(message(cause));
+      const refusal = cause instanceof ApiError ? parseWorkflowRefusal(cause.body) : undefined;
+      if (refusal?.authoring !== undefined) {
+        showProblemList({ errors: refusal.authoring.errors, warnings: refusal.authoring.warnings });
+      } else {
+        setError(message(cause));
+      }
     } finally {
       setSaving(false);
     }
@@ -611,6 +725,7 @@ export function WorkflowStudioPage({ workflowId, department, onBack, onSaved }: 
             {t("studio.back")}
           </button>
           <input
+            ref={nameInputRef}
             className="studio-name"
             value={draft.name}
             placeholder={t("studio.untitled")}
@@ -623,11 +738,33 @@ export function WorkflowStudioPage({ workflowId, department, onBack, onSaved }: 
           </label>
           <span className="studio-bar-spacer" />
           {dirty && <span className="studio-dirty">{t("studio.unsaved")}</span>}
-          <button type="button" className="studio-save" disabled={saving} onClick={() => void save()}>
+          <button
+            type="button"
+            className={cn("studio-save", issues.length > 0 && "studio-save-blocked")}
+            disabled={saving}
+            aria-disabled={issues.length > 0}
+            aria-describedby={issues.length > 0 ? "studio-save-problems" : undefined}
+            title={saveBlockedTitle}
+            onClick={() => {
+              if (issues.length > 0) showDraftIssues(issues, clientWarnings);
+              else void save();
+            }}
+          >
             <Check size={14} aria-hidden="true" />
-            {saving ? t("studio.saving") : t("studio.save")}
+            {saving ? t("studio.saving") : issues.length > 0
+              ? (issues.length === 1 ? t("studio.saveProblemsOne") : t("studio.saveProblems", { count: issues.length }))
+              : t("studio.save")}
           </button>
+          {issues.length > 0 && <span id="studio-save-problems" className="sr-only">{saveBlockedTitle}</span>}
         </header>
+
+        {legacy.length > 0 && (
+          <div className="studio-legacy-strip" role="status">
+            <AlertTriangle size={13} aria-hidden="true" />
+            <span>{t("studio.legacy.banner", { count: legacy.length })}</span>
+            <button type="button" onClick={reviewLegacy}>{t("studio.legacy.review")}</button>
+          </div>
+        )}
 
         {error && (
           <div className="studio-error" role="alert">
@@ -637,6 +774,15 @@ export function WorkflowStudioPage({ workflowId, department, onBack, onSaved }: 
         )}
 
         <StudioPalette onActivate={(kind) => add(kind)} onDrop={(kind, x, y) => add(kind, x, y)} />
+
+        {problems !== null && (
+          <StudioProblemsPanel
+            key={problemsToken}
+            problems={problems}
+            onOpen={(item) => revealPath(item.path)}
+            onClose={() => setProblems(null)}
+          />
+        )}
 
         {balloon && balloonStep && (
           <StudioBalloon
@@ -649,6 +795,11 @@ export function WorkflowStudioPage({ workflowId, department, onBack, onSaved }: 
             skillOptions={balloonStep.kind === "bot" ? skillOptions[balloonStep.botId] : undefined}
             skillOptionsLoading={balloonStep.kind === "bot" ? skillOptionsLoading[balloonStep.botId] : undefined}
             skillOptionsError={balloonStep.kind === "bot" ? skillOptionsError[balloonStep.botId] : undefined}
+            environment={environment ?? undefined}
+            preparingEnvironment={preparingEnvironment}
+            onPrepareEnvironment={prepare}
+            consumed={consumed}
+            focus={focusRequest?.stepId === balloonStep.id ? focusRequest : undefined}
             onChange={(patch) => {
               edit((current) => updateStep(current, balloonStep.id, patch));
               const nextBotId = (patch as { botId?: unknown }).botId;
@@ -658,6 +809,7 @@ export function WorkflowStudioPage({ workflowId, department, onBack, onSaved }: 
             onRenameScript={(from, to) => setScripts((current) => renameScript(current, from, to))}
             onToast={(key) => showToast(t(key))}
             onDisconnect={(branch) => edit((current) => disconnect(current, balloonStep.id, branch))}
+            onOpenInputs={(field) => openInputs(balloonStep.id, field)}
             onClose={() => setBalloon(null)}
           />
         )}
@@ -671,11 +823,16 @@ export function WorkflowStudioPage({ workflowId, department, onBack, onSaved }: 
             skillOptions={skillOptions}
             skillOptionsLoading={skillOptionsLoading}
             skillOptionsError={skillOptionsError}
+            environment={environment ?? undefined}
+            preparingEnvironment={preparingEnvironment}
+            onPrepareEnvironment={prepare}
+            consumed={consumed}
+            focusTarget={loopFocus?.loopId === editingLoop ? loopFocus : null}
             onEdit={edit}
             onScript={(name, content) => setScripts((current) => ({ ...current, [name]: content }))}
             onRenameScript={(from, to) => setScripts((current) => renameScript(current, from, to))}
             onToast={(key, params) => showToast(t(key, params))}
-            onClose={() => setEditingLoop(null)}
+            onClose={() => { setEditingLoop(null); setLoopFocus(null); }}
           />
         )}
 

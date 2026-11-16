@@ -24,13 +24,13 @@ const proposal = workflowProposalSchema.parse({
     steps: [
       {
         id: "coletar", kind: "script", name: "Coletar", run: "coletar.mjs",
-        outputs: [{ path: "dados.json" }], result: "dados.json",
+        outputs: [{ path: "dados.json" }],
         parameters: [{ name: "inicio", type: "date", required: true }],
       },
       {
         id: "mensagem", kind: "bot", name: "Escrever", botId: "bot-a", instructions: "Uma mensagem por cliente.",
         inputs: [{ as: "dados.json", from: { step: "coletar", output: "dados.json" } }],
-        outputs: [{ path: "mensagens.json" }], result: "mensagens.json", mode: "manual", timeoutMs: 0,
+        outputs: [{ path: "mensagens.json" }], mode: "manual", timeoutMs: 0,
       },
     ],
   }),
@@ -46,7 +46,7 @@ describe("proposal preview", () => {
       input: ["params.json · inicio (date)"],
       process: "Executa coletar.mjs",
       output: ["dados.json"],
-      proof: ["dados.json", "resultado JSON: dados.json"],
+      proof: ["dados.json"],
       note: "conferir a planilha",
       tags: ["script", "manual"],
     });

@@ -24,7 +24,7 @@ function loopDraft(): { draft: StudioDraft; loopId: string; bodyId: string } {
   draft = {
     ...draft,
     steps: draft.steps.map((step) => step.id === loopId && step.kind === "loop"
-      ? { ...step, from: bodyId, outputs: [{ path: "result.json", required: true }], result: "result.json" }
+      ? { ...step, from: { step: bodyId, output: "result.json" }, outputs: [{ path: "result.json", required: true, shape: { type: "object" } }] }
       : step),
   };
   return { draft, loopId, bodyId };

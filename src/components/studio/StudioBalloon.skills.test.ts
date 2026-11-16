@@ -43,6 +43,7 @@ function draw(optionsValue: WorkflowSkillOptions = options, stepValue = step) {
       onRenameScript: () => {},
       onToast: () => {},
       onDisconnect: () => {},
+      onOpenInputs: () => {},
       onClose: () => {},
     }));
   });

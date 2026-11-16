@@ -34,14 +34,12 @@ const baseDefinition = (overrides: Record<string, unknown> = {}): Record<string,
       kind: "script",
       name: "Atualiza 100",
       run: "atualiza.mjs",
-      outputs: [{ path: "result.json" }],
-      result: "result.json",
+      outputs: [{ path: "result.json", shape: { type: "object" } }],
     }],
-    from: "atualiza",
+    from: { step: "atualiza", output: "result.json" },
     conditions: [{ field: "restantes", op: "lte", value: 0 }],
     maxIterations: 5,
-    outputs: [{ path: "result.json" }],
-    result: "result.json",
+    outputs: [{ path: "result.json", shape: { type: "object" } }],
   }],
   createdAt: 1,
   updatedAt: 1,
@@ -114,15 +112,13 @@ const scriptBody = (body: Record<string, unknown>, overrides: Record<string, unk
       name: "Atualiza 100",
       botId: "bot-a",
       instructions: "Update 100 rows.",
-      outputs: [{ path: "result.json" }],
-      result: "result.json",
+      outputs: [{ path: "result.json", shape: { type: "object" } }],
       ...body,
     }],
-    from: "atualiza",
+    from: { step: "atualiza", output: "result.json" },
     conditions: [{ field: "restantes", op: "lte", value: 0 }],
     maxIterations: 5,
-    outputs: [{ path: "result.json" }],
-    result: "result.json",
+    outputs: [{ path: "result.json", shape: { type: "object" } }],
     ...overrides,
   }],
 });
@@ -184,16 +180,16 @@ describe("Do While contract", () => {
           id: "inner",
           kind: "loop",
           name: "Inner",
-          body: [{ id: "atualiza", kind: "script", name: "A", run: "a.mjs", outputs: [{ path: "result.json" }], result: "result.json" }],
-          from: "atualiza",
+          body: [{ id: "atualiza", kind: "script", name: "A", run: "a.mjs", outputs: [{ path: "result.json", shape: { type: "object" } }] }],
+          from: { step: "atualiza", output: "result.json" },
           conditions: [{ field: "ok", op: "equals", value: true }],
           maxIterations: 1,
-          outputs: [{ path: "result.json" }],
+          outputs: [{ path: "result.json", shape: { type: "object" } }],
         }],
-        from: "inner",
+        from: { step: "inner", output: "result.json" },
         conditions: [{ field: "ok", op: "equals", value: true }],
         maxIterations: 1,
-        outputs: [{ path: "result.json" }],
+        outputs: [{ path: "result.json", shape: { type: "object" } }],
       }],
     });
     expect(workflowDefinitionSchema.safeParse(nested).success).toBe(false);
@@ -211,14 +207,13 @@ describe("Do While contract", () => {
             kind: "script",
             name: "A",
             run: "a.mjs",
-            outputs: [{ path: "result.json" }],
-            result: "result.json",
-            onSuccess: "depois",
+            outputs: [{ path: "result.json", shape: { type: "object" } }],
+                  onSuccess: "depois",
           }],
-          from: "atualiza",
+          from: { step: "atualiza", output: "result.json" },
           conditions: [{ field: "ok", op: "equals", value: true }],
           maxIterations: 1,
-          outputs: [{ path: "result.json" }],
+          outputs: [{ path: "result.json", shape: { type: "object" } }],
         },
         { id: "depois", kind: "script", name: "After", run: "b.mjs", outputs: [{ path: "done.txt" }] },
       ],
@@ -231,13 +226,13 @@ describe("Do While contract", () => {
         kind: "loop",
         name: "Loop",
         body: [
-          { id: "primeiro", kind: "script", name: "First", run: "a.mjs", outputs: [{ path: "result.json" }], result: "result.json", onFailure: "segundo" },
+          { id: "primeiro", kind: "script", name: "First", run: "a.mjs", outputs: [{ path: "result.json", shape: { type: "object" } }], onFailure: "segundo" },
           { id: "segundo", kind: "script", name: "Second", run: "b.mjs", outputs: [{ path: "done.txt" }], onSuccess: "primeiro" },
         ],
-        from: "primeiro",
+        from: { step: "primeiro", output: "result.json" },
         conditions: [{ field: "ok", op: "equals", value: true }],
         maxIterations: 1,
-        outputs: [{ path: "result.json" }],
+        outputs: [{ path: "result.json", shape: { type: "object" } }],
       }],
     });
     expect(workflowDefinitionSchema.safeParse(backwards).success).toBe(false);
@@ -250,13 +245,13 @@ describe("Do While contract", () => {
         kind: "loop",
         name: "Loop",
         body: [
-          { id: "a", kind: "script", name: "A", run: "a.mjs", outputs: [{ path: "result.json" }], result: "result.json" },
-          { id: "b", kind: "script", name: "B", run: "b.mjs", outputs: [{ path: "result.json" }], result: "result.json" },
+          { id: "a", kind: "script", name: "A", run: "a.mjs", outputs: [{ path: "result.json", shape: { type: "object" } }] },
+          { id: "b", kind: "script", name: "B", run: "b.mjs", outputs: [{ path: "result.json", shape: { type: "object" } }] },
         ],
-        from: "a",
+        from: { step: "a", output: "result.json" },
         conditions: [{ field: "ok", op: "equals", value: true }],
         maxIterations: 1,
-        outputs: [{ path: "result.json" }],
+        outputs: [{ path: "result.json", shape: { type: "object" } }],
       }],
     });
     expect(workflowDefinitionSchema.safeParse(ambiguous).success).toBe(false);
@@ -266,11 +261,11 @@ describe("Do While contract", () => {
         id: "laco",
         kind: "loop",
         name: "Loop",
-        body: [{ id: "a", kind: "script", name: "A", run: "a.mjs", outputs: [{ path: "result.json", required: false }], result: "result.json" }],
-        from: "a",
+        body: [{ id: "a", kind: "script", name: "A", run: "a.mjs", outputs: [{ path: "result.json", required: false, shape: { type: "object" } }] }],
+        from: { step: "a", output: "result.json" },
         conditions: [{ field: "ok", op: "equals", value: true }],
         maxIterations: 1,
-        outputs: [{ path: "result.json", required: true }],
+        outputs: [{ path: "result.json", required: true, shape: { type: "object" } }],
       }],
     });
     expect(workflowDefinitionSchema.safeParse(optional).success).toBe(false);
@@ -359,7 +354,6 @@ describe("Do While engine", () => {
     expect(loop.iterations!.map((iteration) => iteration.status)).toEqual(["succeeded", "succeeded", "succeeded"]);
     expect(loop.iterations!.map((iteration) => iteration.conditionMatched)).toEqual([false, false, true]);
     expect(loop.iterations![2]!.condition).toMatchObject({ field: "restantes", op: "lte", value: 0 });
-    expect(run.result).toEqual({ restantes: 0 });
   });
 
   it("fails with the iteration limit and follows onFailure", async () => {
@@ -405,14 +399,14 @@ describe("Do While engine", () => {
         kind: "loop",
         name: "Loop",
         body: [
-          { id: "prep", kind: "bot", name: "Prep", botId: "bot-a", instructions: "Prep.", outputs: [{ path: "sinal.json" }], result: "sinal.json" },
-          { id: "gate", kind: "condition", name: "Gate", from: "prep", conditions: [{ field: "stop", op: "equals", value: true }], whenTrue: null },
-          { id: "atualiza", kind: "bot", name: "Update", botId: "bot-a", instructions: "Update.", outputs: [{ path: "result.json" }], result: "result.json" },
+          { id: "prep", kind: "bot", name: "Prep", botId: "bot-a", instructions: "Prep.", outputs: [{ path: "sinal.json", shape: { type: "object" } }] },
+          { id: "gate", kind: "condition", name: "Gate", from: { step: "prep", output: "sinal.json" }, conditions: [{ field: "stop", op: "equals", value: true }], whenTrue: null },
+          { id: "atualiza", kind: "bot", name: "Update", botId: "bot-a", instructions: "Update.", outputs: [{ path: "result.json", shape: { type: "object" } }] },
         ],
-        from: "atualiza",
+        from: { step: "atualiza", output: "result.json" },
         conditions: [{ field: "restantes", op: "lte", value: 0 }],
         maxIterations: 3,
-        outputs: [{ path: "result.json" }],
+        outputs: [{ path: "result.json", shape: { type: "object" } }],
       }],
     });
     const { store, engine, onTurn } = setup(def);
@@ -469,17 +463,17 @@ describe("Do While engine", () => {
         body: [
           {
             id: "tenta", kind: "bot", name: "Try", botId: "bot-a", instructions: "Try.",
-            outputs: [{ path: "tentativa.json" }], result: "tentativa.json", onFailure: "recupera",
+            outputs: [{ path: "tentativa.json", shape: { type: "object" } }], onFailure: "recupera",
           },
           {
             id: "recupera", kind: "bot", name: "Recover", botId: "bot-a", instructions: "Recover.",
-            outputs: [{ path: "result.json" }], result: "result.json",
+            outputs: [{ path: "result.json", shape: { type: "object" } }],
           },
         ],
-        from: "recupera",
+        from: { step: "recupera", output: "result.json" },
         conditions: [{ field: "restantes", op: "lte", value: 0 }],
         maxIterations: 3,
-        outputs: [{ path: "result.json" }],
+        outputs: [{ path: "result.json", shape: { type: "object" } }],
       }],
     });
     const { store, engine, onTurn } = setup(def);
@@ -509,15 +503,14 @@ describe("Do While engine", () => {
         kind: "loop",
         name: "Loop",
         body: [
-          { id: "prep", kind: "bot", name: "Prep", botId: "bot-a", instructions: "Prep.", outputs: [{ path: "sinal.json" }], result: "sinal.json" },
-          { id: "gate", kind: "condition", name: "Gate", from: "prep", conditions: [{ field: "stop", op: "equals", value: true }], whenTrue: null, whenFalse: "atualiza" },
-          { id: "atualiza", kind: "bot", name: "Update", botId: "bot-a", instructions: "Update.", outputs: [{ path: "result.json" }], result: "result.json" },
+          { id: "prep", kind: "bot", name: "Prep", botId: "bot-a", instructions: "Prep.", outputs: [{ path: "sinal.json", shape: { type: "object" } }] },
+          { id: "gate", kind: "condition", name: "Gate", from: { step: "prep", output: "sinal.json" }, conditions: [{ field: "stop", op: "equals", value: true }], whenTrue: null, whenFalse: "atualiza" },
+          { id: "atualiza", kind: "bot", name: "Update", botId: "bot-a", instructions: "Update.", outputs: [{ path: "result.json", shape: { type: "object" } }] },
         ],
-        from: "prep",
+        from: { step: "prep", output: "sinal.json" },
         conditions: [{ field: "stop", op: "equals", value: true }],
         maxIterations: 3,
-        outputs: [{ path: "sinal.json" }],
-        result: "sinal.json",
+        outputs: [{ path: "sinal.json", shape: { type: "object" } }],
       }],
     });
     const { store, engine, calls, onTurn } = setup(def);
@@ -535,7 +528,7 @@ describe("Do While engine", () => {
   });
 
   it("parks before a manual body step and resumes it once", async () => {
-    const def = scriptBody({ mode: "manual" });
+    const def = scriptBody({ mode: "manual", parameters: [{ name: "link", type: "string", collectedBy: "atualiza" }] });
     const { store, engine, calls, onTurn } = setup(def);
     onTurn((_bot, _text, options) => {
       writeBody(store, options, { "result.json": JSON.stringify({ restantes: 0 }) });
@@ -549,7 +542,7 @@ describe("Do While engine", () => {
     expect(held.hold?.path).toEqual([0, 0, 0]);
     expect(calls).toHaveLength(0);
 
-    expect(engine.resume(started.run.id).ok).toBe(true);
+    expect(engine.resume(started.run.id, { link: "https://x" }).ok).toBe(true);
     expect(engine.resume(started.run.id).ok).toBe(false);
     await engine.idle();
     expect(store.readRun(started.run.id)!.status).toBe("succeeded");
@@ -590,7 +583,7 @@ describe("Do While engine", () => {
   });
 
   it("cancels a waiting body step and marks the round and loop skipped", async () => {
-    const def = scriptBody({ mode: "manual" });
+    const def = scriptBody({ mode: "manual", parameters: [{ name: "link", type: "string", collectedBy: "atualiza" }] });
     const { store, engine, onTurn } = setup(def);
     onTurn(() => {});
     const started = engine.start(def.id);
@@ -650,14 +643,12 @@ describe("Do While engine", () => {
             name: "Update",
             botId: "bot-a",
             instructions: "Update.",
-            outputs: [{ path: "registros.json" }],
-            result: "registros.json",
+            outputs: [{ path: "registros.json", shape: { type: "object" } }],
           }],
-          from: "atualiza",
+          from: { step: "atualiza", output: "registros.json" },
           conditions: [{ field: "restantes", op: "lte", value: 0 }],
           maxIterations: 3,
           outputs: [{ path: "registros.json" }],
-          result: "registros.json",
         },
         {
           id: "revisar",
@@ -667,7 +658,6 @@ describe("Do While engine", () => {
           instructions: "Review.",
           inputs: [{ as: "registros.json", from: { step: "laco", output: "registros.json" } }],
           outputs: [{ path: "decision.json" }],
-          result: "decision.json",
         },
       ],
     });
@@ -695,7 +685,6 @@ describe("Do While engine", () => {
     const run = store.readRun(started.run.id)!;
     expect(run.status).toBe("succeeded");
     expect(run.steps[0]!.verified).toEqual(["registros.json"]);
-    expect(run.result).toEqual({ seen: { updated: 100, restantes: 0 } });
     expect(calls.map((call) => call.options.workflowStep.stepId)).toEqual(["atualiza", "atualiza", "revisar"]);
   });
 
@@ -714,13 +703,12 @@ describe("Do While engine", () => {
             botId: "bot-a",
             instructions: "Update.",
             inputs: [{ as: "dados.csv", from: { step: "preparar", output: "dados.csv" } }],
-            outputs: [{ path: "result.json" }],
-            result: "result.json",
-          }],
-          from: "atualiza",
+            outputs: [{ path: "result.json", shape: { type: "object" } }],
+                }],
+          from: { step: "atualiza", output: "result.json" },
           conditions: [{ field: "restantes", op: "lte", value: 0 }],
           maxIterations: 2,
-          outputs: [{ path: "result.json" }],
+          outputs: [{ path: "result.json", shape: { type: "object" } }],
         },
       ],
     });
@@ -773,15 +761,13 @@ describe("Do While engine", () => {
           name: "Atualiza 100",
           run: "atualiza.mjs",
           timeoutMs: 20_000,
-          outputs: [{ path: "result.json" }],
-          result: "result.json",
-        }],
-        from: "atualiza",
+          outputs: [{ path: "result.json", shape: { type: "object" } }],
+            }],
+        from: { step: "atualiza", output: "result.json" },
         conditions: [{ field: "restantes", op: "lte", value: 0 }],
         maxIterations: 5,
-        outputs: [{ path: "result.json" }],
-        result: "result.json",
-      }],
+        outputs: [{ path: "result.json", shape: { type: "object" } }],
+        }],
     });
     const { store, engine } = setup(def, undefined, [{ name: "atualiza.mjs", content }]);
     const started = engine.start(def.id);
@@ -796,7 +782,6 @@ describe("Do While engine", () => {
       { lote: 2, restantes: 50 },
       { lote: 3, restantes: 0 },
     ]);
-    expect(run.result).toEqual({ lote: 3, restantes: 0 });
     expect(loop.verified).toEqual(["result.json"]);
     expect(JSON.parse(readFileSync(join(store.stepFolder(run, 0), "output", "result.json"), "utf8"))).toEqual({ lote: 3, restantes: 0 });
   });

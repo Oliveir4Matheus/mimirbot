@@ -14,7 +14,8 @@ import { useMediaQuery } from "@/lib/use-media-query";
 import { useShowThreads } from "@/lib/thread-preferences";
 import { resolveWorkflowFocus } from "@/lib/workflow-focus";
 import { isActiveStatus } from "@/lib/workflow-format";
-import { cancelRun, continueRun, deleteRun, deleteWorkflow, readWorkflow, startRun, type ActiveRunRef } from "@/lib/workflows-api";
+import { inputRefusal } from "@/lib/workflow-inputs";
+import { cancelRun, continueRun, deleteRun, deleteWorkflow, prepareEnvironment, readEnvironment, readWorkflow, startRun, type ActiveRunRef, type WorkflowEnvironmentStatus } from "@/lib/workflows-api";
 import { ConfirmDialog } from "./workflows/ConfirmDialog";
 import { DIALOG_BUTTON, Dialog } from "./workflows/Dialog";
 import { FilterPopover, defaultRunFilters, defaultWorkflowFilters } from "./workflows/FilterPopover";
@@ -73,6 +74,9 @@ export function WorkflowsPage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [consoleOpen, setConsoleOpen] = useState(false);
   const [proposalsOpen, setProposalsOpen] = useState(false);
+  const [environment, setEnvironment] = useState<WorkflowEnvironmentStatus | null>(null);
+  const [environmentBusy, setEnvironmentBusy] = useState(false);
+  const [environmentFailure, setEnvironmentFailure] = useState<string | null>(null);
   const [studio, setStudio] = useState<{ id?: string } | null>(null);
   const [mobileDetail, setMobileDetail] = useState(false);
   const [width, setWidth] = useState(readWidth);
@@ -84,6 +88,7 @@ export function WorkflowsPage() {
   const [dialog, setDialog] = useState<DialogState | null>(null);
   const [conflict, setConflict] = useState<WorkflowConflict | null>(null);
   const [cancelReason, setCancelReason] = useState("");
+  const [runError, setRunError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<ToastMessage | null>(null);
   const page = useRef<HTMLDivElement>(null);
@@ -124,8 +129,36 @@ export function WorkflowsPage() {
   }, []);
   useEffect(() => () => { if (toastTimer.current) clearTimeout(toastTimer.current); }, []);
 
-  const activeRuns = useMemo(() => {
-    const map = new Map<string, WorkflowRun>();
+  const environmentStamp = useMemo(
+    () => feed.workflows.map((workflow) => `${workflow.id}:${workflow.version}`).sort().join(","),
+    [feed.workflows],
+  );
+
+  useEffect(() => {
+    let alive = true;
+    void readEnvironment()
+      .then((status) => { if (alive) setEnvironment(status); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [environmentStamp, menuOpen]);
+
+  const prepareWorkflowEnvironment = async () => {
+    setEnvironmentBusy(true);
+    setEnvironmentFailure(null);
+    try {
+      const result = await prepareEnvironment();
+      const status = await readEnvironment().catch(() => null);
+      if (status) setEnvironment(status);
+      if (result.ok) showToast(t("workflows.environment.preparedToast"));
+      else setEnvironmentFailure(result.tail?.trim() || t("workflows.environment.failedGeneric"));
+    } catch (error) {
+      setEnvironmentFailure(errorText(error));
+    } finally {
+      setEnvironmentBusy(false);
+    }
+  };
+
+  const activeRuns = useMemo(() => {    const map = new Map<string, WorkflowRun>();
     for (const run of feed.runs) {
       if (isActiveStatus(run.status) && !map.has(run.workflowId)) map.set(run.workflowId, run);
     }
@@ -263,13 +296,15 @@ export function WorkflowsPage() {
     setDialog(null);
     setConflict(null);
     setCancelReason("");
+    setRunError(null);
   };
 
-  const confirmStart = async (version: number) => {
+  const confirmStart = async (version: number, inputs: Record<string, unknown>) => {
     if (dialog?.kind !== "run") return;
     setBusy(true);
+    setRunError(null);
     try {
-      const run = await startRun(dialog.workflowId, version);
+      const run = await startRun(dialog.workflowId, { version, inputs });
       feed.mergeRun(run);
       feed.refresh();
       setDialog(null);
@@ -278,18 +313,19 @@ export function WorkflowsPage() {
       setMobileDetail(true);
       showToast(t("workflows.dialog.startedToast"));
     } catch (error) {
-      showToast(errorText(error));
+      setRunError(error instanceof ApiError ? inputRefusal(error.body).join(" · ") || error.message : errorText(error));
     } finally {
       setBusy(false);
     }
   };
 
-  const continueRunNow = async (runId: string) => {
+  const continueRunNow = async (runId: string, inputs: Record<string, unknown>): Promise<string | undefined> => {
     try {
-      const run = await continueRun(runId);
+      const run = await continueRun(runId, inputs);
       feed.mergeRun(run);
+      return undefined;
     } catch (error) {
-      showToast(errorText(error));
+      return error instanceof ApiError ? inputRefusal(error.body).join(" · ") || error.message : errorText(error);
     }
   };
 
@@ -443,7 +479,7 @@ export function WorkflowsPage() {
           botName={botName}
           loading={detailLoading}
           onVersion={(next) => setSelectedVersion(next)}
-          onRun={(next) => { setConflict(null); setDialog({ kind: "run", workflowId: selectedWorkflow.id, version: next }); }}
+          onRun={(next) => { setConflict(null); setRunError(null); setDialog({ kind: "run", workflowId: selectedWorkflow.id, version: next }); }}
           onEdit={() => setStudio({ id: selectedWorkflow.id })}
           onDelete={() => { setConflict(null); setDialog({ kind: "deleteWorkflow", workflowId: selectedWorkflow.id }); }}
           onSelectStep={(index) => setSelectedStep(index)}
@@ -467,9 +503,9 @@ export function WorkflowsPage() {
         now={now}
         botName={botName}
         onCancel={() => { setCancelReason(""); setDialog({ kind: "cancel", runId: selectedRun.id }); }}
-        onContinue={() => void continueRunNow(selectedRun.id)}
+        onContinue={(inputs) => continueRunNow(selectedRun.id, inputs)}
         onDelete={() => setDialog({ kind: "deleteRun", runId: selectedRun.id })}
-        onRerun={() => { setConflict(null); setDialog({ kind: "run", workflowId: selectedRun.workflowId, version: selectedRun.workflowVersion }); }}
+        onRerun={() => { setConflict(null); setRunError(null); setDialog({ kind: "run", workflowId: selectedRun.workflowId, version: selectedRun.workflowVersion }); }}
         onOpenConversation={openConversation}
         onBack={() => setMobileDetail(false)}
       />
@@ -485,7 +521,7 @@ export function WorkflowsPage() {
       <WorkflowStudioPage
         workflowId={studio.id}
         department={department}
-        onBack={() => setStudio(null)}
+        onBack={() => { setStudio(null); feed.refresh(); }}
         onSaved={(id) => {
           setStudio(null);
           setTab("workflows");
@@ -555,7 +591,15 @@ export function WorkflowsPage() {
             >
               <Plus size={14} aria-hidden="true" />
             </button>
-            <PanelMenu open={menuOpen} onOpenChange={setMenuOpen} onOpenConsole={() => setConsoleOpen(true)} onOpenProposals={() => setProposalsOpen(true)} />
+            <PanelMenu
+              open={menuOpen}
+              onOpenChange={setMenuOpen}
+              onOpenConsole={() => setConsoleOpen(true)}
+              onOpenProposals={() => setProposalsOpen(true)}
+              environment={environment}
+              preparing={environmentBusy}
+              onPrepareEnvironment={() => void prepareWorkflowEnvironment()}
+            />
           </div>
 
           <div className="-mx-4 grid grid-cols-2 border-b border-hairline">
@@ -667,7 +711,7 @@ export function WorkflowsPage() {
                       selectedId={selectedWorkflowId}
                       now={now}
                       onSelect={selectWorkflow}
-                      onRun={(id) => { setConflict(null); setDialog({ kind: "run", workflowId: id }); }}
+                      onRun={(id) => { setConflict(null); setRunError(null); setDialog({ kind: "run", workflowId: id }); }}
                       onOpen={selectWorkflow}
                     />
                   )
@@ -720,9 +764,21 @@ export function WorkflowsPage() {
           versions={versionsFor(dialogWorkflow.id, dialogWorkflow)}
           initialVersion={dialog.version}
           busy={busy}
+          error={runError ?? undefined}
           onClose={closeDialog}
-          onConfirm={(version) => void confirmStart(version)}
+          onConfirm={(version, inputs) => void confirmStart(version, inputs)}
         />
+      )}
+
+      {environmentFailure !== null && (
+        <Dialog
+          title={t("workflows.environment.failedTitle")}
+          onClose={() => setEnvironmentFailure(null)}
+          actions={<button type="button" className={DIALOG_BUTTON} onClick={() => setEnvironmentFailure(null)}>{t("workflows.environment.close")}</button>}
+        >
+          <p>{t("workflows.environment.failedHelp")}</p>
+          <pre className="wf-thin-scroll mt-3 max-h-[220px] overflow-auto whitespace-pre-wrap rounded-lg border border-hairline bg-raised/40 px-2.5 py-2 font-mono text-[10.5px] leading-relaxed text-ink-secondary">{environmentFailure}</pre>
+        </Dialog>
       )}
 
       {dialog?.kind === "cancel" && dialogRun && (

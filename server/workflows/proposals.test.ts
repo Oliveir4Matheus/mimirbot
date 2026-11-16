@@ -102,3 +102,82 @@ describe("workflow proposal store", () => {
     expect(proposals.read(id)).toBeUndefined();
   });
 });
+
+describe("workflow proposal interview confirmation", () => {
+  const answers = { recurring: true, changes: "Só as datas", confirmer: "Eu confirmo" };
+
+  it("leaves a fresh draft unconfirmed, with no approved hash", () => {
+    const proposals = harness();
+    const created = proposals.create(input());
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+    expect(created.proposal.interview.confirmedAt).toBeUndefined();
+    expect(created.proposal.approvalHash).toBeUndefined();
+  });
+
+  it("stamps the person's confirmation and the corrected answers", () => {
+    const proposals = harness();
+    expect(proposals.create(input()).ok).toBe(true);
+    const corrected = { recurring: true, changes: "O link do dia", confirmer: "O Matheus aprova os trechos" };
+    const confirmed = proposals.confirm(id, corrected, "user");
+    expect(confirmed.ok).toBe(true);
+    if (!confirmed.ok) return;
+    expect(confirmed.proposal.interview).toMatchObject({ ...corrected, confirmedAt: NOW, confirmedBy: "user" });
+    expect(confirmed.proposal.approvalHash).toMatch(/^[a-f0-9]{64}$/);
+
+    const reread = harness().read(id);
+    expect(reread?.interview).toMatchObject({ changes: "O link do dia", confirmer: "O Matheus aprova os trechos", confirmedBy: "user" });
+    expect(reread?.approvalHash).toBe(confirmed.proposal.approvalHash);
+  });
+
+  it("accepts não sei and keeps the assumption it confirms", () => {
+    const proposals = harness();
+    expect(proposals.create(input()).ok).toBe(true);
+    const confirmed = proposals.confirm(id, { recurring: true, changes: "não sei", confirmer: "" });
+    expect(confirmed.ok).toBe(true);
+    if (!confirmed.ok) return;
+    expect(confirmed.proposal.interview.confirmedAt).toBe(NOW);
+    expect(confirmed.proposal.assumptions.some((line) => line.includes("O que muda"))).toBe(true);
+    expect(confirmed.proposal.assumptions.some((line) => line.includes("Quem confirma"))).toBe(true);
+  });
+
+  it("drops the assumption when the person replaces não sei with an answer", () => {
+    const proposals = harness();
+    expect(proposals.create(input({ interview: { recurring: true, changes: "não sei", confirmer: "não sei" } })).ok).toBe(true);
+    expect(proposals.read(id)?.assumptions).toHaveLength(2);
+    const confirmed = proposals.confirm(id, answers);
+    expect(confirmed.ok).toBe(true);
+    if (!confirmed.ok) return;
+    expect(confirmed.proposal.assumptions).toEqual([]);
+  });
+
+  it("gives a different hash for a different answer", () => {
+    const proposals = harness();
+    expect(proposals.create(input()).ok).toBe(true);
+    const first = proposals.confirm(id, answers);
+    if (!first.ok) throw new Error(first.error);
+    const second = proposals.confirm(id, { ...answers, changes: "O link do dia" });
+    if (!second.ok) throw new Error(second.error);
+    expect(second.proposal.approvalHash).not.toBe(first.proposal.approvalHash);
+  });
+
+  it("refuses a one-time task and a proposal that already became a Workflow", () => {
+    const proposals = harness();
+    expect(proposals.create(input()).ok).toBe(true);
+    expect(proposals.confirm(id, { recurring: false, changes: "", confirmer: "" })).toEqual({
+      ok: false,
+      error: "a one-time task is not a Workflow; finish the task instead of proposing one",
+    });
+    expect(proposals.markCreated(id, "11111111-1111-4111-8111-111111111111").ok).toBe(true);
+    expect(proposals.confirm(id, answers)).toEqual({ ok: false, error: "this proposal became a Workflow" });
+  });
+
+  it("refuses answers the schema cannot read", () => {
+    const proposals = harness();
+    expect(proposals.create(input()).ok).toBe(true);
+    const refused = proposals.confirm(id, { changes: "faltou o recorrente" });
+    expect(refused.ok).toBe(false);
+    if (refused.ok) return;
+    expect(refused.error).toContain("recurring");
+  });
+});

@@ -1,10 +1,12 @@
 // Runs one script step as a local process with the step folder as cwd: no
-// shell, a closed environment, a hard timeout and captured output. The file
-// extension picks the runtime (Node, Node with type stripping, or Python).
-// It gets the same user permissions as the app; this is not a sandbox.
+// shell, a closed environment, a hard timeout and captured output. Only `.mjs`
+// runs: the app is already Node, so there is no second runtime to ship. It gets
+// the same user permissions as the app; this is not a sandbox.
 import { spawn, type ChildProcess } from "node:child_process";
+import { delimiter } from "node:path";
 
 import { WORKFLOW_SCRIPT_TIMEOUT_MAX_MS } from "../../shared/workflow.ts";
+import { workflowEnvironmentPaths, type WorkflowEnvironmentPaths } from "./environment.ts";
 
 export interface WorkflowScriptOptions {
   scriptPath: string;
@@ -14,6 +16,8 @@ export interface WorkflowScriptOptions {
   timeoutMs: number;
   runId: string;
   stepId: string;
+  /** The installation environment whose python and node_modules the script uses. */
+  environment?: WorkflowEnvironmentPaths;
 }
 
 export type WorkflowScriptResult = { ok: true } | { ok: false; error: string; timedOut?: true };
@@ -26,28 +30,28 @@ export interface WorkflowScriptHandle {
 const OUTPUT_KEEP = 8 * 1024;
 const ERROR_KEEP = 2_000;
 
-/** The interpreter and arguments for a script, chosen by its extension. */
+/** The interpreter and arguments for a script: always this app's own Node. */
 export function workflowScriptCommand(scriptPath: string): { command: string; args: string[] } {
-  const lower = scriptPath.toLowerCase();
-  if (lower.endsWith(".py")) {
-    const python = process.env.WORKFLOW_PYTHON || (process.platform === "win32" ? "python" : "python3");
-    return { command: python, args: [scriptPath] };
-  }
-  if (lower.endsWith(".ts")) return { command: process.execPath, args: ["--experimental-strip-types", scriptPath] };
   return { command: process.execPath, args: [scriptPath] };
 }
 
-function scriptEnv(options: WorkflowScriptOptions): NodeJS.ProcessEnv {
+/** The environment one script step gets: no shell, the installation's interpreter and node
+ * modules named, and the venv's `bin` first on PATH. A bot step never receives any of it. */
+export function workflowScriptEnvironment(options: WorkflowScriptOptions): NodeJS.ProcessEnv {
+  const environment = options.environment ?? workflowEnvironmentPaths();
   const env: NodeJS.ProcessEnv = {
     WORKFLOW_STEP_INPUT: options.inputDir,
     WORKFLOW_STEP_OUTPUT: options.outputDir,
     WORKFLOW_RUN_ID: options.runId,
     WORKFLOW_STEP_ID: options.stepId,
+    WORKFLOW_PYTHON: environment.python,
+    WORKFLOW_NODE_MODULES: environment.nodeModules,
   };
   for (const key of ["PATH", "HOME", "USERPROFILE", "TMPDIR", "TMP", "TEMP", "LANG", "LC_ALL", "SYSTEMROOT"]) {
     const value = process.env[key];
     if (value !== undefined && value !== "") env[key] = value;
   }
+  env.PATH = [environment.binDir, env.PATH].filter((entry) => entry !== undefined && entry !== "").join(delimiter);
   // A packaged app's execPath is Electron; this is its documented way to run a Node script.
   if (process.versions.electron) env.ELECTRON_RUN_AS_NODE = "1";
   return env;
@@ -67,7 +71,7 @@ export function runWorkflowScript(options: WorkflowScriptOptions): WorkflowScrip
   try {
     child = spawn(command, args, {
       cwd: options.stepDir,
-      env: scriptEnv(options),
+      env: workflowScriptEnvironment(options),
       shell: false,
       stdio: ["ignore", "pipe", "pipe"],
       detached: process.platform !== "win32",

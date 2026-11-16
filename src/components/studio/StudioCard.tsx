@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  AlertTriangle, ArrowDownToLine, ArrowUpFromLine, BookOpen, Check, Clock, Code2, CornerUpLeft, FileText, GitBranch, Layers, List, Maximize2, MoreHorizontal, Play, Plus, Repeat, Sparkles, Wrench, X,
+  AlertTriangle, ArrowDownToLine, ArrowUpFromLine, BookOpen, Check, Clock, Code2, CornerUpLeft, FileText, GitBranch, Layers, List, Maximize2, MoreHorizontal, Play, Plus, Repeat, Sparkles, UserRound, Wrench, X,
 } from "lucide-react";
 
 import type { WorkflowStep } from "../../../shared/workflow";
@@ -8,7 +8,7 @@ import type { LocaleKey } from "@/locales";
 import { cn } from "@/lib/cn";
 import { t } from "@/lib/i18n";
 import { branchCenters, branchTop } from "./studio-geometry";
-import { CARD_HEIGHT, CARD_WIDTH, skillCount, type StudioBranch, type StudioDraft } from "./studio-model";
+import { CARD_HEIGHT, CARD_WIDTH, skillCount, type StudioBranch, type StudioBranchName, type StudioDraft } from "./studio-model";
 
 const CATEGORY = { bot: "AI AGENT", script: "CODE STEP", condition: "CONDITIONAL", loop: "DO WHILE" } as const;
 
@@ -17,7 +17,7 @@ const clip = (text: string, max = 85) => {
   return flat.length > max ? `${flat.slice(0, max - 1)}…` : flat;
 };
 
-type BranchKey = "instructions" | "context" | "tools" | "skills" | "return" | "run" | "input" | "output" | "script" | "condition" | "true" | "false" | "failure" | "timeout";
+type BranchKey = StudioBranchName;
 
 interface BranchSpec {
   key: BranchKey;
@@ -29,7 +29,7 @@ interface BranchSpec {
 
 const BOT_BRANCHES: BranchSpec[] = [
   { key: "instructions", label: "studio.branch.instructions", icon: FileText },
-  { key: "context", label: "studio.branch.context", icon: Layers },
+  { key: "context", label: "studio.branch.inputs", icon: Layers },
   { key: "tools", label: "studio.branch.tools", icon: Wrench },
   { key: "skills", label: "studio.branch.skills", icon: BookOpen },
   { key: "return", label: "studio.branch.return", icon: CornerUpLeft },
@@ -37,7 +37,7 @@ const BOT_BRANCHES: BranchSpec[] = [
 ];
 
 const SCRIPT_BRANCHES: BranchSpec[] = [
-  { key: "input", label: "studio.branch.input", icon: ArrowDownToLine },
+  { key: "input", label: "studio.branch.inputs", icon: ArrowDownToLine },
   { key: "output", label: "studio.branch.output", icon: ArrowUpFromLine },
   { key: "script", label: "studio.branch.script", icon: Code2 },
   { key: "run", label: "studio.branch.run", icon: Play, port: "run" },
@@ -103,7 +103,7 @@ export function StudioCard({ draft, step, index, selected, botName, onSelect, on
         const count = skillCount(step);
         return count === 0 ? t("studio.card.noSkills") : count === 1 ? t("studio.card.skillCountOne") : t("studio.card.skillCount", { count });
       }
-      if (key === "return") return step.result ?? t("studio.card.noResult");
+      if (key === "return") return step.outputs.map((output) => output.path).join(", ") || t("studio.card.noResult");
       if (key === "run") return typeof step.onSuccess === "string" ? nameOf(step.onSuccess) : t("studio.card.end");
       if (key === "failure") return step.onFailure ? nameOf(step.onFailure) : t("studio.condition.none");
       if (key === "timeout") return step.onTimeout ? nameOf(step.onTimeout) : t("studio.condition.none");
@@ -153,6 +153,7 @@ export function StudioCard({ draft, step, index, selected, botName, onSelect, on
     : step.kind === "script" ? t("studio.card.waitingScript")
       : step.kind === "loop" ? t("studio.loop.bodyCount", { count: step.body.length })
         : t("studio.card.waitingCondition");
+  const manual = (step.kind === "bot" || step.kind === "script") && step.mode === "manual";
   const branches = step.kind === "bot" ? BOT_BRANCHES : step.kind === "script" ? SCRIPT_BRANCHES : step.kind === "loop" ? LOOP_BRANCHES : CONDITION_BRANCHES;
   const sideBranches = step.kind === "condition" ? [TRUE_BRANCH, FALSE_BRANCH, FAILURE_BRANCH]
     : step.kind === "loop" ? [FAILURE_BRANCH]
@@ -226,8 +227,9 @@ export function StudioCard({ draft, step, index, selected, botName, onSelect, on
         </div>
         <div className="studio-card-divider" />
         <div className="studio-card-foot">
-          <span className={cn("studio-status-dot", `studio-status-${step.kind}`)} aria-hidden="true" />
-          <span className="studio-card-status">{waiting}</span>
+          <span className={cn("studio-status-dot", manual ? "studio-status-manual" : `studio-status-${step.kind}`)} aria-hidden="true" />
+          {manual && <UserRound size={14} strokeWidth={1.8} className="studio-card-person" aria-hidden="true" />}
+          <span className="studio-card-status">{manual ? t("studio.card.manualWaiting") : waiting}</span>
           <span className="studio-card-id">N{index + 1}</span>
         </div>
         {menu && (
