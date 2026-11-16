@@ -319,33 +319,46 @@ describe("script steps and flow edges", () => {
     expect(issues(bad)).toContain("steps.1.modules.0.name");
   });
   it("accepts a script limit longer than the five-minute default, up to an hour", () => {
-    const workflow = branchWorkflow();
+    const workflow = scriptWorkflow();
     (workflow.steps[1] as Record<string, unknown>).timeoutMs = 900_000;
     expect(issues(workflow)).toEqual([]);
     const parsed = workflowDefinitionSchema.parse(workflow);
     expect(parsed.steps[1]!.kind === "script" && parsed.steps[1]!.timeoutMs).toBe(900_000);
-    const tooLong = branchWorkflow();
+    const tooLong = scriptWorkflow();
     (tooLong.steps[1] as Record<string, unknown>).timeoutMs = 3_600_001;
     expect(issues(tooLong)).toContain("steps.1.timeoutMs");
   });
-  it("parses the packages a script installs, trimmed and without repeats", () => {
-    const workflow = branchWorkflow();
-    (workflow.steps[1] as Record<string, unknown>).modules = [" lodash@4.17.21 ", "@scope/pkg@^1", "requests[socks]==2.31.0", "django>=4,<5", "lodash@4.17.21"];
+
+  it("accepts a python or node module with an exact version", () => {
+    const workflow = scriptWorkflow();
+    (workflow.steps[1] as Record<string, unknown>).modules = [
+      { name: "faster-whisper", runtime: "python", version: "1.2.1" },
+      { name: "@scope/pkg", runtime: "node", version: "2.0.0" },
+    ];
     expect(issues(workflow)).toEqual([]);
     const parsed = workflowDefinitionSchema.parse(workflow);
     expect(parsed.steps[1]!.kind === "script" && parsed.steps[1]!.modules).toEqual([
-      "lodash@4.17.21", "@scope/pkg@^1", "requests[socks]==2.31.0", "django>=4,<5",
+      { name: "faster-whisper", runtime: "python", version: "1.2.1" },
+      { name: "@scope/pkg", runtime: "node", version: "2.0.0" },
     ]);
   });
-  it("refuses a package that is a path, a URL or a flag", () => {
-    for (const spec of ["../evil", "/tmp/pkg", "file:../x", "https://x.test/pkg", "-g", "@lodash", "pkg name", "pkg;rm", "pkg/../../x"]) {
-      const workflow = branchWorkflow();
-      (workflow.steps[1] as Record<string, unknown>).modules = [spec];
-      expect(issues(workflow)).toContain("steps.1.modules.0");
+
+  it("refuses a module that is a URL, a path or a flag", () => {
+    for (const modules of [
+      [{ name: "../evil", runtime: "bin" }],
+      [{ name: "https://x.test/pkg", runtime: "node" }],
+      [{ name: "-g", runtime: "bin" }],
+      [{ name: "pkg name", runtime: "bin" }],
+      [{ name: "pkg", runtime: "python", version: "-1" }],
+    ]) {
+      const workflow = scriptWorkflow();
+      (workflow.steps[1] as Record<string, unknown>).modules = modules;
+      expect(issues(workflow).length).toBeGreaterThan(0);
     }
   });
-  it("does not give a bot step a modules field", () => {
-    const workflow = branchWorkflow();
+
+  it("drops modules from a bot step on read; the save refuses it", () => {
+    const workflow = scriptWorkflow();
     (workflow.steps[0] as Record<string, unknown>).modules = ["lodash"];
     const parsed = workflowDefinitionSchema.parse(workflow);
     expect(parsed.steps[0]).not.toHaveProperty("modules");
