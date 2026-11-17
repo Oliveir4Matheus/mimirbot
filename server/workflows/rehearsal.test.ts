@@ -64,6 +64,18 @@ describe("proposal rehearsal", () => {
     expect(result.steps.find((step) => step.id === "revisar")).toMatchObject({ label: "untested" });
   });
 
+  it("counts a proposal with no script as passed, since there is nothing to test", async () => {
+    const built = proposal(script);
+    built.definition.steps = [{
+      id: "revisar", kind: "bot", name: "Revisar", botId: "bot-a", instructions: "Reveja.",
+      inputs: [], parameters: [], outputs: [{ path: "result.json", required: true }], result: "result.json", timeoutMs: 0, mode: "manual",
+    }];
+    built.scripts = [];
+    const result = await rehearseProposal(built, {});
+    expect(result.status).toBe("passed");
+    expect(result.steps[0]).toMatchObject({ label: "untested" });
+  });
+
   it("refuses a Windows-style or absolute example file name", async () => {
     const result = await rehearseProposal(proposal(script), { files: [{ name: "..\\secret.txt", content: "x" }] });
     expect(result.status).toBe("diverged");

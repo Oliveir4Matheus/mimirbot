@@ -6,7 +6,7 @@
 // to correct in each one.
 import type { AuthoringIssue } from "./workflow-authoring.ts";
 
-export type WorkflowRefusalCode = "authoringErrors" | "needsConfirmation" | "needsAcknowledgement";
+export type WorkflowRefusalCode = "authoringErrors" | "needsConfirmation" | "needsRehearsal";
 
 /** How many issues one refusal carries; the rest are counted in `truncated`. */
 export const WORKFLOW_REFUSAL_ISSUES_MAX = 50;
@@ -29,7 +29,7 @@ export interface WorkflowRefusal {
 const REFUSAL_CODES: ReadonlySet<string> = new Set<WorkflowRefusalCode>([
   "authoringErrors",
   "needsConfirmation",
-  "needsAcknowledgement",
+  "needsRehearsal",
 ]);
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>

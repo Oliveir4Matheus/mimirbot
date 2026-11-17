@@ -39,4 +39,12 @@ describe("the WorkflowRefusal contract", () => {
     expect(parseWorkflowRefusal({ code: "authoringErrors", error: "x", authoring: { errors: [{ path: 1 }], warnings: [] } })).toBeUndefined();
     expect(parseWorkflowRefusal({ code: "authoringErrors", error: "x", authoring: { errors: [], warnings: [], truncated: -1 } })).toBeUndefined();
   });
+
+  it("names a failed rehearsal as its own gate and no longer accepts an acknowledgement", () => {
+    expect(parseWorkflowRefusal(workflowRefusal("needsRehearsal", "run the rehearsal first"))).toEqual({
+      code: "needsRehearsal",
+      error: "run the rehearsal first",
+    });
+    expect(parseWorkflowRefusal({ code: "needsAcknowledgement", error: "old body" })).toBeUndefined();
+  });
 });

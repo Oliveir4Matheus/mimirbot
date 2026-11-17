@@ -116,10 +116,10 @@ export function readProposal(id: string): Promise<WorkflowProposal> {
   return api<{ proposal: WorkflowProposal }>(`/api/workflow-proposals/${encodeURIComponent(id)}`).then((answer) => answer.proposal);
 }
 
-export function createWorkflowFromProposal(id: string, acknowledge?: { reason: string }): Promise<{ workflowId: string; version: number }> {
+export function createWorkflowFromProposal(id: string): Promise<{ workflowId: string; version: number }> {
   return api<{ workflowId: string; version: number }>(
     `/api/workflow-proposals/${encodeURIComponent(id)}/create`,
-    json(acknowledge === undefined ? {} : { acknowledge }),
+    json({}),
   );
 }
 

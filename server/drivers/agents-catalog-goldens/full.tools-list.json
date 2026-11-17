@@ -2357,7 +2357,7 @@
     },
     {
       "name": "create_workflow_from_proposal",
-      "description": "Create the Workflow the person approved by confirming the three interview answers and choosing Criar Workflow on the proposal card, then reviewing its preview. Never call it before that choice, and never confirm the interview for the person: without their confirmation the route refuses and says what is missing. Creation also requires a passing rehearsal; without one, the person must write a reason, which you pass as acknowledge_reason. When the save refuses, the response is a WorkflowRefusal: it lists every problem with its path and the fix; correct all of them and propose again in the same turn. Returns the Workflow id; the first step stays manual.",
+      "description": "Create the Workflow the person approved by confirming the three interview answers and choosing Criar Workflow on the proposal card, then reviewing its preview. Never call it before that choice, and never confirm the interview for the person: without their confirmation the route refuses and says what is missing. Creation also requires a passing rehearsal, run by the person in the preview; if the route answers needsRehearsal, tell the person to run it and do not work around it. When the save refuses, the response is a WorkflowRefusal: it lists every problem with its path and the fix; correct all of them and propose again in the same turn. Returns the Workflow id; the first step stays manual.",
       "inputSchema": {
         "type": "object",
         "additionalProperties": false,
@@ -2366,10 +2366,6 @@
             "type": "string",
             "maxLength": 64,
             "description": "The proposal id shown on the card."
-          },
-          "acknowledge_reason": {
-            "type": "string",
-            "description": "The reason the person gave for creating a proposal whose rehearsal did not pass. Omit when the rehearsal passed."
           }
         },
         "required": [

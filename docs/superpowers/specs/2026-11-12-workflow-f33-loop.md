@@ -1,5 +1,14 @@
 # Spec — F3.3: componente Do While (`kind: "loop"`)
 
+> [!IMPORTANT]
+> **Revisão de 16/11/2026.** O Do While está implementado. O contrato foi
+> ajustado depois desta spec: `from` é `{ step, output }` e lê uma saída
+> `.json` obrigatória com `shape`; `result` e `require` saíram do componente (e
+> das etapas); `from.output` é que identifica o arquivo. Onde este documento
+> ainda disser `from: string`, “etapa que declara `result`” ou
+> `result`/`require` do loop, vale a spec do motor
+> (`docs/superpowers/specs/2026-11-03-workflow-engine-design.md`).
+
 **Data:** 12/11/2026  
 **Branch:** `feat/workflow-f1`  
 **Status:** escopo e formato visual aprovados pelo dono; implementado e verificado em 12/11/2026 (registro no §15).  
@@ -34,7 +43,7 @@ Nome visível no produto: **Do While**. Discriminante no contrato:
 O componente é:
 
 - **determinístico**: a ordem do corpo é a do array; a condição é uma
-  comparação fechada sobre um `result.json` já verificado;
+  comparação fechada sobre uma saída `.json` já verificada;
 - **auditável**: cada iteração fica registrada no `run.json`, com as etapas do
   corpo, arquivos verificados, condição e erro;
 - **previsível**: o corpo roda pelo menos uma vez; a condição é avaliada depois;
@@ -61,7 +70,7 @@ Decisões técnicas fechadas nesta spec:
 
 - corpo aninhado, não range de etapas soltas;
 - condição reutiliza o grupo E/OU do IF/Else;
-- `from` é uma etapa do corpo que declara `result`;
+- `from` é uma etapa do corpo e uma saída `.json` obrigatória dela, com `shape`;
 - condições e arestas do corpo só apontam para dentro do corpo;
 - sem timeout nem modo manual no componente; as etapas do corpo mantêm os seus;
 - `outputs` do loop são uma projeção da última iteração;
@@ -76,7 +85,7 @@ Decisões técnicas fechadas nesta spec:
 ### 3.1 Entra nesta entrega
 
 - Contrato `kind: "loop"` com `body`, `from`, grupo de condições,
-  `maxIterations`, `outputs`, `result`/`require` opcionais, `onSuccess` e
+  `maxIterations`, `outputs`, `onSuccess` e
   `onFailure`.
 - Validação do corpo, das arestas, da condição e da projeção de saídas.
 - Motor do-while com iterações, condição após a volta, teto, falhas e rotas.
@@ -121,13 +130,11 @@ interface LoopWorkflowStep {
   kind: "loop";
   name: string;               // 1..120
   body: WorkflowBodyStep[];   // 1..20, sem loop dentro
-  from: string;               // id de etapa do body, com result
+  from: { step: string; output: string }; // etapa do body e uma .json dela com shape
   match: "all" | "any";       // default "all"
   conditions: ConditionLine[];// 1..20 linhas { field, op, value? }
   maxIterations: number;      // inteiro >= 1, default 1, sem máximo de produto
   outputs: StepOutput[];      // 1..50, projeção da última iteração
-  result?: string;            // opcional; precisa estar em outputs
-  require?: Record<string, unknown>; // opcional; exige result
   onSuccess?: string | null;  // ausente = próxima do array; null = fim
   onFailure?: string;         // falha do corpo, condição, teto ou projeção
 }
@@ -152,13 +159,11 @@ edição manual do `workflows.json`.
 | `id` | Slug `^[a-z0-9]+(?:-[a-z0-9]+)*$`, até 64; único no Workflow inteiro, incluindo o corpo |
 | `name` | 1..120; rótulo visível |
 | `body` | 1..20 etapas; cada uma é `bot`, `script` ou `condition`; ids globalmente únicos |
-| `from` | Id de uma etapa **do body**; essa etapa precisa declarar `result` |
+| `from` | `{ step, output }`: etapa **do body** e uma saída `.json` obrigatória dela, com `shape` |
 | `match` | `"all"` (padrão) ou `"any"`; mesmo grupo do IF/Else |
 | `conditions` | 1..20 linhas `{ field, op, value? }`; `value` obrigatório exceto em `exists`; 4 KB por valor; 64 KB no grupo |
 | `maxIterations` | Inteiro ≥ 1; padrão 1; sem máximo de produto; não é timeout. Com o padrão 1, a primeira volta que não satisfizer a condição já estoura o teto e falha; quem precisa repetir aumenta o número |
 | `outputs` | 1..50; cada path precisa ser declarado por **exatamente uma** etapa do body |
-| `result` | Opcional; precisa ser um dos `outputs`; objeto JSON de até 64 KB |
-| `require` | Opcional; exige `result`; comparação por igualdade, como nas outras etapas |
 | `onSuccess` | Ausente = próxima etapa do array; `null` = fim explícito; string = etapa posterior do topo |
 | `onFailure` | Destino em falha do corpo, erro de condição, teto ou projeção; sem ele a run para |
 
@@ -166,18 +171,18 @@ O componente **não** tem `inputs`, `when`, `onTimeout`, `timeoutMs` nem `mode`.
 Quem declara entradas são as etapas do corpo; quem tem timeout e modo manual são
 as etapas do corpo.
 
-`result`/`require` no loop são um acréscimo desta spec ao JSON Schema didático
-do HTML: eles permitem que uma etapa seguinte use o loop como fonte de
-`result.json` e que o save imponha uma última checagem. Sem eles, o loop
-continua funcionando normalmente.
+`result`/`require` **não existem mais** no loop (nem em etapa alguma). Uma etapa
+seguinte lê uma saída `.json` do loop com `from: { step, output }`, exatamente
+como lê a saída de um bot. O loop projeta em `outputs` os arquivos da última
+volta.
 
 ### 4.3 A condição
 
 O Do While reutiliza a semântica do IF/Else:
 
-- `from` escolhe a etapa-fonte;
+- `from` escolhe a etapa-fonte e a saída `.json` dela;
 - `match` combina as linhas com `all` ou `any` e curto-circuito;
-- cada linha tem `field` (caminho pontuado no `result.json`), `op` (lista
+- cada linha tem `field` (caminho pontuado no `.json` lido), `op` (lista
   fechada de 8) e `value` (literal JSON, quando o operador exige);
 - **verdadeiro = parar** (until); falso = outra volta;
 - não há `eval`, expressão livre, função ou aritmética;
@@ -232,9 +237,8 @@ Operadores: `equals`, `not_equals`, `exists`, `contains`, `gt`, `gte`, `lt`,
   etapa declarante naquela volta para a pasta de saída do loop.
 - Se a etapa declarante não executou na última volta, ou o arquivo não existe:
   output obrigatório → loop falha; output opcional → ausente.
-- `result` do Do While, quando declarado, precisa estar entre os `outputs`; o
-  motor lê o arquivo projetado e valida como objeto JSON de até 64 KB.
-- `require` do Do While, quando declarado, é conferido sobre esse `result`.
+- Não há `result`/`require` no Do While: os arquivos projetados em `outputs` são
+  o que a etapa seguinte lê.
 
 ### 4.6 Canvas e sub-canvas
 
@@ -275,14 +279,13 @@ O save recusa, com 400 e mensagem específica:
 - `body` vazio, com mais de 20 etapas ou com um `loop` dentro;
 - soma de etapas de topo + todos os corpos acima de 40;
 - `id` repetido, inclusive entre corpo e topo;
-- `from` que não existe, não está no body ou não declara `result`;
+- `from` que não existe, não está no body, não é `.json` ou não tem `shape`;
 - `conditions` vazio, com mais de 20 linhas ou linha sem `value` quando o
   operador exige;
 - `maxIterations` não inteiro ou menor que 1;
 - `outputs` vazio, path repetido, path sem etapa declarante ou com mais de uma
   etapa declarante;
 - output do loop obrigatório vindo de output opcional do corpo;
-- `result` fora dos `outputs` ou `require` sem `result`;
 - aresta do corpo apontando para fora do corpo, para o loop ou para trás;
 - ciclo no corpo ou no topo;
 - etapa de script do corpo sem o arquivo correspondente em `scripts/`;
@@ -304,7 +307,7 @@ flowchart TD
   C --> D{"Alguma etapa falhou sem rota?"}
   D -- sim --> F["Falha do loop → onFailure ou run failed"]
   D -- não --> E["Verifica arquivos das etapas"]
-  E --> G["Lê result.json de from"]
+  E --> G["Lê a .json de from"]
   G --> H{"Condição verdadeira?"}
   H -- sim --> I["Projeta outputs da última iteração"]
   I --> J["Loop succeeded → onSuccess / próxima etapa"]
@@ -320,7 +323,7 @@ flowchart TD
 2. Para cada iteração:
    - cria as pastas da iteração;
    - executa as etapas do corpo em ordem, com as regras normais de verificação,
-     `require`, timeout, modo manual e aprovação;
+     timeout, modo manual e aprovação;
    - resolve as arestas do corpo dentro do corpo; `onSuccess: null` ou ausência
      no fim encerra a volta;
    - ao encerrar a volta, verifica se `from` executou e se o `result.json`
@@ -331,7 +334,7 @@ flowchart TD
      `failureKind: "limit"` e a mensagem
      `step "<id>" reached the iteration limit of <N>`.
 3. No sucesso, copia os outputs projetados da última iteração e verifica
-   `result`/`require`.
+   a saída `.json` lida.
 4. Aplica `onSuccess`/`onFailure` do loop como qualquer etapa de topo.
 
 ### 5.3 Condição
@@ -339,7 +342,7 @@ flowchart TD
 - A condição é avaliada **depois** da volta inteira, inclusive quando uma
   etapa do corpo encerra a volta mais cedo por `onSuccess: null` ou por um ramo
   de `condition`.
-- `from` precisa ter produzido `result.json` naquela volta. Se a etapa foi
+- `from` precisa ter produzido a `.json` naquela volta. Se a etapa foi
   pulada, falhou sem rota ou não deixou o arquivo, o loop falha com
   `could not read step "<from>": <motivo>`; a condição não é avaliada.
 - Erro de avaliação (tipo, caminho inválido, `contains` em tipo errado, `gt`
@@ -357,7 +360,7 @@ flowchart TD
   etapa falhada visível no histórico — a mesma semântica das etapas de topo.
 - `condition` do corpo com erro: segue o `onFailure` da própria condição; sem
   ele, o loop falha.
-- Falha de projeção, `result` ausente, `require` falso ou teto: o loop fica
+- Falha de projeção, `.json` de `from` ausente ou teto: o loop fica
   `failed`; `onFailure` do loop decide.
 - `onSuccess: null` no loop encerra a run; ausente segue a próxima etapa do
   topo.
@@ -379,10 +382,10 @@ flowchart TD
   somente in-app, para etapas de bot. Etapa de script manual continua sem
   notificação até a pendência separada.
 - Uma rotina com `target: "workflow"` pode iniciar um Workflow cujo primeiro
-  passo de topo é um Do While. O bloqueio de rotina com primeira etapa manual
-  continua olhando só a primeira etapa de topo; um Do While não tem `mode` e
-  não é bloqueado. Se o corpo tiver etapa manual, a run da rotina espelha
-  `waiting` e espera a pessoa, como qualquer etapa manual.
+  passo de topo é um Do While. *(Revisão de 16/11/2026: o bloqueio de rotina com
+  primeira etapa manual foi removido. A rotina nunca fornece valor inicial; a
+  run para em `waiting_manual` na primeira etapa manual, inclusive quando ela
+  está dentro do corpo, e espera a pessoa.)*
 
 ### 5.6 Cancelamento, remoção e reinício
 
@@ -434,7 +437,7 @@ Proposta de layout:
 │     │  └─ step-atualiza/
 │     │     ├─ input/
 │     │     └─ output/
-│     │        └─ result.json
+│     │        └─ revisao.json
 │     ├─ iter-2/
 │     └─ iter-3/
 └─ step-2/                         # etapa seguinte do topo
@@ -487,10 +490,8 @@ interface WorkflowRunIteration {
 - A iteração corrente fica `running`; as anteriores ficam `succeeded`/`failed`;
   a última que satisfizer a condição fica `succeeded`.
 - `verified` do loop recebe os paths dos `outputs` projetados.
-- `result` do loop, quando declarado, recebe o objeto lido da última iteração.
-  Se o loop encerra a run (`onSuccess: null`), `run.result` recebe esse objeto;
-  se ele segue para outra etapa, o `run.result` final é o da última etapa
-  concluída, como hoje.
+- `result` da **iteração** recebe o objeto lido da `.json` de `from` naquela
+  volta, para a timeline. `run.result` não é preenchido pelo motor.
 - `failureKind: "limit"` identifica o estouro de `maxIterations`.
 - `step-N` do topo continua existindo; as pastas por iteração são adicionais.
 
@@ -549,7 +550,7 @@ interface WorkflowRunPause {
 - O desenho vertical mostra o Do While como uma caixa com prévia do corpo
   (ordem e nomes), condição resumida e portas Run/Falha.
 - Clicar na caixa abre o painel da etapa com: instruções do corpo, condição
-  (`from`, E/OU, linhas), `maxIterations`, outputs, `result`/`require` e arestas.
+  (`from`, E/OU, linhas), `maxIterations`, outputs e arestas.
 - O painel é somente leitura; editar abre o Studio.
 - Não há substudio na F2; o substudio é ferramenta de edição do Studio.
 
@@ -558,7 +559,7 @@ interface WorkflowRunPause {
 - A timeline tem uma linha do Do While com ícone de repetição, nome, status,
   duração e contador de iterações.
 - A linha expande por iteração; cada iteração mostra as etapas do corpo, status,
-  duração, arquivos verificados, `result.json` e erro.
+  duração, arquivos verificados, a `.json` lida e erro.
 - A iteração que parou mostra a condição: “Parou porque `restantes` = 0”.
 - Falha por teto mostra `reached the iteration limit of N` e o `failureKind`
   correspondente.
@@ -637,7 +638,7 @@ cinco” da Parte 3 fica substituída por esta.
 - Abre pela ramificação **Condição** do card.
 - Campos:
   - **Etapa de origem (`from`)**: select apenas com etapas do corpo que
-    declaram `result`; sem opções, mostra “Adicione uma etapa com `result` ao
+    declaram uma saída `.json`; sem opções, mostra “Adicione uma saída `.json` ao
     corpo”.
   - **Condições**: `Todas (E)` / `Qualquer (OU)`, linhas com Campo, Operador,
     Valor e remover; “Adicionar condição” até 20.
@@ -651,12 +652,11 @@ cinco” da Parte 3 fica substituída por esta.
 Antes de salvar, o `draftProblem`/validação do Studio recusa:
 
 - corpo vazio ou com loop dentro;
-- `from` ausente, fora do corpo ou sem `result`;
+- `from` ausente, fora do corpo, ou cuja saída não é `.json`/não tem `shape`;
 - condição vazia, linha sem valor quando o operador exige, ou mais de 20;
 - `maxIterations` não inteiro/menor que 1;
 - output do loop sem etapa declarante, com mais de uma declarante ou
   obrigatório vindo de output opcional;
-- `result` fora dos outputs; `require` sem `result`;
 - aresta do corpo para fora/para trás/para o loop;
 - ciclo no corpo;
 - script do corpo inexistente;
@@ -719,12 +719,11 @@ partir dele.
   `maxIterations: 1`).
 - Recusa `body` vazio, > 20, com loop dentro.
 - Recusa quando a soma de etapas de topo + corpos passa de 40.
-- Recusa `from` fora do body/sem `result`.
+- Recusa `from` fora do body ou sem `.json` com `shape`.
 - Recusa condição vazia/> 20/linha sem valor.
 - Recusa `maxIterations` 0, negativo, fracionário.
 - Recusa output sem etapa declarante, com duas declarantes ou obrigatório
   vindo de opcional.
-- Recusa `result` fora dos outputs e `require` sem `result`.
 - Recusa aresta do corpo para fora/para trás/para o loop e ciclo.
 - Aceita `canvas.loops` e recusa nota/container com link para fora do
   sub-canvas.
@@ -737,7 +736,7 @@ partir dele.
 - 3 iterações com contador; condição verdadeira na 3ª para.
 - Condição falsa na última volta com `maxIterations` → `failureKind: "limit"`
   e `onFailure`.
-- `from` pulado/sem `result.json` → loop falha.
+- `from` pulado/sem a `.json` → loop falha.
 - Erro de tipo na condição → loop falha/`onFailure`.
 - Etapa do corpo falha sem rota → loop falha/`onFailure`.
 - Etapa do corpo falha com `onFailure` interno → iteração continua; condição
@@ -760,7 +759,7 @@ partir dele.
 
 - Cria `iterations/iter-N/step-<id>/input|output`.
 - Projeta outputs da última iteração para `step-<loopIndex>/output`.
-- Verifica required/optional, vazio, link, 64 KB, JSON objeto.
+- Verifica required/optional, vazio, link, 64 KB, JSON objeto e `shape`.
 - Output obrigatório do loop vindo de output opcional é recusado no save.
 - Reinício/cancelamento não apagam iterações concluídas.
 
@@ -805,7 +804,7 @@ Criar `docs/verification/workflow-loop.md` com:
 - Workflow com Do While + script SQLite que atualiza 100 linhas por volta;
 - 3 iterações (100/150, 100/50, 50/0), run `succeeded`, outputs projetados;
 - `run.json` com `iterations`, `conditionMatched`, `snapshot.body`;
-- falha por teto, `result.json` ausente, `require` falso e banco bloqueado;
+- falha por teto, `.json` de `from` ausente e banco bloqueado;
 - manual no corpo e aprovação no corpo;
 - reinício no meio da volta;
 - save recusando loop aninhado, aresta para fora e output ambíguo;
@@ -887,7 +886,7 @@ Criar `docs/verification/workflow-loop.md` com:
 | Store | `server/workflows/store.ts` | schema do run, snapshot, sub-canvas, validação do save |
 | Rotas | `server/routes/workflows.ts` | validação recursiva do corpo, scripts, save |
 | Studio — card | `src/components/studio/StudioCard.tsx` | card Do While, prévia, botão de expandir, portas |
-| Studio — balão | `src/components/studio/StudioBalloon.tsx` | condição do loop, `maxIterations`, `from` |
+| Studio — modal do loop | `src/components/studio/StudioLoopModal.tsx` | condição do loop, `maxIterations`, `from` |
 | Studio — substudio | `src/components/studio/WorkflowStudioPage.tsx` | modal 80% × 70%, canvas/paleta do corpo, X/Esc |
 | Studio — modelo | `src/components/studio/studio-model.ts` | loop no draft, sub-canvas, validação, duplicar/excluir |
 | Studio — geometria | `src/components/studio/studio-geometry.ts` | portas/medidas do card e do substudio |
@@ -913,7 +912,7 @@ Criar `docs/verification/workflow-loop.md` com:
 - `docs/superpowers/specs/2026-11-07-workflows-f2-compact-uiux.md` — tela F2.
 - `docs/superpowers/specs/2026-11-09-workflow-f32.md` — manual, condições E/OU,
   Python/TypeScript e skills por etapa.
-- `shared/workflow.ts` — contrato atual de etapa, condição, `result`/`require`,
+- `shared/workflow.ts` — contrato atual de etapa, condição, parâmetros,
   canvas e run.
 - `server/workflows/engine.ts`, `state.ts`, `files.ts`, `paths.ts`, `flow.ts`,
   `condition.ts`, `store.ts` — motor e persistência atuais.
@@ -930,8 +929,8 @@ spec. O que ficou de fora é exatamente o §12.
 
 **Entregue**
 
-- Contrato `kind: "loop"` com `body`, `from`, grupo E/OU, `maxIterations`
-  (default 1), `outputs`, `result`/`require`, `onSuccess`/`onFailure`,
+- Contrato `kind: "loop"` com `body`, `from` em par, grupo E/OU,
+  `maxIterations` (default 1), `outputs`, `onSuccess`/`onFailure`,
   `canvas.loops`, `failureKind: "limit"`, `hold.path`/`pause.path` e
   `snapshot.body`.
 - Motor do-while com pastas por volta, projeção da última volta, manual e
@@ -975,7 +974,7 @@ spec. O que ficou de fora é exatamente o §12.
 **Nota do fixture**
 
 - O fake engine não escreve arquivos. No E2E, o primeiro script grava também o
-  `result.json` declarado pela etapa de bot seguinte; a etapa de bot roda de
+  `.json` declarado pela etapa de bot seguinte; a etapa de bot roda de
   verdade e o motor verifica o contrato. Isso é detalhe do fixture, não do
   produto.
 

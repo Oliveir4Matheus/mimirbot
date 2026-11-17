@@ -58,6 +58,14 @@ describe("proposal preview", () => {
     });
   });
 
+  it("keeps each authoring issue's path so the preview can send it back", () => {
+    const broken = structuredClone(proposal);
+    broken.definition.steps[0]!.outputs = [{ path: "dados", required: true }];
+    const preview = proposalPreview(broken);
+    const missingExtension = preview.authoring.errors.find((issue) => issue.path === "steps.0.outputs.0.path");
+    expect(missingExtension?.message).toContain("needs a file extension");
+  });
+
   it("shows assumptions, the script's code and non-blocking warnings", () => {
     const preview = proposalPreview(proposal);
     expect(preview.assumptions).toEqual(["O tom é cordial"]);

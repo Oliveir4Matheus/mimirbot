@@ -96,7 +96,7 @@ describe("workflow proposal internal routes", () => {
 
   it("creates the Workflow only on the person's yes, with the first step manual", async () => {
     const h = harness();
-    await h.callInternal("POST", "/api/internal/workflows/proposals", body());
+    await h.callInternal("POST", "/api/internal/workflows/proposals", body({ scripts: [{ name: "coletar.mjs", content: writing }] }));
     const id = (h.state.body as { proposal: { id: string } }).proposal.id;
     await h.callInternal("POST", `/api/internal/workflows/proposals/${id}/create`, {});
     expect(h.state.status).toBe(409);
@@ -107,13 +107,16 @@ describe("workflow proposal internal routes", () => {
     expect(h.state.status).toBe(200);
     await h.callInternal("POST", `/api/internal/workflows/proposals/${id}/create`, {});
     expect(h.state.status).toBe(409);
-    expect(h.state.body).toMatchObject({ needsAcknowledgement: true });
+    expect(h.state.body).toMatchObject({ code: "needsRehearsal", needsRehearsal: true });
     expect(h.workflows.workflows()).toHaveLength(0);
-    await h.callInternal("POST", `/api/internal/workflows/proposals/${id}/create`, { acknowledge: { reason: "o script ja roda no chat" } });
+    await h.call("POST", `/api/workflow-proposals/${id}/rehearse`, undefined, {});
+    expect(h.state.status).toBe(200);
+    expect(h.proposals.read(id)?.rehearsal?.status).toBe("passed");
+    await h.callInternal("POST", `/api/internal/workflows/proposals/${id}/create`, {});
     expect(h.state.status).toBe(201);
     expect(h.workflows.workflows()).toHaveLength(1);
     expect(h.workflows.workflow(id)?.steps[0]).toMatchObject({ mode: "manual" });
-    expect(h.workflows.readScript(id, "coletar.mjs")?.content).toContain("console.log");
+    expect(h.workflows.readScript(id, "coletar.mjs")?.content).toContain("writeFileSync");
     expect(h.proposals.read(id)).toMatchObject({ status: "created", createdWorkflowId: id });
     await h.callInternal("POST", `/api/internal/workflows/proposals/${id}/create`, {});
     expect(h.state.status).toBe(200);
@@ -124,7 +127,7 @@ describe("workflow proposal internal routes", () => {
     const h = harness();
     await h.callInternal("POST", "/api/internal/workflows/proposals", body());
     const id = (h.state.body as { proposal: { id: string } }).proposal.id;
-    await h.call("POST", `/api/workflow-proposals/${id}/create`, undefined, { acknowledge: { reason: "sem ensaio" } });
+    await h.call("POST", `/api/workflow-proposals/${id}/create`, undefined, {});
     expect(h.state.status).toBe(409);
     expect(h.state.body).toMatchObject({ needsConfirmation: true });
     expect(String((h.state.body as { error: string }).error)).toContain("interview was never confirmed");
@@ -133,7 +136,7 @@ describe("workflow proposal internal routes", () => {
 
   it("stores a corrected answer and a new hash, and only then creates", async () => {
     const h = harness();
-    await h.callInternal("POST", "/api/internal/workflows/proposals", body());
+    await h.callInternal("POST", "/api/internal/workflows/proposals", body({ scripts: [{ name: "coletar.mjs", content: writing }] }));
     const id = (h.state.body as { proposal: { id: string } }).proposal.id;
     await h.call("POST", `/api/workflow-proposals/${id}/confirm`, undefined, {
       interview: { recurring: true, changes: "O link do vídeo do dia", confirmer: "O Matheus aprova os trechos" },
@@ -142,7 +145,9 @@ describe("workflow proposal internal routes", () => {
     const confirmed = h.proposals.read(id);
     expect(confirmed?.interview).toMatchObject({ changes: "O link do vídeo do dia", confirmedBy: "user" });
     expect(confirmed?.approvalHash).toMatch(/^[a-f0-9]{64}$/);
-    await h.call("POST", `/api/workflow-proposals/${id}/create`, undefined, { acknowledge: { reason: "o script ja roda no chat" } });
+    await h.call("POST", `/api/workflow-proposals/${id}/rehearse`, undefined, {});
+    expect(h.proposals.read(id)?.rehearsal?.status).toBe("passed");
+    await h.call("POST", `/api/workflow-proposals/${id}/create`, undefined, {});
     expect(h.state.status).toBe(201);
   });
 
@@ -170,7 +175,7 @@ describe("workflow proposal internal routes", () => {
 
     const fresh = harness();
     expect(fresh.proposals.read(id)?.interview.changes).toBe("O link do dia");
-    await fresh.call("POST", `/api/workflow-proposals/${id}/create`, undefined, { acknowledge: { reason: "sem ensaio" } });
+    await fresh.call("POST", `/api/workflow-proposals/${id}/create`, undefined, {});
     expect(fresh.state.status).toBe(409);
     expect(fresh.state.body).toMatchObject({ needsConfirmation: true });
     expect(fresh.workflows.workflows()).toHaveLength(0);
@@ -191,7 +196,7 @@ describe("workflow proposal internal routes", () => {
     writeFileSync(h.proposals.file, JSON.stringify(raw));
 
     const fresh = harness();
-    await fresh.call("POST", `/api/workflow-proposals/${id}/create`, undefined, { acknowledge: { reason: "sem ensaio" } });
+    await fresh.call("POST", `/api/workflow-proposals/${id}/create`, undefined, {});
     expect(fresh.state.status).toBe(409);
     expect(fresh.state.body).toMatchObject({ needsConfirmation: true });
     expect(fresh.workflows.workflows()).toHaveLength(0);
@@ -258,6 +263,20 @@ describe("workflow proposal person routes", () => {
     expect(h.workflows.workflows()).toHaveLength(1);
     await h.call("DELETE", `/api/workflow-proposals/${id}`);
     expect(h.state.status).toBe(409);
+  });
+
+  it("refuses a create whose rehearsal diverged, even when a reason is sent", async () => {
+    const h = harness();
+    await h.callInternal("POST", "/api/internal/workflows/proposals", body({ scripts: [{ name: "coletar.mjs", content: "console.log('nothing written')\n" }] }));
+    const id = (h.state.body as { proposal: { id: string } }).proposal.id;
+    await h.call("POST", `/api/workflow-proposals/${id}/confirm`, undefined, { interview: { recurring: true, changes: "Só as datas", confirmer: "Eu confirmo" } });
+    await h.call("POST", `/api/workflow-proposals/${id}/rehearse`, undefined, {});
+    expect(h.state.status).toBe(200);
+    expect(h.proposals.read(id)?.rehearsal?.status).toBe("diverged");
+    await h.call("POST", `/api/workflow-proposals/${id}/create`, undefined, { acknowledge: { reason: "o script ja roda no chat" } });
+    expect(h.state.status).toBe(409);
+    expect(h.state.body).toMatchObject({ code: "needsRehearsal", needsRehearsal: true });
+    expect(h.workflows.workflows()).toHaveLength(0);
   });
 
   it("refuses a proposal the authoring contract rejects, before it becomes a draft", async () => {

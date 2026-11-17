@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { workflowDefinitionSchema } from "../../shared/workflow";
-import { inputRefusal, parameterValues, startParameters, stepCollectedParameters } from "./workflow-inputs";
+import { inputRefusal, parameterValues, refusalMessage, startParameters, stepCollectedParameters } from "./workflow-inputs";
 
 const definition = workflowDefinitionSchema.parse({
   id: "8a5b1c2d-3e4f-4a5b-8c9d-0e1f2a3b4c5d",
@@ -73,5 +73,11 @@ describe("the Run screen's inputs", () => {
       "allowed: link, inicio",
     ]);
     expect(inputRefusal(undefined)).toEqual([]);
+  });
+
+  it("leaves a refusal that is not about inputs to its own message", () => {
+    const environment = "the environment is not prepared for this Workflow: run \"Prepare environment\" (1 module changed)";
+    expect(inputRefusal({ error: environment })).toEqual([]);
+    expect(refusalMessage({ error: environment }, environment)).toBe(environment);
   });
 });

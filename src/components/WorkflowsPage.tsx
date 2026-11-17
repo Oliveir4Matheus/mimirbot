@@ -14,7 +14,7 @@ import { useMediaQuery } from "@/lib/use-media-query";
 import { useShowThreads } from "@/lib/thread-preferences";
 import { resolveWorkflowFocus } from "@/lib/workflow-focus";
 import { isActiveStatus } from "@/lib/workflow-format";
-import { inputRefusal } from "@/lib/workflow-inputs";
+import { refusalMessage } from "@/lib/workflow-inputs";
 import { cancelRun, continueRun, deleteRun, deleteWorkflow, prepareEnvironment, readEnvironment, readWorkflow, startRun, type ActiveRunRef, type WorkflowEnvironmentStatus } from "@/lib/workflows-api";
 import { ConfirmDialog } from "./workflows/ConfirmDialog";
 import { DIALOG_BUTTON, Dialog } from "./workflows/Dialog";
@@ -313,7 +313,7 @@ export function WorkflowsPage() {
       setMobileDetail(true);
       showToast(t("workflows.dialog.startedToast"));
     } catch (error) {
-      setRunError(error instanceof ApiError ? inputRefusal(error.body).join(" · ") || error.message : errorText(error));
+      setRunError(error instanceof ApiError ? refusalMessage(error.body, error.message) : errorText(error));
     } finally {
       setBusy(false);
     }
@@ -325,7 +325,7 @@ export function WorkflowsPage() {
       feed.mergeRun(run);
       return undefined;
     } catch (error) {
-      return error instanceof ApiError ? inputRefusal(error.body).join(" · ") || error.message : errorText(error);
+      return error instanceof ApiError ? refusalMessage(error.body, error.message) : errorText(error);
     }
   };
 

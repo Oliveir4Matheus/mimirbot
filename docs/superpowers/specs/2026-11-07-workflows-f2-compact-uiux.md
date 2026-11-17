@@ -509,6 +509,11 @@ Versão  [v4 (atual) — 06/11/2026 18:42  ▾]
 
 **Composição:** número, nome, avatar/indicador do bot, texto `Bot: Ana · 1 saída` e seta discreta à direita.
 
+O card desta aba é somente leitura e não muda para etapa `mode: "manual"`.
+Quem sinaliza a etapa manual é o card do **Studio**, que mostra **Aguardando a
+pessoa** no rodapé (com ícone de pessoa). A coleta acontece na run, no bloco
+**Esta etapa pergunta a você**.
+
 ### 10.5 Conexões
 
 - Distância vertical reservada entre cards: aproximadamente **51 px**.
@@ -523,6 +528,8 @@ Versão  [v4 (atual) — 06/11/2026 18:42  ▾]
 - **Hover:** borda `#BFBFC6` e sombra um pouco maior.
 - **Selecionado:** borda `#888C9E` e halo discreto.
 - **Etapa em execução:** borda azul `#77A3E7`, fundo `#FBFDFF`, halo azul-claro.
+- **Etapa manual (só no Studio):** rodapé com **Aguardando a pessoa**, âmbar; não
+  muda a borda. O card somente leitura da aba Workflows não tem esse estado.
 - A etapa selecionada pode abrir o painel de detalhe, mas não entrar em modo de edição.
 - Se o card estiver no contexto de uma run, o estado atual deve ficar visualmente destacado.
 
@@ -548,13 +555,21 @@ Versão  [v4 (atual) — 06/11/2026 18:42  ▾]
 
 ### 11.1 Seções do painel
 
-1. **Bot:** avatar e nome do agente.
+1. **Bot:** avatar e nome do agente; modo (`Automático`/`Manual`) e, quando
+   houver, o tempo limite em segundos.
 2. **Instruções:** até quatro linhas por padrão; botão **Mostrar mais** / **Mostrar menos**.
 3. **Entradas:** tabela de arquivo recebido, etapa de origem e arquivo de origem.
 4. **Saídas:** tabela de arquivos esperados e indicador de obrigatoriedade.
-5. **Resultado:** arquivo ou estrutura declarada como resultado.
-6. **Condições:** pares campo/valor exigido.
-7. **Skills:** grupos bot, bundled e imported com os nomes escolhidos, ou **Nenhuma skill** quando a etapa não declara nenhuma.
+5. **Condição:** numa etapa `condition`, a origem (`arquivo · etapa de origem`),
+   `Todas`/`Qualquer` e a tabela de comparações. Num Do While, o corpo em ordem,
+   a mesma origem, `maxIterations` e as comparações.
+6. **Skills:** grupos bot, bundled e imported com os nomes escolhidos, ou **Nenhuma skill** quando a etapa não declara nenhuma.
+7. **Fluxo:** `onSuccess`, `onFailure` e `onTimeout` da etapa executável; em
+   `condition`, `True`, `False` e `onFailure`; em Do While, `onSuccess` e
+   `onFailure`. Só aparece o que a etapa declara.
+
+`Resultado`, `Condições` e a tabela de `when` não são contrato: só aparecem
+quando um Workflow salvo antes da migração ainda os carrega.
 
 ### 11.2 Padrões de conteúdo
 
@@ -593,6 +608,7 @@ Pedido por Bruno · 06/11/2026 18:42 → Em andamento · 4 min
 - Largura máxima de leitura aproximada de **930 px**, centralizada.
 - Padding aproximado de **35 px em cima**, **48 px nas laterais** e **90 px embaixo**.
 - Se houver aguardando aprovação, apresentar primeiro um bloco de aprovação.
+- Se houver espera manual, apresentar primeiro o bloco **Esta etapa pergunta a você**, com os campos coletados e **Continuar**.
 - Se houver falha, mostrar faixa de erro antes da timeline.
 - A timeline de etapas vem em seguida.
 - Blocos **Resultado** e **Arquivos** aparecem abaixo, conforme a disponibilidade.
@@ -609,7 +625,7 @@ Pedido por Bruno · 06/11/2026 18:42 → Em andamento · 4 min
 - Espaço entre ícone e conteúdo: cerca de 12 px.
 - Linha vertical fina e cinza conecta os marcadores.
 - Nome da etapa: 12 px, semibold.
-- Tentativa/duração/situação em fonte de 10 px, alinhada à direita quando houver espaço.
+- Duração/situação em fonte de 10 px, alinhada à direita quando houver espaço. Não há contagem de tentativas: a etapa executa no máximo uma vez.
 - Segunda linha opcional para arquivos, erro ou ação **Abrir conversa**.
 
 ### 13.2 Estados das etapas
@@ -619,13 +635,14 @@ Pedido por Bruno · 06/11/2026 18:42 → Em andamento · 4 min
 | Concluída | Círculo verde-claro e check verde |
 | Em execução | Círculo azul-claro e indicador animado discreto |
 | Aguardando aprovação | Círculo amarelo-claro e ampulheta |
+| Aguardando a pessoa (manual) | Círculo âmbar com pausa; o texto da linha é **Aguardando início** |
 | Falhou | Círculo vermelho-claro e símbolo de erro |
 | Pendente | Círculo neutro e ícone vazado |
 | Pulada | Cinza reduzido; texto da etapa pode aparecer riscado |
 
 ### 13.3 Conteúdo complementar
 
-- Tentativas e duração ao lado do nome ou à direita da linha.
+- Duração ao lado do nome ou à direita da linha.
 - Arquivos verificados em pequenas etiquetas com ícone de arquivo, fundo cinza muito claro e borda fina.
 - Mensagem de falha em vermelho sob o nome.
 - **Abrir conversa** em azul quando houver conversa vinculada à etapa.
@@ -663,6 +680,14 @@ Pergunta feita há 4 min · 1 cartão aberto     [Abrir conversa →]
 - Botão **Abrir conversa** à direita no desktop, abaixo em telas estreitas.
 - **Não** adicionar botões Aprovar/Rejeitar diretamente nesta tela. A decisão ocorre na conversa indicada.
 
+### 14.3 Espera manual
+
+Run em `waiting_manual` mostra, antes da timeline, o bloco **Esta etapa pergunta
+a você**: a etapa, os campos que ela coleta e o botão **Continuar**. Campo
+obrigatório vazio volta como erro e a run continua parada. O bloco não aparece
+para etapa manual que não coleta valor: nesse caso **Continuar** só libera a
+etapa.
+
 ---
 
 ## 15. Erros, resultado e arquivos
@@ -677,8 +702,10 @@ Pergunta feita há 4 min · 1 cartão aberto     [Abrir conversa →]
 
 ### 15.2 Resultado
 
+- O motor não preenche mais `run.result`: o bloco só aparece em runs antigas que
+  já o traziam. Runs novas mostram os arquivos de cada etapa.
 - Se existir resultado, apresentar bloco recolhível **Resultado**.
-- Cabeçalho com nome do arquivo declarado e botão **Copiar**.
+- Cabeçalho com o rótulo **Resultado** e botão **Copiar**.
 - Corpo com JSON formatado e fonte monoespaçada.
 - Fundo do código `#24262D`; texto `#E6E7E9`.
 - Raio ~8 px; padding ~15 px; rolagem própria para conteúdo grande.
@@ -1042,6 +1069,28 @@ Os itens abaixo servem como checklist de comparação com o protótipo de refer�
 - [ ] Acessibilidade não depende somente de cor.
 - [ ] Desktop, tablet e telas pequenas preservam uso correto.
 - [ ] Nenhuma ação permite criar/editar a definição do Workflow aqui.
+
+---
+
+## 24A. Workflow a partir da conversa — o que a tela mostra
+
+Esta parte é visível na aba **Propostas** e no cartão da conversa; o detalhe
+técnico está em `tmp/Workflows_Spec_Completa.md`, seção 28.
+
+- O cartão do chat oferece **Criar Workflow / Agora não**. **Criar Workflow** e
+  a linha da proposta abrem a mesma prévia.
+- A prévia é uma janela de altura fixa com o corpo em rolagem própria: Input,
+  Process, Output, Proof e, para script, o código; suposições em âmbar;
+  anotação por etapa.
+- A pessoa confirma as três respostas da entrevista na própria prévia; o bot
+  nunca confirma por ela. Sem confirmação, criar fica bloqueado.
+- **Rodar ensaio** é obrigatório: só um ensaio `passed` habilita **Criar
+  Workflow**. Um ensaio de proposta sem script resulta `passed`; com script,
+  precisa de ao menos um passo `passed` e nenhum `diverged`.
+- Erros de autoria e divergências do ensaio aparecem em faixas com **Enviar ao
+  bot**, que devolve os problemas à conversa de origem.
+- A criação não pede justificativa. O Workflow criado nasce com a primeira etapa
+  manual e aparece na lista; a prévia fecha.
 
 ---
 

@@ -95,11 +95,11 @@ describe("propose_workflow", () => {
 
   it("shows only the code and the error when the refusal carries no authoring", async () => {
     const result = await callTool("create_workflow_from_proposal", { proposal_id: proposal.id }, context({
-      ok: false, status: 409, body: { code: "needsAcknowledgement", error: "the rehearsal ended diverged", needsAcknowledgement: true },
+      ok: false, status: 409, body: { code: "needsRehearsal", error: "the rehearsal ended diverged", needsRehearsal: true },
     }));
     expect(result.isError).toBe(true);
-    expect(result.text).toBe("refused: needsAcknowledgement\nthe rehearsal ended diverged");
-    expect(result.structured).toEqual({ refusal: { code: "needsAcknowledgement", error: "the rehearsal ended diverged" } });
+    expect(result.text).toBe("refused: needsRehearsal\nthe rehearsal ended diverged");
+    expect(result.structured).toEqual({ refusal: { code: "needsRehearsal", error: "the rehearsal ended diverged" } });
   });
 
   it("counts the issues the cap left out", async () => {

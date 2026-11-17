@@ -3,7 +3,7 @@
 // from the same definition the engine would run, so the preview cannot drift.
 import type { WorkflowProposal } from "./workflow-proposal.ts";
 import { startManualDefinition } from "./workflow-proposal.ts";
-import { validateWorkflowAuthoring } from "./workflow-authoring.ts";
+import { validateWorkflowAuthoring, type AuthoringIssue } from "./workflow-authoring.ts";
 import type { WorkflowStep } from "./workflow.ts";
 
 export type ProposalPreviewTag = "bot" | "script" | "condition" | "loop" | "manual";
@@ -30,8 +30,9 @@ export interface ProposalPreview {
   assumptions: string[];
   /** Non-blocking advice about a script's static surface. */
   scriptWarnings: Array<{ step: string; warning: string }>;
-  /** What the authoring contract refuses at create, and the advice it gives now. */
-  authoring: { errors: string[]; warnings: string[] };
+  /** What the authoring contract refuses at create, and the advice it gives now.
+   * Each issue keeps its dotted path so the preview can send it back to the bot. */
+  authoring: { errors: AuthoringIssue[]; warnings: AuthoringIssue[] };
   error?: string;
 }
 
@@ -104,10 +105,7 @@ export function proposalPreview(proposal: WorkflowProposal): ProposalPreview {
     assumptions: proposal.assumptions,
     authoring: (() => {
       const report = validateWorkflowAuthoring(definition, "preview", { scripts: proposal.scripts });
-      return {
-        errors: report.errors.map((issue) => issue.message),
-        warnings: report.warnings.map((issue) => issue.message),
-      };
+      return { errors: report.errors, warnings: report.warnings };
     })(),
     scriptWarnings: definition.steps.flatMap((step) => {
       if (step.kind !== "script") return [];

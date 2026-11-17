@@ -1,14 +1,30 @@
 # Handoff — F3.1.1: correções do Workflow Studio
 
+> [!IMPORTANT]
+> **Nota histórica (16/11/2026).** Este documento **não é mais a referência do
+> contrato**. Ele descreve as correções da F3.1.1, aplicadas em 09/11/2026:
+> `onSuccess`, `onFailure`/`onTimeout`, timeout por etapa, fim explícito e
+> remoção da repetição por caminho de volta. O contrato evoluiu depois disso:
+> a saída passou a exigir extensão e `shape`, `condition.from`/`loop.from` virou
+> `{ step, output }`, os parâmetros ganharam origem, a etapa manual passou a
+> exigir `collectedBy`, o script virou `.mjs` com `modules` e o ambiente passou a
+> ser por instalação. Para o estado atual, leia
+> `docs/superpowers/specs/2026-11-03-workflow-engine-design.md` (seção 4) e a
+> tabela **Estado atual** de `tmp/Workflows_Spec_Completa.md`.
+>
+> O que continua valendo daqui: `next` → `onSuccess`; `onFailure`/`onTimeout`
+> como arestas separadas; `onSkipped` inexistente; `onSuccess: null` como fim;
+> timeout como resultado próprio; aresta só para frente; `attempts` fora; o
+> Studio grava `null` quando a saída de sucesso não está conectada.
+
 **Data:** 09/11/2026  
 **Branch:** `feat/workflow-f1`  
 **Base validada:** `00e4205d3` + working tree  
 **Status:** implementado em 09/11/2026; verificação na seção 7 e em `tmp/progress.md`.
 
-> **Fonte de verdade:** este handoff supersede a descrição de repetição do F2 em
-> `tmp/Workflows_Spec_Completa.md`. Onde a spec histórica ainda fala de caminho
-> de volta, teto de 25 visitas ou `attempts`, vale este documento: isso tudo é
-> removido.
+> **Fonte de verdade à época:** este handoff supersedia a descrição de repetição
+> do F2 em `tmp/Workflows_Spec_Completa.md`. Hoje ele é histórico: o contrato
+> atual está na spec do motor.
 
 Este documento é o pacote de implementação da F3.1.1. Ele assume que a pessoa
 que for codar **não precisa redescobrir o código**: os arquivos e as linhas
@@ -76,7 +92,7 @@ Campos comuns a `bot` e `script`:
 onSuccess?: string | null; // null = fim; ausente = legado (próxima do array)
 onFailure?: string;        // destino em falha
 onTimeout?: string;        // destino em timeout; exige timeoutMs > 0
-timeoutMs?: number;        // 0/ausente = sem limite (bot); script mantém 60 s
+timeoutMs?: number;        // 0/ausente = sem limite (bot); script mantém 60 s — hoje 5 min
 ```
 
 - `condition` mantém `from`, `field`, `op`, `value`, `whenTrue`, `whenFalse`,
@@ -98,7 +114,7 @@ timeoutMs?: number;        // 0/ausente = sem limite (bot); script mantém 60 s
 - Constantes novas em `shared/workflow.ts`:
   - `WORKFLOW_STEP_TIMEOUT_MAX_MS = 3_600_000` (1 h);
   - `WORKFLOW_BOT_TIMEOUT_DEFAULT_MS = 0` (sem limite);
-  - `WORKFLOW_SCRIPT_TIMEOUT_DEFAULT_MS = 60_000` (mantém).
+  - `WORKFLOW_SCRIPT_TIMEOUT_DEFAULT_MS = 60_000` (mantém na época; hoje 5 min e teto de 1 h).
 - `timeoutMs: 0` = desligado. O input da UI mostra vazio/“sem limite”.
 - O timeout do bot cobre o turno ativo, **não** a pausa de aprovação. Ao pausar
   (`waiting_approval`), o timer para. Ao retomar, não reinicia: o turno que

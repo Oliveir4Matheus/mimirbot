@@ -317,10 +317,9 @@ export async function callTool(called: string, input: Json, context: ToolCallCon
   if (name === "create_workflow_from_proposal") {
     const id = String(args.proposal_id ?? "").trim();
     if (!id) return { text: "create_workflow_from_proposal needs proposal_id from the card.", isError: true };
-    const reason = typeof args.acknowledge_reason === "string" ? args.acknowledge_reason.trim() : "";
     const { ok, status, body } = await apiResponse(`/api/internal/workflows/proposals/${encodeURIComponent(id)}/create`, {
       method: "POST",
-      body: JSON.stringify(reason ? { acknowledge: { reason } } : {}),
+      body: "{}",
     });
     if (!ok) {
       if (status === 404) return { text: "No proposal with that id in your department.", isError: true };
@@ -378,8 +377,8 @@ export async function callTool(called: string, input: Json, context: ToolCallCon
     const rehearsalSteps = rehearsal !== undefined && Array.isArray(rehearsal.steps) ? rehearsal.steps.filter(jsonRecord) : [];
     const details = rehearsalSteps.flatMap((entry) => typeof entry.detail === "string" && entry.detail ? [`- ${String(entry.name ?? entry.id)}: ${String(entry.label)} — ${entry.detail}`] : []);
     const gate = status === "passed"
-      ? "The rehearsal passed."
-      : "The create will ask the person for a reason before going ahead.";
+      ? "The rehearsal passed; the person can create it after confirming the interview in the preview."
+      : "The rehearsal did not pass; the person must run it again successfully in the preview before creating.";
     return {
       text: `Proposal saved as a draft: ${name} (id ${id}), rehearsal ${status}. ${gate} Nothing was created, listed or scheduled.${details.length ? `\n\n${details.join("\n")}` : ""}\nThe person now sees a card with Criar Workflow and Agora não; that choice opens the preview. Wait for it before calling create_workflow_from_proposal or archive_workflow_proposal.`,
     };

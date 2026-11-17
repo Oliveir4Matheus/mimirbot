@@ -62,6 +62,9 @@ export function parameterValues(parameters: readonly WorkflowParameter[], values
 /** What a refused start or continue says, from the API's own `missing`/`invalid`/`unknown`/`allowed`. */
 export function inputRefusal(body: Record<string, unknown> | undefined): string[] {
   if (!body) return [];
+  // A refusal from anywhere else (an unprepared environment, a missing version)
+  // has its own message and must not be read as an empty parameter list.
+  if (!["missing", "invalid", "unknown", "allowed"].some((key) => Array.isArray(body[key]))) return [];
   const missing = Array.isArray(body.missing)
     ? body.missing.flatMap((entry) => entry && typeof entry === "object" && "name" in entry ? [String((entry as { name: unknown }).name)] : [])
     : [];
@@ -80,4 +83,9 @@ export function inputRefusal(body: Record<string, unknown> | undefined): string[
   if (unknown.length > 0) lines.push(`unknown: ${unknown.join(", ")}`);
   lines.push(allowed.length > 0 ? `allowed: ${allowed.join(", ")}` : "this Workflow takes no inputs at the start");
   return lines;
+}
+
+/** The dialog's line: the input refusal when there is one, else the server's own message. */
+export function refusalMessage(body: Record<string, unknown> | undefined, fallback: string): string {
+  return inputRefusal(body).join(" · ") || fallback;
 }

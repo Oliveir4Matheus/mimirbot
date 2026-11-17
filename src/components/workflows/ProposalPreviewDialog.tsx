@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import type { WorkflowProposal } from "../../../shared/workflow-proposal";
 import { annotateProposal, bumpProposalRound, confirmProposal, createWorkflowFromProposal, readProposal, rehearseProposal } from "@/lib/workflows-api";
-import { ApiError } from "@/state/api";
+import { useStore } from "@/state/store";
 import { t } from "@/lib/i18n";
 import { ProposalPreview } from "./ProposalPreview";
 
@@ -18,6 +18,7 @@ export function ProposalPreviewDialog({ proposalId, onClose, onCreated }: {
   onClose: () => void;
   onCreated: (workflowId: string) => void;
 }) {
+  const { state, dispatch } = useStore();
   const [proposal, setProposal] = useState<WorkflowProposal>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -42,32 +43,23 @@ export function ProposalPreviewDialog({ proposalId, onClose, onCreated }: {
     }
   };
 
-  const create = (acknowledge?: string) => act(async () => {
-    try {
-      const created = await createWorkflowFromProposal(proposalId, acknowledge === undefined ? undefined : { reason: acknowledge });
-      onCreated(created.workflowId);
-    } catch (cause) {
-      if (cause instanceof ApiError && cause.status === 409 && cause.body?.needsAcknowledgement === true) {
-        setError(errorText(cause));
-        return;
-      }
-      throw cause;
-    }
-  });
-
   if (!proposal) {
     return (
-      <div className="fixed inset-0 z-50 grid place-items-center bg-black/55 p-4" role="dialog" aria-modal="true">
+      <div className="fixed inset-0 z-50 grid place-items-center bg-black/55 p-4" role="dialog" aria-modal="true" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
         <p className="rounded-xl border border-hairline bg-panel px-4 py-3 text-[12px] text-ink-secondary">{error ?? t("workflows.proposals.loading")}</p>
       </div>
     );
   }
+
+  const createdBy = proposal.createdBy;
+  const botNames = Object.fromEntries(state.bots.map((bot) => [bot.id, bot.name]));
 
   return (
     <ProposalPreview
       proposal={proposal}
       busy={busy}
       error={error}
+      botNames={botNames}
       onClose={onClose}
       onNote={(stepId, text) => void act(async () => {
         await annotateProposal(proposalId, { ...proposal.annotations, [stepId]: text });
@@ -85,7 +77,13 @@ export function ProposalPreviewDialog({ proposalId, onClose, onCreated }: {
         await confirmProposal(proposalId, answers);
         await refresh();
       })}
-      onCreate={(reason) => void create(reason)}
+      onSendError={createdBy === undefined ? undefined : (text) => {
+        dispatch({ type: "send", botId: createdBy.botId, threadId: createdBy.threadId, text });
+      }}
+      onCreate={() => void act(async () => {
+        const created = await createWorkflowFromProposal(proposalId);
+        onCreated(created.workflowId);
+      })}
     />
   );
 }

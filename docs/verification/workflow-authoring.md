@@ -4,9 +4,10 @@ Checks that the contract the engine relies on reaches the author and is refused
 at the right moment: the extension in every output name, `shape` on a `.json`
 a condition reads, `condition.from` as a step and output pair, `.mjs` as the
 only script runtime, `modules` checked before a run and before a rehearsal, and
-a create gate that asks for a reason when the rehearsal did not pass. It uses
-the isolated launcher and the fake Claude engine; it never touches the installed
-app or its data.
+a create gate that requires a passing rehearsal. A rehearsal that did not run or
+diverged refuses the create with `needsRehearsal`; there is no reason to write.
+It uses the isolated launcher and the fake Claude engine; it never touches the
+installed app or its data.
 
 `control-omb` has no Workflow verbs, so the fake engine is scripted to call the
 `agents` tools and the routes are driven directly for the save cases.
@@ -45,9 +46,11 @@ Use the printed URL and data directory.
    `modules` entry rehearses as `diverged` with
    `not available on this machine: <name>; install it before rehearsing`.
 5. With `rehearsal.status` equal to `untested` or `diverged`,
-   `POST /api/workflow-proposals/<id>/create` with `{}` answers 409
-   `needsAcknowledgement: true`; with
-   `{"acknowledge":{"reason":"..."}}` it answers 201.
+   `POST /api/workflow-proposals/<id>/create` answers 409
+   `needsRehearsal: true`, and it still answers 409 when the body carries
+   `{"acknowledge":{"reason":"..."}}`: there is no acknowledgement path. Run
+   the rehearsal through `POST /api/workflow-proposals/<id>/rehearse` until it
+   passes, then create.
 
 ## Save cases
 
@@ -69,7 +72,7 @@ The route keeps every issue up to 50; the rest are counted in `truncated` and in
 `error`, so the bot can correct all of them and propose again in the same turn.
 A create that lacks the interview confirmation answers `code:
 "needsConfirmation"`, and one whose rehearsal did not pass answers `code:
-"needsAcknowledgement"`; both carry no `authoring` list.
+"needsRehearsal"`; both carry no `authoring` list.
 
 A step that still carries `result` saves with a warning instead:
 `result no longer declares what a condition reads; the condition now names the

@@ -117,7 +117,7 @@ interview answers before the create, then creates it with a manual first step.
 [The authoring contract fixture](workflow-authoring.md) proves the rules that
 reach the author: an extension in every output name, `shape` on a `.json` a
 condition reads, `.mjs` as the only runtime, `modules` checked before a
-rehearsal, and a create that asks for a reason when the rehearsal did not pass.
+rehearsal, and a create that requires the rehearsal to pass.
 [The parameter origin fixture](workflow-parameters.md) collects a value at a
 manual step, extracts a field of an earlier step's JSON into a later step's
 `params.json`, and starts a routine that targets an existing Workflow and stops

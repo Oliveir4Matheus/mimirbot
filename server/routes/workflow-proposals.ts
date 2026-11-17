@@ -43,8 +43,7 @@ const sameDepartment = (left: string, right: string): boolean => left.trim().toL
 function createWorkflow(
   proposal: WorkflowProposal,
   workflows: WorkflowStore,
-  acknowledge?: { reason: string },
-): { ok: true; workflowId: string; version: number; warnings: string[] } | { ok: false; status: 400 | 409; error: string; refusal: WorkflowRefusal; rehearsal?: WorkflowProposal["rehearsal"]; needsAcknowledgement?: true; needsConfirmation?: true } {
+): { ok: true; workflowId: string; version: number; warnings: string[] } | { ok: false; status: 400 | 409; error: string; refusal: WorkflowRefusal; rehearsal?: WorkflowProposal["rehearsal"]; needsRehearsal?: true; needsConfirmation?: true } {
   if (proposal.interview.confirmedAt === undefined) {
     const error = "the interview was never confirmed; the person confirms the three questions on the proposal card, and the bot cannot do it";
     return {
@@ -82,17 +81,17 @@ function createWorkflow(
     };
   }
   const rehearsal = proposal.rehearsal;
-  if (rehearsal?.status !== "passed" && !acknowledge?.reason.trim()) {
+  if (rehearsal?.status !== "passed") {
     const error = rehearsal === undefined
-      ? "this proposal was never rehearsed; open the preview and rehearse it, or create it acknowledging why it cannot be tested"
-      : `the rehearsal ended ${rehearsal.status}; open the preview, or create the Workflow acknowledging why the run should go ahead`;
+      ? "this proposal was never rehearsed; open the preview and run the rehearsal before creating the Workflow"
+      : `the rehearsal ended ${rehearsal.status}; open the preview, fix what diverged and run the rehearsal again before creating the Workflow`;
     return {
       ok: false,
       status: 409,
       error,
-      refusal: workflowRefusal("needsAcknowledgement", error),
+      refusal: workflowRefusal("needsRehearsal", error),
       rehearsal,
-      needsAcknowledgement: true,
+      needsRehearsal: true,
     };
   }
   const saved = workflows.saveWorkflow(definition, proposal.scripts.length > 0 ? { scripts: proposal.scripts } : undefined);
@@ -163,16 +162,12 @@ export function createWorkflowProposalRoutes(deps: WorkflowProposalRouteDeps): R
       if (proposal.status === "created" && proposal.createdWorkflowId) {
         return void json(res, 200, { workflowId: proposal.createdWorkflowId });
       }
-      const body = await readBody(req);
-      const acknowledge = isRecord(body) && isRecord(body.acknowledge) && typeof body.acknowledge.reason === "string"
-        ? { reason: body.acknowledge.reason.slice(0, 2_000) }
-        : undefined;
-      const created = createWorkflow(proposal, deps.workflows, acknowledge);
+      const created = createWorkflow(proposal, deps.workflows);
       if (!created.ok) {
         return void json(res, created.status, {
           ...created.refusal,
           ...(created.rehearsal === undefined ? {} : { rehearsal: created.rehearsal }),
-          ...(created.needsAcknowledgement === true ? { needsAcknowledgement: true } : {}),
+          ...(created.needsRehearsal === true ? { needsRehearsal: true } : {}),
           ...(created.needsConfirmation === true ? { needsConfirmation: true } : {}),
         });
       }
@@ -234,16 +229,12 @@ export function createWorkflowProposalInternalRoutes(deps: WorkflowProposalRoute
       if (proposal.status === "created" && proposal.createdWorkflowId) {
         return void json(res, 200, { workflowId: proposal.createdWorkflowId });
       }
-      const body = await ctx.readBody();
-      const acknowledge = isRecord(body) && isRecord(body.acknowledge) && typeof body.acknowledge.reason === "string"
-        ? { reason: body.acknowledge.reason.slice(0, 2_000) }
-        : undefined;
-      const created = createWorkflow(proposal, deps.workflows, acknowledge);
+      const created = createWorkflow(proposal, deps.workflows);
       if (!created.ok) {
         return void json(res, created.status, {
           ...created.refusal,
           ...(created.rehearsal === undefined ? {} : { rehearsal: created.rehearsal }),
-          ...(created.needsAcknowledgement === true ? { needsAcknowledgement: true } : {}),
+          ...(created.needsRehearsal === true ? { needsRehearsal: true } : {}),
           ...(created.needsConfirmation === true ? { needsConfirmation: true } : {}),
         });
       }

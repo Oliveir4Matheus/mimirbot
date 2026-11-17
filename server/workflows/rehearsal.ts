@@ -159,7 +159,11 @@ export async function rehearseProposal(
       steps.push({ id: step.id, name: step.name, label: "passed", produced: verified.verified, expected: expected.map(([path]) => path) });
     }
 
-    const status = steps.some((step) => step.label === "diverged") ? "diverged" : steps.some((step) => step.label === "passed") ? "passed" : "untested";
+    const status = steps.some((step) => step.label === "diverged")
+      ? "diverged"
+      : !proposal.definition.steps.some((step) => step.kind === "script") || steps.some((step) => step.label === "passed")
+        ? "passed"
+        : "untested";
     return { at: Date.now(), status, steps, ...(example.files?.length ? { example: example.files.map((file) => file.name) } : {}) };
   } finally {
     rmSync(root, { recursive: true, force: true });

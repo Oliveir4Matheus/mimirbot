@@ -3,9 +3,10 @@
 Checks that a bot's Workflow proposal stays a draft until the person says yes,
 that “Agora não” archives it, and that creating it writes a real Workflow whose
 first step is manual. The create is gated twice: the person confirms the three
-interview answers on the card, and a rehearsal either passes or is
-acknowledged. It uses the isolated launcher and the fake Claude engine; it never
-touches the installed app or its data.
+interview answers on the card, and the rehearsal passes. A rehearsal that did
+not run or diverged refuses the create; there is no justification field. It uses
+the isolated launcher and the fake Claude engine; it never touches the installed
+app or its data.
 
 `control-omb` has no Workflow verbs, so this recipe drives the proposal with the
 fake engine's scripted `agents` tool calls and reads the fixture's JSON files.
@@ -49,12 +50,13 @@ Use the printed URL and data directory.
    `[{"server":"agents","name":"create_workflow_from_proposal","input":{"proposal_id":"<id>"}}]`
    and send “Criar Workflow.” `workflows.json` now has version 1 and
    `steps[0].mode === "manual"`. The script above writes `dados.json`, so the
-   proposal's recorded rehearsal is `passed` and the create needs no
-   acknowledgment; a proposal whose rehearsal is `untested` or `diverged`
-   answers 409 until the tool receives `acknowledge_reason` (see
-   [the authoring contract fixture](workflow-authoring.md)).
+   proposal's recorded rehearsal is `passed` and the create succeeds; a
+   proposal whose rehearsal is `untested` or `diverged` answers 409 with
+   `needsRehearsal: true` and no Workflow is written (see
+   [the authoring contract fixture](workflow-authoring.md)). The preview's
+   **Rodar ensaio** button is the only way to change that status.
 6. A create before the interview is confirmed answers 409 with
-   `needsConfirmation: true`, even when an untested rehearsal is acknowledged.
+   `needsConfirmation: true`.
    The person's route is the only way to confirm, and it writes the answers it
    receives — a correction replaces the bot's text:
 
@@ -118,6 +120,16 @@ The rehearsal runs script steps in a disposable folder with the example's
 `inputs` and `files`, compares the declared outputs byte for byte when
 `expected` is supplied, and marks bot or branch steps **not tested** instead of
 pretending they ran. The result is stored on the proposal.
+
+The preview shows two rehearsal states only: **Sem ensaio** in amber and
+**Passou** in green. A diverged script is an error in the body with its real
+exit code and stderr tail, and the seal returns to **Sem ensaio** until a new
+rehearsal passes. Authoring errors block **Rodar ensaio**; the create stays
+disabled until the definition is valid, the interview is confirmed and the
+rehearsal passed. Both error bands offer **Copiar** and **Enviar erro ao bot**,
+which sends the same real `path` + `message` list to the conversation that
+created the proposal (`createdBy.threadId`); without that conversation the send
+button is disabled with a tooltip.
 
 Each step can carry a note. **Registrar outra rodada** increments the review
 round; after three rounds the preview offers **Refazer do zero com o que
