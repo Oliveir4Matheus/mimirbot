@@ -49,6 +49,40 @@ const saved = (store: ReturnType<typeof makeStore>, input: unknown = definition(
 };
 
 describe("definitions", () => {
+  it("saves the trigger track and reads it back", () => {
+    const store = makeStore();
+    const workflow = saved(store, definition({
+      triggers: [
+        { id: "manual", kind: "manual", name: "Manual" },
+        { id: "diaria", kind: "routine", name: "Diária", routineId: "rtn-1" },
+      ],
+    }));
+    expect(store.workflow(workflow.id)?.triggers.map((trigger) => trigger.kind)).toEqual(["manual", "routine"]);
+    const raw = JSON.parse(readFileSync(join(dataDir, "workflows.json"), "utf8"));
+    expect(raw.workflows[0].triggers).toHaveLength(2);
+  });
+
+  it("reads a file written without triggers as one manual node and leaves the file alone", () => {
+    const legacy = { ...definition() } as Record<string, unknown>;
+    delete legacy.triggers;
+    mkdirSync(dataDir, { recursive: true });
+    writeFileSync(join(dataDir, "workflows.json"), JSON.stringify({ version: 1, workflows: [legacy] }));
+    const store = makeStore();
+    expect(store.workflow(String(legacy.id))?.triggers).toEqual([{ id: "manual", kind: "manual", name: "Manual" }]);
+    const raw = JSON.parse(readFileSync(join(dataDir, "workflows.json"), "utf8"));
+    expect(raw.workflows[0].triggers).toBeUndefined();
+  });
+
+  it("refuses a save without triggers", () => {
+    const store = makeStore();
+    const legacy = { ...definition() } as Record<string, unknown>;
+    delete legacy.triggers;
+    const result = store.saveWorkflow(legacy);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error).toContain("triggers");
+  });
+
   it("saves a new definition and lists its latest version", () => {
     const store = makeStore();
     const workflow = saved(store);
@@ -299,6 +333,7 @@ describe("the authoring contract on load and on save", () => {
     department: "Financeiro",
     createdAt: 1,
     updatedAt: 1,
+    triggers: [{ id: "manual", kind: "manual", name: "Manual" }],
     steps: [
       { id: "coletar", name: "Collect", botId: "bot-a", instructions: "Collect.", outputs: [{ path: "numbers.csv" }] },
       {

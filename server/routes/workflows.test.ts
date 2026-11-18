@@ -1,26 +1,32 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { closeSync, ftruncateSync, mkdirSync, mkdtempSync, openSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { createServer, type Server } from "node:http";
+import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { workflowDefinitionSchema, type WorkflowDefinition, type WorkflowRun, type WorkflowSkillOptions } from "../../shared/workflow.ts";
+import { json, readBody } from "../harness/http.ts";
+import type { RequestAuth } from "../request-auth.ts";
 import { createWorkflowEngine } from "../workflows/engine.ts";
-import { WORKFLOWS_ROOT_ENV } from "../workflows/paths.ts";
+import { iterationStepOutputDir, stepDir, stepOutputDir, WORKFLOWS_ROOT_ENV } from "../workflows/paths.ts";
 import { createWorkflowStore } from "../workflows/store.ts";
 import { createWorkflowInternalRoutes, createWorkflowRoutes, type WorkflowInternalContext, type WorkflowRoutesDeps } from "./workflows.ts";
 import { requiredScope } from "../request-auth.ts";
-import { PASS, type RouteContext } from "./table.ts";
+import { dispatchRoutes, PASS, type RouteContext } from "./table.ts";
 
 const NOW = new Date("2026-11-07T12:00:00.000Z").getTime();
 
 let root: string;
+const artifactServers: Server[] = [];
 
 beforeEach(() => {
   root = mkdtempSync(join(tmpdir(), "omb-process-routes-"));
 });
 
-afterEach(() => {
+afterEach(async () => {
+  await Promise.all(artifactServers.splice(0).map((server) => new Promise((done) => server.close(done))));
   rmSync(root, { recursive: true, force: true });
 });
 
@@ -142,6 +148,7 @@ describe("the person's routes", () => {
       version: 1,
       name: "Legacy",
       department: "Financeiro",
+      triggers: [{ id: "manual", kind: "manual", name: "Manual" }],
       steps: [
         { id: "coletar", name: "Collect", botId: "bot-a", instructions: "Collect.", outputs: [{ path: "numbers.csv" }], next: "revisar" },
         { id: "revisar", name: "Review", botId: "bot-a", instructions: "Review.", outputs: [{ path: "decision.json" }] },
@@ -163,6 +170,7 @@ describe("the person's routes", () => {
       version: 1,
       name: "Backwards",
       department: "Financeiro",
+      triggers: [{ id: "manual", kind: "manual", name: "Manual" }],
       steps: [
         { id: "coletar", name: "Collect", botId: "bot-a", instructions: "Collect.", outputs: [{ path: "numbers.csv" }], onSuccess: "revisar" },
         { id: "revisar", name: "Review", botId: "bot-a", instructions: "Review.", outputs: [{ path: "decision.json" }], onSuccess: "coletar" },
@@ -188,6 +196,44 @@ describe("the person's routes", () => {
     await call("GET", `/api/workflows/${def.id}`);
     expect(state.status).toBe(200);
     expect((state.body as { versions: unknown[] }).versions).toHaveLength(2);
+  });
+
+  it("returns the trigger track and keeps the one a save names", async () => {
+    const { call, state, definition: def } = harness();
+    await call("GET", `/api/workflows/${def.id}`);
+    expect((state.body as { workflow: WorkflowDefinition }).workflow.triggers).toEqual([
+      { id: "manual", kind: "manual", name: "Manual" },
+    ]);
+
+    await call("PUT", `/api/workflows/${def.id}`, {
+      ...def,
+      triggers: [
+        { id: "manual", kind: "manual", name: "Manual" },
+        { id: "diaria", kind: "routine", name: "Diária" },
+      ],
+    });
+    expect(state.status).toBe(200);
+    expect((state.body as { workflow: WorkflowDefinition }).workflow.triggers.map((trigger) => trigger.kind)).toEqual(["manual", "routine"]);
+  });
+
+  it("refuses a save without triggers", async () => {
+    const { call, state, definition: def } = harness();
+    await call("PUT", `/api/workflows/${def.id}`, { ...def, triggers: [] });
+    expect(state.status).toBe(400);
+    expect((state.body as { error: string }).error).toContain("triggers");
+  });
+
+  it("refuses a webhook when the Workflow receives no external parameter", async () => {
+    const { call, state, definition: def } = harness();
+    await call("PUT", `/api/workflows/${def.id}`, {
+      ...def,
+      triggers: [
+        { id: "manual", kind: "manual", name: "Manual" },
+        { id: "pedidos", kind: "webhook", name: "Pedidos" },
+      ],
+    });
+    expect(state.status).toBe(400);
+    expect((state.body as { authoring: { errors: Array<{ path: string }> } }).authoring.errors.map((issue) => issue.path)).toContain("triggers.1");
   });
 
   it("starts a run and shows it by id", async () => {
@@ -693,5 +739,298 @@ describe("the environment routes", () => {
   it("keeps both environment routes admin-only", () => {
     expect(requiredScope("POST", "/api/workflows/environment/prepare")).toBe("admin");
     expect(requiredScope("GET", "/api/workflows/environment")).toBe("admin");
+  });
+});
+
+describe("Run artifacts", () => {
+  const artifactDefinition = () => definition({
+    steps: [
+      {
+        id: "coletar", kind: "bot", name: "Coletar", botId: "bot-a", instructions: "Collect.",
+        outputs: [{ path: "dados.csv" }, { path: "resumo.md" }],
+      },
+      {
+        id: "laco", kind: "loop", name: "Do While",
+        body: [{ id: "preparar", kind: "bot", name: "Preparar", botId: "bot-a", instructions: "Prepare.", outputs: [{ path: "result.json", shape: { type: "object" } }] }],
+        from: { step: "preparar", output: "result.json" },
+        conditions: [{ field: "restantes", op: "lte", value: 0 }],
+        maxIterations: 2,
+        outputs: [{ path: "result.json", shape: { type: "object" } }],
+      },
+    ],
+  });
+
+  async function artifactHarness(extra?: (runDir: string) => void) {
+    const store = createWorkflowStore({
+      dataDir: join(root, "data"),
+      env: { [WORKFLOWS_ROOT_ENV]: join(root, "runs") },
+      now: () => NOW,
+      log: () => {},
+    });
+    const saved = store.saveWorkflow(artifactDefinition());
+    if (!saved.ok) throw new Error(saved.error);
+    const engine = createWorkflowEngine({
+      store, startTurn: async () => undefined, createThread: () => "thread-1", broadcast: () => {}, now: () => NOW, log: () => {},
+    });
+    const run = store.createRun(saved.workflow);
+    const runDir = store.runDir(run);
+    const write = (path: string, text: string) => {
+      mkdirSync(dirname(path), { recursive: true });
+      writeFileSync(path, text);
+    };
+    const output = stepOutputDir(runDir, 1);
+    write(join(output, "dados.csv"), "nome,total\nana,10\n");
+    write(join(output, "resumo.md"), "# resumo\n");
+    write(join(output, "relatório final.pdf"), "%PDF-1.4\n");
+    write(join(output, "pagina.html"), "<script>alert(1)</script>");
+    write(join(output, "icone.svg"), "<svg onload=\"alert(1)\"/>");
+    write(join(output, "doc.json"), "{\"ok\":true}");
+    write(join(output, "grande.txt"), "a".repeat(300 * 1024));
+    write(join(stepDir(runDir, 1), "input", "params.json"), "{\"token\":\"segredo\"}");
+    write(join(stepOutputDir(runDir, 2), "result.json"), "{\"restantes\":0}");
+    write(join(iterationStepOutputDir(runDir, 1, "preparar"), "result.json"), "{\"restantes\":1}");
+    write(join(iterationStepOutputDir(runDir, 2, "preparar"), "result.json"), "{\"restantes\":0}");
+    extra?.(runDir);
+    store.writeRun({
+      ...run,
+      status: "succeeded",
+      startedAt: NOW,
+      finishedAt: NOW,
+      currentStep: 2,
+      steps: [
+        { id: "coletar", status: "succeeded", verified: ["dados.csv", "resumo.md"] },
+        {
+          id: "laco", kind: "loop", status: "succeeded", verified: ["result.json"],
+          iterations: [
+            { index: 1, status: "succeeded", steps: [{ id: "preparar", status: "succeeded", verified: ["result.json"] }] },
+            { index: 2, status: "succeeded", steps: [{ id: "preparar", status: "succeeded", verified: ["result.json"] }] },
+          ],
+        },
+      ],
+    });
+    const routes = [createWorkflowRoutes({
+      store, engine, bot: () => undefined, log: () => {},
+      now: () => NOW,
+    })];
+    const server: Server = createServer(async (req, res) => {
+      const url = new URL(req.url ?? "/", "http://localhost");
+      const auth = { kind: "loopback", scopes: ["admin"] } as unknown as RequestAuth;
+      try {
+        const handled = await dispatchRoutes(routes, { req, res, url, path: url.pathname, method: req.method ?? "GET", auth, json, readBody });
+        if (!handled) json(res, 404, { from: "inline routes" });
+      } catch (error) {
+        json(res, 500, { error: String(error) });
+      }
+    });
+    artifactServers.push(server);
+    await new Promise<void>((ready) => server.listen(0, "127.0.0.1", ready));
+    return { base: `http://127.0.0.1:${(server.address() as AddressInfo).port}`, run, runDir };
+  }
+
+  const artifact = (base: string, runId: string, query: Record<string, string>, init?: RequestInit) => {
+    const url = new URL(`${base}/api/workflows/runs/${runId}/artifact`);
+    for (const [name, value] of Object.entries(query)) url.searchParams.set(name, value);
+    return fetch(url, init);
+  };
+
+  it("lists every step and round, with types, verification and the retention window", async () => {
+    const { base, run } = await artifactHarness();
+    const response = await fetch(`${base}/api/workflows/runs/${run.id}/artifacts`);
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
+    const body = await response.json() as {
+      runId: string; expiresAt: number; runStatus: string;
+      sources: Array<{ origin: Record<string, unknown>; name: string; status: string; files: Array<{ path: string; contentType: string; preview: string; verified: boolean }> }>;
+      totals: { files: number; truncated: boolean };
+    };
+    expect(body.runId).toBe(run.id);
+    expect(body.runStatus).toBe("succeeded");
+    expect(body.expiresAt).toBe(NOW + 90 * 86_400_000);
+    expect(body.totals.truncated).toBe(false);
+    expect(body.sources.map((source) => source.origin)).toEqual([
+      { kind: "step", step: 1 },
+      { kind: "step", step: 2 },
+      { kind: "iteration", step: 2, iteration: 1, body: "preparar" },
+      { kind: "iteration", step: 2, iteration: 2, body: "preparar" },
+    ]);
+    const first = body.sources[0]!;
+    expect(first.files.map((file) => file.path)).not.toContain("params.json");
+    expect(first.files.find((file) => file.path === "dados.csv")).toMatchObject({ contentType: "text/csv; charset=utf-8", preview: "csv", verified: true });
+    expect(first.files.find((file) => file.path === "doc.json")).toMatchObject({ preview: "json", verified: false });
+    expect(body.sources[1]!.name).toBe("Do While");
+    expect(body.sources[2]!.name).toBe("Do While · volta 1 · Preparar");
+  });
+
+  it("answers 404 for a missing run, step, round or file, and never serves input/", async () => {
+    const { base, run } = await artifactHarness();
+    expect((await fetch(`${base}/api/workflows/runs/20261107-120000-000000/artifacts`)).status).toBe(404);
+    expect((await artifact(base, run.id, { step: "3", path: "dados.csv" })).status).toBe(404);
+    expect((await artifact(base, run.id, { step: "1", path: "missing.csv" })).status).toBe(404);
+    expect((await artifact(base, run.id, { step: "2", iteration: "9", body: "preparar", path: "result.json" })).status).toBe(404);
+    expect((await artifact(base, run.id, { step: "2", iteration: "1", body: "outro", path: "result.json" })).status).toBe(404);
+    expect((await artifact(base, run.id, { step: "1", path: "../input/params.json" })).status).toBe(400);
+    expect((await artifact(base, run.id, { step: "1", path: "../run.json" })).status).toBe(400);
+  });
+
+  it("answers 400 for an out-of-range parameter", async () => {
+    const { base, run } = await artifactHarness();
+    for (const query of [
+      { step: "0", path: "dados.csv" },
+      { step: "41", path: "dados.csv" },
+      { path: "dados.csv" },
+      { step: "1", path: "../x" },
+      { step: "1", path: "/etc/passwd" },
+      { step: "1", path: "a\\b" },
+      { step: "2", body: "preparar", path: "result.json" },
+      { step: "2", iteration: "0", body: "preparar", path: "result.json" },
+      { step: "1", path: "dados.csv", disposition: "preview" },
+    ] as Array<Record<string, string>>) {
+      const response = await artifact(base, run.id, query);
+      expect(response.status, JSON.stringify(query)).toBe(400);
+    }
+    expect((await fetch(`${base}/api/workflows/runs/${run.id}/artifacts.zip?step=0`)).status).toBe(400);
+  });
+
+  it("answers 405 for a method other than GET or HEAD", async () => {
+    const { base, run } = await artifactHarness();
+    expect((await fetch(`${base}/api/workflows/runs/${run.id}/artifacts`, { method: "POST" })).status).toBe(405);
+    expect((await fetch(`${base}/api/workflows/runs/${run.id}/artifact?step=1&path=dados.csv`, { method: "POST" })).status).toBe(405);
+    expect((await fetch(`${base}/api/workflows/runs/${run.id}/artifacts.zip`, { method: "POST" })).status).toBe(405);
+  });
+
+  it("sends the artifact as an uncached sandboxed stream, and HEAD sends only the headers", async () => {
+    const { base, run } = await artifactHarness();
+    const response = await artifact(base, run.id, { step: "1", path: "dados.csv" });
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toBe("text/csv; charset=utf-8");
+    expect(response.headers.get("content-length")).toBe("18");
+    expect(response.headers.get("accept-ranges")).toBe("bytes");
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
+    expect(response.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(response.headers.get("content-security-policy")).toBe("sandbox");
+    expect(response.headers.get("referrer-policy")).toBe("no-referrer");
+    expect(response.headers.get("cross-origin-resource-policy")).toBe("same-origin");
+    expect(response.headers.get("content-disposition")).toMatch(/^inline; filename="dados.csv"/);
+    expect(await response.text()).toBe("nome,total\nana,10\n");
+
+    const head = await artifact(base, run.id, { step: "1", path: "dados.csv" }, { method: "HEAD" });
+    expect(head.status).toBe(200);
+    expect(head.headers.get("content-length")).toBe("18");
+    expect(head.headers.get("content-type")).toBe("text/csv; charset=utf-8");
+    expect(await head.text()).toBe("");
+  });
+
+  it("honours a Range and refuses a start past the end", async () => {
+    const { base, run } = await artifactHarness();
+    const partial = await artifact(base, run.id, { step: "1", path: "dados.csv" }, { headers: { range: "bytes=0-9" } });
+    expect(partial.status).toBe(206);
+    expect(partial.headers.get("content-range")).toBe("bytes 0-9/18");
+    expect(partial.headers.get("content-length")).toBe("10");
+    expect(await partial.text()).toBe("nome,total");
+    const past = await artifact(base, run.id, { step: "1", path: "dados.csv" }, { headers: { range: "bytes=18-" } });
+    expect(past.status).toBe(416);
+    expect(past.headers.get("content-range")).toBe("bytes */18");
+    const malformed = await artifact(base, run.id, { step: "1", path: "dados.csv" }, { headers: { range: "bytes=abc" } });
+    expect(malformed.status).toBe(200);
+  });
+
+  it("downloads an accented name with filename*", async () => {
+    const { base, run } = await artifactHarness();
+    const response = await artifact(base, run.id, { step: "1", path: "relatório final.pdf", disposition: "download" });
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toBe("application/pdf");
+    expect(response.headers.get("content-disposition")).toContain("filename*=UTF-8''relat%C3%B3rio%20final.pdf");
+    expect(await response.text()).toBe("%PDF-1.4\n");
+  });
+
+  it("never serves HTML or SVG inline", async () => {
+    const { base, run } = await artifactHarness();
+    for (const path of ["pagina.html", "icone.svg"]) {
+      const response = await artifact(base, run.id, { step: "1", path });
+      expect(response.status, path).toBe(200);
+      expect(response.headers.get("content-type"), path).toBe("text/plain; charset=utf-8");
+      expect(response.headers.get("content-disposition"), path).toMatch(/^attachment;/);
+      expect(response.headers.get("x-content-type-options"), path).toBe("nosniff");
+      expect(await artifact(base, run.id, { step: "1", path, disposition: "inline" }).then((answer) => answer.headers.get("content-disposition")), path)
+        .toMatch(/^attachment;/);
+    }
+  });
+
+  it("truncates a text preview at 256 KB and refuses a binary preview past 100 MB", async () => {
+    const { base, run } = await artifactHarness((runDir) => {
+      const path = join(stepOutputDir(runDir, 1), "clip.mp4");
+      const fd = openSync(path, "w");
+      ftruncateSync(fd, 100 * 1024 * 1024 + 1);
+      closeSync(fd);
+    });
+    const text = await artifact(base, run.id, { step: "1", path: "grande.txt" });
+    expect(text.status).toBe(200);
+    expect(text.headers.get("x-artifact-truncated")).toBe("1");
+    expect(text.headers.get("content-length")).toBe(String(256 * 1024));
+    expect((await text.text()).length).toBe(256 * 1024);
+
+    const inline = await artifact(base, run.id, { step: "1", path: "clip.mp4" });
+    expect(inline.status).toBe(413);
+    expect(await inline.json()).toEqual({ error: "the file is too large to preview", limit: 100 * 1024 * 1024 });
+    const download = await artifact(base, run.id, { step: "1", path: "clip.mp4", disposition: "download" }, { method: "HEAD" });
+    expect(download.status).toBe(200);
+    expect(download.headers.get("content-length")).toBe(String(100 * 1024 * 1024 + 1));
+  });
+
+  it("refuses a symlink and a linked folder, and answers 404 once the run folder is gone", async () => {
+    const { base, run, runDir } = await artifactHarness((dir) => {
+      symlinkSync("/etc/passwd", join(stepOutputDir(dir, 1), "link.txt"));
+      symlinkSync("/etc", join(stepOutputDir(dir, 1), "fora"));
+    });
+    expect((await artifact(base, run.id, { step: "1", path: "link.txt" })).status).toBe(404);
+    expect((await artifact(base, run.id, { step: "1", path: "fora/passwd" })).status).toBe(404);
+    expect((await fetch(`${base}/api/workflows/runs/${run.id}/artifacts`)).status).toBe(200);
+    rmSync(runDir, { recursive: true, force: true });
+    expect((await fetch(`${base}/api/workflows/runs/${run.id}/artifacts`)).status).toBe(404);
+    expect((await artifact(base, run.id, { step: "1", path: "dados.csv" })).status).toBe(404);
+    expect((await fetch(`${base}/api/workflows/runs/${run.id}/artifacts.zip`)).status).toBe(404);
+  });
+
+  it("downloads the whole run or one step as a store-only zip", async () => {
+    const { base, run } = await artifactHarness();
+    const response = await fetch(`${base}/api/workflows/runs/${run.id}/artifacts.zip`);
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toBe("application/zip");
+    expect(response.headers.get("content-disposition")).toBe(`attachment; filename="run-${run.id}.zip"`);
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
+    const all = Buffer.from(await response.arrayBuffer());
+    expect(all.readUInt32LE(0)).toBe(0x04034b50);
+    for (const name of ["step-1/dados.csv", "step-2/result.json", "step-2/iter-1/preparar/result.json", "step-2/iter-2/preparar/result.json"]) {
+      expect(all.includes(Buffer.from(name)), name).toBe(true);
+    }
+    const onlyStep2 = Buffer.from(await (await fetch(`${base}/api/workflows/runs/${run.id}/artifacts.zip?step=2`)).arrayBuffer());
+    expect(onlyStep2.includes(Buffer.from("step-2/iter-1/preparar/result.json"))).toBe(true);
+    expect(onlyStep2.includes(Buffer.from("step-1/dados.csv"))).toBe(false);
+  });
+
+  it("refuses a zip past its entry or byte cap before the first byte", async () => {
+    const entries = await artifactHarness((runDir) => {
+      const dir = stepOutputDir(runDir, 1);
+      for (let index = 0; index < 2_001; index += 1) writeFileSync(join(dir, `bulk-${String(index).padStart(4, "0")}.txt`), "x");
+    });
+    const tooMany = await fetch(`${entries.base}/api/workflows/runs/${entries.run.id}/artifacts.zip`);
+    expect(tooMany.status).toBe(413);
+    expect(await tooMany.json()).toEqual({ error: "the zip has too many files", limit: 2_000 });
+
+    const bytes = await artifactHarness((runDir) => {
+      const fd = openSync(join(stepOutputDir(runDir, 1), "enorme.bin"), "w");
+      ftruncateSync(fd, 512 * 1024 * 1024 + 1);
+      closeSync(fd);
+    });
+    const tooBig = await fetch(`${bytes.base}/api/workflows/runs/${bytes.run.id}/artifacts.zip`);
+    expect(tooBig.status).toBe(413);
+    expect(await tooBig.json()).toEqual({ error: "the zip is larger than its limit", limit: 512 * 1024 * 1024 });
+  });
+
+  it("keeps the artifact routes admin-only", () => {
+    expect(requiredScope("GET", "/api/workflows/runs/20261107-120000-000000/artifacts")).toBe("admin");
+    expect(requiredScope("GET", "/api/workflows/runs/20261107-120000-000000/artifact")).toBe("admin");
+    expect(requiredScope("HEAD", "/api/workflows/runs/20261107-120000-000000/artifact")).toBe("admin");
+    expect(requiredScope("GET", "/api/workflows/runs/20261107-120000-000000/artifacts.zip")).toBe("admin");
   });
 });

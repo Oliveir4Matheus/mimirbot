@@ -171,13 +171,15 @@ export function evaluateProposal(interview: WorkflowProposalInterview, assumptio
   return { ok: true, assumptions: [...new Set(list)] };
 }
 
-/** The execution gate: a Workflow created from a conversation always waits for a person. */
+/** The execution gate: a proposal that starts by collecting a value waits for the person.
+ * A first step with nothing to collect starts after the approval card, where the person already confirmed. */
 export function startManualDefinition(definition: WorkflowDefinition): WorkflowDefinition {
   const first = definition.steps[0];
   if (!first || (first.kind !== "bot" && first.kind !== "script")) {
     throw new Error("a proposal must start with a bot or script step");
   }
   if (workflowStartsManual(definition)) return definition;
+  if (!first.parameters.some((parameter) => parameter.collectedBy === first.id)) return definition;
   return {
     ...definition,
     steps: definition.steps.map((step, index) => index === 0 ? { ...step, mode: "manual" as const } : step),

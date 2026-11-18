@@ -33,6 +33,7 @@ function harness(start = new Date(2026, 7, 17, 8, 0, 0).getTime()) {
   let bot: "ready" | "busy" | "missing" = "ready";
   let goal: "ready" | "busy" | "missing" = "ready";
   let workflow: "ready" | "missing" = "ready";
+  let workflowRefusal: string | null = null;
   let workflowRun: Pick<WorkflowRun, "status" | "error"> | undefined;
   let pausedWorkflowRuns: Record<string, Array<Pick<WorkflowRun, "id" | "status">>> = {};
   let workflowSequence = 0;
@@ -70,6 +71,7 @@ function harness(start = new Date(2026, 7, 17, 8, 0, 0).getTime()) {
     botState: () => bot,
     goalState: () => goal,
     workflowState: () => workflow,
+    workflowRefusal: () => workflowRefusal,
     workflowRunState: () => workflowRun,
     startWorkflow: (routine) => {
       const runId = `wrun-${++workflowSequence}`;
@@ -128,6 +130,7 @@ function harness(start = new Date(2026, 7, 17, 8, 0, 0).getTime()) {
     setBot: (value: typeof bot) => (bot = value),
     setGoal: (value: typeof goal) => (goal = value),
     setWorkflow: (value: typeof workflow) => (workflow = value),
+    setWorkflowRefusal: (value: string | null) => (workflowRefusal = value),
     setWorkflowRun: (value: typeof workflowRun) => (workflowRun = value),
     setPausedWorkflowRuns: (value: typeof pausedWorkflowRuns) => (pausedWorkflowRuns = value),
   };
@@ -4028,6 +4031,16 @@ describe("workflow trigger", () => {
 
     h.manager.noteWorkflowRun(workflowRun("succeeded", { finishedAt: at + 60_000 }));
     expect(h.manager.listRuns()[0]).toMatchObject({ status: "completed", finishedAt: at + 60_000 });
+  });
+
+  it("refuses a Workflow whose start inputs a routine cannot supply", () => {
+    const h = harness(start);
+    h.setWorkflowRefusal("That Workflow needs customer_id at the start; a routine cannot supply them.");
+    expect(() => h.manager.create(input())).toThrow(/customer_id/);
+    h.setWorkflowRefusal(null);
+    const routine = h.manager.create(input());
+    h.setWorkflowRefusal("That Workflow needs customer_id at the start; a routine cannot supply them.");
+    expect(() => h.manager.update(routine.id, { name: "Renamed" })).toThrow(/customer_id/);
   });
 
   it("keeps the Workflow id and the empty prompt across a reload", () => {

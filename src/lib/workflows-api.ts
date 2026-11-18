@@ -1,6 +1,16 @@
-import type { WorkflowDefinition, WorkflowModule, WorkflowRun, WorkflowRunStatus, WorkflowSkillOptions } from "../../shared/workflow";
+import type { WorkflowArtifact, WorkflowArtifactList, WorkflowArtifactOrigin, WorkflowDefinition, WorkflowModule, WorkflowRun, WorkflowRunStatus, WorkflowSkillOptions } from "../../shared/workflow";
 import type { AuthoringIssue } from "../../shared/workflow-authoring";
 import type { WorkflowProposal, WorkflowProposalAnswers, WorkflowProposalStatus } from "../../shared/workflow-proposal";
+import type {
+  WorkflowInputBinding,
+  WorkflowTrigger,
+  WorkflowTriggerAttempt,
+  WorkflowTriggerCreateResult,
+  WorkflowTriggerCredential,
+  WorkflowTriggerInput,
+  WorkflowTriggerPatch,
+  WorkflowTriggerPreview,
+} from "../../shared/workflow-trigger";
 import { api } from "@/state/api";
 
 export interface WorkflowDetail {
@@ -202,4 +212,100 @@ export function listScripts(id: string): Promise<Array<{ name: string }>> {
 export function readScript(id: string, name: string): Promise<string> {
   return api<{ script: { content: string } }>(`/api/workflows/${encodeURIComponent(id)}/scripts/${encodeURIComponent(name)}`)
     .then((answer) => answer.script?.content ?? "");
+}
+
+/** Every file a run left behind, scanned from each step's `output/` folder. */
+export function listRunArtifacts(runId: string, options: RequestOptions = {}): Promise<WorkflowArtifactList> {
+  return api<WorkflowArtifactList>(`/api/workflows/runs/${encodeURIComponent(runId)}/artifacts`, { background: options.background });
+}
+
+function artifactParams(origin: WorkflowArtifactOrigin, path: string): URLSearchParams {
+  const params = new URLSearchParams();
+  params.set("step", String(origin.step));
+  if (origin.kind === "iteration") {
+    params.set("iteration", String(origin.iteration));
+    params.set("body", origin.body);
+  }
+  params.set("path", path);
+  return params;
+}
+
+/** A same-host URL: the session cookie travels with `<a download>` and `<img src>`. */
+export function runArtifactUrl(runId: string, artifact: Pick<WorkflowArtifact, "origin" | "path">, disposition: "inline" | "download" = "inline"): string {
+  const params = artifactParams(artifact.origin, artifact.path);
+  if (disposition === "download") params.set("disposition", "download");
+  return `/api/workflows/runs/${encodeURIComponent(runId)}/artifact?${params.toString()}`;
+}
+
+export function runArtifactsZipUrl(runId: string, step?: number): string {
+  const query = step === undefined ? "" : `?step=${step}`;
+  return `/api/workflows/runs/${encodeURIComponent(runId)}/artifacts.zip${query}`;
+}
+
+export function listWorkflowTriggers(workflowId: string, options: RequestOptions = {}): Promise<WorkflowTrigger[]> {
+  return api<{ triggers: WorkflowTrigger[] }>(`/api/workflows/${encodeURIComponent(workflowId)}/triggers`, { background: options.background })
+    .then((answer) => answer.triggers ?? []);
+}
+
+export function readWorkflowTrigger(workflowId: string, triggerId: string): Promise<WorkflowTrigger> {
+  return api<{ trigger: WorkflowTrigger }>(`/api/workflows/${encodeURIComponent(workflowId)}/triggers/${encodeURIComponent(triggerId)}`)
+    .then((answer) => answer.trigger);
+}
+
+export function createWorkflowTrigger(workflowId: string, input: WorkflowTriggerInput): Promise<WorkflowTriggerCreateResult> {
+  return api<WorkflowTriggerCreateResult>(`/api/workflows/${encodeURIComponent(workflowId)}/triggers`, json(input));
+}
+
+export function updateWorkflowTrigger(workflowId: string, triggerId: string, patch: WorkflowTriggerPatch): Promise<WorkflowTrigger> {
+  return api<{ trigger: WorkflowTrigger }>(`/api/workflows/${encodeURIComponent(workflowId)}/triggers/${encodeURIComponent(triggerId)}`, {
+    method: "PATCH",
+    body: JSON.stringify(patch),
+  }).then((answer) => answer.trigger);
+}
+
+export function deleteWorkflowTrigger(workflowId: string, triggerId: string): Promise<{ undoUntil: number }> {
+  return api<{ deleted: boolean; undoUntil: number }>(`/api/workflows/${encodeURIComponent(workflowId)}/triggers/${encodeURIComponent(triggerId)}`, { method: "DELETE" })
+    .then((answer) => ({ undoUntil: answer.undoUntil }));
+}
+
+export function restoreWorkflowTrigger(workflowId: string, triggerId: string): Promise<WorkflowTriggerCreateResult> {
+  return api<WorkflowTriggerCreateResult>(`/api/workflows/${encodeURIComponent(workflowId)}/triggers/${encodeURIComponent(triggerId)}/restore`, json({}));
+}
+
+export interface WorkflowTriggerPreviewSample {
+  payload?: unknown;
+  headers?: Record<string, string | string[]>;
+  query?: Record<string, string | string[]>;
+}
+
+export function previewWorkflowTrigger(
+  workflowId: string,
+  triggerId: string,
+  sample: WorkflowTriggerPreviewSample,
+): Promise<WorkflowTriggerPreview> {
+  return api<{ preview: WorkflowTriggerPreview }>(`/api/workflows/${encodeURIComponent(workflowId)}/triggers/${encodeURIComponent(triggerId)}/preview`, json(sample))
+    .then((answer) => answer.preview);
+}
+
+export function rotateWorkflowTriggerSecret(workflowId: string, triggerId: string): Promise<WorkflowTriggerCredential> {
+  return api<{ credential: WorkflowTriggerCredential }>(`/api/workflows/${encodeURIComponent(workflowId)}/triggers/${encodeURIComponent(triggerId)}/rotate-secret`, json({}))
+    .then((answer) => answer.credential);
+}
+
+export function listWorkflowTriggerAttempts(workflowId: string, triggerId: string, limit = 50): Promise<{ attempts: WorkflowTriggerAttempt[]; truncated: boolean }> {
+  return api<{ attempts: WorkflowTriggerAttempt[]; truncated: boolean }>(
+    `/api/workflows/${encodeURIComponent(workflowId)}/triggers/${encodeURIComponent(triggerId)}/attempts?limit=${limit}`,
+  );
+}
+
+/** The read-only department list: no credential and no constant value. */
+export function listDepartmentWorkflowTriggers(department?: string, options: RequestOptions = {}): Promise<Array<Omit<WorkflowTrigger, "inputs">>> {
+  const query = department === undefined ? "" : `?department=${encodeURIComponent(department)}`;
+  return api<{ triggers: Array<Omit<WorkflowTrigger, "inputs">> }>(`/api/workflow-triggers${query}`, { background: options.background })
+    .then((answer) => answer.triggers ?? []);
+}
+
+/** Rebuilds the map for the Studio form; a binding that is missing is explicitly null. */
+export function bindingFor(inputs: Record<string, WorkflowInputBinding>, name: string): WorkflowInputBinding {
+  return Object.hasOwn(inputs, name) ? inputs[name]! : null;
 }

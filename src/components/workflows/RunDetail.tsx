@@ -8,6 +8,7 @@ import { t } from "@/lib/i18n";
 import { formatDateTime, formatDuration, isActiveStatus, relativeTime, runDurationLabel, stepStatusLabel } from "@/lib/workflow-format";
 import { parameterValues, stepCollectedParameters, type ParameterFormValues } from "@/lib/workflow-inputs";
 import { ParameterFields } from "./ParameterFields";
+import { ArtifactsPanel } from "./ArtifactsPanel";
 import { StatusChip } from "./StatusChip";
 
 type DisplayStatus = WorkflowStepStatus | "waiting_manual" | "waiting_approval";
@@ -62,7 +63,6 @@ export function RunDetail({ run, workflow, now, botName, onCancel, onContinue, o
 }) {
   const [copied, setCopied] = useState(false);
   const [resultOpen, setResultOpen] = useState<boolean | null>(null);
-  const [filesOpen, setFilesOpen] = useState(false);
   const [expandedRounds, setExpandedRounds] = useState<Set<string>>(new Set());
   const [values, setValues] = useState<ParameterFormValues>({});
   const [continueError, setContinueError] = useState<string | null>(null);
@@ -71,7 +71,6 @@ export function RunDetail({ run, workflow, now, botName, onCancel, onContinue, o
   useEffect(() => {
     setCopied(false);
     setResultOpen(null);
-    setFilesOpen(false);
     setExpandedRounds(new Set());
   }, [run.id]);
 
@@ -110,11 +109,14 @@ export function RunDetail({ run, workflow, now, botName, onCancel, onContinue, o
   const holdPath = run.hold?.path ?? (run.hold?.step === undefined ? undefined : [run.hold.step]);
   const pausePath = run.pause?.path;
   const requester = run.requestedBy ? botName(run.requestedBy.botId) : undefined;
-  const trigger = run.triggeredBy?.routineName;
+  const trigger = run.triggeredBy === undefined
+    ? undefined
+    : "routineName" in run.triggeredBy
+      ? run.triggeredBy.routineName
+      : `${run.triggeredBy.triggerName} · ${run.triggeredBy.deliveryId} · v${run.workflowVersion}`;
   const resultText = run.result === undefined ? "" : JSON.stringify(run.result, null, 2);
   const resultLines = resultText ? resultText.split("\n").length : 0;
   const showResult = run.result !== undefined && (resultOpen ?? resultLines <= 12);
-  const verified = run.steps.filter((step) => (step.verified?.length ?? 0) > 0);
   const failedStep = run.steps[run.currentStep];
   const lastResultFile = useMemo(() => {
     if (!workflow) return "";
@@ -477,6 +479,8 @@ export function RunDetail({ run, workflow, now, botName, onCancel, onContinue, o
           })}
         </div>
 
+        <ArtifactsPanel run={run} workflow={workflow} />
+
         {run.result !== undefined && (
           <section className="mt-8 overflow-hidden rounded-[10px] border border-hairline">
             <button type="button" onClick={() => setResultOpen(!showResult)} aria-expanded={showResult} className="flex w-full items-center justify-between gap-3 bg-raised/25 px-4 py-3 text-left">
@@ -497,32 +501,6 @@ export function RunDetail({ run, workflow, now, botName, onCancel, onContinue, o
                   </button>
                 </div>
                 <pre className="max-h-[420px] overflow-auto rounded-lg bg-[#24262D] p-4 font-mono text-[11px] leading-relaxed text-[#E6E7E9]">{resultText}</pre>
-              </div>
-            )}
-          </section>
-        )}
-
-        {verified.length > 0 && (
-          <section className="mt-4 overflow-hidden rounded-[10px] border border-hairline">
-            <button type="button" onClick={() => setFilesOpen((value) => !value)} aria-expanded={filesOpen} className="flex w-full items-center justify-between gap-3 bg-raised/25 px-4 py-3 text-left">
-              <span className="text-[11px] font-semibold text-ink">{t("workflows.run.filesBlock")}</span>
-              <ChevronDown size={14} aria-hidden="true" className={cn("text-ink-tertiary transition-transform", filesOpen && "rotate-180")} />
-            </button>
-            {filesOpen && (
-              <div className="space-y-3 p-4">
-                {verified.map((step, index) => (
-                  <div key={`${step.id}-${index}`} className="flex items-start gap-3 text-[11px] text-ink-secondary">
-                    <span className="min-w-[100px] shrink-0 text-ink-tertiary">{nameOf(step, run.steps.indexOf(step))}</span>
-                    <span className="flex flex-wrap gap-1.5">
-                      {step.verified!.map((file) => (
-                        <span key={file} className="flex items-center gap-1 rounded-md border border-hairline bg-raised/40 px-1.5 py-0.5 text-[9.5px]">
-                          <FileText size={10} aria-hidden="true" />
-                          {file}
-                        </span>
-                      ))}
-                    </span>
-                  </div>
-                ))}
               </div>
             )}
           </section>

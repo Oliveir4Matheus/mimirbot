@@ -2,10 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import { workflowDefinitionSchema } from "../../../shared/workflow";
 import {
-  addConditionLine, allDraftSteps, autoLayout, bodyDraft, conditionLines, connect, containedBy, createStep, disconnect, draftProblem, duplicateLoop, fromDefinition,
-  newDraft, removeConditionLine, removeStep, renameScript, selectAllSkills,
+  addConditionLine, addTrigger, allDraftSteps, autoLayout, bodyDraft, conditionLines, connect, containedBy, createStep, disconnect, draftProblem, draftProblems, duplicateLoop, fromDefinition,
+  newDraft, removeConditionLine, removeStep, removeTrigger, renameScript, selectAllSkills,
   setSkillGroup, skillCount, skillSelection, skillSelectionProblem, skillsWithGroup, toDefinition, toggleSkill, toggleSkillGroup,
-  updateConditionLine, updateConditionMatch, updateNote, withBodyDraft, type StudioDraft,
+  updateConditionLine, updateConditionMatch, updateNote, updateTrigger, withBodyDraft, type StudioDraft,
 } from "./studio-model";
 
 const step = (draft: StudioDraft, kind: "agent" | "script" | "condition", x: number, y: number, botId = "bot-a") =>
@@ -418,5 +418,80 @@ describe("Do While in the Studio", () => {
         : step),
     };
     expect(draftProblem(optionalBody, new Set(["bot-a"]))?.key).toBe("studio.loop.needFrom");
+  });
+});
+
+describe("the Studio's trigger track", () => {
+  it("starts a new draft with one manual trigger", () => {
+    expect(newDraft("Financeiro").triggers).toEqual([{ id: "manual", kind: "manual", name: "Manual" }]);
+  });
+
+  it("adds several triggers of the same type with distinct ids and names", () => {
+    const first = addTrigger(newDraft("Financeiro"), "webhook");
+    const second = addTrigger(first, "webhook");
+    expect(second.triggers.map((trigger) => trigger.name)).toEqual(["Manual", "Webhook", "Webhook 2"]);
+    expect(new Set(second.triggers.map((trigger) => trigger.id)).size).toBe(3);
+  });
+
+  it("stops at the track's limit", () => {
+    let draft = newDraft("Financeiro");
+    for (let index = 1; index < 20; index += 1) draft = addTrigger(draft);
+    expect(draft.triggers).toHaveLength(20);
+    expect(addTrigger(draft)).toBe(draft);
+  });
+
+  it("renames a trigger and clears the entity link when the kind changes", () => {
+    const draft = { ...newDraft("Financeiro"), triggers: [{ id: "hook", kind: "webhook" as const, name: "Pedidos", triggerId: "trg-1" }] };
+    const renamed = updateTrigger(draft, "hook", { name: "Pedidos pagos" });
+    expect(renamed.triggers[0]!.name).toBe("Pedidos pagos");
+    expect(renamed.triggers[0]!.triggerId).toBe("trg-1");
+    const switched = updateTrigger(renamed, "hook", { kind: "routine" });
+    expect(switched.triggers[0]!.kind).toBe("routine");
+    expect(switched.triggers[0]!.triggerId).toBeUndefined();
+    expect(switched.triggers[0]!.name).toBe("Pedidos pagos");
+  });
+
+  it("refuses to remove the last trigger and removes any other one", () => {
+    const draft = { ...newDraft("Financeiro"), triggers: [{ id: "manual", kind: "manual" as const, name: "Manual" }] };
+    expect(removeTrigger(draft, "manual")).toEqual({ ok: false, key: "studio.trigger.lastOne" });
+    const added = addTrigger(draft, "routine");
+    const routineId = added.triggers[added.triggers.length - 1]!.id;
+    const removed = removeTrigger(added, routineId);
+    if (!removed.ok) throw new Error(removed.key);
+    expect(removed.draft.triggers.map((trigger) => trigger.id)).toEqual(["manual"]);
+  });
+
+  it("round-trips the triggers through a definition", () => {
+    const created = createStep(newDraft("Financeiro"), "agent", { x: 200, y: 200 }, "bot-a");
+    const draft = {
+      ...created.draft,
+      name: "Pedidos",
+      triggers: [
+        { id: "manual", kind: "manual" as const, name: "Manual" },
+        { id: "pedidos", kind: "webhook" as const, name: "Pedidos pagos", triggerId: "trg-1" },
+        { id: "diaria", kind: "routine" as const, name: "Diária", routineId: "rtn-1" },
+      ],
+    };
+    const definition = toDefinition(draft);
+    expect(workflowDefinitionSchema.safeParse(definition).success).toBe(true);
+    expect(definition.triggers).toEqual(draft.triggers);
+    expect(fromDefinition(definition).triggers).toEqual(draft.triggers);
+  });
+
+  it("reports a webhook that no external parameter feeds at triggers.1", () => {
+    const created = createStep(newDraft("Financeiro"), "agent", { x: 200, y: 200 }, "bot-a");
+    const draft = {
+      ...created.draft,
+      name: "Pedidos",
+      triggers: [{ id: "manual", kind: "manual" as const, name: "Manual" }, { id: "pedidos", kind: "webhook" as const, name: "Pedidos" }],
+    };
+    expect(draftProblems(draft, new Set(["bot-a"]))).toContainEqual({ key: "studio.trigger.needParameter", params: { name: "Pedidos" }, path: "triggers.1" });
+    const fed = {
+      ...draft,
+      steps: draft.steps.map((step) => step.kind === "bot"
+        ? { ...step, parameters: [{ name: "link", type: "string" as const, required: true, list: false }] }
+        : step),
+    };
+    expect(draftProblems(fed, new Set(["bot-a"])).some((issue) => issue.path === "triggers.1")).toBe(false);
   });
 });

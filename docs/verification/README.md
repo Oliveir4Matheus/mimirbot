@@ -126,7 +126,10 @@ in `waiting_manual`.
 compare the feature files against the Workflow spec and the project's main
 branch. The
 [Workflow trigger fixture](workflow-trigger.md) starts a run from a routine and
-checks the trigger as its origin. The [Workflow loop fixture](workflow-loop.md) runs a Do While body and checks
+checks the trigger as its origin. The
+[Workflow webhook fixture](workflow-trigger-webhook.md) configures a webhook
+trigger, previews its map, delivers an event twice, and checks the run origin,
+attempts and refusals. The [Workflow loop fixture](workflow-loop.md) runs a Do While body and checks
 its iterations. The [Workflow script fixture](workflow-script.md)
 runs a real Node script step, follows its `when` branch and checks the skipped
 step and the run snapshot. The [Workflow Studio fixture](workflow-studio.md)
@@ -137,6 +140,10 @@ The [Workflow environment fixture](workflow-environment.md) prepares the
 installation's own venv and `node_modules` from the panel's menu, checks the
 status the panel reads, refuses a run whose module version changed, and keeps
 the environment when preparation fails.
+The [run files fixture](workflow-artifacts.md) lists, previews and downloads the
+files each step and Do While round left in `output/`, checks the stream headers,
+Range and HEAD, refuses symlinks and HTML inline, and proves both zip caps
+before the first byte.
 
 The [switchable local environments recipe](local-environments.md) verifies
 creating, switching between and recovering named local environments by hand on

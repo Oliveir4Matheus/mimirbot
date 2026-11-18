@@ -256,6 +256,8 @@ export interface RoutineManagerOptions {
   pausedWorkflowRuns?: (workflowId: string) => readonly Pick<WorkflowRun, "id" | "status">[];
   /** Whether the routine's Workflow still exists. */
   workflowState?: (workflowId: string | undefined) => "ready" | "missing";
+  /** Refuses a Workflow a routine cannot start (missing, another department or inputs a routine cannot supply). */
+  workflowRefusal?: (botId: string, workflowId: string) => string | null;
   /** A Workflow run as the store still holds it, for a routine run a restart left active. */
   workflowRunState?: (workflowRunId: string | undefined) => Pick<WorkflowRun, "status" | "error"> | undefined;
   interruptTurn?: (botId: string, threadId: string) => Promise<void>;
@@ -589,6 +591,10 @@ export class RoutineManager {
     const at = this.now();
     const clean = sanitizeInput(input, at);
     clean.schedule = this.timedSchedule(clean.schedule);
+    if (clean.target === "workflow" && clean.workflowId) {
+      const refusal = this.options.workflowRefusal?.(clean.botId, clean.workflowId);
+      if (refusal) throw Object.assign(new Error(refusal), { status: 400 });
+    }
     if (this.targetState(clean) === "missing") throw new Error(this.missingTargetMessage(clean.target));
     const nextRunAt = clean.enabled ? this.initialOccurrence(clean.schedule, at) : null;
     if (clean.schedule.type === "interval" && clean.enabled && nextRunAt === null) {
@@ -652,6 +658,10 @@ export class RoutineManager {
       deliver: Object.hasOwn(patch, "deliver") ? patch.deliver : routine.deliver,
     }, now);
     clean.schedule = this.timedSchedule(clean.schedule, routine.id);
+    if (clean.target === "workflow" && clean.workflowId) {
+      const refusal = this.options.workflowRefusal?.(clean.botId, clean.workflowId);
+      if (refusal) throw Object.assign(new Error(refusal), { status: 400 });
+    }
     if (this.targetState(clean) === "missing") throw new Error(this.missingTargetMessage(clean.target));
     const scheduleChanged = JSON.stringify(clean.schedule) !== JSON.stringify(routine.schedule);
     const enabledChanged = clean.enabled !== routine.enabled;

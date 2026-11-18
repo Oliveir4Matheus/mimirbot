@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { workflowDefinitionSchema } from "../../shared/workflow.ts";
-import { collectedParameters, resolveStepParameters, stepParameterValues, validateCollectedInputs, validateWorkflowInputs, workflowParameterNames } from "./parameters.ts";
+import { collectedParameters, resolveStepParameters, stepParameterValues, validateCollectedInputs, validateWorkflowInputs, workflowParameterNames, workflowRequiredStartParameters } from "./parameters.ts";
 import { writeStepParameters } from "./files.ts";
 
 const definition = workflowDefinitionSchema.parse({
@@ -39,6 +39,10 @@ describe("workflow parameters", () => {
   it("lists the union and each step's subset", () => {
     expect(workflowParameterNames(definition)).toEqual(["inicio", "fim", "regime"]);
     expect(stepParameterValues(definition, "periodo", { inicio: "2026-11-01", regime: "escala" })).toEqual({ inicio: "2026-11-01", regime: "escala" });
+  });
+
+  it("lists the required start parameters a routine cannot supply", () => {
+    expect(workflowRequiredStartParameters(definition).map((parameter) => parameter.name)).toEqual(["inicio", "regime"]);
   });
 
   it("reports missing, invalid and unknown names without creating a run", () => {

@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, ArrowLeft, Check, X } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Check, Plus, X } from "lucide-react";
 
-import { isBotStep, isScriptStep, workflowAllSteps, type WorkflowSkillOptions, type WorkflowStep } from "../../../shared/workflow";
+import { WORKFLOW_TRIGGER_MAX, isBotStep, isScriptStep, workflowAllSteps, type WorkflowParameter, type WorkflowSkillOptions, type WorkflowStep } from "../../../shared/workflow";
+import type { WorkflowTrigger } from "../../../shared/workflow-trigger";
 import { parseWorkflowRefusal } from "../../../shared/workflow-refusal";
 import type { LocaleKey } from "@/locales";
 import { cn } from "@/lib/cn";
@@ -9,8 +10,8 @@ import { t } from "@/lib/i18n";
 import { useStore } from "@/state/store";
 import { ApiError } from "@/state/api";
 import {
-  createWorkflow, listScripts, prepareEnvironment, readEnvironment, readScript, readWorkflow, readWorkflowSkillOptions,
-  updateWorkflow, type WorkflowEnvironmentStatus,
+  createWorkflow, deleteWorkflowTrigger, listScripts, listWorkflowTriggers, prepareEnvironment, readEnvironment, readScript, readWorkflow,
+  readWorkflowSkillOptions, updateWorkflow, type WorkflowEnvironmentStatus,
 } from "@/lib/workflows-api";
 import { StudioBalloon, type BalloonFocus } from "./StudioBalloon";
 import { StudioCard, type BranchKey } from "./StudioCard";
@@ -19,12 +20,13 @@ import { StudioLoopModal } from "./StudioLoopModal";
 import { StudioNote } from "./StudioNote";
 import { StudioPalette } from "./StudioPalette";
 import { StudioProblemsPanel, type StudioProblems } from "./StudioProblemsPanel";
-import { bezier, entryHit, noteAnchor, noteLinkTarget, outputPoint, type Point } from "./studio-geometry";
+import { StudioTriggerCard, StudioTriggerInspector } from "./StudioTrigger";
+import { bezier, entryHit, entryPoint, noteAnchor, noteLinkTarget, outputPoint, type Point } from "./studio-geometry";
 import {
-  CARD_HEIGHT, CARD_WIDTH, DEFAULT_SCRIPT, allDraftSteps, consumedOutputs, containedBy, connect, createContainer, createNote, createStep,
+  CARD_HEIGHT, CARD_WIDTH, DEFAULT_SCRIPT, TRIGGER_GAP, TRIGGER_HEIGHT, TRIGGER_WIDTH, addTrigger, allDraftSteps, consumedOutputs, containedBy, connect, createContainer, createNote, createStep,
   disconnect, draftProblems, draftWarnings, duplicateLoop, fromDefinition, inputsBranch, legacyFields, moveContainer, moveNode, moveNote, newDraft,
-  removeContainer, removeNote, removeStep, renameContainer, renameScript, resizeContainer, resizeNote,
-  targetForPath, toDefinition, updateNote, updateStep, type StudioBranch, type StudioDraft, type StudioKind, type StudioSelection, type StudioTarget,
+  removeContainer, removeNote, removeStep, removeTrigger, renameContainer, renameScript, resizeContainer, resizeNote, targetForPath, toDefinition,
+  triggerPoint, updateNote, updateStep, updateTrigger, type StudioBranch, type StudioDraft, type StudioKind, type StudioSelection, type StudioTarget,
 } from "./studio-model";
 
 type Drag =
@@ -60,6 +62,7 @@ export function WorkflowStudioPage({ workflowId, department, onBack, onSaved }: 
   viewportRef.current = viewport;
   const [selection, setSelection] = useState<StudioSelection>(null);
   const [balloon, setBalloon] = useState<BalloonState | null>(null);
+  const [triggerInspector, setTriggerInspector] = useState<string | null>(null);
   const [link, setLink] = useState<Link | null>(null);
   const [pointer, setPointer] = useState<Point | null>(null);
   const linkMoved = useRef(false);
@@ -84,6 +87,7 @@ export function WorkflowStudioPage({ workflowId, department, onBack, onSaved }: 
   const [focusRequest, setFocusRequest] = useState<(BalloonFocus & { stepId: string }) | null>(null);
   const [loopFocus, setLoopFocus] = useState<(StudioTarget & { token: number }) | null>(null);
   const [legacyIndex, setLegacyIndex] = useState(0);
+  const [runtimeTriggers, setRuntimeTriggers] = useState<Record<string, WorkflowTrigger>>({});
   const [environment, setEnvironment] = useState<WorkflowEnvironmentStatus | null>(null);
   const [preparingEnvironment, setPreparingEnvironment] = useState(false);
 
@@ -145,7 +149,25 @@ export function WorkflowStudioPage({ workflowId, department, onBack, onSaved }: 
   useEffect(() => { refreshEnvironment(); }, [refreshEnvironment]);
 
   const botIds = useMemo(() => new Set(bots.map((bot) => bot.id)), [bots]);
+  const startParameters = useMemo<WorkflowParameter[]>(() => {
+    if (!draft) return [];
+    const seen = new Set<string>();
+    const list: WorkflowParameter[] = [];
+    for (const step of workflowAllSteps(toDefinition(draft))) {
+      if (step.kind !== "bot" && step.kind !== "script") continue;
+      for (const parameter of step.parameters ?? []) {
+        if (parameter.from !== undefined || parameter.collectedBy !== undefined || seen.has(parameter.name)) continue;
+        seen.add(parameter.name);
+        list.push(parameter);
+      }
+    }
+    return list;
+  }, [draft]);
   const issues = useMemo(() => draft ? draftProblems(draft, botIds, skillOptions) : [], [draft, botIds, skillOptions]);
+  const triggerIssueIndexes = useMemo(() => new Set(issues
+    .filter((issue) => issue.path.startsWith("triggers."))
+    .map((issue) => Number(issue.path.split(".")[1]))
+    .filter((index) => Number.isInteger(index))), [issues]);
   const clientWarnings = useMemo(() => draft ? draftWarnings(draft) : [], [draft]);
   const consumed = useMemo(() => draft ? consumedOutputs(draft) : new Set<string>(), [draft]);
   const legacy = useMemo(() => draft ? legacyFields(draft) : [], [draft]);
@@ -167,6 +189,7 @@ export function WorkflowStudioPage({ workflowId, department, onBack, onSaved }: 
 
   const reveal = useCallback((target: StudioTarget | undefined) => {
     setProblems(null);
+    setTriggerInspector(null);
     if (target === undefined) return;
     setSelection({ kind: "step", id: target.stepId });
     if (target.loopId !== undefined) {
@@ -186,6 +209,17 @@ export function WorkflowStudioPage({ workflowId, department, onBack, onSaved }: 
     if (path === "name") {
       setProblems(null);
       nameInputRef.current?.focus();
+      return;
+    }
+    if (path === "triggers" || path.startsWith("triggers.")) {
+      const index = path === "triggers" ? 0 : Number(path.split(".")[1]);
+      const trigger = Number.isInteger(index) ? draft?.triggers[index] : undefined;
+      if (trigger) {
+        setProblems(null);
+        setBalloon(null);
+        setSelection(null);
+        setTriggerInspector(trigger.id);
+      }
       return;
     }
     reveal(targetForPath(draft?.steps ?? [], path));
@@ -214,6 +248,7 @@ export function WorkflowStudioPage({ workflowId, department, onBack, onSaved }: 
       ...next.steps.map((step) => next.canvas.nodes[step.id]).filter((node): node is Point => node !== undefined).map((node) => ({ x: node.x, y: node.y, w: CARD_WIDTH, h: CARD_HEIGHT + 75 })),
       ...next.canvas.notes.map((note) => ({ x: note.x, y: note.y, w: note.width, h: note.height })),
       ...next.canvas.containers.map((container) => ({ x: container.x, y: container.y, w: container.width, h: container.height })),
+      ...triggerBoxes(next),
     ];
     if (boxes.length === 0) {
       setViewport({ x: rect.width / 2 - CARD_WIDTH / 2, y: 140, zoom: 1 });
@@ -239,6 +274,7 @@ export function WorkflowStudioPage({ workflowId, department, onBack, onSaved }: 
     setError(null);
     setSelection(null);
     setBalloon(null);
+    setTriggerInspector(null);
     setScripts({});
     setDirty(false);
     if (workflowId) {
@@ -268,6 +304,44 @@ export function WorkflowStudioPage({ workflowId, department, onBack, onSaved }: 
     }
     return () => { alive = false; };
   }, [workflowId, department, fit, loadSkillOptions]);
+
+  const draftId = draft?.id;
+  const draftVersion = draft?.version;
+  const triggerLinkSignature = draft?.triggers.map((trigger) => `${trigger.id}:${trigger.triggerId ?? ""}`).join("|") ?? "";
+  useEffect(() => {
+    if (!draftId || draftVersion === undefined) {
+      setRuntimeTriggers({});
+      return;
+    }
+    let alive = true;
+    listWorkflowTriggers(draftId, { background: true })
+      .then((triggers) => {
+        if (!alive) return;
+        setRuntimeTriggers(() => {
+          const next: Record<string, WorkflowTrigger> = {};
+          for (const trigger of triggers) {
+            if (trigger.nodeId) next[trigger.nodeId] = trigger;
+          }
+          for (const node of draft?.triggers ?? []) {
+            if (!node.triggerId) continue;
+            const found = triggers.find((trigger) => trigger.id === node.triggerId);
+            if (found) next[node.id] = found;
+          }
+          return next;
+        });
+      })
+      .catch(() => { if (alive) setRuntimeTriggers({}); });
+    return () => { alive = false; };
+  }, [draftId, draftVersion, triggerLinkSignature]);
+
+  const setRuntimeForNode = useCallback((nodeId: string, trigger: WorkflowTrigger | null) => {
+    setRuntimeTriggers((current) => {
+      const next = { ...current };
+      if (trigger) next[nodeId] = trigger;
+      else delete next[nodeId];
+      return next;
+    });
+  }, []);
 
   const canvasPoint = useCallback((clientX: number, clientY: number): Point => {
     const rect = canvasRef.current?.getBoundingClientRect();
@@ -398,6 +472,10 @@ export function WorkflowStudioPage({ workflowId, department, onBack, onSaved }: 
           setProblems(null);
           return;
         }
+        if (triggerInspector !== null) {
+          setTriggerInspector(null);
+          return;
+        }
         if (balloon !== null) {
           setBalloon(null);
           return;
@@ -420,7 +498,7 @@ export function WorkflowStudioPage({ workflowId, department, onBack, onSaved }: 
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [selection, edit, problems, balloon]);
+  }, [selection, edit, problems, balloon, triggerInspector]);
 
   const add = useCallback((kind: StudioKind, clientX?: number, clientY?: number) => {
     if (!draft) return;
@@ -462,8 +540,31 @@ export function WorkflowStudioPage({ workflowId, department, onBack, onSaved }: 
     showToast(t("studio.toast.added"));
   }, [draft, bots, overCanvas, canvasPoint, center, edit, showToast]);
 
+  const addTriggerNode = useCallback(() => {
+    if (!draft) return;
+    const next = addTrigger(draft);
+    if (next === draft) {
+      showToast(t("studio.trigger.needMax", { max: WORKFLOW_TRIGGER_MAX }));
+      return;
+    }
+    edit(() => next);
+    setTriggerInspector(next.triggers[next.triggers.length - 1]!.id);
+  }, [draft, edit, showToast]);
+
+  const deleteTrigger = useCallback((triggerId: string) => {
+    if (!draft) return;
+    const result = removeTrigger(draft, triggerId);
+    if (!result.ok) {
+      showToast(t(result.key));
+      return;
+    }
+    edit(() => result.draft);
+    setTriggerInspector((current) => current === triggerId ? null : current);
+  }, [draft, edit]);
+
   const openBranch = useCallback((step: WorkflowStep, branch: BranchKey, anchor: DOMRect) => {
     if (step.kind === "bot" && step.botId) loadSkillOptions(step.botId);
+    setTriggerInspector(null);
     setBalloon((current) => current && current.stepId === step.id && current.branch === branch ? null : { stepId: step.id, branch, anchor });
   }, [loadSkillOptions]);
 
@@ -487,7 +588,15 @@ export function WorkflowStudioPage({ workflowId, department, onBack, onSaved }: 
       const definition = toDefinition(draft);
       const uploads = workflowAllSteps(definition).filter(isScriptStep).map((step) => ({ name: step.run, content: scripts[step.run] ?? DEFAULT_SCRIPT }));
       const saved = draft.version ? await updateWorkflow(definition, uploads) : await createWorkflow(definition, uploads);
-      setDraft(fromDefinition(saved.workflow));
+      const savedDraft = fromDefinition(saved.workflow);
+      setDraft(savedDraft);
+      for (const [nodeId, runtime] of Object.entries(runtimeTriggers)) {
+        const node = savedDraft.triggers.find((trigger) => trigger.id === nodeId);
+        if (node?.kind === "webhook") continue;
+        deleteWorkflowTrigger(saved.workflow.id, runtime.id)
+          .then(() => setRuntimeForNode(nodeId, null))
+          .catch((cause) => showToast(message(cause)));
+      }
       setDirty(false);
       showToast(t("studio.saved"));
       refreshEnvironment();
@@ -580,6 +689,17 @@ export function WorkflowStudioPage({ workflowId, department, onBack, onSaved }: 
       })()
     : undefined;
   const balloonStep = balloon ? draft.steps.find((step) => step.id === balloon.stepId) : undefined;
+  const triggerRow = draft.triggers.length > 0 ? triggerPoint(draft, 0) : undefined;
+  const triggerRailY = triggerRow ? triggerRow.y + TRIGGER_HEIGHT + 16 : 0;
+  const firstNode = draft.steps[0] ? draft.canvas.nodes[draft.steps[0].id] : undefined;
+  const triggerLink = triggerRow ? {
+    railY: triggerRailY,
+    left: firstNode ? firstNode.x : triggerRow.x + TRIGGER_WIDTH / 2,
+    right: triggerRow.x + (draft.triggers.length - 1) * (TRIGGER_WIDTH + TRIGGER_GAP) + TRIGGER_WIDTH / 2,
+    entryY: firstNode ? entryPoint(firstNode).y : undefined,
+  } : undefined;
+  const inspectorTrigger = triggerInspector ? draft.triggers.find((trigger) => trigger.id === triggerInspector) : undefined;
+  const addTriggerPoint = triggerPoint(draft, draft.triggers.length);
 
   return (
     <div className="studio-root">
@@ -591,6 +711,7 @@ export function WorkflowStudioPage({ workflowId, department, onBack, onSaved }: 
           if (event.button !== 0 || event.target !== event.currentTarget) return;
           setSelection(null);
           setBalloon(null);
+          setTriggerInspector(null);
           setNoteLinkMenu(null);
           setLink(null);
           setPointer(null);
@@ -606,6 +727,22 @@ export function WorkflowStudioPage({ workflowId, department, onBack, onSaved }: 
             </defs>
             {links.map((edge) => <path key={edge.key} d={edge.path} stroke={edge.color} markerEnd="url(#studio-arrow)" />)}
             {noteLinks.map((edge) => <path key={edge.key} d={edge.path} className="studio-note-link" />)}
+            {triggerLink && draft.triggers.map((trigger, index) => {
+              const point = triggerPoint(draft, index);
+              return <path key={`trigger-${trigger.id}`} d={`M ${point.x + TRIGGER_WIDTH / 2} ${point.y + TRIGGER_HEIGHT} L ${point.x + TRIGGER_WIDTH / 2} ${triggerLink.railY}`} className="studio-trigger-link" />;
+            })}
+            {triggerLink && (
+              <>
+                <path d={`M ${triggerLink.left} ${triggerLink.railY} L ${triggerLink.right} ${triggerLink.railY}`} className="studio-trigger-link" />
+                {triggerLink.entryY !== undefined && (
+                  <path
+                    d={`M ${triggerLink.left} ${triggerLink.railY} L ${triggerLink.left} ${triggerLink.entryY}`}
+                    className="studio-trigger-link studio-trigger-drop"
+                    markerEnd="url(#studio-arrow)"
+                  />
+                )}
+              </>
+            )}
             {activeLink && <path d={activeLink.path} stroke={activeLink.color} className={cn("studio-link-active", activeLink.dashed && "studio-link-dashed")} />}
           </svg>
 
@@ -629,6 +766,41 @@ export function WorkflowStudioPage({ workflowId, department, onBack, onSaved }: 
               onDelete={() => { edit((current) => removeContainer(current, container.id)); setSelection(null); }}
             />
           ))}
+
+          {triggerRow && (
+            <div className="studio-trigger-track" style={{ left: triggerRow.x, top: triggerRow.y - 22 }}>
+              <span className="studio-trigger-track-label">{t("studio.trigger.track")}</span>
+            </div>
+          )}
+
+          {draft.triggers.map((trigger, index) => (
+            <StudioTriggerCard
+              key={trigger.id}
+              trigger={trigger}
+              point={triggerPoint(draft, index)}
+              selected={triggerInspector === trigger.id}
+              invalid={triggerIssueIndexes.has(index)}
+              runtime={runtimeTriggers[trigger.id]}
+              currentVersion={draft.version}
+              onOpen={() => {
+                setBalloon(null);
+                setSelection(null);
+                setTriggerInspector(trigger.id);
+              }}
+            />
+          ))}
+
+          <button
+            type="button"
+            className="studio-trigger-add"
+            style={{ left: addTriggerPoint.x, top: addTriggerPoint.y }}
+            aria-label={t("studio.trigger.add")}
+            onClick={addTriggerNode}
+            onPointerDown={(event) => event.stopPropagation()}
+          >
+            <Plus size={14} aria-hidden="true" />
+            {t("studio.trigger.add")}
+          </button>
 
           {draft.steps.map((step, index) => (
             <StudioCard
@@ -784,6 +956,21 @@ export function WorkflowStudioPage({ workflowId, department, onBack, onSaved }: 
           />
         )}
 
+        {inspectorTrigger && (
+          <StudioTriggerInspector
+            trigger={inspectorTrigger}
+            count={draft.triggers.length}
+            workflowId={draft.version ? draft.id : undefined}
+            workflowVersion={draft.version}
+            parameters={startParameters}
+            runtime={runtimeTriggers[inspectorTrigger.id]}
+            onChange={(patch) => edit((current) => updateTrigger(current, inspectorTrigger.id, patch))}
+            onRuntime={(trigger) => setRuntimeForNode(inspectorTrigger.id, trigger)}
+            onDelete={() => deleteTrigger(inspectorTrigger.id)}
+            onClose={() => setTriggerInspector(null)}
+          />
+        )}
+
         {balloon && balloonStep && (
           <StudioBalloon
             draft={draft}
@@ -873,6 +1060,12 @@ function targetName(draft: StudioDraft, target: { kind: "step" | "container"; id
   return target.kind === "step"
     ? draft.steps.find((step) => step.id === target.id)?.name ?? target.id
     : draft.canvas.containers.find((container) => container.id === target.id)?.name ?? target.id;
+}
+
+function triggerBoxes(draft: StudioDraft): Array<{ x: number; y: number; w: number; h: number }> {
+  const first = triggerPoint(draft, 0);
+  const last = triggerPoint(draft, draft.triggers.length);
+  return [{ x: first.x - 8, y: first.y - 26, w: last.x + 150 - first.x, h: TRIGGER_HEIGHT + 34 }];
 }
 
 function nearestFreeOutput(draft: StudioDraft, point: Point, radius: number): { from: string; branch: StudioBranch } | undefined {

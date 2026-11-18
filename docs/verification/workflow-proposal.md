@@ -23,7 +23,8 @@ cat > /tmp/opencode/wf-proposal/tools/propose.json <<'JSON'
   "name":"Cobrança mensal",
   "interview":{"recurring":true,"changes":"Só as datas","confirmer":"Eu confirmo"},
   "summary":"Uma mensagem por cliente.",
-  "steps":[{"id":"coletar","kind":"script","name":"Coletar","run":"coletar.mjs",
+  "steps":[{"id":"coletar","kind":"script","name":"Coletar","mode":"manual","run":"coletar.mjs",
+    "parameters":[{"name":"link","type":"string","collectedBy":"coletar"}],
     "outputs":[{"path":"dados.json"}]}],
   "scripts":[{"name":"coletar.mjs","content":"import { writeFileSync } from \"node:fs\";\nwriteFileSync(process.env.WORKFLOW_STEP_OUTPUT + \"/dados.json\", JSON.stringify({ rows: 1 }));\n"}]
 }}]

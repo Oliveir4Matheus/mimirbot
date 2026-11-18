@@ -67,6 +67,11 @@ export function workflowParameterNames(definition: WorkflowDefinition): string[]
   return workflowStartParameters(definition).map((parameter) => parameter.name);
 }
 
+/** Start parameters a routine cannot supply: the required ones without `from` or `collectedBy`. */
+export function workflowRequiredStartParameters(definition: WorkflowDefinition): WorkflowParameter[] {
+  return workflowStartParameters(definition).filter((parameter) => parameter.required !== false);
+}
+
 /** The parameters one manual step collects from the person, by name. */
 export function collectedParameters(definition: WorkflowDefinition, stepId: string): WorkflowParameter[] {
   const seen = new Set<string>();

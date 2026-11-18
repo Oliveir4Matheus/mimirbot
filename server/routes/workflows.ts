@@ -3,11 +3,46 @@
 // the capability bearer names the bot and its conversation. State changes are
 // announced as `workflow.run` frames on the app's existing SSE stream.
 import type { ServerResponse } from "node:http";
+import { closeSync, createReadStream } from "node:fs";
 
 import type { json as sendJson } from "../harness/http.ts";
-import { isBotStep, isWorkflowScriptName, workflowAllSteps, workflowDefinitionSchema, workflowUnknownFields, type WorkflowDefinition, type WorkflowSkillOptions, type WorkflowStep } from "../../shared/workflow.ts";
+import {
+  isBotStep,
+  isWorkflowRelativePath,
+  isWorkflowScriptName,
+  isWorkflowSlug,
+  workflowAllSteps,
+  workflowDefinitionSchema,
+  workflowUnknownFields,
+  WORKFLOW_ARTIFACT_PREVIEW_MAX_BYTES,
+  WORKFLOW_ARTIFACT_TEXT_PREVIEW_BYTES,
+  WORKFLOW_STEP_MAX,
+  type WorkflowArtifactOrigin,
+  type WorkflowArtifactPreview,
+  type WorkflowDefinition,
+  type WorkflowRun,
+  type WorkflowSkillOptions,
+  type WorkflowStep,
+} from "../../shared/workflow.ts";
 import { authoringRefusal, workflowRefusal } from "../../shared/workflow-refusal.ts";
+import { parseAudioRange } from "../attachments.ts";
+import { messageFileDisposition } from "../message-file.ts";
+import {
+  listWorkflowArtifacts,
+  openWorkflowArtifact,
+  workflowArtifactKind,
+  workflowArtifactName,
+  workflowArtifactOriginLabel,
+} from "../workflows/artifacts.ts";
+import {
+  planWorkflowArchive,
+  workflowArchiveName,
+  writeWorkflowArchive,
+  WORKFLOW_ARCHIVE_ENTRIES_MAX,
+  type WorkflowArchiveItem,
+} from "../workflows/archive.ts";
 import type { WorkflowEngine } from "../workflows/engine.ts";
+import { WorkflowTriggerRefusal, type WorkflowTriggerManager } from "../workflow-triggers.ts";
 import {
   prepareWorkflowEnvironment,
   workflowEnvironmentStatus,
@@ -32,8 +67,11 @@ export interface WorkflowRoutesDeps {
   home?: string;
   env?: NodeJS.ProcessEnv;
   now?: () => number;
+  log?: (line: string) => void;
   /** Tests inject a stand-in so no package manager runs; a real server installs locally. */
   prepareEnvironment?(options: WorkflowEnvironmentPrepareOptions): Promise<WorkflowEnvironmentPrepareResult>;
+  /** The webhook runtime, resolved late because the ingress that advertises its URLs starts after this host. */
+  triggers?(): WorkflowTriggerManager | undefined;
 }
 
 export interface WorkflowInternalContext {
@@ -49,6 +87,44 @@ export interface WorkflowInternalContext {
 const isRecord = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === "object" && !Array.isArray(value);
 
 const segments = (path: string, base: string): string[] => path.slice(base.length).split("/").filter(Boolean);
+
+const STEP_NUMBER = /^\d{1,2}$/;
+const ITERATION_NUMBER = /^\d{1,6}$/;
+const TEXT_PREVIEWS: ReadonlySet<WorkflowArtifactPreview> = new Set(["text", "markdown", "json", "csv"]);
+const BINARY_PREVIEWS: ReadonlySet<WorkflowArtifactPreview> = new Set(["image", "pdf", "audio", "video"]);
+
+function stepNumber(value: string | null): number | null {
+  if (value === null || !STEP_NUMBER.test(value)) return null;
+  const number = Number(value);
+  return number >= 1 && number <= WORKFLOW_STEP_MAX ? number : null;
+}
+
+type ArtifactQuery =
+  | { ok: true; origin: WorkflowArtifactOrigin; path: string; disposition: "inline" | "download" }
+  | { ok: false; error: string };
+
+function artifactQuery(url: URL): ArtifactQuery {
+  const step = stepNumber(url.searchParams.get("step"));
+  if (step === null) return { ok: false, error: "step must be 1-40" };
+  const path = url.searchParams.get("path");
+  if (!path || !isWorkflowRelativePath(path)) {
+    return { ok: false, error: "path must be a relative path inside output/" };
+  }
+  const iteration = url.searchParams.get("iteration");
+  const body = url.searchParams.get("body");
+  if ((iteration === null) !== (body === null)) return { ok: false, error: "iteration and body must be given together" };
+  let origin: WorkflowArtifactOrigin = { kind: "step", step };
+  if (iteration !== null && body !== null) {
+    if (!ITERATION_NUMBER.test(iteration) || Number(iteration) < 1) return { ok: false, error: "iteration must be a round number" };
+    if (!isWorkflowSlug(body)) return { ok: false, error: "body must be a step id" };
+    origin = { kind: "iteration", step, iteration: Number(iteration), body };
+  }
+  const disposition = url.searchParams.get("disposition") ?? "inline";
+  if (disposition !== "inline" && disposition !== "download") {
+    return { ok: false, error: "disposition must be inline or download" };
+  }
+  return { ok: true, origin, path, disposition };
+}
 
 const sameDepartment = (left: string, right: string): boolean => left.trim().toLowerCase() === right.trim().toLowerCase();
 
@@ -106,10 +182,149 @@ export function createWorkflowRoutes(deps: WorkflowRoutesDeps): RouteHandler {
     if (candidate.success) {
       const missing = missingStepSkill(candidate.data.steps, deps);
       if (missing) return void json(res, 400, authoringRefusal([{ path: "steps", message: missing }]));
+      const existing = id === undefined ? undefined : deps.store.workflow(id);
+      if (existing && !sameDepartment(existing.department, candidate.data.department) && deps.triggers?.()?.hasTriggers(id!)) {
+        return void json(res, 409, {
+          error: "this Workflow has webhook triggers; change its department only after deleting them",
+        });
+      }
     }
     const saved = deps.store.saveWorkflow(definition, uploads && uploads.length > 0 ? { scripts: uploads } : undefined);
     if (!saved.ok) return void json(res, 400, saved.refusal ?? workflowRefusal("authoringErrors", saved.error));
     return void json(res, 200, { workflow: saved.workflow, ...(saved.warnings.length === 0 ? {} : { warnings: saved.warnings }) });
+  };
+
+  const logArtifact = (runId: string, origin: string, reason: string): void => {
+    deps.log?.(`workflows: artifact ${runId} ${origin} ${reason}`);
+  };
+
+  const serveArtifact = async (run: WorkflowRun, req: Parameters<RouteHandler>[0]["req"], res: ServerResponse, url: URL, method: string, json: typeof sendJson): Promise<void> => {
+    const query = artifactQuery(url);
+    if (!query.ok) return void json(res, 400, { error: query.error });
+    const opened = openWorkflowArtifact({ run, runDir: deps.store.runDir(run), origin: query.origin, path: query.path });
+    if (!opened.ok) {
+      if (opened.reason === "read") {
+        logArtifact(run.id, workflowArtifactOriginLabel(query.origin), "read failed");
+        return void json(res, 500, { error: "could not read the file" });
+      }
+      logArtifact(run.id, workflowArtifactOriginLabel(query.origin), opened.reason);
+      return void json(res, 404, { error: "no such file" });
+    }
+
+    const name = workflowArtifactName(query.path);
+    const kind = workflowArtifactKind(name);
+    const attachment = query.disposition === "download" || kind.attachment;
+    const headers: Record<string, string | number> = {
+      "content-type": kind.contentType,
+      "content-disposition": messageFileDisposition(name).replace(/^attachment/, attachment ? "attachment" : "inline"),
+      "cache-control": "private, no-store",
+      "x-content-type-options": "nosniff",
+      "content-security-policy": "sandbox",
+      "referrer-policy": "no-referrer",
+      "cross-origin-resource-policy": "same-origin",
+      "accept-ranges": "bytes",
+    };
+
+    if (!attachment && BINARY_PREVIEWS.has(kind.preview) && opened.size > WORKFLOW_ARTIFACT_PREVIEW_MAX_BYTES) {
+      closeSync(opened.fd);
+      return void json(res, 413, { error: "the file is too large to preview", limit: WORKFLOW_ARTIFACT_PREVIEW_MAX_BYTES });
+    }
+
+    let status = 200;
+    let start = 0;
+    let end = opened.size - 1;
+    const range = parseAudioRange(req.headers.range, opened.size);
+    if (range.kind === "unsatisfiable") {
+      closeSync(opened.fd);
+      res.writeHead(416, { ...headers, "content-range": `bytes */${opened.size}`, "content-length": 0 });
+      res.end();
+      return;
+    }
+    if (range.kind === "range") {
+      status = 206;
+      start = range.start;
+      end = range.end;
+      headers["content-range"] = `bytes ${start}-${end}/${opened.size}`;
+    } else if (!attachment && TEXT_PREVIEWS.has(kind.preview) && opened.size > WORKFLOW_ARTIFACT_TEXT_PREVIEW_BYTES) {
+      end = WORKFLOW_ARTIFACT_TEXT_PREVIEW_BYTES - 1;
+      headers["x-artifact-truncated"] = "1";
+    }
+    headers["content-length"] = Math.max(0, end - start + 1);
+
+    if (opened.size === 0 || method === "HEAD") {
+      closeSync(opened.fd);
+      res.writeHead(status, headers);
+      res.end();
+      return;
+    }
+
+    res.writeHead(status, headers);
+    await new Promise<void>((resolve) => {
+      const stream = createReadStream(opened.file, { fd: opened.fd, start, end, autoClose: true });
+      stream.once("error", () => {
+        logArtifact(run.id, workflowArtifactOriginLabel(query.origin), "stream failed");
+        res.destroy();
+        resolve();
+      });
+      stream.once("end", () => resolve());
+      res.once("close", () => {
+        stream.destroy();
+        resolve();
+      });
+      stream.pipe(res);
+    });
+  };
+
+  const serveArtifactsZip = async (run: WorkflowRun, res: ServerResponse, step: number | undefined, json: typeof sendJson): Promise<void> => {
+    const list = listWorkflowArtifacts({
+      run,
+      runDir: deps.store.runDir(run),
+      definition: deps.store.workflow(run.workflowId, run.workflowVersion),
+      retentionDays: deps.store.retentionDays(run.workflowId),
+      limits: { perOrigin: WORKFLOW_ARCHIVE_ENTRIES_MAX + 1, total: WORKFLOW_ARCHIVE_ENTRIES_MAX + 1 },
+      ...(step === undefined ? {} : { onlyStep: step }),
+      ...(deps.now === undefined ? {} : { now: deps.now() }),
+    });
+    const sources = list.sources;
+    const items: WorkflowArchiveItem[] = [];
+    for (const source of sources) {
+      for (const artifact of source.files) {
+        const opened = openWorkflowArtifact({ run, runDir: deps.store.runDir(run), origin: artifact.origin, path: artifact.path });
+        if (!opened.ok) {
+          logArtifact(run.id, workflowArtifactOriginLabel(artifact.origin), opened.reason);
+          continue;
+        }
+        closeSync(opened.fd);
+        items.push({
+          name: workflowArchiveName(artifact.origin, artifact.path),
+          file: opened.file,
+          bytes: artifact.bytes,
+          modifiedAt: artifact.modifiedAt,
+        });
+      }
+    }
+    if (items.length === 0) return void json(res, 404, { error: "no such file" });
+    const plan = planWorkflowArchive(items);
+    if (!plan.ok) {
+      return void json(res, 413, {
+        error: plan.reason === "entries" ? "the zip has too many files" : "the zip is larger than its limit",
+        limit: plan.limit,
+      });
+    }
+    const suffix = step === undefined ? "" : `-step-${step}`;
+    res.writeHead(200, {
+      "content-type": "application/zip",
+      "content-disposition": `attachment; filename="run-${run.id}${suffix}.zip"`,
+      "cache-control": "private, no-store",
+      "x-content-type-options": "nosniff",
+    });
+    try {
+      await writeWorkflowArchive(res, plan);
+      res.end();
+    } catch {
+      logArtifact(run.id, step === undefined ? "all" : `step-${step}`, "zip failed");
+      res.destroy();
+    }
   };
 
   return async ({ req, res, path, method, url, json, readBody }) => {
@@ -164,6 +379,39 @@ export function createWorkflowRoutes(deps: WorkflowRoutesDeps): RouteHandler {
       }
       const runId = parts[1];
       if (!runId) return void json(res, 400, { error: "give a run id" });
+      if (parts.length === 3 && parts[2] === "artifacts") {
+        if (method !== "GET") return void json(res, 405, { error: "method not allowed" });
+        const run = deps.store.readRun(runId);
+        if (!run) return void json(res, 404, { error: "no such run" });
+        res.setHeader("cache-control", "private, no-store");
+        return void json(res, 200, listWorkflowArtifacts({
+          run,
+          runDir: deps.store.runDir(run),
+          definition: deps.store.workflow(run.workflowId, run.workflowVersion),
+          retentionDays: deps.store.retentionDays(run.workflowId),
+          ...(deps.now === undefined ? {} : { now: deps.now() }),
+        }));
+      }
+      if (parts.length === 3 && parts[2] === "artifact") {
+        if (method !== "GET" && method !== "HEAD") return void json(res, 405, { error: "method not allowed" });
+        const run = deps.store.readRun(runId);
+        if (!run) return void json(res, 404, { error: "no such run" });
+        return serveArtifact(run, req, res, url, method, json);
+      }
+      if (parts.length === 3 && parts[2] === "artifacts.zip") {
+        if (method !== "GET") return void json(res, 405, { error: "method not allowed" });
+        const run = deps.store.readRun(runId);
+        if (!run) return void json(res, 404, { error: "no such run" });
+        const rawStep = url.searchParams.get("step");
+        let step: number | undefined;
+        if (rawStep !== null) {
+          const parsed = stepNumber(rawStep);
+          if (parsed === null) return void json(res, 400, { error: "step must be 1-40" });
+          if (!run.steps[parsed - 1]) return void json(res, 404, { error: "no such file" });
+          step = parsed;
+        }
+        return serveArtifactsZip(run, res, step, json);
+      }
       if (parts.length === 2 && method === "GET") {
         const run = deps.store.readRun(runId);
         return run ? void json(res, 200, { run }) : void json(res, 404, { error: "no such run" });
@@ -199,6 +447,56 @@ export function createWorkflowRoutes(deps: WorkflowRoutesDeps): RouteHandler {
 
     const id = parts[0]!;
     if (!isWorkflowId(id)) return void json(res, 400, { error: "the Workflow id must be a uuid" });
+    if (parts[1] === "triggers") {
+      const manager = deps.triggers?.();
+      if (!manager) return void json(res, 404, { error: "Workflow triggers are unavailable" });
+      const triggerId = parts[2];
+      const answerRefusal = (error: unknown): void => {
+        if (error instanceof WorkflowTriggerRefusal) {
+          json(res, error.status, error.body);
+          return;
+        }
+        throw error;
+      };
+      try {
+        if (!deps.store.workflow(id)) return void json(res, 404, { error: "no such workflow" });
+        if (triggerId === undefined) {
+          if (method === "GET") return void json(res, 200, { triggers: manager.list(id) });
+          if (method === "POST") return void json(res, 201, manager.create(id, await readBody(req)));
+          return void json(res, 405, { error: "method not allowed" });
+        }
+        if (parts.length === 4 && parts[3] === "preview") {
+          if (method !== "POST") return void json(res, 405, { error: "method not allowed" });
+          return void json(res, 200, { preview: manager.preview(id, triggerId, await readBody(req)) });
+        }
+        if (parts.length === 4 && parts[3] === "rotate-secret") {
+          if (method !== "POST") return void json(res, 405, { error: "method not allowed" });
+          const rotated = manager.rotateSecret(id, triggerId);
+          return void json(res, 200, { credential: rotated.credential });
+        }
+        if (parts.length === 4 && parts[3] === "restore") {
+          if (method !== "POST") return void json(res, 405, { error: "method not allowed" });
+          return void json(res, 200, manager.restore(id, triggerId));
+        }
+        if (parts.length === 4 && parts[3] === "attempts") {
+          if (method !== "GET") return void json(res, 405, { error: "method not allowed" });
+          const raw = url.searchParams.get("limit");
+          const limit = raw === null ? 50 : Number(raw);
+          if (!Number.isSafeInteger(limit) || limit < 1) return void json(res, 400, { error: "limit must be a positive integer" });
+          return void json(res, 200, manager.listAttempts(id, triggerId, limit));
+        }
+        if (parts.length !== 3) return void json(res, 404, { error: "not found" });
+        if (method === "GET") {
+          const trigger = manager.get(id, triggerId);
+          return trigger ? void json(res, 200, { trigger }) : void json(res, 404, { error: "no such Workflow trigger" });
+        }
+        if (method === "PATCH") return void json(res, 200, { trigger: manager.update(id, triggerId, await readBody(req)) });
+        if (method === "DELETE") return void json(res, 200, manager.remove(id, triggerId));
+        return void json(res, 405, { error: "method not allowed" });
+      } catch (error) {
+        return answerRefusal(error);
+      }
+    }
     if (parts[1] === "scripts") {
       if (!deps.store.workflow(id)) return void json(res, 404, { error: "no such workflow" });
       if (parts.length === 2 && method === "GET") {
@@ -238,6 +536,16 @@ export function createWorkflowRoutes(deps: WorkflowRoutesDeps): RouteHandler {
           error: "this Workflow has active runs; cancel them before deleting it",
           runs: active.map((run) => ({ id: run.id, status: run.status, currentStep: run.currentStep })),
         });
+      }
+      const triggers = deps.triggers?.();
+      if (triggers?.hasTriggers(id)) {
+        if (url.searchParams.get("withTriggers") !== "true") {
+          return void json(res, 409, {
+            error: "this Workflow has webhook triggers; delete it with withTriggers=true to remove both",
+            triggers: triggers.list(id).length,
+          });
+        }
+        triggers.removeForWorkflow(id);
       }
       return void json(res, 200, { removed: deps.store.removeWorkflow(id) });
     }

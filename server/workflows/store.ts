@@ -10,6 +10,7 @@ import {
   isScriptStep,
   isWorkflowScriptName,
   workflowAllSteps,
+  workflowDefinitionSaveSchema,
   workflowDefinitionSchema,
   workflowRunSchema,
   workflowUnknownFields,
@@ -234,7 +235,7 @@ export function createWorkflowStore(options: WorkflowStoreOptions): WorkflowStor
       draft.createdAt ??= stamp;
       draft.updatedAt = stamp;
       draft.version ??= 1;
-      const parsed = workflowDefinitionSchema.safeParse(draft);
+      const parsed = workflowDefinitionSaveSchema.safeParse(draft);
       if (!parsed.success) {
         const issues = parsed.error.issues.map((issue) => ({ path: issue.path.join(".") || "workflow", message: issue.message }));
         const refusal = authoringRefusal(issues);

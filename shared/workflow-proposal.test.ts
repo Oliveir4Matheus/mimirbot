@@ -96,13 +96,19 @@ describe("proposal definition", () => {
     expect(() => startManualDefinition(conditionFirst)).toThrow("must start with a bot or script step");
   });
 
-  it("writes the execution gate on create and does not mutate the approved definition", () => {
+  it("writes the execution gate only when the first step collects a value", () => {
     const parsed = workflowProposalInputSchema.parse(input);
     const built = proposalDefinition(parsed, id);
     if (!built.ok) throw new Error(built.error);
-    const gated = startManualDefinition(built.definition);
+    expect(startManualDefinition(built.definition)).toBe(built.definition);
+    const first = built.definition.steps[0]!;
+    const collecting = {
+      ...built.definition,
+      steps: [{ ...first, parameters: [{ name: "link", type: "string" as const, collectedBy: first.id }] }, ...built.definition.steps.slice(1)],
+    };
+    const gated = startManualDefinition(collecting);
     expect(gated.steps[0]).toMatchObject({ mode: "manual" });
-    expect(built.definition.steps[0]).toMatchObject({ mode: "auto" });
+    expect(collecting.steps[0]).toMatchObject({ mode: "auto" });
     expect(startManualDefinition(gated)).toBe(gated);
   });
 

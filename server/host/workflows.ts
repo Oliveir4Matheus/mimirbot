@@ -6,6 +6,7 @@ import { pruneWorkflowRuns, type RetentionResult } from "../workflows/retention.
 import { createWorkflowStore } from "../workflows/store.ts";
 import { createWorkflowProposalStore } from "../workflows/proposals.ts";
 import { createWorkflowRoutes, createWorkflowInternalRoutes } from "../routes/workflows.ts";
+import type { WorkflowTriggerManager } from "../workflow-triggers.ts";
 import { createWorkflowProposalInternalRoutes, createWorkflowProposalRoutes } from "../routes/workflow-proposals.ts";
 import type { WorkflowProposal } from "../../shared/workflow-proposal.ts";
 import type { WorkflowRun, WorkflowSkillOptions, WorkflowStepSkills } from "../../shared/workflow.ts";
@@ -29,6 +30,8 @@ export interface WorkflowHostDeps {
   skillOptions?(botId: string): WorkflowSkillOptions | undefined;
   /** Appends the chat card for a draft the bot just made. */
   proposalCard?(proposal: WorkflowProposal, botId: string, threadId: string): void;
+  /** The webhook runtime; resolved late so this host can exist before the ingress is listening. */
+  triggers?(): WorkflowTriggerManager | undefined;
 }
 
 export function createWorkflowHost(deps: WorkflowHostDeps) {
@@ -83,6 +86,8 @@ export function createWorkflowHost(deps: WorkflowHostDeps) {
     ...(deps.home === undefined ? {} : { home: deps.home }),
     ...(deps.env === undefined ? {} : { env: deps.env }),
     ...(deps.now === undefined ? {} : { now: deps.now }),
+    ...(deps.log === undefined ? {} : { log: deps.log }),
+    ...(deps.triggers === undefined ? {} : { triggers: deps.triggers }),
   });
   const internal = createWorkflowInternalRoutes({ store, engine, bot: deps.bot });
   const proposalDeps = { proposals, workflows: store, ...(deps.proposalCard ? { card: deps.proposalCard } : {}) };

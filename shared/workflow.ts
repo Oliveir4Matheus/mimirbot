@@ -8,6 +8,9 @@ export const WORKFLOW_SLUG_MAX = 64;
 export const WORKFLOW_STEP_MAX = 40;
 export const WORKFLOW_INSTRUCTIONS_MAX = 12_000;
 export const WORKFLOW_PATH_MAX = 200;
+/** The most a text preview sends, and the largest binary preview served inline. */
+export const WORKFLOW_ARTIFACT_TEXT_PREVIEW_BYTES = 256 * 1024;
+export const WORKFLOW_ARTIFACT_PREVIEW_MAX_BYTES = 100 * 1024 * 1024;
 export const WORKFLOW_RETENTION_DEFAULT_DAYS = 90;
 export const WORKFLOW_RETENTION_MAX_DAYS = 3_650;
 /** A script the Workflow can reference: a flat `.mjs` name; Node is the only runtime. */
@@ -45,6 +48,11 @@ export const WORKFLOW_SKILLS_BOT_MAX = 200;
 export const WORKFLOW_SKILLS_BUNDLED_MAX = 100;
 export const WORKFLOW_SKILLS_IMPORTED_MAX = 200;
 export const WORKFLOW_SKILL_NAME_MAX = 64;
+/** The Studio's trigger track: at least one node, never more than this. */
+export const WORKFLOW_TRIGGER_MAX = 20;
+export const WORKFLOW_TRIGGER_NAME_MAX = 80;
+export const WORKFLOW_TRIGGER_ID_MAX = 64;
+export const WORKFLOW_TRIGGER_LINK_MAX = 128;
 
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const SCRIPT_NAME = /^[a-z0-9][a-z0-9-]{0,59}\.mjs$/;
@@ -581,12 +589,47 @@ function checkParameterOrigins(
   });
 }
 
+export const workflowTriggerKinds = ["manual", "webhook", "routine"] as const;
+export type WorkflowTriggerKind = (typeof workflowTriggerKinds)[number];
+
+/** A visual node of the Studio's trigger track. It names the runtime entity once the Workflow
+ * has been saved; manual has none, and a webhook or routine may still be unconfigured. */
+export interface WorkflowTriggerNode {
+  id: string;
+  kind: WorkflowTriggerKind;
+  name: string;
+  triggerId?: string;
+  routineId?: string;
+}
+
+const workflowTriggerSchema = z.object({
+  id: z.string().min(1).max(WORKFLOW_TRIGGER_ID_MAX),
+  kind: z.enum(workflowTriggerKinds),
+  name: z.string().trim().min(1).max(WORKFLOW_TRIGGER_NAME_MAX),
+  triggerId: z.string().min(1).max(WORKFLOW_TRIGGER_LINK_MAX).optional(),
+  routineId: z.string().min(1).max(WORKFLOW_TRIGGER_LINK_MAX).optional(),
+});
+
+/** The node every Workflow starts from, and what an older file without triggers reads as. */
+export function workflowDefaultTriggers(): WorkflowTriggerNode[] {
+  return [{ id: "manual", kind: "manual", name: "Manual" }];
+}
+
+/** Whether a run receives a value from outside: a parameter with no `from` origin, which is
+ * either supplied at the start or collected by a manual step. A `from` value is internal. */
+export function workflowReceivesExternalParameters(definition: { steps: readonly WorkflowStep[] }): boolean {
+  return workflowAllSteps(definition).some((step) => (step.kind === "bot" || step.kind === "script")
+    && step.parameters.some((parameter) => parameter.from === undefined));
+}
+
 const workflowDefinitionObjectSchema = z.object({
   id: z.uuid(),
   version: z.number().int().min(1),
   name: z.string().trim().min(1).max(80),
   department: z.string().trim().min(1).max(60),
   steps: z.array(workflowStepSchema).min(1).max(WORKFLOW_STEP_MAX),
+  /** The trigger track. The reading schema supplies the manual default; a save must name one. */
+  triggers: z.array(workflowTriggerSchema).min(1).max(WORKFLOW_TRIGGER_MAX),
   retentionDays: z.number().int().min(1).max(WORKFLOW_RETENTION_MAX_DAYS).default(WORKFLOW_RETENTION_DEFAULT_DAYS),
   createdAt: z.number().int().nonnegative(),
   updatedAt: z.number().int().nonnegative(),
@@ -600,6 +643,14 @@ const workflowDefinitionObjectSchema = z.object({
     } else {
       positions.set(step.id, index);
     }
+  });
+
+  const triggerIds = new Set<string>();
+  definition.triggers.forEach((trigger, index) => {
+    if (triggerIds.has(trigger.id)) {
+      context.addIssue({ code: "custom", path: ["triggers", index, "id"], message: `trigger id ${JSON.stringify(trigger.id)} is used more than once` });
+    }
+    triggerIds.add(trigger.id);
   });
 
   const validateConditionGroup = (conditions: readonly ConditionLine[], path: Array<string | number>, message: string): void => {
@@ -968,7 +1019,37 @@ const workflowDefinitionObjectSchema = z.object({
 
 /** Reads a definition from disk or a request. It only normalizes: refusing here would make an
  * existing Workflow disappear from the list instead of appearing to be corrected. */
-export const workflowDefinitionSchema = z.preprocess(normalizeDefinitionRecord, workflowDefinitionObjectSchema);
+export const workflowDefinitionSchema = z.preprocess(
+  (value) => normalizeDefinitionRecord(withDefaultTriggers(value)),
+  workflowDefinitionObjectSchema,
+);
+
+/** A file saved before triggers existed, or with an empty list, opens with the manual node.
+ * Only the reading schema defaults it: a save without a trigger is refused. */
+function withDefaultTriggers(value: unknown): unknown {
+  if (!isRecord(value)) return value;
+  const triggers = value.triggers;
+  if (Array.isArray(triggers) && triggers.length > 0) return value;
+  return { ...value, triggers: workflowDefaultTriggers() };
+}
+
+/** Writes a definition: the structure the engine trusts, plus the trigger rule a webhook
+ * cannot do without. Paths stay in the same dotted form the authoring refusal uses. */
+export const workflowDefinitionSaveSchema = z.preprocess(
+  normalizeDefinitionRecord,
+  workflowDefinitionObjectSchema.superRefine((definition, context) => {
+    if (!workflowReceivesExternalParameters(definition)) {
+      definition.triggers.forEach((trigger, index) => {
+        if (trigger.kind !== "webhook") return;
+        context.addIssue({
+          code: "custom",
+          path: ["triggers", index],
+          message: `trigger ${JSON.stringify(trigger.name)}: a webhook needs a parameter the run receives at the start or a manual step collects`,
+        });
+      });
+    }
+  }),
+);
 
 type ObjectSchema = { shape: Record<string, unknown> };
 const keysOf = (schema: ObjectSchema): Set<string> => new Set(Object.keys(schema.shape));
@@ -987,6 +1068,7 @@ const MODULE_FIELDS = keysOf(workflowModuleObjectSchema);
 const PARAMETER_FIELDS = keysOf(workflowParameterSchema);
 const PARAMETER_SOURCE_FIELDS = keysOf(workflowParameterSourceSchema);
 const CONDITION_LINE_FIELDS = keysOf(conditionLineSchema);
+const TRIGGER_FIELDS = keysOf(workflowTriggerSchema);
 /** Fields an older save may still carry: the reading schema turns them into their current form. */
 const LEGACY_STEP_FIELDS = new Set(["next"]);
 const LEGACY_CONDITION_STEP_FIELDS = new Set(["field", "op", "value"]);
@@ -1013,6 +1095,12 @@ export function workflowUnknownFields(input: unknown): Array<{ path: string; mes
   const issues: Array<{ path: string; message: string }> = [];
   if (!isRecord(input)) return issues;
   unknownKey(input, DEFINITION_FIELDS, "workflow", "A Workflow", issues);
+  if (Array.isArray(input.triggers)) {
+    input.triggers.forEach((entry, index) => {
+      if (!isRecord(entry)) return;
+      unknownKey(entry, TRIGGER_FIELDS, `triggers.${index}`, `trigger ${index + 1}`, issues);
+    });
+  }
   if (!Array.isArray(input.steps)) return issues;
   const walkStep = (record: unknown, path: string, topLevel: boolean): void => {
     if (!isRecord(record)) return;
@@ -1190,11 +1278,19 @@ export function workflowHoldPath(hold: WorkflowRunHold): number[] | undefined {
   return hold.step === undefined ? undefined : [hold.step];
 }
 
-/** A routine started the run instead of a person or a bot conversation. */
-export interface WorkflowRunTrigger {
-  routineId: string;
-  routineName: string;
-}
+/** A routine or a Workflow webhook started the run instead of a person or a bot conversation. */
+export type WorkflowRunTrigger =
+  | { routineId: string; routineName: string }
+  | { triggerId: string; triggerName: string; deliveryId: string };
+
+const workflowRunTriggerSchema = z.union([
+  z.object({ routineId: z.string().min(1).max(200), routineName: z.string().min(1).max(80) }),
+  z.object({
+    triggerId: z.string().min(1).max(64),
+    triggerName: z.string().min(1).max(80),
+    deliveryId: z.string().min(1).max(200),
+  }),
+]);
 
 /** The names a run keeps after its Workflow is deleted or edited. */
 export interface WorkflowRunSnapshot {
@@ -1232,6 +1328,46 @@ export interface WorkflowRun {
   triggeredBy?: WorkflowRunTrigger;
   /** The Workflow and step names at run time, so the run stays readable after the Workflow is gone. */
   snapshot?: WorkflowRunSnapshot;
+}
+
+export type WorkflowArtifactOrigin =
+  | { kind: "step"; step: number }
+  | { kind: "iteration"; step: number; iteration: number; body: string };
+
+export type WorkflowArtifactPreview = "text" | "markdown" | "json" | "csv" | "image" | "pdf" | "audio" | "video" | "none";
+
+export interface WorkflowArtifact {
+  origin: WorkflowArtifactOrigin;
+  /** Relative to the origin's `output/` folder; the entry name as it sits on disk. */
+  path: string;
+  /** NFC, for display and download. */
+  name: string;
+  bytes: number;
+  modifiedAt: number;
+  contentType: string;
+  preview: WorkflowArtifactPreview;
+  /** Whether the engine recorded this path in run.json for that step. */
+  verified: boolean;
+}
+
+export interface WorkflowArtifactSource {
+  origin: WorkflowArtifactOrigin;
+  stepId: string;
+  /** Step name from the definition, else run.snapshot, else "Etapa N". */
+  name: string;
+  status: WorkflowStepStatus;
+  files: WorkflowArtifact[];
+  bytes: number;
+}
+
+export interface WorkflowArtifactList {
+  runId: string;
+  generatedAt: number;
+  /** finishedAt + retentionDays; advisory, may move when the Workflow's retention changes. */
+  expiresAt?: number;
+  runStatus: WorkflowRunStatus;
+  sources: WorkflowArtifactSource[];
+  totals: { files: number; bytes: number; truncated: boolean };
 }
 
 const runPathSchema = z.array(z.number().int().nonnegative()).min(1).max(3);
@@ -1316,7 +1452,7 @@ export const workflowRunSchema: z.ZodType<WorkflowRun> = z.object({
   inputs: z.record(z.string(), z.unknown()).optional(),
   requestId: z.string().min(1).max(200).optional(),
   requestedBy: z.object({ botId: z.string().min(1), threadId: z.string().min(1) }).optional(),
-  triggeredBy: z.object({ routineId: z.string().min(1).max(200), routineName: z.string().min(1).max(80) }).optional(),
+  triggeredBy: workflowRunTriggerSchema.optional(),
   snapshot: workflowRunSnapshotSchema.optional(),
 });
 

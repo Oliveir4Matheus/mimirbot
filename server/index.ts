@@ -189,7 +189,10 @@ import {
 import { serveStatic } from "./static-files.ts";
 import { startUpkeep } from "./host/start-upkeep.ts";
 import { createWorkflowHost } from "./host/workflows.ts";
+import { WorkflowTriggerManager } from "./workflow-triggers.ts";
+import { createWorkflowTriggerRoutes } from "./routes/workflow-triggers.ts";
 import { createWorkflowHoldNotifier } from "./workflows/hold-notifier.ts";
+import { workflowRequiredStartParameters } from "./workflows/parameters.ts";
 import { ComputerControl } from "./computer-control.ts";
 import { resetPathCache } from "./env-path.ts";
 import { registerEnginesBinDir } from "./engine-install.ts";
@@ -2899,15 +2902,19 @@ const store = new Store(
   (instanceId) => registry.cliTarget(instanceId)?.driverKind,
   () => appLanguage() ?? Intl.DateTimeFormat().resolvedOptions().locale,
 );
+let workflowTriggers: WorkflowTriggerManager | null = null;
+const workflowTriggerIngress = { baseUrl: `http://127.0.0.1:${WEBHOOK_PORT}` };
 const workflows = createWorkflowHost({
   dataDir: DATA_DIR,
+  log: (line) => console.warn(line),
   createTask: (botId, title, cwd) => store.createTask(botId, title, false, undefined, undefined, undefined, undefined, cwd)?.threadId ?? null,
   bot: (id) => store.bot(id) ?? undefined,
   startTurn: (botId, text, opts) => startTurn(botId, text, opts),
   broadcast: (frame) => broadcast(frame, { adminOnly: true }),
   interrupt: (botId, threadId) => { void interruptDirectThread(botId, threadId, "workflow cancelled"); },
   openCards: (threadId) => openWorkflowCards(threadId),
-  onRun: (run) => { routines?.noteWorkflowRun(run); notifyWorkflowHold(run); },
+  onRun: (run) => { routines?.noteWorkflowRun(run); notifyWorkflowHold(run); workflowTriggers?.noteRun(run); },
+  triggers: () => workflowTriggers ?? undefined,
   skillOptions: (botId) => {
     const bot = store.bot(botId);
     return bot ? workflowSkillOptionsFor(bot) : undefined;
@@ -2935,6 +2942,15 @@ const workflows = createWorkflowHost({
     });
   },
 });
+const workflowTriggerManager = new WorkflowTriggerManager({
+  file: join(DATA_DIR, "workflow-triggers.json"),
+  store: workflows.store,
+  engine: workflows.engine,
+  bot: (id) => store.bot(id) ?? undefined,
+  baseUrl: () => workflowTriggerIngress.baseUrl,
+  log: (line) => console.warn(line),
+});
+workflowTriggers = workflowTriggerManager;
 const notifyWorkflowHold = createWorkflowHoldNotifier({
   bot: (id) => {
     const bot = store.bot(id);
@@ -2945,6 +2961,7 @@ const notifyWorkflowHold = createWorkflowHoldNotifier({
 });
 ROUTES.push(workflows.routes);
 ROUTES.push(workflows.proposalRoutes);
+ROUTES.push(createWorkflowTriggerRoutes({ triggers: workflowTriggerManager }));
 const { cloudLendingTurn, cloudLendingRefusalNotice, cloudLendingRefusal, cloudThreadStarters, cloudLendingView, cloudReportFromOthers, roomTurnStarted, roomTurnEnded } = createCloudLendingTurns({
   store, cloudHome: CLOUD_HOME !== null, directRequest: (threadId) => directRequestOwners.get(threadId), threadStarter: (threadId) => threadStarters.get(threadId),
   ownerPerson: cloudProvenOwnerPerson, cardAnswerer: cloudCardAnswerer, activeRoutineRun: activeRoutineRunForThread, ownerStartedRun: (runId) => ownerStartedRoutineRuns.has(runId),
@@ -9072,6 +9089,19 @@ const limitFailovers = new LimitFailovers({ file: join(DATA_DIR, "limit-failover
   } });
 const automationDestinations = createAutomationDestinations({ store, mainThread: botMainThread, runs: () => routines?.listRuns() ?? [],
   cloud: CLOUD_HOME ? { owner: CLOUD_OWNER_KEY!, opener: routineOpener, reportFromOthers: cloudReportFromOthers, opened: (threadId, person) => threadStarters.set(threadId, person) } : null });
+const workflowRoutineRefusal = (botId: string, workflowId: string): string | null => {
+  const workflow = workflows.store.workflow(workflowId);
+  if (!workflow) return "That Workflow does not exist yet; create it before scheduling it";
+  const department = store.bot(botId)?.section?.trim() || "General";
+  if (workflow.department.trim().toLowerCase() !== department.toLowerCase()) {
+    return "That Workflow belongs to another department";
+  }
+  const required = workflowRequiredStartParameters(workflow).map((parameter) => parameter.name);
+  if (required.length > 0) {
+    return `That Workflow needs ${required.join(", ")} at the start; a routine cannot supply them. Remove the start parameters or run it manually.`;
+  }
+  return null;
+};
 routines = new RoutineManager({
   emit: broadcast, limitResetAt: (engine) => limitClock.resetAt(engine), checks: proactive.checks,
   limitBackup: (botId, scope) => { const bot = store.bot(botId); return quotaSwitchEnabled() ? Boolean(bot && limitTakeover.backups(botId, bot.modelSelection, scope, approvalModeFor(bot)).length) : Boolean(bot && startupBackups(bot, cfg.automaticRecovery).length); },
@@ -9155,6 +9185,7 @@ routines = new RoutineManager({
     .listRuns({ workflowId, limit: Number.POSITIVE_INFINITY })
     .map((run) => ({ id: run.id, status: run.status })),
   workflowState: (workflowId) => workflowId && workflows.store.workflow(workflowId) ? "ready" : "missing",
+  workflowRefusal: workflowRoutineRefusal,
   workflowRunState: (runId) => {
     const run = runId ? workflows.store.readRun(runId) : undefined;
     return run ? { status: run.status, ...(run.error === undefined ? {} : { error: run.error }) } : undefined;
@@ -9314,15 +9345,7 @@ const routineRequests = new RoutineRequestService({
     }
     return null;
   },
-  validateWorkflow: (botId, workflowId) => {
-    const workflow = workflows.store.workflow(workflowId);
-    if (!workflow) return "That Workflow does not exist yet; create it before scheduling it";
-    const department = store.bot(botId)?.section?.trim() || "General";
-    if (workflow.department.trim().toLowerCase() !== department.toLowerCase()) {
-      return "That Workflow belongs to another department";
-    }
-    return null;
-  },
+  validateWorkflow: workflowRoutineRefusal,
 });
 async function deleteBotWithLifecycle(botId: string, revalidate: () => void = () => {}, setupRequest?: TeamSetupRequest) {
   const deletionResponse = (status: number, body: { error?: string; ok?: boolean; notice?: string }) => ({ status, body });
@@ -9844,7 +9867,9 @@ try {
   webhookIngress = await listenWebhookIngress(webhooks, {
     port: WEBHOOK_PORT, publicBaseUrl: WEBHOOK_PUBLIC_URL,
     claimRequest: () => { moveFreeze.assertTurns(); return workspaceMaintenance.request(); },
+    workflowTriggers: workflowTriggerManager,
   });
+  workflowTriggerIngress.baseUrl = webhookIngress.baseUrl;
   const advertised = WEBHOOK_PUBLIC_URL ? ` (advertised as ${webhookIngress.baseUrl})` : "";
   console.log(`openmausbot webhook receiver on http://${webhookIngress.host}:${webhookIngress.port}${advertised}`);
 } catch (error) {

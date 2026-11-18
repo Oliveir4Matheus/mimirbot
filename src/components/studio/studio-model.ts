@@ -4,11 +4,14 @@
 import type { LocaleKey } from "@/locales";
 import {
   WORKFLOW_CONDITION_ROWS_MAX,
+  WORKFLOW_TRIGGER_MAX,
   isWorkflowJsonPath,
   isWorkflowModuleName,
   isWorkflowModuleVersion,
   isWorkflowScriptName,
+  workflowDefaultTriggers,
   workflowFileExtension,
+  workflowReceivesExternalParameters,
   type ConditionLine,
   type ConditionMatch,
   type ConditionOp,
@@ -17,6 +20,8 @@ import {
   type WorkflowDefinition,
   type WorkflowModule,
   type WorkflowParameter,
+  type WorkflowTriggerKind,
+  type WorkflowTriggerNode,
   type StepOutput,
   type WorkflowSkillOptions,
   type WorkflowStep,
@@ -35,6 +40,7 @@ export interface StudioDraft {
   department: string;
   retentionDays: number;
   steps: WorkflowStep[];
+  triggers: WorkflowTriggerNode[];
   canvas: WorkflowCanvas;
   createdAt: number;
   updatedAt: number;
@@ -52,6 +58,11 @@ export const NOTE_WIDTH = 255;
 export const NOTE_HEIGHT = 180;
 export const CONTAINER_WIDTH = 520;
 export const CONTAINER_HEIGHT = 310;
+export const TRIGGER_WIDTH = 208;
+export const TRIGGER_HEIGHT = 64;
+export const TRIGGER_GAP = 12;
+/** The vertical space between the trigger row and the first step's card. */
+export const TRIGGER_LIFT = 88;
 
 const FALLBACK_BOT = "";
 
@@ -133,10 +144,63 @@ export function newDraft(department: string): StudioDraft {
     department: department.trim() || "General",
     retentionDays: 90,
     steps: [],
+    triggers: workflowDefaultTriggers(),
     canvas: emptyCanvas(),
     createdAt: now,
     updatedAt: now,
   };
+}
+
+/** The trigger cards sit in one row above the first step, without a position of their own. */
+export function triggerPoint(draft: StudioDraft, index: number): { x: number; y: number } {
+  const first = draft.steps[0];
+  const node = first ? draft.canvas.nodes[first.id] : undefined;
+  return {
+    x: (node?.x ?? 80) + index * (TRIGGER_WIDTH + TRIGGER_GAP),
+    y: (node?.y ?? 120) - TRIGGER_HEIGHT - TRIGGER_LIFT,
+  };
+}
+
+export type StudioTriggerChange =
+  | { ok: true; draft: StudioDraft }
+  | { ok: false; key: LocaleKey };
+
+const TRIGGER_NAMES: Record<WorkflowTriggerKind, string> = { manual: "Manual", webhook: "Webhook", routine: "Rotina" };
+
+/** The row holds at most WORKFLOW_TRIGGER_MAX nodes; a full row keeps the draft it received. */
+export function addTrigger(draft: StudioDraft, kind: WorkflowTriggerKind = "manual"): StudioDraft {
+  if (draft.triggers.length >= WORKFLOW_TRIGGER_MAX) return draft;
+  const taken = new Set(draft.triggers.map((trigger) => trigger.id));
+  const count = draft.triggers.filter((trigger) => trigger.kind === kind).length;
+  const name = count === 0 ? TRIGGER_NAMES[kind] : `${TRIGGER_NAMES[kind]} ${count + 1}`;
+  const id = uniqueId(slugify(name), taken);
+  return { ...draft, triggers: [...draft.triggers, { id, kind, name }] };
+}
+
+/** A new kind never keeps the entity of the old one: the link is configured after the save. */
+export function updateTrigger(
+  draft: StudioDraft,
+  triggerId: string,
+  patch: { name?: string; kind?: WorkflowTriggerKind },
+): StudioDraft {
+  return {
+    ...draft,
+    triggers: draft.triggers.map((trigger) => {
+      if (trigger.id !== triggerId) return trigger;
+      if (patch.kind === undefined || patch.kind === trigger.kind) {
+        return { ...trigger, ...(patch.name === undefined ? {} : { name: patch.name }) };
+      }
+      const { triggerId: _triggerId, routineId: _routineId, ...rest } = trigger;
+      return { ...rest, kind: patch.kind, ...(patch.name === undefined ? {} : { name: patch.name }) };
+    }),
+  };
+}
+
+export function removeTrigger(draft: StudioDraft, triggerId: string): StudioTriggerChange {
+  if (draft.triggers.length <= 1) return { ok: false, key: "studio.trigger.lastOne" };
+  const triggers = draft.triggers.filter((trigger) => trigger.id !== triggerId);
+  if (triggers.length === draft.triggers.length) return { ok: true, draft };
+  return { ok: true, draft: { ...draft, triggers } };
 }
 
 export function fromDefinition(definition: WorkflowDefinition): StudioDraft {
@@ -159,6 +223,7 @@ export function fromDefinition(definition: WorkflowDefinition): StudioDraft {
     department: definition.department,
     retentionDays: definition.retentionDays,
     steps,
+    triggers: definition.triggers?.length > 0 ? structuredClone(definition.triggers) : workflowDefaultTriggers(),
     canvas: {
       nodes,
       notes: structuredClone(canvas.notes),
@@ -198,6 +263,7 @@ export function toDefinition(draft: StudioDraft): WorkflowDefinition {
     department: draft.department.trim(),
     retentionDays: draft.retentionDays,
     steps,
+    triggers: structuredClone(draft.triggers),
     createdAt: draft.createdAt,
     updatedAt: draft.updatedAt,
     canvas: { nodes, notes, containers: structuredClone(draft.canvas.containers), loops },
@@ -992,6 +1058,22 @@ export function draftProblems(draft: StudioDraft, botIds: ReadonlySet<string>, s
   if (!draft.name.trim()) issues.push({ key: "studio.needName", path: "name" });
   if (draft.steps.length === 0) issues.push({ key: "studio.needStep", path: "steps" });
   if (allDraftSteps(draft).length > 40) issues.push({ key: "studio.needStepMax", params: { max: 40 }, path: "steps" });
+  if (draft.triggers.length === 0) issues.push({ key: "studio.trigger.needOne", path: "triggers" });
+  if (draft.triggers.length > WORKFLOW_TRIGGER_MAX) {
+    issues.push({ key: "studio.trigger.needMax", params: { max: WORKFLOW_TRIGGER_MAX }, path: "triggers" });
+  }
+  const triggerIds = new Set<string>();
+  const receivesParameters = workflowReceivesExternalParameters(draft);
+  draft.triggers.forEach((trigger, index) => {
+    if (triggerIds.has(trigger.id)) {
+      issues.push({ key: "studio.trigger.duplicateId", params: { id: trigger.id }, path: `triggers.${index}.id` });
+    }
+    triggerIds.add(trigger.id);
+    if (!trigger.name.trim()) issues.push({ key: "studio.trigger.needName", params: { index: index + 1 }, path: `triggers.${index}.name` });
+    if (trigger.kind === "webhook" && !receivesParameters) {
+      issues.push({ key: "studio.trigger.needParameter", params: { name: trigger.name }, path: `triggers.${index}` });
+    }
+  });
   draft.steps.forEach((step, index) => stepIssues(step, `steps.${index}`, draft.steps, index, botIds, skillOptions, issues));
   return issues;
 }
