@@ -32,6 +32,8 @@ export interface FillLoginTurnDeps {
   loginInput(session: string, spec: Spec, env: NodeJS.ProcessEnv): Pick<FillLoginDeps, "engine" | "insertText" | "press" | "click">;
   remember: FillLoginDeps["remember"];
   stepContext(bot: BotRecord, turn: Turn): StepContext;
+  /** False once the turn that asked has ended. */
+  turnActive?(turn: Turn): boolean;
 }
 
 const ONLY_IN_BROWSER = "fill_login types a password only into a page of your own browser, where OpenMausBot checks the page's site first";
