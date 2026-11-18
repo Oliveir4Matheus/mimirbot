@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useCallback, useContext, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { createPortal } from "react-dom";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -12,9 +12,11 @@ import {
   FileSpreadsheet,
   FileText,
   FileVideo,
+  Image as ImageIcon,
   LoaderCircle,
   Maximize2,
   Minus,
+  Music,
   PanelRight,
   Pencil,
   Plus,
@@ -42,7 +44,7 @@ import { capturePreviewRegion, isUsableSelection, normalizeSelection, type Selec
 import { tableDelimiter, type TextTable } from "@/lib/table-data";
 import { parseTableInWorker, parseWorkbookInWorker } from "@/lib/preview-workers";
 import type { XlsxWorkbook } from "@/lib/xlsx";
-import { useStore } from "@/state/store";
+import { StoreContext } from "@/state/store";
 import { canonicalDownloadFilename, requestMessageFile, type MessageAttachmentContext } from "./AttachmentPreview";
 import { PreviewTable } from "./PreviewTable";
 
@@ -51,12 +53,39 @@ export type PreviewPosition = "center" | "right";
 const FORMAT_STYLE: Record<PreviewFormat, { background: string; color: string; border: string; icon: typeof FileText }> = {
   md: { background: "#2B2935", color: "#C2A1FF", border: "#3B344A", icon: FileText },
   html: { background: "#302923", color: "#E7A473", border: "#44352D", icon: Code2 },
+  text: { background: "#26262B", color: "#B8BCC4", border: "#34343B", icon: FileText },
+  json: { background: "#2B2935", color: "#C2A1FF", border: "#3B344A", icon: Code2 },
   csv: { background: "#1D302A", color: "#83CBA8", border: "#30473E", icon: Table2 },
   tsv: { background: "#1D302A", color: "#83CBA8", border: "#30473E", icon: Table2 },
   xlsx: { background: "#193329", color: "#70C59A", border: "#284636", icon: FileSpreadsheet },
   mp4: { background: "#222D3A", color: "#96BFF0", border: "#2E3B4E", icon: FileVideo },
+  video: { background: "#222D3A", color: "#96BFF0", border: "#2E3B4E", icon: FileVideo },
+  image: { background: "#2A2C33", color: "#9FB6E8", border: "#373B46", icon: ImageIcon },
+  audio: { background: "#302733", color: "#D3A6D8", border: "#44384A", icon: Music },
   pdf: { background: "#372825", color: "#F39C91", border: "#563934", icon: FileText },
 };
+
+const JSON_LINES = 500;
+
+/** What an injected loader may add to the bytes a preview renders. */
+export interface PreviewLoadResult {
+  blob: Blob;
+  /** Byte limit the source applied; the viewer names it under the content. */
+  truncatedAt?: number;
+}
+
+export type PreviewLoadFailure = "tooLarge" | "noSheets" | "removed" | "failed";
+
+/** Thrown by an injected loader to pick one of the viewer's error states. */
+export class PreviewLoadError extends Error {
+  readonly failure: PreviewLoadFailure;
+
+  constructor(failure: PreviewLoadFailure) {
+    super(failure);
+    this.name = "PreviewLoadError";
+    this.failure = failure;
+  }
+}
 
 interface LoadedPreview {
   blob: Blob;
@@ -162,23 +191,34 @@ export function FilePreviewDialog({
   path,
   name,
   message,
-  position,
+  format: formatOverride,
+  load,
+  downloadUrl,
+  downloadName,
+  position = "center",
   onPositionChange,
   onClose,
   returnFocus,
 }: {
   path: string;
   name: string;
-  message: MessageAttachmentContext;
-  position: PreviewPosition;
-  onPositionChange: (position: PreviewPosition) => void;
+  message?: MessageAttachmentContext;
+  /** An artifact names its own format; attachments derive it from their extension. */
+  format?: PreviewFormat;
+  /** Bytes to preview; when absent the file is requested through `message`. */
+  load?: () => Promise<Blob | PreviewLoadResult>;
+  downloadUrl?: string;
+  downloadName?: string;
+  position?: PreviewPosition;
+  onPositionChange?: (position: PreviewPosition) => void;
   onClose: () => void;
   returnFocus?: HTMLElement | null;
 }) {
-  const format = previewFormat(name) ?? previewFormat(path);
+  const format = formatOverride ?? previewFormat(name) ?? previewFormat(path);
   const [attempt, setAttempt] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<PreviewLoadFailure | null>(null);
+  const [truncatedAt, setTruncatedAt] = useState<number | null>(null);
   const [loaded, setLoaded] = useState<LoadedPreview | null>(null);
   const [view, setView] = useState<"reading" | "source" | "preview">(format === "md" ? "reading" : "preview");
   const [query, setQuery] = useState("");
@@ -199,25 +239,39 @@ export function FilePreviewDialog({
   const dialogRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef(onClose);
-  const { state, dispatch } = useStore();
+  const loadRef = useRef(load);
+  const store = useContext(StoreContext);
 
   useEffect(() => {
     closeRef.current = onClose;
   }, [onClose]);
 
   useEffect(() => {
+    loadRef.current = load;
+  }, [load]);
+
+  useEffect(() => {
     const controller = new AbortController();
     setLoading(true);
     setError(null);
+    setTruncatedAt(null);
     setLoaded(null);
     setQuery("");
     setSheetIndex(0);
     setPage(1);
     setZoom(100);
+    if (!format) {
+      setLoading(false);
+      return () => controller.abort();
+    }
     void (async () => {
       try {
-        const response = await requestMessageFile(path, message, controller.signal);
-        const blob = await response.blob();
+        let source: Blob | PreviewLoadResult;
+        if (loadRef.current) source = await loadRef.current();
+        else if (message) source = await (await requestMessageFile(path, message, controller.signal)).blob();
+        else throw new PreviewLoadError("failed");
+        const blob = source instanceof Blob ? source : source.blob;
+        const truncated = source instanceof Blob ? undefined : source.truncatedAt;
         if (controller.signal.aborted) return;
         let text: string | null = null;
         let table: TextTable | null = null;
@@ -225,18 +279,18 @@ export function FilePreviewDialog({
         let mediaUrl: string | null = null;
         let pdfPages = 1;
         if (format && isTextPreviewFormat(format)) {
-          if (blob.size > textPreviewLimit(format)) throw new Error("tooLarge");
+          if (blob.size > textPreviewLimit(format)) throw new PreviewLoadError("tooLarge");
           text = await blob.text();
           if (format === "csv" || format === "tsv") {
             table = await parseTableInWorker(text, tableDelimiter(name) ?? tableDelimiter(path) ?? ",", controller.signal);
           }
         } else if (format === "xlsx") {
           workbook = await parseWorkbookInWorker(new Uint8Array(await blob.arrayBuffer()), controller.signal);
-          if (workbook.sheets.length === 0) throw new Error("noSheets");
+          if (workbook.sheets.length === 0) throw new PreviewLoadError("noSheets");
         } else if (format === "pdf") {
           pdfPages = countPdfPages(new Uint8Array(await blob.arrayBuffer()));
           mediaUrl = URL.createObjectURL(blob);
-        } else if (format === "mp4") {
+        } else if (format === "mp4" || format === "video" || format === "image" || format === "audio") {
           mediaUrl = URL.createObjectURL(blob);
         }
         if (controller.signal.aborted) {
@@ -244,16 +298,20 @@ export function FilePreviewDialog({
           return;
         }
         setLoaded({ blob, text, table, workbook, mediaUrl, pdfPages });
+        setTruncatedAt(truncated ?? null);
       } catch (reason) {
         if (controller.signal.aborted) return;
-        const code = reason instanceof Error ? reason.message : "";
-        setError(code === "tooLarge" ? "tooLarge" : code === "noSheets" ? "noSheets" : "loadFailed");
+        setError(reason instanceof PreviewLoadError
+          ? reason.failure
+          : reason instanceof Error && (reason.message === "tooLarge" || reason.message === "noSheets")
+            ? reason.message
+            : "failed");
       } finally {
         if (!controller.signal.aborted) setLoading(false);
       }
     })();
     return () => controller.abort();
-  }, [path, name, message.threadId, message.messageId, format, attempt]);
+  }, [path, name, message?.threadId, message?.messageId, format, attempt]);
 
   useEffect(() => () => {
     if (loaded?.mediaUrl) URL.revokeObjectURL(loaded.mediaUrl);
@@ -317,16 +375,22 @@ export function FilePreviewDialog({
   }, [copyState]);
 
   const switchPosition = () => {
-    onPositionChange(position === "center" ? "right" : "center");
+    onPositionChange?.(position === "center" ? "right" : "center");
   };
 
   const download = useCallback(async () => {
     try {
-      const blob = loaded?.blob ?? await (await requestMessageFile(path, message, new AbortController().signal)).blob();
+      const source = loaded?.blob ?? (loadRef.current
+        ? await loadRef.current()
+        : message
+          ? await (await requestMessageFile(path, message, new AbortController().signal)).blob()
+          : null);
+      const blob = source instanceof Blob ? source : source?.blob;
+      if (!blob) return;
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = canonicalDownloadFilename({ fallback: name, source: path });
+      link.download = downloadName ?? canonicalDownloadFilename({ fallback: name, source: path });
       link.style.display = "none";
       document.body.append(link);
       link.click();
@@ -334,7 +398,7 @@ export function FilePreviewDialog({
       setTimeout(() => URL.revokeObjectURL(url), 0);
     } catch {
     }
-  }, [loaded?.blob, message, name, path]);
+  }, [downloadName, loaded?.blob, message, name, path]);
 
   const copy = async () => {
     if (!loaded?.text) return;
@@ -405,22 +469,23 @@ export function FilePreviewDialog({
   };
 
   const sendToAgent = async () => {
-    if (!draft || !prompt.trim() || sending) return;
+    if (!draft || !prompt.trim() || sending || !message) return;
     setSendError("");
     setSending(true);
     try {
+      if (!store) throw new Error("noConversation");
       const file = new File([draft.blob], "annotation.png", { type: "image/png" });
       const attachment = await imageAttachmentFromFile(file);
       if (!attachment) throw new Error("attachment");
       const text = composeMessage(prompt, [attachment]);
       const sendId = crypto.randomUUID();
-      const group = state.groups.find((candidate) => candidate.threadId === message.threadId);
-      const bot = state.bots.find((candidate) => candidate.threadId === message.threadId
+      const group = store.state.groups.find((candidate) => candidate.threadId === message.threadId);
+      const bot = store.state.bots.find((candidate) => candidate.threadId === message.threadId
         || candidate.tasks?.some((task) => task.threadId === message.threadId));
       if (group) {
-        dispatch({ type: "sendGroup", groupId: group.id, text, sendId, threadId: message.threadId });
+        store.dispatch({ type: "sendGroup", groupId: group.id, text, sendId, threadId: message.threadId });
       } else if (bot) {
-        dispatch({ type: "send", botId: bot.id, text, sendId, threadId: message.threadId });
+        store.dispatch({ type: "send", botId: bot.id, text, sendId, threadId: message.threadId });
       } else {
         throw new Error("noConversation");
       }
@@ -434,7 +499,7 @@ export function FilePreviewDialog({
 
   const formatStyle = format ? FORMAT_STYLE[format] : null;
   const extension = previewFileExtension(name);
-  const hasFooter = format === "md" || format === "html" || format === "csv" || format === "tsv";
+  const hasFooter = format === "md" || format === "html" || format === "text" || format === "json" || format === "csv" || format === "tsv";
   const table = loaded?.table ?? null;
   const workbook = loaded?.workbook ?? null;
   const activeSheet = workbook?.sheets[Math.min(sheetIndex, Math.max(0, workbook.sheets.length - 1))] ?? null;
@@ -453,10 +518,12 @@ export function FilePreviewDialog({
     if (error) {
       return (
         <div role="alert" className="flex h-full flex-col items-center justify-center gap-3 p-8 text-center text-[13px] text-ink-secondary">
-          <p>{t(error === "tooLarge" ? "preview.tooLarge" : error === "noSheets" ? "preview.noSheets" : "preview.loadFailed")}</p>
-          <button type="button" onClick={() => setAttempt((value) => value + 1)} className="flex items-center gap-1.5 rounded-[7px] border border-hairline bg-raised px-3 py-1.5 text-ink hover:bg-raised-hover">
-            <RotateCcw size={13} /> {t("preview.retry")}
-          </button>
+          <p>{t(error === "tooLarge" ? "preview.tooLarge" : error === "noSheets" ? "preview.noSheets" : error === "removed" ? "preview.removed" : "preview.loadFailed")}</p>
+          {error !== "removed" && (
+            <button type="button" onClick={() => setAttempt((value) => value + 1)} className="flex items-center gap-1.5 rounded-[7px] border border-hairline bg-raised px-3 py-1.5 text-ink hover:bg-raised-hover">
+              <RotateCcw size={13} /> {t("preview.retry")}
+            </button>
+          )}
         </div>
       );
     }
@@ -466,19 +533,58 @@ export function FilePreviewDialog({
     if (format === "html") {
       return view === "source" ? <SourceBody text={loaded?.text ?? ""} /> : <HtmlBody text={loaded?.text ?? ""} name={name} />;
     }
+    if (format === "text") {
+      return <SourceBody text={loaded?.text ?? ""} />;
+    }
+    if (format === "json") {
+      let pretty = loaded?.text ?? "";
+      try {
+        pretty = JSON.stringify(JSON.parse(pretty), null, 2);
+      } catch {
+        // Not valid JSON: show the bytes as they came.
+      }
+      const lines = pretty.split("\n");
+      return (
+        <div className="flex h-full min-h-0 flex-col">
+          <pre className="min-h-0 flex-1 overflow-auto whitespace-pre-wrap break-words px-[clamp(17px,3vw,50px)] py-[29px] font-mono text-[12px] leading-[1.8] text-ink">{lines.slice(0, JSON_LINES).join("\n")}</pre>
+          {lines.length > JSON_LINES && (
+            <p className="shrink-0 border-t border-hairline px-4 py-2 text-[10px] text-ink-tertiary">{t("preview.firstLines", { count: JSON_LINES })}</p>
+          )}
+        </div>
+      );
+    }
     if (format === "csv" || format === "tsv") {
       return <PreviewTable columns={tableColumns} rows={tableRows} query={query} ariaLabel={tableLabel} />;
     }
     if (format === "xlsx") {
       return <PreviewTable key={activeSheet?.name ?? name} columns={tableColumns} rows={tableRows} query={query} ariaLabel={tableLabel} />;
     }
-    if (format === "mp4" && loaded?.mediaUrl) {
+    if ((format === "mp4" || format === "video") && loaded?.mediaUrl) {
       return <video src={loaded.mediaUrl} controls className="h-full w-full bg-[#050608] object-contain" />;
+    }
+    if (format === "image" && loaded?.mediaUrl) {
+      return (
+        <div className="flex h-full items-center justify-center overflow-auto bg-inset/40 p-4">
+          <img src={loaded.mediaUrl} alt={name} className="max-h-full max-w-full object-contain" />
+        </div>
+      );
+    }
+    if (format === "audio" && loaded?.mediaUrl) {
+      return (
+        <div className="flex h-full items-center justify-center p-6">
+          <audio src={loaded.mediaUrl} controls className="w-full max-w-[420px]" />
+        </div>
+      );
     }
     if (format === "pdf" && loaded?.mediaUrl) {
       return <iframe src={`${loaded.mediaUrl}#page=${page}&zoom=${zoom}`} title={t("preview.pdf.frame", { name })} className="h-full w-full border-0 bg-inset" />;
     }
-    return <div className="flex h-full items-center justify-center text-[13px] text-ink-secondary">{t("preview.unsupported")}</div>;
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center text-[13px] text-ink-secondary">
+        <p>{t("preview.unsupported")}</p>
+        <p className="text-[12px]">{t("preview.unsupportedHint")}</p>
+      </div>
+    );
   })();
 
   const dialog = (
@@ -499,7 +605,7 @@ export function FilePreviewDialog({
         <div className="min-w-0 flex-1">
           <div className="truncate text-[12px] font-[630] text-ink" title={name}>{name}</div>
           <div className="text-[10px] text-ink-secondary">
-            <span className="rounded-[4px] bg-raised px-1 py-[1px] text-[9px]">{extension || previewFormatLabel(format ?? "md")}</span>
+            <span className="rounded-[4px] bg-raised px-1 py-[1px] text-[9px]">{extension || (format ? previewFormatLabel(format) : "")}</span>
             {loaded?.blob.size ? <span className="ms-1.5">{previewFileSize(loaded.blob.size)}</span> : null}
           </div>
         </div>
@@ -550,32 +656,49 @@ export function FilePreviewDialog({
               </button>
             </div>
           )}
-          <button type="button" onClick={() => void download()} aria-label={t("preview.download")} title={t("preview.download")} className="flex h-[29px] min-w-[29px] items-center justify-center gap-1 rounded-[7px] border border-hairline bg-raised px-2 text-[11px] text-ink hover:bg-raised-hover">
-            <Download size={15} />
-            <span className="max-[920px]:hidden">{t("preview.download")}</span>
-          </button>
-          <button type="button" onClick={switchPosition} aria-label={position === "center" ? t("preview.openSide") : t("preview.center")} title={position === "center" ? t("preview.openSide") : t("preview.center")} className="flex size-[29px] items-center justify-center rounded-[7px] border border-hairline bg-raised text-ink hover:bg-raised-hover">
-            {position === "center" ? <PanelRight size={15} /> : <Maximize2 size={15} />}
-          </button>
-          <button
-            type="button"
-            aria-pressed={annotating}
-            onClick={() => {
-              setAnnotating((value) => !value);
-              setSelection(null);
-              setAnnotationHint("");
-            }}
-            aria-label={t("preview.annotate")}
-            title={t("preview.annotate")}
-            className={`flex h-[29px] items-center justify-center gap-1 rounded-[7px] border px-2 text-[11px] ${
-              annotating
-                ? "border-accent bg-accent/15 text-accent"
-                : "border-hairline bg-raised text-ink hover:bg-raised-hover"
-            }`}
-          >
-            <Pencil size={15} />
-            <span className="max-[920px]:hidden">{t("preview.annotate")}</span>
-          </button>
+          {downloadUrl ? (
+            <a
+              href={downloadUrl}
+              download={downloadName ?? name}
+              aria-label={t("preview.download")}
+              title={t("preview.download")}
+              className="flex h-[29px] min-w-[29px] items-center justify-center gap-1 rounded-[7px] border border-hairline bg-raised px-2 text-[11px] text-ink hover:bg-raised-hover"
+            >
+              <Download size={15} />
+              <span className="max-[920px]:hidden">{t("preview.download")}</span>
+            </a>
+          ) : (
+            <button type="button" onClick={() => void download()} aria-label={t("preview.download")} title={t("preview.download")} className="flex h-[29px] min-w-[29px] items-center justify-center gap-1 rounded-[7px] border border-hairline bg-raised px-2 text-[11px] text-ink hover:bg-raised-hover">
+              <Download size={15} />
+              <span className="max-[920px]:hidden">{t("preview.download")}</span>
+            </button>
+          )}
+          {onPositionChange && (
+            <button type="button" onClick={switchPosition} aria-label={position === "center" ? t("preview.openSide") : t("preview.center")} title={position === "center" ? t("preview.openSide") : t("preview.center")} className="flex size-[29px] items-center justify-center rounded-[7px] border border-hairline bg-raised text-ink hover:bg-raised-hover">
+              {position === "center" ? <PanelRight size={15} /> : <Maximize2 size={15} />}
+            </button>
+          )}
+          {message && (
+            <button
+              type="button"
+              aria-pressed={annotating}
+              onClick={() => {
+                setAnnotating((value) => !value);
+                setSelection(null);
+                setAnnotationHint("");
+              }}
+              aria-label={t("preview.annotate")}
+              title={t("preview.annotate")}
+              className={`flex h-[29px] items-center justify-center gap-1 rounded-[7px] border px-2 text-[11px] ${
+                annotating
+                  ? "border-accent bg-accent/15 text-accent"
+                  : "border-hairline bg-raised text-ink hover:bg-raised-hover"
+              }`}
+            >
+              <Pencil size={15} />
+              <span className="max-[920px]:hidden">{t("preview.annotate")}</span>
+            </button>
+          )}
           <button type="button" onClick={onClose} aria-label={t("preview.close")} title={t("preview.close")} className="flex size-[28px] items-center justify-center rounded-full bg-raised text-ink hover:bg-raised-hover">
             <X size={15} />
           </button>
@@ -661,6 +784,12 @@ export function FilePreviewDialog({
           </div>
         )}
       </div>
+
+      {truncatedAt !== null && (
+        <p className="shrink-0 border-t border-hairline bg-card px-4 py-2 text-[10px] text-ink-tertiary">
+          {t("preview.truncated", { size: previewFileSize(truncatedAt) })}
+        </p>
+      )}
 
       {draft && (
         <div className="shrink-0 border-t border-hairline bg-card px-[14px] py-[10px]">

@@ -1,15 +1,39 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
-import { Check, Download, FolderOpen } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Download, FolderOpen } from "lucide-react";
 
-import type { WorkflowArtifact, WorkflowArtifactList, WorkflowArtifactSource, WorkflowDefinition, WorkflowRun } from "../../../shared/workflow";
+import {
+  WORKFLOW_ARTIFACT_PREVIEW_MAX_BYTES,
+  WORKFLOW_ARTIFACT_TEXT_PREVIEW_BYTES,
+  type WorkflowArtifact,
+  type WorkflowArtifactList,
+  type WorkflowArtifactPreview,
+  type WorkflowArtifactSource,
+  type WorkflowDefinition,
+  type WorkflowRun,
+} from "../../../shared/workflow";
+import type { PreviewFormat } from "@/lib/file-preview";
 import { isActiveStatus } from "@/lib/workflow-format";
 import { t } from "@/lib/i18n";
 import { listenLiveFrames } from "@/lib/live-events";
 import { artifactKey, artifactTypeLabel, formatArtifactBytes } from "@/lib/workflow-artifacts";
 import { listRunArtifacts, runArtifactUrl, runArtifactsZipUrl } from "@/lib/workflows-api";
-import { ArtifactPreview } from "./ArtifactPreview";
+import { FilePreviewDialog, PreviewLoadError } from "../FilePreviewDialog";
 
 const message = (error: unknown): string => error instanceof Error ? error.message : String(error);
+
+const FILES_PER_PAGE = 5;
+const BINARY_PREVIEWS = new Set<WorkflowArtifactPreview>(["image", "pdf", "audio", "video"]);
+const PREVIEW_FORMAT: Record<WorkflowArtifactPreview, PreviewFormat | undefined> = {
+  text: "text",
+  markdown: "md",
+  json: "json",
+  csv: "csv",
+  image: "image",
+  pdf: "pdf",
+  audio: "audio",
+  video: "video",
+  none: undefined,
+};
 
 function Skeleton() {
   return (
@@ -31,17 +55,22 @@ export function ArtifactsPanel({ run, workflow }: { run: WorkflowRun; workflow?:
   const [error, setError] = useState<string | null>(null);
   const [reload, setReload] = useState(0);
   const [open, setOpen] = useState<WorkflowArtifact | null>(null);
+  const [pages, setPages] = useState<Record<string, number>>({});
   const [preparing, setPreparing] = useState(false);
   const [zipError, setZipError] = useState<string | null>(null);
   const rows = useRef(new Map<string, HTMLLIElement>());
   const returnFocus = useRef<string | null>(null);
   const active = isActiveStatus(run.status);
 
-  const refresh = useCallback(() => setReload((value) => value + 1), []);
+  const refresh = useCallback((resetPages = false) => {
+    if (resetPages) setPages({});
+    setReload((value) => value + 1);
+  }, []);
 
   useEffect(() => {
     setOpen(null);
     setZipError(null);
+    setPages({});
     setList(null);
   }, [run.id]);
 
@@ -97,6 +126,22 @@ export function ArtifactsPanel({ run, workflow }: { run: WorkflowRun; workflow?:
   };
 
   const closePreview = useCallback(() => setOpen(null), []);
+
+  const loadArtifact = useCallback(async (artifact: WorkflowArtifact) => {
+    if (BINARY_PREVIEWS.has(artifact.preview) && artifact.bytes > WORKFLOW_ARTIFACT_PREVIEW_MAX_BYTES) {
+      throw new PreviewLoadError("tooLarge");
+    }
+    const response = await fetch(runArtifactUrl(run.id, artifact));
+    if (response.status === 404) {
+      refresh();
+      throw new PreviewLoadError("removed");
+    }
+    if (!response.ok) throw new PreviewLoadError("failed");
+    return {
+      blob: await response.blob(),
+      truncatedAt: response.headers.get("x-artifact-truncated") === "1" ? WORKFLOW_ARTIFACT_TEXT_PREVIEW_BYTES : undefined,
+    };
+  }, [refresh, run.id]);
 
   const onRowKeyDown = (event: ReactKeyboardEvent<HTMLLIElement>, artifact: WorkflowArtifact): void => {
     if (event.target !== event.currentTarget) return;
@@ -171,7 +216,7 @@ export function ArtifactsPanel({ run, workflow }: { run: WorkflowRun; workflow?:
         <div role="alert" className="mx-4 my-3 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-[11px] text-danger">
           <p>{t("workflows.artifacts.error")}</p>
           <p className="mt-0.5 text-[10.5px]">{error}</p>
-          <button type="button" onClick={refresh} className="mt-1.5 rounded-md border border-hairline bg-white px-2 py-0.5 text-[10.5px] font-medium text-ink-secondary hover:bg-raised">
+          <button type="button" onClick={() => refresh(true)} className="mt-1.5 rounded-md border border-hairline bg-white px-2 py-0.5 text-[10.5px] font-medium text-ink-secondary hover:bg-raised">
             {t("workflows.artifacts.retry")}
           </button>
         </div>
@@ -188,56 +233,92 @@ export function ArtifactsPanel({ run, workflow }: { run: WorkflowRun; workflow?:
 
       {list && total > 0 && (
         <div className="px-4 pb-3 pt-1">
-          {list.sources.map((source) => (
-            <div key={artifactKey(source.origin, "")} className="pt-3">
-              <div className="mb-1 text-[10px] font-medium text-ink-tertiary">{sourceLabel(source)}</div>
-              <ul className="space-y-0.5">
-                {source.files.map((artifact) => {
-                  const key = artifactKey(artifact.origin, artifact.path);
-                  return (
-                    <li
-                      key={key}
-                      ref={(node) => {
-                        if (node) rows.current.set(key, node);
-                        else rows.current.delete(key);
-                      }}
-                      data-artifact-row={key}
-                      tabIndex={0}
-                      onClick={() => openArtifact(artifact)}
-                      onKeyDown={(event) => onRowKeyDown(event, artifact)}
-                      className="flex min-h-8 cursor-pointer items-center gap-2 rounded-md px-2 py-1 outline-offset-[-2px] hover:bg-raised/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
-                    >
-                      <span className="w-9 shrink-0 rounded bg-raised/70 px-1 py-0.5 text-center text-[8.5px] font-semibold uppercase tracking-wide text-ink-tertiary">{artifactTypeLabel(artifact.preview)}</span>
-                      <span className="flex min-w-0 flex-1 items-center gap-1.5">
-                        <span className="truncate text-[11px] text-ink" title={artifact.path}>{artifact.name}</span>
-                        {artifact.verified && (
-                          <span className="shrink-0 text-[#35A16E]" title={t("workflows.artifacts.verified")} aria-label={t("workflows.artifacts.verified")}>
-                            <Check size={11} strokeWidth={2.6} aria-hidden="true" />
-                          </span>
-                        )}
-                      </span>
-                      <span className="shrink-0 text-[10px] text-ink-tertiary">{formatArtifactBytes(artifact.bytes)}</span>
+          {list.sources.map((source) => {
+            const sourceKey = artifactKey(source.origin, "");
+            const pageCount = Math.max(1, Math.ceil(source.files.length / FILES_PER_PAGE));
+            const page = Math.min(pages[sourceKey] ?? 0, pageCount - 1);
+            const start = page * FILES_PER_PAGE;
+            const visible = source.files.slice(start, start + FILES_PER_PAGE);
+            return (
+              <div key={sourceKey} className="pt-3">
+                <div className="mb-1 flex items-center gap-2">
+                  <span className="text-[10px] font-medium text-ink-tertiary">{sourceLabel(source)}</span>
+                  {pageCount > 1 && (
+                    <span className="ms-auto flex items-center gap-1.5">
                       <button
                         type="button"
-                        onClick={(event) => { event.stopPropagation(); openArtifact(artifact); }}
-                        className="flex h-8 shrink-0 items-center rounded-md border border-hairline px-2 text-[10px] font-medium text-ink-secondary hover:bg-raised max-[620px]:hidden"
+                        aria-label={t("workflows.artifacts.previousPage")}
+                        title={t("workflows.artifacts.previousPage")}
+                        disabled={page === 0}
+                        onClick={() => setPages((current) => ({ ...current, [sourceKey]: Math.max(0, page - 1) }))}
+                        className="grid size-6 place-items-center rounded-md border border-hairline text-ink-secondary hover:bg-raised disabled:cursor-not-allowed disabled:opacity-40"
                       >
-                        {t("workflows.artifacts.open")}
+                        <ChevronLeft size={12} aria-hidden="true" />
                       </button>
-                      <a
-                        href={runArtifactUrl(run.id, artifact, "download")}
-                        download={artifact.name}
-                        onClick={(event) => event.stopPropagation()}
-                        className="flex h-8 shrink-0 items-center rounded-md border border-hairline px-2 text-[10px] font-medium text-accent-text hover:bg-raised"
+                      <span aria-live="polite" className="min-w-[62px] text-center text-[10px] tabular-nums text-ink-tertiary">
+                        {t("workflows.artifacts.pageRange", { from: start + 1, to: start + visible.length, count: source.files.length })}
+                      </span>
+                      <button
+                        type="button"
+                        aria-label={t("workflows.artifacts.nextPage")}
+                        title={t("workflows.artifacts.nextPage")}
+                        disabled={page >= pageCount - 1}
+                        onClick={() => setPages((current) => ({ ...current, [sourceKey]: Math.min(pageCount - 1, page + 1) }))}
+                        className="grid size-6 place-items-center rounded-md border border-hairline text-ink-secondary hover:bg-raised disabled:cursor-not-allowed disabled:opacity-40"
                       >
-                        {t("workflows.artifacts.download")}
-                      </a>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          ))}
+                        <ChevronRight size={12} aria-hidden="true" />
+                      </button>
+                    </span>
+                  )}
+                </div>
+                <ul className="space-y-0.5">
+                  {visible.map((artifact) => {
+                    const key = artifactKey(artifact.origin, artifact.path);
+                    return (
+                      <li
+                        key={key}
+                        ref={(node) => {
+                          if (node) rows.current.set(key, node);
+                          else rows.current.delete(key);
+                        }}
+                        data-artifact-row={key}
+                        tabIndex={0}
+                        onClick={() => openArtifact(artifact)}
+                        onKeyDown={(event) => onRowKeyDown(event, artifact)}
+                        className="flex min-h-8 cursor-pointer items-center gap-2 rounded-md px-2 py-1 outline-offset-[-2px] hover:bg-raised/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
+                      >
+                        <span className="w-9 shrink-0 rounded bg-raised/70 px-1 py-0.5 text-center text-[8.5px] font-semibold uppercase tracking-wide text-ink-tertiary">{artifactTypeLabel(artifact.preview)}</span>
+                        <span className="flex min-w-0 flex-1 items-center gap-1.5">
+                          <span className="truncate text-[11px] text-ink" title={artifact.path}>{artifact.name}</span>
+                          {artifact.verified && (
+                            <span className="shrink-0 text-[#35A16E]" title={t("workflows.artifacts.verified")} aria-label={t("workflows.artifacts.verified")}>
+                              <Check size={11} strokeWidth={2.6} aria-hidden="true" />
+                            </span>
+                          )}
+                        </span>
+                        <span className="shrink-0 text-[10px] text-ink-tertiary">{formatArtifactBytes(artifact.bytes)}</span>
+                        <button
+                          type="button"
+                          onClick={(event) => { event.stopPropagation(); openArtifact(artifact); }}
+                          className="flex h-8 shrink-0 items-center rounded-md border border-hairline px-2 text-[10px] font-medium text-ink-secondary hover:bg-raised max-[620px]:hidden"
+                        >
+                          {t("workflows.artifacts.open")}
+                        </button>
+                        <a
+                          href={runArtifactUrl(run.id, artifact, "download")}
+                          download={artifact.name}
+                          onClick={(event) => event.stopPropagation()}
+                          className="flex h-8 shrink-0 items-center rounded-md border border-hairline px-2 text-[10px] font-medium text-accent-text hover:bg-raised"
+                        >
+                          {t("workflows.artifacts.download")}
+                        </a>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            );
+          })}
           {list.totals.truncated && <p className="mt-3 text-[10px] text-ink-tertiary">{t("workflows.artifacts.truncated")}</p>}
           <p className="mt-3 border-t border-hairline/60 pt-2 text-[10px] leading-relaxed text-ink-tertiary">{t("workflows.artifacts.verifiedHint")}</p>
           <p className="mt-1 text-[9.5px] text-ink-tertiary max-[620px]:hidden">{t("workflows.artifacts.keyboard")}</p>
@@ -249,7 +330,16 @@ export function ArtifactsPanel({ run, workflow }: { run: WorkflowRun; workflow?:
       )}
 
       {open && (
-        <ArtifactPreview runId={run.id} artifact={open} onClose={closePreview} onRemoved={refresh} />
+        <FilePreviewDialog
+          key={artifactKey(open.origin, open.path)}
+          path={open.path}
+          name={open.name}
+          format={PREVIEW_FORMAT[open.preview]}
+          load={() => loadArtifact(open)}
+          downloadUrl={runArtifactUrl(run.id, open, "download")}
+          downloadName={open.name}
+          onClose={closePreview}
+        />
       )}
     </section>
   );

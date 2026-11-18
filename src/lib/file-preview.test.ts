@@ -26,6 +26,11 @@ describe("file preview formats", () => {
   it("labels formats and extensions", () => {
     expect(previewFormatLabel("md")).toBe("Markdown");
     expect(previewFormatLabel("xlsx")).toBe("XLSX");
+    expect(previewFormatLabel("text")).toBe("TXT");
+    expect(previewFormatLabel("json")).toBe("JSON");
+    expect(previewFormatLabel("image")).toBe("IMG");
+    expect(previewFormatLabel("audio")).toBe("AUDIO");
+    expect(previewFormatLabel("video")).toBe("VIDEO");
     expect(previewFileExtension("report.FINAL.PDF")).toBe("PDF");
     expect(previewFileExtension("README")).toBe("");
   });
@@ -33,9 +38,13 @@ describe("file preview formats", () => {
   it("keeps text formats separate from binary previews", () => {
     expect(isTextPreviewFormat("md")).toBe(true);
     expect(isTextPreviewFormat("html")).toBe(true);
+    expect(isTextPreviewFormat("text")).toBe(true);
+    expect(isTextPreviewFormat("json")).toBe(true);
     expect(isTextPreviewFormat("csv")).toBe(true);
     expect(isTextPreviewFormat("pdf")).toBe(false);
     expect(isTextPreviewFormat("mp4")).toBe(false);
+    expect(isTextPreviewFormat("image")).toBe(false);
+    expect(isTextPreviewFormat("audio")).toBe(false);
   });
 
   it("formats file sizes", () => {
