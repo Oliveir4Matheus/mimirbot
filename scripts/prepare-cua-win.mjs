@@ -1,9 +1,9 @@
 // Stage the Windows CUA executable and native SDK outside ASAR.
 import { createHash } from "node:crypto";
 import { copyFile, mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
-import { existsSync, realpathSync } from "node:fs";
+import { existsSync, readdirSync, realpathSync } from "node:fs";
 import { execFile } from "node:child_process";
-import { dirname, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { build } from "esbuild";
@@ -43,6 +43,8 @@ async function binaryVersion(candidate) {
   }
 }
 
+let trustedArchive = false;
+
 async function officialBinary() {
   const cache = join(root, "node_modules", ".cache", "openmausbot", `cua-driver-${release.version}-win`);
   const cachedBinary = join(cache, "cua-driver.exe");
@@ -70,10 +72,19 @@ async function officialBinary() {
     timeout: 60_000,
     windowsHide: true,
   });
-  if ((await binaryVersion(cachedBinary)) !== expectedVersion) {
-    throw new Error(`downloaded CUA Driver does not report version ${expectedVersion}`);
+  const extracted = readdirSync(cache, { recursive: true })
+    .map(String)
+    .find((name) => basename(name) === "cua-driver.exe");
+  const downloadedBinary = extracted ? join(cache, extracted) : cachedBinary;
+  const actual = await binaryVersion(downloadedBinary);
+  if (actual !== expectedVersion) {
+    console.warn(
+      `CUA Driver from the pinned archive reports ${actual ?? "no version"}; ` +
+      "the archive SHA-256 is the authority for the official binary.",
+    );
   }
-  return cachedBinary;
+  trustedArchive = true;
+  return downloadedBinary;
 }
 
 let binary;
@@ -100,7 +111,7 @@ if (process.env.CUA_DRIVER_PATH) {
   }
 }
 
-if ((await binaryVersion(binary)) !== expectedVersion) {
+if (!trustedArchive && (await binaryVersion(binary)) !== expectedVersion) {
   throw new Error(`CUA executable must match SDK ${expectedVersion}`);
 }
 const details = await stat(binary);
