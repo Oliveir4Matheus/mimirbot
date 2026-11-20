@@ -66,16 +66,14 @@ async function officialBinary() {
   }
   const archive = join(cache, release.file);
   await writeFile(archive, bytes);
-  await run("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command",
-    "Expand-Archive -LiteralPath $env:OMB_CUA_ARCHIVE -DestinationPath $env:OMB_CUA_EXTRACT"], {
-    env: { ...process.env, OMB_CUA_ARCHIVE: archive, OMB_CUA_EXTRACT: cache },
-    timeout: 60_000,
-    windowsHide: true,
-  });
+  await run("tar.exe", ["-xf", archive, "-C", cache], { timeout: 60_000, windowsHide: true });
   const extracted = readdirSync(cache, { recursive: true })
     .map(String)
     .find((name) => basename(name) === "cua-driver.exe");
   const downloadedBinary = extracted ? join(cache, extracted) : cachedBinary;
+  if (!existsSync(downloadedBinary)) {
+    throw new Error(`CUA archive did not extract cua-driver.exe (found: ${readdirSync(cache).join(", ") || "nothing"})`);
+  }
   const actual = await binaryVersion(downloadedBinary);
   if (actual !== expectedVersion) {
     console.warn(
