@@ -248,6 +248,7 @@ export class WebhookRequestService {
           const before = payload.undo?.before;
           if (!current || current.updatedAt !== payload.undo?.appliedUpdatedAt) return stale;
           const patch = operation.action === "update"
+            ? before ? { ...managerInput(before), eventTypes: before.eventTypes ?? [], ...(before.payloadFilter ? { payloadFilter: before.payloadFilter } : {}), enabled: before.enabled } : undefined
             : { enabled: operation.action === "pause" };
           if (!patch || !webhooks.update(webhookId, patch)) return stale;
           break;
