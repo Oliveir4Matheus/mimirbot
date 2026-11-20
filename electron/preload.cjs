@@ -99,6 +99,8 @@ const appVersion = (process.argv.find((arg) => arg.startsWith("--omb-app-version
 
 const bridge = {
   platform: process.platform,
+  /** Linux without a GPU (electron/linux-gpu.mjs): the page drops its backdrop blurs. */
+  softwareRendering: process.argv.includes("--omb-software-rendering=1"),
   /** This app's version, and whether this page is this app's own (served by this computer, not a server from the Server menu). */
   app: { version: appVersion, ownPage: isLocalPage },
   // Safe on a cloud page: the person chooses in a native menu; no direct switching, saved-list reads, host files or secrets.
@@ -271,6 +273,11 @@ const bridge = {
       ? ipcRenderer.invoke("open-at-login:set", on === true) : Promise.reject(new Error("Turn on the switch to open MimirBot at login.")),
   },
   setCredential: (name, value) => ipcRenderer.invoke("credential:set", name, value),
+  // Saved keys this launch could not read, and "Reset saved keys" (main asks the person first, then restarts).
+  credentialStore: {
+    unreadable: () => ipcRenderer.invoke("credential-store:unreadable"),
+    reset: () => ipcRenderer.invoke("credential-store:reset"),
+  },
 
   updater: {
     check: () => ipcRenderer.invoke("update:check"),

@@ -2305,6 +2305,8 @@
   "computer.tab.android": "Android",
   "computer.tab.browser": "浏览器",
   "computer.tabsAria": "机器人面板视图",
+  "computer.watchFullScreenTitle": "观看整个屏幕；机器人会继续工作",
+  "computer.watchingBotWorks": "观看中 · 机器人继续工作",
   "computer.simple.needsSetup": "{name} 的桌面需要先完成一个设置步骤。",
   "computer.close": "关闭“屏幕”面板",
   "computer.screenOf": "{name} 的屏幕",

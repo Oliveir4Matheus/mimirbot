@@ -1,12 +1,33 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { AlertTriangle, Loader2, Shield } from "lucide-react";
 import { useDesktopCapabilities } from "./DesktopCapabilities";
 import { macCuaPermissionMessage, missingMacCuaPermissions } from "@/lib/mac-cua-permissions";
 import { MacCuaRecoveryActions } from "./MacCuaRecoveryActions";
+import { NotNowButton } from "./NoticeCard";
 import { t } from "@/lib/i18n";
+
+let hiddenUntilRelaunch = false;
+const hiddenListeners = new Set<() => void>();
+const subscribeHidden = (listener: () => void) => { hiddenListeners.add(listener); return () => { hiddenListeners.delete(listener); }; };
+const readHidden = () => hiddenUntilRelaunch;
+
+export function hideMacLocalControlUntilRelaunch() {
+  hiddenUntilRelaunch = true;
+  for (const listener of hiddenListeners) listener();
+}
+
+/** Opens Accessibility, then Screen Recording settings; stops if the card was dismissed in between. */
+export async function openMacControlSettings(
+  open: (pane: "accessibility" | "screen") => Promise<void> | undefined = (pane) => window.ogb?.permOpenSettings?.(pane),
+) {
+  await open("accessibility");
+  if (hiddenUntilRelaunch) return;
+  await open("screen");
+}
 
 export function MacLocalControl() {
   const { capabilities } = useDesktopCapabilities();
+  const hidden = useSyncExternalStore(subscribeHidden, readHidden, readHidden);
   const reason = capabilities.localComputer.available ? null : capabilities.localComputer.message;
   const permissionMessage = macCuaPermissionMessage(missingMacCuaPermissions(reason));
   const [pending, setPending] = useState(false);
@@ -29,8 +50,7 @@ export function MacLocalControl() {
     setError(null);
     setAwaitingGrant(true);
     try {
-      await window.ogb?.permOpenSettings?.("accessibility");
-      await window.ogb?.permOpenSettings?.("screen");
+      await openMacControlSettings();
     } catch (reason) {
       setAwaitingGrant(false);
       setError(reason instanceof Error ? reason.message : String(reason));
@@ -38,7 +58,7 @@ export function MacLocalControl() {
   };
 
   useEffect(() => {
-    if (!awaitingGrant) return;
+    if (!awaitingGrant || hidden) return;
     let used = false;
     const onFocus = () => {
       if (used) return;
@@ -53,10 +73,10 @@ export function MacLocalControl() {
       window.removeEventListener("focus", onFocus);
       document.removeEventListener("visibilitychange", onFocus);
     };
-  }, [awaitingGrant]);
+  }, [awaitingGrant, hidden]);
 
   if (capabilities.host.platform !== "darwin" || capabilities.localComputer.reasonCode === "remote-server") return null;
-  if (capabilities.localComputer.available) return null;
+  if (capabilities.localComputer.available || hidden) return null;
 
   return (
     <section className="mt-4 rounded-xl border border-warning/25 bg-warning/10 p-4">
@@ -95,6 +115,7 @@ export function MacLocalControl() {
               {pending && <Loader2 size={13} className="animate-spin" />}
               Retry
             </button>
+            {!pending && <NotNowButton onClick={hideMacLocalControlUntilRelaunch} />}
           </div>
         </div>
       </div>

@@ -89,6 +89,7 @@ export function agentWebhook(webhook: WebhookTrigger, latestRun?: RoutineRun) {
     enabled: webhook.enabled,
     runOn: webhook.runOn,
     eventTypes: webhook.eventTypes ?? [],
+    ...(webhook.payloadFilter ? { payloadFilter: webhook.payloadFilter } : {}),
     calls: webhook.deliveryCount,
     lastCalledAt: timestamp(webhook.lastReceivedAt),
     latestRun: latestRun ? agentRun(latestRun) : null,
@@ -178,7 +179,7 @@ const triggerRequestSchema = z.union([
   z.object({ ...source, action: z.enum(["pause", "resume", "run_now", "delete"]), triggerId: z.string().min(1).max(200) }).strict(),
 ]);
 
-const WEBHOOK_FIELDS = new Set(["name", "instructions", "runOn", "eventTypes"]);
+const WEBHOOK_FIELDS = new Set(["name", "instructions", "runOn", "eventTypes", "payloadFilter"]);
 const APP_FIELDS = new Set(["name", "instructions", "runOn", "filter", "config"]);
 
 export type ParsedTriggerRequest =
@@ -207,11 +208,12 @@ export function parseTriggerRequest(body: unknown, kindOf: (id: string) => "sche
   }
   if (kind === "schedule") {
     if (changes && "eventTypes" in changes) return { ok: false, error: "webhook_event_types applies only to webhook triggers" };
+    if (changes && "payloadFilter" in changes) return { ok: false, error: "webhook_payload_filter applies only to webhook triggers" };
     if (changes && ("filter" in changes || "config" in changes)) return { ok: false, error: "filter and event_config apply only to app-event triggers" };
     return { ok: true, kind: "schedule", forBotId: request.forBotId, proposal: { action: request.action, routineId: request.triggerId, ...(changes ? { changes } : {}) } };
   }
   const misplaced = changes && Object.keys(changes).find((key) => !WEBHOOK_FIELDS.has(key));
-  if (misplaced) return { ok: false, error: `A webhook trigger has no ${misplaced}; it fires when its link is called. Change name, instructions, run_on or webhook_event_types.` };
+  if (misplaced) return { ok: false, error: `A webhook trigger has no ${misplaced}; it fires when its link is called. Change name, instructions, run_on or webhook_event_types or webhook_payload_filter.` };
   return { ok: true, kind: "webhook", forBotId: request.forBotId, operation: { action: request.action, webhookId: request.triggerId, ...(changes ? { changes } : {}) } };
 }
 

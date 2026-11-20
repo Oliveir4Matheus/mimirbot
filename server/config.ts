@@ -7,6 +7,7 @@ import { z } from "zod";
 import { normalizeImageGenerationUrl, type ImageGenerationConfig } from "../shared/image-generation.ts";
 import { botAvatarUrlSchema } from "../shared/bot-avatar.ts";
 import { writeFileAtomic } from "./atomic.ts";
+import { configSaveRefusal, readConfigFile, writeConfigBackup } from "./config-backup.ts";
 import { anthropicKeyEnv } from "./anthropic-key-env.ts";
 import { withoutComputerEngine } from "./computer-engine-removal.ts";
 import { newBotDefaultsSchema, type NewBotDefaults } from "./new-bot-defaults.ts";
@@ -942,12 +943,9 @@ export function saveConfig(
   options: { replaceInstances?: boolean } = {},
 ): void {
   const p = join(DATA_DIR, "config.json");
-  let disk: JsonObject = {};
-  try {
-    const parsed = jsonObjectSchema.safeParse(parseJson(readFileSync(p, "utf8")));
-    if (parsed.success) disk = parsed.data;
-  } catch {
-  }
+  const read = readConfigFile(p);
+  if (read.state === "unreadable" || read.state === "invalid") throw configSaveRefusal(read, p);
+  const disk: JsonObject = read.state === "ok" ? read.value : {};
   const checkedPatch = appConfigSchema.partial().extend({ threads: threadsPatchSchema.optional(), newBots: newBotsPatchSchema.optional() }).parse(patch);
   const before = configSaveListeners.size ? structuredClone(disk) : disk;
   const storedProfiles = storedBrowserProfilesSchema.safeParse(disk.browserProfiles);
@@ -1047,6 +1045,9 @@ export function saveConfig(
     }
   }
   mkdirSync(DATA_DIR, { recursive: true });
+  if (read.state === "ok" && !writeConfigBackup(p, read.text)) {
+    console.warn(`config: the dated copy of ${p} could not be written, so this save has no rollback point`);
+  }
   writeFileAtomic(p, JSON.stringify(disk, null, 2), { mode: 0o600 });
   for (const listener of configSaveListeners) {
     try {

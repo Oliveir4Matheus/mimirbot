@@ -10,7 +10,7 @@ import { startCua, stopCua, registerCuaIpc, requestComputerUse, setCuaStateListe
 import { createAndroidDeviceController } from "./android-device.mjs";
 import { finishSpeech, startSpeech, stopSpeech } from "./speech.mjs";
 import { openBlankTerminal } from "./terminal-launch.mjs";
-import { linuxDisablesGpu } from "./linux-gpu.mjs";
+import { linuxDisablesGpu, SOFTWARE_RENDERING_ARG } from "./linux-gpu.mjs";
 import { pasteMenuItem } from "./paste-menu-item.mjs";
 import { attachUpdaterWindow, startUpdater, registerUpdaterIpc, sendUpdaterState } from "./updater.mjs";
 import {
@@ -74,7 +74,7 @@ import {
   withoutDesktopCompanionAccess,
 } from "./desktop-companion-client.mjs";
 import { isKnownSkin, skinChrome } from "./skin-overlay.cjs";
-import { readSecureCredentials } from "./secure-credentials.mjs";
+import { readSecureCredentials, resetUnreadableCredentials } from "./secure-credentials.mjs";
 import { createControlPlaneClient } from "./control-plane-client.mjs";
 import {
   companionAccountCleanupPending,
@@ -227,10 +227,9 @@ function applyUnreadBadge(win = mainWindow) {
 }
 
 // GNOME groups the window with its desktop entry only when both identities match; set before ready.
-if (process.platform === "linux") {
-  if (linuxDisablesGpu()) app.disableHardwareAcceleration();
-  app.setDesktopName("com.mimirbot.app.desktop");
-}
+const linuxSoftwareRendering = process.platform === "linux" && linuxDisablesGpu();
+if (linuxSoftwareRendering) app.disableHardwareAcceleration();
+if (process.platform === "linux") app.setDesktopName("com.mimirbot.app.desktop");
 
 if (!app.requestSingleInstanceLock()) {
   console.log("[desktop] MimirBot is already running — focusing that window");
@@ -2067,7 +2066,7 @@ function createWindow({ deferNavigation = false } = {}) {
       contextIsolation: true,
       preload: path.join(__dirname, "preload.cjs"),
       additionalArguments: [...desktopCompanionRendererArguments(rendererOrigin(), desktopRemoteAccess),
-        ...(app.isPackaged && !desktopRemoteAccess ? ["--omb-company-desktop=1"] : []), `--omb-app-version=${app.getVersion()}`],
+        ...(app.isPackaged && !desktopRemoteAccess ? ["--omb-company-desktop=1"] : []), `--omb-app-version=${app.getVersion()}`, ...(linuxSoftwareRendering ? [SOFTWARE_RENDERING_ARG] : [])],
     },
   });
   mainWindow = win; hiddenStart = false;
@@ -2889,6 +2888,34 @@ async function saveWorkspaceCredential(name, value) {
   );
 }
 
+// This app's own page only: whether saved keys could not be read this launch, and the person's way out of that.
+ipcMain.handle("credential-store:unreadable", localOnly("credential-store:unreadable", () => credentialStoreUnavailable));
+ipcMain.handle("credential-store:reset", localOnly("credential-store:reset", (event) => resetUnreadableCredentials({
+  unreadable: credentialStoreUnavailable,
+  confirm: async () => {
+    const options = {
+      type: "warning",
+      buttons: ["Reset and restart", "Cancel"],
+      defaultId: 1,
+      cancelId: 1,
+      message: "Reset saved keys?",
+      detail: `${app.name} can't read its saved keys here, so it can't use them or save new ones. Resetting puts the unreadable file aside and restarts ${app.name}. Then enter your keys again and reconnect your apps.`,
+    };
+    const parent = BrowserWindow.fromWebContents(event.sender);
+    const { response } = parent ? await dialog.showMessageBox(parent, options) : await dialog.showMessageBox(options);
+    return response === 0;
+  },
+  exists: () => fs.existsSync(CREDENTIALS_FILE),
+  moveAside: () => fs.renameSync(CREDENTIALS_FILE, `${CREDENTIALS_FILE}.unreadable-${Date.now()}`),
+  failed: async (error) => {
+    slog(`saved keys reset failed: ${error?.message ?? error}`);
+    await dialog.showMessageBox({ type: "error", message: "Couldn't reset saved keys", detail: error?.message ?? String(error) });
+  },
+  restart: () => {
+    slog("saved keys reset by the person: unreadable credential store moved aside, restarting");
+    relaunchAfterDesktopRemoteChange();
+  },
+})));
 ipcMain.handle("credential:set", localOnly("credential:set", (_event, name, value) =>
   saveWorkspaceCredential(name, value),
 ));

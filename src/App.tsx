@@ -171,9 +171,14 @@ function Shell({ viewer }: { viewer: WelcomeViewer | null }) {
       if (!mod) return;
       const bots = shortcutBots(state.bots.filter((b) => !b.hidden), shownBotIds(document.querySelector("[data-sidebar-root]")));
       const step = e.shiftKey ? botCycleStep(e) : null;
-      if (e.key === "n" && !e.shiftKey) {
+      if (e.key.toLowerCase() === "n" && !e.altKey) {
         e.preventDefault();
-        addBot(dispatch);
+        if (e.shiftKey) {
+          const selected = state.bots.find((bot) => bot.id === state.selectedId && !bot.hidden);
+          if (selected) dispatch({ type: "newTask", botId: selected.id });
+        } else {
+          addBot(dispatch);
+        }
       } else if (/^[1-9]$/.test(e.key)) {
         const target = bots[Number(e.key) - 1];
         if (target) {

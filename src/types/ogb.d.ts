@@ -114,6 +114,7 @@ const __APP_VERSION__: string;
   interface Window {
     ogb?: {
       platform: NodeJS.Platform;
+      softwareRendering?: boolean;
       /** This app's own version, and whether this page is this app's own: false on a server added in the Server menu,
        * whose page carries that server's version. Absent in desktop builds before it. */
       app?: { version: string; ownPage: boolean };
@@ -351,6 +352,10 @@ const __APP_VERSION__: string;
       openLogsFolder?(): Promise<{ folder: string; opened: boolean; error?: string }>;
       /** This app's own login item, which opens the window. `available`: false in a build that cannot add one. */
       openAtLogin?: { state(): Promise<{ available: boolean; on: boolean }>; set(on: boolean): Promise<{ available: boolean; on: boolean }> };
+      /** Saved keys this launch could not read (this app's own page only). `reset` asks the person, moves the unreadable
+       * file aside and restarts; it resolves "cancelled" when they say no,
+       * "failed" (after telling them) when the file could not be moved, and "readable" (doing nothing) when the keys could be read. */
+      credentialStore?: { unreadable(): Promise<boolean>; reset(): Promise<"reset" | "cancelled" | "failed" | "readable"> };
       /** Save a provider credential through Electron's OS-backed store. */
       setCredential?(
         name: "composioApiKey" | "xaiApiKey" | "boxToken" | "opencodeGoApiKey" | "ttsKey" | "fishAudioKey" | "jevApiKey" | "openrouterDeciderKey" | "workersAiToken" | "openaiImageApiKey" | "customImageApiKey" | "openaiLiveKey" | "tregApiKey",

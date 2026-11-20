@@ -6,6 +6,7 @@ import { commitRegistryChange, keptRevocation, saveRegistryFor } from "./registr
 import { parseToolScope, toolScopeWidens } from "../shared/tool-scope.ts"; import { grantScopedApps } from "../shared/connector-scopes.ts";
 import { reorderStable } from "../shared/bot-order.ts";
 import { botOwner, chiefConflict, chiefScope, ownerEmail } from "../shared/bot-owner.ts";
+import { reshowWhenMoved } from "../shared/default-bot.ts";
 import { ensureSections, readSections, changeEmptySection } from "./section-context.ts";
 import type { TeamComputers } from "./team-computers.ts";
 import { removeBotFolder, soulFile, soulHash, writeSoulMirror } from "./bot-folder.ts";
@@ -810,7 +811,7 @@ export class Store {
       return "Stop this department's active work before deleting it";
     }
     const nextBots = this.bots.map(bot => ({ ...bot,
-      ...(sectionKey(bot.section) === name ? { section: undefined } : {}),
+      ...(sectionKey(bot.section) === name ? reshowWhenMoved(bot, { section: undefined }) : {}),
       ...(bot.managedSections ? { managedSections: bot.managedSections.filter(section => sectionKey(section) !== name) } : {}),
     }));
     if (chiefConflict(nextBots)) {
@@ -1427,7 +1428,7 @@ export class Store {
       } else {
         if (at < 0) throw new Error("A setup target no longer exists");
         const previous = nextBots[at];
-        next = { ...previous, ...operation.fields };
+        next = { ...previous, ...reshowWhenMoved(previous, operation.fields) };
         if (operation.fields.modelSelection) next.tasks = this.withDefaultModel(previous, operation.fields.modelSelection);
         nextBots[at] = next;
       }

@@ -46,6 +46,7 @@ const definitionSchema = z.object({
   instructions: z.string().trim().max(INSTRUCTIONS_MAX).default(""),
   runOn: z.enum(["maus", "cloud"]).default("maus"),
   eventTypes: z.array(z.string().trim().min(1).max(200)).max(20).optional(),
+  payloadFilter: z.record(z.string().trim().min(1).max(200), z.string().trim().max(200)).optional(),
 }).strict();
 const changesSchema = definitionSchema.partial().strict()
   .refine((changes) => Object.keys(changes).length > 0, "The update action needs at least one field in changes");
@@ -81,6 +82,7 @@ function snapshot(webhook: WebhookTrigger): WebhookRequestSnapshot {
     runOn: webhook.runOn,
     enabled: webhook.enabled,
     ...(webhook.eventTypes?.length ? { eventTypes: [...webhook.eventTypes] } : {}),
+    ...(webhook.payloadFilter ? { payloadFilter: { ...webhook.payloadFilter } } : {}),
   };
 }
 
@@ -90,13 +92,16 @@ function managerInput(definition: Partial<WebhookRequestDefinition>) {
     ...(definition.instructions !== undefined ? { prompt: definition.instructions } : {}),
     ...(definition.runOn !== undefined ? { runOn: definition.runOn } : {}),
     ...(definition.eventTypes !== undefined ? { eventTypes: definition.eventTypes } : {}),
+    ...(definition.payloadFilter !== undefined ? { payloadFilter: definition.payloadFilter } : {}),
   };
 }
 
 /** What the card and the tool result say the trigger does, credential-scrubbed. */
-export function webhookTriggerSentence(webhook: Pick<WebhookTrigger, "prompt" | "eventTypes">, botName: string): string {
+export function webhookTriggerSentence(webhook: Pick<WebhookTrigger, "prompt" | "eventTypes" | "payloadFilter">, botName: string): string {
   const instructions = redactSecretsInText(webhook.prompt).trim();
-  const events = webhook.eventTypes?.length ? ` (only ${webhook.eventTypes.join(", ")})` : "";
+  const fields = Object.entries(webhook.payloadFilter ?? {}).map(([field, value]) => `${field} is ${redactSecretsInText(value)}`);
+  const only = [...(webhook.eventTypes ?? []), ...fields];
+  const events = only.length ? ` (only ${only.join(", ")})` : "";
   return `When another app sends something${events}, ${botName} ${instructions ? `follows: ${instructions.slice(0, 400)}` : "does what it is asked"}`;
 }
 
@@ -243,7 +248,7 @@ export class WebhookRequestService {
           const before = payload.undo?.before;
           if (!current || current.updatedAt !== payload.undo?.appliedUpdatedAt) return stale;
           const patch = operation.action === "update"
-            ? before ? { ...managerInput(before), eventTypes: before.eventTypes ?? [], enabled: before.enabled } : undefined
+            ? before ? { ...managerInput(before), eventTypes: before.eventTypes ?? [], ...(before.payloadFilter ? { payloadFilter: before.payloadFilter } : {}), enabled: before.enabled } : undefined
             : { enabled: operation.action === "pause" };
           if (!patch || !webhooks.update(webhookId, patch)) return stale;
           break;

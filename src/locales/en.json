@@ -7461,5 +7461,19 @@
   "workflows.proposals.createNeedsRehearsal": "Run the rehearsal and make it pass before creating.",
   "workflows.proposals.rehearsalNone": "No rehearsal has run.",
   "workflows.proposals.stepDetails": "Details",
-  "workflows.artifacts.openNewTab": "Open in a new tab"
+  "workflows.artifacts.openNewTab": "Open in a new tab",
+  "chat.engineCompactionTitle": "Chat condensed into a summary",
+  "chat.engineCompactionHint": "The AI summarized earlier messages to make room. Your full conversation is still here, but the agent may not recall older details exactly.",
+  "attach.copyImage": "Copy image",
+  "attach.copyImageAria": "Copy {name} as an image",
+  "attach.imageCopied": "Image copied",
+  "attach.copyImageFailed": "Couldn't copy the image",
+  "browser.extensions.title": "Extensions",
+  "browser.extensions.empty": "No extensions with a page to open in this browser.",
+  "browser.extensions.takeControl": "Take control to open an extension.",
+  "botPanel.avatar.bodyEverywhere": "Give this body to the other bots ({count})",
+  "accounts.chatgptSharedSetupNote": "Bots that use these accounts also follow your own Codex setup: your instructions (AGENTS.md), config.toml, skills and plugins.",
+  "computer.watchFullScreenTitle": "Watch the whole screen; the bot keeps working",
+  "computer.watchingBotWorks": "Watching · the bot keeps working",
+  "connectors.resetSavedKeys": "Reset saved keys"
 }

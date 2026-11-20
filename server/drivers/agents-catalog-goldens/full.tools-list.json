@@ -592,7 +592,7 @@
     },
     {
       "name": "propose_team_setup",
-      "description": "Chief of Staff only: submit all requested specialist creation, profile/model configuration, Chief assignments, and authorized team moves in ONE combined plan. Use exact catalog engine/model IDs from list_team_setup. Combine all fields for each bot; use the same create key or botId to coalesce repeated entries. New teams must be named explicitly in newTeams and have a specialist in this plan; access is granted only to those new teams. Existing unauthorized teams cannot be included. Models change bot defaults for groups/new threads; existing threads and execution permissions stay unchanged. If review is pending, the decision and structured result automatically resume you once; do not ask again, poll, or repeat the proposal. Read the result: it applies immediately at every access level, and the person sees it with an Undo where possible. If applied, continue the work without another confirmation. Only a pending result (a Cloud conversation its owner did not drive) means ending the turn to wait for the owner. Never claim success without an applied result; report failures honestly. This does not elevate another bot's execution permissions.",
+      "description": "Chief of Staff only: submit all requested specialist creation, profile/model configuration, Chief assignments, and authorized team moves in ONE combined plan. Use exact catalog engine/model IDs from list_team_setup. Combine all fields for each bot; use the same create key or botId to coalesce repeated entries. Bulk edits: one update per bot, up to 40 bots (8 new). New teams must be named explicitly in newTeams and have a specialist in this plan; access is granted only to those new teams. Existing unauthorized teams cannot be included. Models change bot defaults for groups/new threads; existing threads and execution permissions stay unchanged. If review is pending, the decision and structured result automatically resume you once; do not ask again, poll, or repeat the proposal. Read the result: it applies immediately at every access level, and the person sees it with an Undo where possible. If applied, continue the work without another confirmation. Only a pending result (a Cloud conversation its owner did not drive) means ending the turn to wait for the owner. Never claim success without an applied result; report failures honestly. This does not elevate another bot's execution permissions.",
       "inputSchema": {
         "type": "object",
         "additionalProperties": false,
@@ -602,7 +602,6 @@
           },
           "newTeams": {
             "type": "array",
-            "maxItems": 8,
             "items": {
               "type": "string",
               "maxLength": 60
@@ -610,7 +609,6 @@
           },
           "operations": {
             "type": "array",
-            "maxItems": 24,
             "items": {
               "type": "object",
               "additionalProperties": false,
@@ -651,6 +649,10 @@
                     "soul": {
                       "type": "string",
                       "description": "Standing instructions; required with name/title/modelSelection for every new bot."
+                    },
+                    "soulAppend": {
+                      "type": "string",
+                      "description": "Update only, instead of soul: text appended to its current instructions."
                     },
                     "cwd": {
                       "type": "string",
@@ -1331,6 +1333,14 @@
               "type": "string"
             },
             "description": "Only for when=webhook: optional event names to accept (from the caller's event-type header, e.g. push). Omit to accept every call."
+          },
+          "webhook_payload_filter": {
+            "type": "object",
+            "maxProperties": 10,
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Only for when=webhook: optional fields the call's JSON must have before any run starts, path to text, e.g. {\"action\":\"opened\",\"pull_request.base.ref\":\"main\"}. All must match (case-insensitive); other calls are ignored without a run. Use it instead of instructions like \"if it is not X, stop\" when the sender's data says X. {} in an update removes it."
           },
           "filter": {
             "type": "object",

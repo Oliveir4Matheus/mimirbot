@@ -2,6 +2,7 @@
 // compared in constant time, single-valued parameters, and a listener that lives only until the sign-in settles.
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import { createServer, type Server } from "node:http";
+import { isDeepStrictEqual } from "node:util";
 
 import type { McpServerSpec } from "./contracts.ts";
 import { discoverMcpAuth, type McpAuthMetadata } from "./mcp-oauth-discovery.ts";
@@ -183,6 +184,14 @@ function tokensFrom(body: Record<string, unknown>, previous?: McpOAuthTokens): M
 
 class RegistrationRefused extends Error {}
 
+function registrationRefusal(response: Response, description: unknown): string {
+  const reason = typeof description === "string" ? description.replace(/\s+/g, " ").trim().slice(0, 300) : "";
+  const retryAfter = response.headers.get("retry-after")?.trim().slice(0, 40);
+  const wait = retryAfter ? ` It asked to wait: Retry-After ${retryAfter}.` : "";
+  if (!reason && !wait) return "This server would not register MimirBot for sign-in. Try again later.";
+  return `This server would not register MimirBot for sign-in (HTTP ${response.status})${reason ? `: ${reason}` : "."}${wait} Try again later.`;
+}
+
 export class McpOAuthManager {
   private readonly store: McpOAuthStore;
   private readonly lifetimeMs: number;
@@ -317,11 +326,11 @@ export class McpOAuthManager {
   async signOut(name: string, url: string): Promise<void> {
     this.cancel(name);
     const record = this.store.get(name, url);
+    this.store.delete(name);
     const token = record?.tokens?.refresh ?? record?.tokens?.access;
     if (record?.revocationEndpoint && token) {
       await postForm(record.revocationEndpoint, { token }, this.recordClient(name, record) ?? undefined).catch(() => undefined);
     }
-    this.store.delete(name);
   }
 
   forget(name: string): void {
@@ -335,10 +344,11 @@ export class McpOAuthManager {
     if (!record || record.state !== "signed-in" || !record.tokens) return Promise.resolve(null);
     const { tokens } = record;
     if (!tokens.expiresAt || tokens.expiresAt > Date.now() + REFRESH_MARGIN_MS) return Promise.resolve(tokens.access);
-    const pending = this.refreshing.get(name);
+    const key = JSON.stringify([name, record]);
+    const pending = this.refreshing.get(key);
     if (pending) return pending;
-    const refreshed = this.refresh(name, record).finally(() => this.refreshing.delete(name));
-    this.refreshing.set(name, refreshed);
+    const refreshed = this.refresh(name, record).finally(() => this.refreshing.delete(key));
+    this.refreshing.set(key, refreshed);
     return refreshed;
   }
 
@@ -365,8 +375,9 @@ export class McpOAuthManager {
         resource: record.url,
       }, client);
     } catch {
-      return stillValid ? tokens.access : null;
+      return stillValid && isDeepStrictEqual(this.store.get(name, record.url), record) ? tokens.access : null;
     }
+    if (!isDeepStrictEqual(this.store.get(name, record.url), record)) return null;
     const next = answer.status >= 200 && answer.status < 300 ? tokensFrom(answer.body, tokens) : null;
     if (!next) {
       const dead = (answer.status === 400 || answer.status === 401)
@@ -375,8 +386,6 @@ export class McpOAuthManager {
       this.markNeedsSignIn(name, record.url);
       return null;
     }
-    // the entry may have been removed or re-pointed while this was in flight
-    if (!this.store.get(name, record.url)) return null;
     this.store.put(name, { ...record, state: "signed-in", tokens: next });
     return next.access;
   }
@@ -415,9 +424,9 @@ export class McpOAuthManager {
       redirect: "error",
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
-    const body = await response.json().catch(() => ({})) as { client_id?: unknown };
+    const body = await response.json().catch(() => ({})) as { client_id?: unknown; error_description?: unknown };
     if (!response.ok || typeof body.client_id !== "string" || !body.client_id) {
-      throw new RegistrationRefused("This server would not register MimirBot for sign-in. Try again later.");
+      throw new RegistrationRefused(registrationRefusal(response, body.error_description));
     }
     return body.client_id;
   }
