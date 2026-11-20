@@ -35,9 +35,10 @@ if (expectedVersion !== release.version) {
 async function binaryVersion(candidate) {
   if (!candidate || !existsSync(candidate)) return null;
   try {
-    const { stdout } = await run(candidate, ["--version"], { timeout: 5000, windowsHide: true });
+    const { stdout } = await run(candidate, ["--version"], { timeout: 30_000, windowsHide: true });
     return stdout.match(/cua-driver\s+([\d.]+)/)?.[1] ?? null;
-  } catch {
+  } catch (error) {
+    console.warn(`cua-driver --version failed for ${candidate}: ${error instanceof Error ? error.message : String(error)}`);
     return null;
   }
 }
