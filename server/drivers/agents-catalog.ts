@@ -875,12 +875,12 @@ const TOOL_DEFINITIONS = [
   },
   {
     name: "list_workflows",
-    description: "List the Workflows of your department that you can start, with only the values a person must supply before the run starts. A Workflow is a fixed sequence of steps the engine runs; you start it, the engine decides who runs next.",
+    description: "List the Workflows of your department that you can start, with only the values a person must supply before the run starts.",
     inputSchema: { type: "object", additionalProperties: false, properties: {} },
   },
   {
     name: "run_workflow",
-    description: "Start a Workflow from list_workflows. The engine runs its steps in order, each in its own folder with its own bot. inputs carries only the start values list_workflows shows; a value that is produced during the run is never asked here. A step may ask the person to confirm something: " + WORKFLOW_APPROVAL_RULE + ". In a step's instructions, " + WORKFLOW_APPROVAL_NO_FALLBACK + ". This starts the run; it does not run the steps inside this turn.",
+    description: "Start a Workflow from list_workflows. This starts the run; it does not run the steps inside this turn. A step may ask the person to confirm something: " + WORKFLOW_APPROVAL_RULE + ". In a step's instructions, " + WORKFLOW_APPROVAL_NO_FALLBACK + ".",
     inputSchema: {
       type: "object",
       additionalProperties: false,
@@ -890,7 +890,7 @@ const TOOL_DEFINITIONS = [
         inputs: {
           type: "object",
           additionalProperties: true,
-          description: "The flat parameter map. Use only the names list_workflows shows; if the answer is needs_input, ask for what it names.",
+          description: "The flat parameter map: only the names list_workflows shows; a value produced during the run is never asked here. If the answer is needs_input, ask for what it names.",
         },
         request_id: { type: "string", minLength: 1, maxLength: 200, description: "Optional caller id stored on the run; it does not deduplicate." },
       },
@@ -899,7 +899,7 @@ const TOOL_DEFINITIONS = [
   },
   {
     name: "workflow_status",
-    description: "Show a Workflow run's current step, each step's status and verified outputs, what a paused run is waiting for, the comparison a condition took, and why it failed.",
+    description: "Show a run's current step, each step's status and verified outputs, what a paused run waits for, the comparison a condition took, and why it failed.",
     inputSchema: {
       type: "object",
       additionalProperties: false,
@@ -933,6 +933,8 @@ export const SHARED_COMPUTER_TOOL_NAMES = new Set(["list_shared_computers", "sha
 const VOICE_TOOL_NAMES = new Set(["send_voice_note"]);
 const CHIEF_ONLY_TOOL_NAMES = new Set([
   "create_bot", "list_team_setup", "list_team_library", "propose_team_setup", "propose_bot_deletion", "manage_room", "retry_thread",
+  // Authoring a Workflow is a Chief's act, like creating a bot: every other bot asks a reachable Chief.
+  "propose_workflow", "create_workflow_from_proposal", "archive_workflow_proposal",
 ]);
 const CHIEF_TARGET_TOOL_NAMES = new Set(["propose_profile", "propose_model"]);
 const WATCHER_TOOL_NAMES = new Set(["create_options_card"]);

@@ -1,7 +1,7 @@
 # Agents tool bridge
 
-Every turn of every bot is sent MimirBot's own tool catalog: 27 to 39 tools,
-43 to 57 KB of JSON, though most turns call two or three of them. With the
+Every turn of every bot is sent MimirBot's own tool catalog: 33 to 59 tools,
+42 to 80 KB of JSON, though most turns call two or three of them. With the
 bridge on, a turn is listed a short set of tools it needs in most turns, plus
 two more:
 
@@ -12,7 +12,7 @@ two more:
   results apply. Nothing about a tool is checked by `use_tool` that a direct
   call is not checked for.
 
-The list is then 14.5 to 15.4 KB, 65 to 74% smaller. What a turn may call does
+The list is then 14.8 to 16.9 KB, 62 to 73% smaller. What a turn may call does
 not change: the tools behind `use_tool` are exactly the ones the turn would
 have been listed.
 

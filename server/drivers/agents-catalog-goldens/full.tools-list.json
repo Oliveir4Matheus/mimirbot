@@ -1858,7 +1858,7 @@
     },
     {
       "name": "list_workflows",
-      "description": "List the Workflows of your department that you can start, with only the values a person must supply before the run starts. A Workflow is a fixed sequence of steps the engine runs; you start it, the engine decides who runs next.",
+      "description": "List the Workflows of your department that you can start, with only the values a person must supply before the run starts.",
       "inputSchema": {
         "type": "object",
         "additionalProperties": false,
@@ -1873,7 +1873,7 @@
     },
     {
       "name": "run_workflow",
-      "description": "Start a Workflow from list_workflows. The engine runs its steps in order, each in its own folder with its own bot. inputs carries only the start values list_workflows shows; a value that is produced during the run is never asked here. A step may ask the person to confirm something: approval: open a request card (request_credential) and end the turn; the run waits indefinitely for a person; there is no timeout and no fallback; a refused card cancels the run. In a step's instructions, never promise a fallback such as \"continue if there is no answer\"; without an answer the step waits. This starts the run; it does not run the steps inside this turn.",
+      "description": "Start a Workflow from list_workflows. This starts the run; it does not run the steps inside this turn. A step may ask the person to confirm something: approval: open a request card (request_credential) and end the turn; the run waits indefinitely for a person; there is no timeout and no fallback; a refused card cancels the run. In a step's instructions, never promise a fallback such as \"continue if there is no answer\"; without an answer the step waits.",
       "inputSchema": {
         "type": "object",
         "additionalProperties": false,
@@ -1890,7 +1890,7 @@
           "inputs": {
             "type": "object",
             "additionalProperties": true,
-            "description": "The flat parameter map. Use only the names list_workflows shows; if the answer is needs_input, ask for what it names."
+            "description": "The flat parameter map: only the names list_workflows shows; a value produced during the run is never asked here. If the answer is needs_input, ask for what it names."
           },
           "request_id": {
             "type": "string",
@@ -1904,7 +1904,7 @@
     },
     {
       "name": "workflow_status",
-      "description": "Show a Workflow run's current step, each step's status and verified outputs, what a paused run is waiting for, the comparison a condition took, and why it failed.",
+      "description": "Show a run's current step, each step's status and verified outputs, what a paused run waits for, the comparison a condition took, and why it failed.",
       "inputSchema": {
         "type": "object",
         "additionalProperties": false,
@@ -1946,7 +1946,7 @@
     },
     {
       "name": "propose_workflow",
-      "description": "Turn a conversation into a Workflow proposal. Call only when the person explicitly asks for a Workflow; a one-time task is not a Workflow. First ask the three interview questions one per turn: does it repeat, what changes each run, and who confirms. Nothing you write in the interview is confirmed: the person confirms or corrects each answer on the proposal card, and only that confirmation lets the Workflow be created, so never say the interview is agreed. Every output is a file whose name ends in an extension; the engine parses a .json only when a condition or a parameter from reads it, and that .json must declare a shape. A script is one flat .mjs file: it gets input/params.json and WORKFLOW_STEP_INPUT/WORKFLOW_STEP_OUTPUT, never arguments, and declares what it needs in modules. A document reaches a step only through inputs, from an earlier step's output. A parameter without an origin is supplied when the run starts; from extracts one field of an earlier .json output and collectedBy names the manual step that asks the person, so neither is ever required at the start. A manual step exists to receive a value from the person: it is not a pause, the answer never arrives through the chat, and a manual step without a parameter whose collectedBy is that step is refused. When the proposal is refused, the response is a WorkflowRefusal: it lists every problem with its path and the fix; correct all of them and propose again in the same turn. Inside a step, approval: open a request card (request_credential) and end the turn; the run waits indefinitely for a person; there is no timeout and no fallback; a refused card cancels the run. In a step's instructions, never promise a fallback such as \"continue if there is no answer\"; without an answer the step waits. Unknown fields are refused, not ignored. Three linked steps, exactly: {\"steps\":[{\"id\":\"pedir-link\",\"kind\":\"bot\",\"name\":\"Pedir o link\",\"botId\":\"<a bot id from list_bots>\",\"mode\":\"manual\",\"instructions\":\"Ask the person for today's video link and write it to output/link.txt.\",\"parameters\":[{\"name\":\"link\",\"type\":\"string\",\"collectedBy\":\"pedir-link\"}],\"outputs\":[{\"path\":\"link.txt\",\"required\":true}]},{\"id\":\"baixar-transcrever\",\"kind\":\"script\",\"name\":\"Baixar e transcrever\",\"run\":\"fetchshorts.mjs\",\"timeoutMs\":1800000,\"modules\":[\"yt-dlp\",\"ffmpeg\",{\"name\":\"faster-whisper\",\"runtime\":\"python\",\"version\":\"1.2.1\"},\"gpu\"],\"inputs\":[{\"as\":\"link.txt\",\"from\":{\"step\":\"pedir-link\",\"output\":\"link.txt\"}}],\"outputs\":[{\"path\":\"transcript.json\",\"required\":true,\"shape\":{\"type\":\"object\",\"required\":[\"segments\"],\"properties\":{\"segments\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"required\":[\"start\",\"end\",\"text\"],\"properties\":{\"start\":{\"type\":\"number\"},\"end\":{\"type\":\"number\"},\"text\":{\"type\":\"string\"}}}}}}}]},{\"id\":\"escolher-trechos\",\"kind\":\"bot\",\"name\":\"Escolher trechos\",\"botId\":\"<a bot id from list_bots>\",\"instructions\":\"Leia input/transcript.json e escreva output/trechos.json with the chosen clips.\",\"inputs\":[{\"as\":\"transcript.json\",\"from\":{\"step\":\"baixar-transcrever\",\"output\":\"transcript.json\"}}],\"outputs\":[{\"path\":\"trechos.json\",\"required\":true,\"shape\":{\"type\":\"object\",\"required\":[\"clips\"],\"properties\":{\"clips\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}}}}]}]} Nothing is created, listed or run until the person chooses Criar Workflow on the card; that choice opens the preview, which rehearses the scripts and carries the interview confirmation.",
+      "description": "Turn a conversation into a Workflow proposal. Call only when the person explicitly asks for a Workflow; a one-time task is not one. First ask the three interview questions one per turn: does it repeat, what changes each run, who confirms. The person confirms each answer on the card, so never call the interview agreed. A script is one flat .mjs file: it gets input/params.json and WORKFLOW_STEP_INPUT/WORKFLOW_STEP_OUTPUT, never arguments, and declares what it needs in modules. When refused, the response is a WorkflowRefusal: it lists every problem with its path and the fix; correct all of them and propose again in the same turn. Inside a step, approval: open a request card (request_credential) and end the turn; the run waits indefinitely for a person; there is no timeout and no fallback; a refused card cancels the run. In a step's instructions, never promise a fallback such as \"continue if there is no answer\"; without an answer the step waits. Unknown fields are refused, not ignored. Example, exactly: {\"steps\":[{\"id\":\"pedir-link\",\"kind\":\"bot\",\"name\":\"Pedir o link\",\"botId\":\"<a bot id from list_bots>\",\"mode\":\"manual\",\"instructions\":\"Ask the person for today's video link and write it to output/link.txt.\",\"parameters\":[{\"name\":\"link\",\"type\":\"string\",\"collectedBy\":\"pedir-link\"}],\"outputs\":[{\"path\":\"link.txt\",\"required\":true}]},{\"id\":\"baixar-transcrever\",\"kind\":\"script\",\"name\":\"Baixar e transcrever\",\"run\":\"fetchshorts.mjs\",\"timeoutMs\":1800000,\"modules\":[\"yt-dlp\",\"ffmpeg\",{\"name\":\"faster-whisper\",\"runtime\":\"python\",\"version\":\"1.2.1\"},\"gpu\"],\"inputs\":[{\"as\":\"link.txt\",\"from\":{\"step\":\"pedir-link\",\"output\":\"link.txt\"}}],\"outputs\":[{\"path\":\"transcript.json\",\"required\":true,\"shape\":{\"type\":\"object\",\"required\":[\"segments\"],\"properties\":{\"segments\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"required\":[\"start\",\"end\",\"text\"],\"properties\":{\"start\":{\"type\":\"number\"},\"end\":{\"type\":\"number\"},\"text\":{\"type\":\"string\"}}}}}}}]}]}",
       "inputSchema": {
         "type": "object",
         "additionalProperties": false,
@@ -2053,7 +2053,7 @@
                       "from"
                     ]
                   },
-                  "description": "Documents from earlier steps. A step sees only what it declares here."
+                  "description": "Files from earlier steps. A step sees only what it declares here."
                 },
                 "outputs": {
                   "type": "array",
@@ -2064,7 +2064,7 @@
                       "path": {
                         "type": "string",
                         "pattern": "^[^*]+\\.[A-Za-z0-9]{1,12}$",
-                        "description": "Exact file name with an extension, never a glob. A .json read by a condition needs a shape."
+                        "description": "Exact file name, never a glob. A .json a condition or a parameter reads needs a shape."
                       },
                       "required": {
                         "type": "boolean",
@@ -2073,7 +2073,7 @@
                       "shape": {
                         "type": "object",
                         "additionalProperties": true,
-                        "description": "JSON Schema (draft-07 or 2020-12) of this file's content."
+                        "description": "JSON Schema of this file's content."
                       }
                     },
                     "required": [
@@ -2101,8 +2101,7 @@
                           "boolean",
                           "date",
                           "enum"
-                        ],
-                        "description": "A list holds values of this type when list is true."
+                        ]
                       },
                       "required": {
                         "type": "boolean",
@@ -2121,7 +2120,7 @@
                       },
                       "list": {
                         "type": "boolean",
-                        "description": "True when params.json holds a list of scalars of type, never a list of objects."
+                        "description": "True when params.json holds a list of scalars, never a list of objects."
                       },
                       "from": {
                         "type": "object",
@@ -2133,7 +2132,7 @@
                           },
                           "output": {
                             "type": "string",
-                            "description": "Its required .json output, which carries a shape."
+                            "description": "Its required .json output."
                           },
                           "field": {
                             "type": "string",
@@ -2145,11 +2144,11 @@
                           "output",
                           "field"
                         ],
-                        "description": "The value is a field of an earlier step's JSON output. That document is then not also an input of this step."
+                        "description": "Value = a field of an earlier step's .json output; that file then need not be an input here."
                       },
                       "collectedBy": {
                         "type": "string",
-                        "description": "The id of the manual step that asks the person for this value."
+                        "description": "Id of the manual step that asks the person for this value."
                       }
                     },
                     "required": [
@@ -2157,14 +2156,14 @@
                       "type"
                     ]
                   },
-                  "description": "A parameter without from or collectedBy is supplied when the run starts. Never require at the start a value that an earlier step writes."
+                  "description": "Without from or collectedBy, supplied when the run starts. Never require at the start a value an earlier step writes."
                 },
                 "onSuccess": {
                   "type": [
                     "string",
                     "null"
                   ],
-                  "description": "Next step id; null ends the flow; omit for the next step in order."
+                  "description": "Next step id; null ends the flow; omit for the next in order."
                 },
                 "onFailure": {
                   "type": "string",
@@ -2172,7 +2171,7 @@
                 },
                 "onTimeout": {
                   "type": "string",
-                  "description": "Step to continue at when this step times out; needs timeoutMs."
+                  "description": "Step to continue at on timeout; needs timeoutMs."
                 },
                 "mode": {
                   "type": "string",
@@ -2180,7 +2179,7 @@
                     "auto",
                     "manual"
                   ],
-                  "description": "manual collects one of this step's parameters from the person before the step starts; it is not a pause, and a manual step without such a parameter is refused."
+                  "description": "manual asks the person for a parameter whose collectedBy is this step, before it starts; not a pause, and the answer never arrives through the chat. Without such a parameter the step is refused."
                 },
                 "timeoutMs": {
                   "type": "integer",
@@ -2235,9 +2234,9 @@
                         "description": "Install exactly this version."
                       }
                     },
-                    "description": "A string is a binary on PATH. An object names a package and its runtime."
+                    "description": "A string is a binary on PATH; an object names a package and its runtime."
                   },
-                  "description": "Script steps only: a binary such as ffmpeg, a package such as {\"name\":\"faster-whisper\",\"runtime\":\"python\",\"version\":\"1.2.1\"}, or gpu. Checked before a run; only Prepare environment installs a package."
+                  "description": "Script steps only: a binary (ffmpeg), a package, or gpu. Checked before a run; only Prepare environment installs a package."
                 },
                 "from": {
                   "type": "object",
@@ -2275,7 +2274,7 @@
                     "properties": {
                       "field": {
                         "type": "string",
-                        "description": "Dotted path into the .json read, such as total or check.ok."
+                        "description": "Dotted path into the .json read."
                       },
                       "op": {
                         "type": "string",
@@ -2291,7 +2290,7 @@
                         ]
                       },
                       "value": {
-                        "description": "Compared as JSON; leave it out only for exists."
+                        "description": "Compared as JSON; omit only for exists."
                       }
                     },
                     "required": [
@@ -2332,7 +2331,7 @@
                 "outputs"
               ]
             },
-            "description": "The steps, in order. The first is a bot or script step in mode manual. A condition reads one earlier step's required .json output by from {step, output}; a Do While reads its body the same way."
+            "description": "Steps in order. The first is a bot or script step in mode manual. A condition or Do While reads one earlier step's required .json output by from {step, output}."
           },
           "scripts": {
             "type": "array",
@@ -2367,7 +2366,7 @@
     },
     {
       "name": "create_workflow_from_proposal",
-      "description": "Create the Workflow the person approved by confirming the three interview answers and choosing Criar Workflow on the proposal card, then reviewing its preview. Never call it before that choice, and never confirm the interview for the person: without their confirmation the route refuses and says what is missing. Creation also requires a passing rehearsal, run by the person in the preview; if the route answers needsRehearsal, tell the person to run it and do not work around it. When the save refuses, the response is a WorkflowRefusal: it lists every problem with its path and the fix; correct all of them and propose again in the same turn. Returns the Workflow id; the first step stays manual.",
+      "description": "Create the Workflow the person approved: after they confirmed the three interview answers and chose Criar Workflow on the card, and its preview's rehearsal passed. Never call it before that, and never confirm the interview for the person. If it answers needsRehearsal, tell the person to run it and do not work around it. When refused, the response is a WorkflowRefusal: it lists every problem with its path and the fix; correct all of them and propose again in the same turn. Returns the Workflow id; the first step stays manual.",
       "inputSchema": {
         "type": "object",
         "additionalProperties": false,
