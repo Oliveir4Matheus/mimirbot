@@ -380,7 +380,7 @@ describe("official Antigravity runtime", () => {
   it("pins Google's release metadata for this supported host", () => {
     const asset = resolveAntigravityReleaseAsset();
     if (!asset) return;
-    expect(ANTIGRAVITY_RELEASE_VERSION).toBe("1.5.0");
+    expect(ANTIGRAVITY_RELEASE_VERSION).toBe("1.5.2");
     expect(asset.version).toBe(ANTIGRAVITY_RELEASE_VERSION);
     expect(asset.url).toMatch(/^https:\/\/dl\.google\.com\/agy-extensions\/releases\//u);
     expect(asset.sha256).toMatch(/^[a-f0-9]{64}$/u);
