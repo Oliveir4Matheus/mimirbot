@@ -26080,7 +26080,13 @@
       "accounts.chatgptSharedSetupNote": "953254bf7dd1030efce9d15d8cda59f36617071bae50cf906476467a299123ee",
       "computer.watchFullScreenTitle": "9f3f625c39cd1e74ba76474fda7f8cd15b2fabe6e6ee337201a72551f47986d2",
       "computer.watchingBotWorks": "b441025e38fe828e8ec4d56a2c9c685f88d9b41d993242c2af8eeaeb8ae3878b",
-      "connectors.resetSavedKeys": "764411710357197d3d55fbf646d0ea6249c4236cbc635e0b4212b8d92cf5dea6"
+      "connectors.resetSavedKeys": "764411710357197d3d55fbf646d0ea6249c4236cbc635e0b4212b8d92cf5dea6",
+      "workflows.proposals.exampleFiles": "614511bb1fb0e2df1db5b9cb0b79c4c9031b4b14b2378fcf7c6a261584a8e1e7",
+      "workflows.proposals.exampleFilesHint": "b55faa5faf2475355462e76d443df40113b5364f274d7741417317541c31e3cb",
+      "workflows.proposals.addExampleFile": "2c83c00f0e83b39c456f29fba21070cb968056429046300b97673e0fed68c639",
+      "workflows.proposals.exampleFileName": "3efed3de9d4b5170f223c8abdeaafa7e9a9b8884ca0886bd44c6d3c3e72d4766",
+      "workflows.proposals.exampleFileContent": "47bd29075f8b8019f0beec6d86beda7c9bf67aaf05053dcbe0b3bcb63968517f",
+      "workflows.proposals.removeExampleFile": "fffa2e32da712d499f75b15a2fae0e145c1f33dff29cac68e7e0a46f9bf9483a"
     },
     "zh": {
       "highlevel.unavailable": "87b8ac7f7610e6dd69f520bc59058fd92f307b9f4bcf804075f25d08bcaa7533",

@@ -265,6 +265,43 @@ describe("workflow proposal person routes", () => {
     expect(h.state.status).toBe(409);
   });
 
+  it("rehearses a script fed by a bot step when the person supplies the example file, then creates", async () => {
+    const h = harness();
+    const botFirst = [
+      {
+        id: "definir", kind: "bot", name: "Definir o corte", botId: "bot-a", mode: "manual",
+        instructions: "Pergunte o corte e escreva output/corte.json.",
+        parameters: [{ name: "dias", type: "integer", collectedBy: "definir" }],
+        outputs: [{ path: "corte.json" }],
+      },
+      {
+        id: "coletar", kind: "script", name: "Coletar", run: "coletar.mjs",
+        inputs: [{ as: "corte.json", from: { step: "definir", output: "corte.json" } }],
+        outputs: [{ path: "dados.json" }],
+      },
+    ];
+    const readsCutoff = "import { readFileSync, writeFileSync } from \"node:fs\";\n"
+      + "const corte = JSON.parse(readFileSync(\"input/corte.json\", \"utf8\"));\n"
+      + "writeFileSync(process.env.WORKFLOW_STEP_OUTPUT + \"/dados.json\", JSON.stringify(corte));\n";
+    await h.callInternal("POST", "/api/internal/workflows/proposals", body({ steps: botFirst, scripts: [{ name: "coletar.mjs", content: readsCutoff }] }));
+    const id = (h.state.body as { proposal: { id: string } }).proposal.id;
+    await h.call("POST", `/api/workflow-proposals/${id}/confirm`, undefined, { interview: { recurring: true, changes: "Só as datas", confirmer: "Eu confirmo" } });
+
+    await h.call("POST", `/api/workflow-proposals/${id}/rehearse`, undefined, {});
+    expect(h.state.status).toBe(200);
+    expect(h.proposals.read(id)?.rehearsal?.status).toBe("untested");
+
+    await h.call("POST", `/api/workflow-proposals/${id}/rehearse`, undefined, {
+      example: { files: [{ name: "corte.json", content: JSON.stringify({ dias: 3 }) }] },
+    });
+    expect(h.state.status).toBe(200);
+    expect(h.proposals.read(id)?.rehearsal?.status).toBe("passed");
+
+    await h.call("POST", `/api/workflow-proposals/${id}/create`);
+    expect(h.state.status).toBe(201);
+    expect(h.workflows.workflows()).toHaveLength(1);
+  });
+
   it("refuses a create whose rehearsal diverged, even when a reason is sent", async () => {
     const h = harness();
     await h.callInternal("POST", "/api/internal/workflows/proposals", body({ scripts: [{ name: "coletar.mjs", content: "console.log('nothing written')\n" }] }));

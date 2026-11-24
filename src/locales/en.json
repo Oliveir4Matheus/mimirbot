@@ -7475,5 +7475,11 @@
   "accounts.chatgptSharedSetupNote": "Bots that use these accounts also follow your own Codex setup: your instructions (AGENTS.md), config.toml, skills and plugins.",
   "computer.watchFullScreenTitle": "Watch the whole screen; the bot keeps working",
   "computer.watchingBotWorks": "Watching · the bot keeps working",
-  "connectors.resetSavedKeys": "Reset saved keys"
+  "connectors.resetSavedKeys": "Reset saved keys",
+  "workflows.proposals.exampleFiles": "Example files",
+  "workflows.proposals.exampleFilesHint": "A script that reads a file from a bot step does not run in a rehearsal. Provide here what that step would write, named exactly as the step declares it (for example, corte.json).",
+  "workflows.proposals.addExampleFile": "Add file",
+  "workflows.proposals.exampleFileName": "File name",
+  "workflows.proposals.exampleFileContent": "Content",
+  "workflows.proposals.removeExampleFile": "Remove file"
 }

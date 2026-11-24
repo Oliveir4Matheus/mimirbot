@@ -2,7 +2,7 @@
 // bytes they produced. Bot steps are not judged by their reasoning: without an
 // isolated engine they are "untested", never "passed".
 import { createHash } from "node:crypto";
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -35,7 +35,8 @@ function stepDir(root: string, id: string): string {
 }
 
 /** Copies what an earlier script of this rehearsal produced. A file from a step a rehearsal
- * does not run is not an error: it means this script cannot be tested here. */
+ * does not run is not an error when the person supplied it as an example: an example file for
+ * this step's input stands in for that output, so the script can still be tested. */
 function copyDeclared(
   root: string,
   step: WorkflowStep & { kind: "bot" | "script" },
@@ -46,10 +47,12 @@ function copyDeclared(
     const sourceIndex = steps.findIndex((candidate) => candidate.id === input.from.step);
     if (sourceIndex < 0 || sourceIndex >= index) return { missing: `its input ${input.as} comes from a later step` };
     const source = join(stepDir(root, steps[sourceIndex]!.id), "output", input.from.output);
+    const target = join(stepDir(root, step.id), "input", input.as);
     try {
       mkdirSync(join(stepDir(root, step.id), "input"), { recursive: true });
-      cpSync(source, join(stepDir(root, step.id), "input", input.as));
+      cpSync(source, target);
     } catch {
+      if (existsSync(target)) continue;
       return { missing: `its input ${input.from.output} comes from ${input.from.step}, which a rehearsal does not run; add an example file to test it` };
     }
   }

@@ -136,3 +136,36 @@ describe("ProposalPreview closing", () => {
     expect(close).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("ProposalPreview example files", () => {
+  const setValue = (element: HTMLInputElement | HTMLTextAreaElement, value: string) => flushSync(() => {
+    const prototype = element instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+    Object.getOwnPropertyDescriptor(prototype, "value")!.set!.call(element, value);
+    element.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+
+  const testable = workflowDefinitionSchema.parse({
+    ...definition,
+    steps: [{ ...definition.steps[0], outputs: [{ path: "dados.json" }] }],
+  });
+
+  it("hands the named example files to the rehearsal", () => {
+    const rehearse = vi.fn();
+    render(proposal({ definition: testable, rehearsal: { at: 1, status: "untested", steps: [] } }), { onRehearse: rehearse });
+    click(button(t("workflows.proposals.exampleFiles")));
+    click(button(t("workflows.proposals.addExampleFile")));
+    setValue(host.querySelector(`input[aria-label="${t("workflows.proposals.exampleFileName")}"]`)!, "corte.json");
+    setValue(host.querySelector(`textarea[aria-label="${t("workflows.proposals.exampleFileContent")}"]`)!, '{"dias":3}');
+    click(button(t("workflows.proposals.runRehearsal")));
+    expect(rehearse).toHaveBeenCalledWith({ files: [{ name: "corte.json", content: '{"dias":3}' }] });
+  });
+
+  it("runs the rehearsal with no example when the name is left empty", () => {
+    const rehearse = vi.fn();
+    render(proposal({ definition: testable, rehearsal: { at: 1, status: "untested", steps: [] } }), { onRehearse: rehearse });
+    click(button(t("workflows.proposals.exampleFiles")));
+    click(button(t("workflows.proposals.addExampleFile")));
+    click(button(t("workflows.proposals.runRehearsal")));
+    expect(rehearse).toHaveBeenCalledWith({});
+  });
+});

@@ -65,8 +65,8 @@ export function ProposalPreviewDialog({ proposalId, onClose, onCreated }: {
         await annotateProposal(proposalId, { ...proposal.annotations, [stepId]: text });
         await refresh();
       })}
-      onRehearse={() => void act(async () => {
-        await rehearseProposal(proposalId, {});
+      onRehearse={(example) => void act(async () => {
+        await rehearseProposal(proposalId, example);
         await refresh();
       })}
       onRound={() => void act(async () => {

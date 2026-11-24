@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AlertTriangle, Check, Code, Code2, Copy, FlaskConical, GitBranch, Pencil, Repeat, Send, X } from "lucide-react";
+import { AlertTriangle, Check, Code, Code2, Copy, FlaskConical, GitBranch, Pencil, Plus, Repeat, Send, X } from "lucide-react";
 
 import type { WorkflowProposal, WorkflowProposalAnswers } from "../../../shared/workflow-proposal";
 import { proposalPreview, type ProposalPreviewStep } from "../../../shared/workflow-proposal-preview";
@@ -118,7 +118,7 @@ export function ProposalPreview({
   proposal: WorkflowProposal;
   onClose: () => void;
   onNote: (stepId: string, text: string) => void;
-  onRehearse: () => void;
+  onRehearse: (example: { files?: Array<{ name: string; content: string }> }) => void;
   onRound: () => void;
   onConfirm?: (answers: WorkflowProposalAnswers) => void;
   onOpenStudio?: () => void;
@@ -137,6 +137,9 @@ export function ProposalPreview({
   const storedConfirmer = proposal.interview.confirmer;
   const confirmedAt = proposal.interview.confirmedAt;
   const [answers, setAnswers] = useState<WorkflowProposalAnswers>({ recurring: storedRecurring, changes: storedChanges, confirmer: storedConfirmer });
+  const [exampleFiles, setExampleFiles] = useState<Array<{ name: string; content: string }>>([]);
+  const [showExamples, setShowExamples] = useState(false);
+  const usableExamples = exampleFiles.filter((file) => file.name.trim());
   useEffect(() => {
     setAnswers({ recurring: storedRecurring, changes: storedChanges, confirmer: storedConfirmer });
   }, [storedRecurring, storedChanges, storedConfirmer]);
@@ -351,10 +354,62 @@ export function ProposalPreview({
                 <IssueBand kind="rehearsal" proposal={proposal} issues={diverged} canSend={canSend} onSend={onSendError} />
               </div>
             )}
+            {!passed && (
+              <div className="mt-3 rounded-[10px] border border-hairline bg-inset/50 px-3 py-2.5">
+                <button
+                  type="button"
+                  onClick={() => setShowExamples((open) => !open)}
+                  aria-expanded={showExamples}
+                  className="flex w-full items-center gap-1.5 text-left text-[11px] font-semibold text-ink"
+                >
+                  <Plus size={12} className={showExamples ? "rotate-45 transition-transform" : "transition-transform"} />
+                  {t("workflows.proposals.exampleFiles")}
+                  {usableExamples.length > 0 ? ` (${usableExamples.length})` : ""}
+                </button>
+                {showExamples && (
+                  <div className="mt-2 space-y-2">
+                    <p className="text-[10px] leading-[1.45] text-ink-tertiary">{t("workflows.proposals.exampleFilesHint")}</p>
+                    {exampleFiles.map((file, index) => (
+                      <div key={index} className="rounded-lg border border-hairline bg-white p-2">
+                        <div className="flex items-center gap-2">
+                          <input
+                            value={file.name}
+                            onChange={(event) => setExampleFiles((files) => files.map((entry, at) => at === index ? { ...entry, name: event.target.value } : entry))}
+                            placeholder={t("workflows.proposals.exampleFileName")}
+                            aria-label={t("workflows.proposals.exampleFileName")}
+                            className={cn(CONTROL, "flex-1")}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setExampleFiles((files) => files.filter((_, at) => at !== index))}
+                            aria-label={t("workflows.proposals.removeExampleFile")}
+                            title={t("workflows.proposals.removeExampleFile")}
+                            className="grid size-7 flex-none place-items-center rounded-lg text-ink-secondary hover:bg-raised"
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                        <textarea
+                          value={file.content}
+                          onChange={(event) => setExampleFiles((files) => files.map((entry, at) => at === index ? { ...entry, content: event.target.value } : entry))}
+                          placeholder={t("workflows.proposals.exampleFileContent")}
+                          aria-label={t("workflows.proposals.exampleFileContent")}
+                          rows={3}
+                          className={cn(CONTROL, "mt-1.5 font-mono")}
+                        />
+                      </div>
+                    ))}
+                    <button type="button" onClick={() => setExampleFiles((files) => [...files, { name: "", content: "" }])} className={BTN}>
+                      <Plus size={12} /> {t("workflows.proposals.addExampleFile")}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
             <div className="mt-2.5 flex flex-wrap items-center gap-2.5">
               <button
                 type="button"
-                onClick={onRehearse}
+                onClick={() => onRehearse(usableExamples.length > 0 ? { files: usableExamples } : {})}
                 disabled={busy || blocked || passed}
                 title={blocked ? t("workflows.proposals.rehearsalBlocked") : undefined}
                 className={passed ? BTN : BTN_PRIMARY}

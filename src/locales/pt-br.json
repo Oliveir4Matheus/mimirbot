@@ -7074,5 +7074,11 @@
   "accounts.chatgptSharedSetupNote": "Os bots que usam essas contas também seguem a sua configuração do Codex: suas instruções (AGENTS.md), config.toml, skills e plugins.",
   "computer.watchFullScreenTitle": "Ver a tela inteira; o bot continua trabalhando",
   "computer.watchingBotWorks": "Assistindo · o bot continua trabalhando",
-  "connectors.resetSavedKeys": "Redefinir chaves salvas"
+  "connectors.resetSavedKeys": "Redefinir chaves salvas",
+  "workflows.proposals.exampleFiles": "Arquivos de exemplo",
+  "workflows.proposals.exampleFilesHint": "Um script que lê um arquivo de uma etapa de bot não roda no ensaio. Informe aqui o que essa etapa escreveria, com o nome exato que ela declara (por exemplo, corte.json).",
+  "workflows.proposals.addExampleFile": "Adicionar arquivo",
+  "workflows.proposals.exampleFileName": "Nome do arquivo",
+  "workflows.proposals.exampleFileContent": "Conteúdo",
+  "workflows.proposals.removeExampleFile": "Remover arquivo"
 }

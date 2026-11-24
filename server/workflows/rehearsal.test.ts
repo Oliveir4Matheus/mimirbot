@@ -81,4 +81,61 @@ describe("proposal rehearsal", () => {
     expect(result.status).toBe("diverged");
     expect(result.steps[0]).toMatchObject({ id: "example", label: "diverged" });
   });
+
+  const manualFirst = (body: string) => workflowProposalSchema.parse({
+    id: "9b6c2d3e-4f5a-4b6c-8d9e-0f1a2b3c4d5e",
+    department: "Financeiro",
+    status: "draft",
+    createdAt: 1,
+    updatedAt: 1,
+    interview: { recurring: true, changes: "Datas", confirmer: "Eu" },
+    annotations: {},
+    rounds: 0,
+    definition: workflowDefinitionSchema.parse({
+      id: "9b6c2d3e-4f5a-4b6c-8d9e-0f1a2b3c4d5e",
+      version: 1,
+      name: "Corte por pessoa",
+      department: "Financeiro",
+      createdAt: 1,
+      updatedAt: 1,
+      steps: [
+        {
+          id: "definir-corte", kind: "bot", name: "Definir o corte", botId: "bot-a", mode: "manual",
+          instructions: "Pergunte o corte e escreva output/corte.json.",
+          parameters: [{ name: "dias", type: "integer", collectedBy: "definir-corte" }],
+          outputs: [{ path: "corte.json", required: true }],
+        },
+        {
+          id: "calcular", kind: "script", name: "Calcular", run: "calcular.mjs",
+          inputs: [{ as: "corte.json", from: { step: "definir-corte", output: "corte.json" } }],
+          outputs: [{ path: "result.json" }], result: "result.json",
+        },
+      ],
+    }),
+    scripts: [{ name: "calcular.mjs", content: body }],
+  });
+
+  const readsCutoff = `import { readFileSync, writeFileSync } from "node:fs";
+const corte = JSON.parse(readFileSync("input/corte.json", "utf8"));
+writeFileSync("output/result.json", JSON.stringify({ dias: corte.dias }));
+`;
+
+  it("tests a script fed by a bot step when the person supplies the example file", async () => {
+    const result = await rehearseProposal(manualFirst(readsCutoff), {
+      files: [{ name: "corte.json", content: JSON.stringify({ dias: 3 }) }],
+    });
+    expect(result.status).toBe("passed");
+    expect(result.steps.find((step) => step.id === "definir-corte")).toMatchObject({ label: "untested" });
+    expect(result.steps.find((step) => step.id === "calcular")).toMatchObject({ label: "passed", produced: ["result.json"] });
+    expect(result.example).toEqual(["corte.json"]);
+  });
+
+  it("keeps that script untested when no example file is supplied", async () => {
+    const result = await rehearseProposal(manualFirst(readsCutoff), {});
+    expect(result.status).toBe("untested");
+    expect(result.steps.find((step) => step.id === "calcular")).toMatchObject({
+      label: "untested",
+      detail: "its input corte.json comes from definir-corte, which a rehearsal does not run; add an example file to test it",
+    });
+  });
 });
