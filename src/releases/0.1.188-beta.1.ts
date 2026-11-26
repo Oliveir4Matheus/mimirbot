@@ -5,8 +5,16 @@ const release: Release = {
   date: "2026-11-26",
   notes: {
     en: {
-      lead: "The bundled Cua Driver moves to 0.62.1, with its third-party notices, licenses and SBOM regenerated from the exact upstream commit.",
+      lead: "This beta brings the new minimalist agent shapes and a white hexagon brand mark, alongside the Cua Driver 0.62.1 update.",
       features: [
+        {
+          title: "New agent shapes",
+          body: "Eight minimalist outline shapes replace the ten old mascot bodies in the avatar picker and the ready-made bots. Each shape has still, thinking and working states; the bot's own colour is applied to the outline. Bots saved with an old body id keep their look through a mapping, and custom images still work as before.",
+        },
+        {
+          title: "White hexagon Mimir mark",
+          body: "The app and rail icon now use the white hexagon on the dark Mimir tile, matching the new agent shape language.",
+        },
         {
           title: "Cua Driver 0.62.1",
           body: "Local computer control ships Cua Driver 0.62.1 on macOS (universal), Windows x64 and Linux x64. The archive and every member it carries were re-measured from the release, and the npm SDK moves with it.",
@@ -17,13 +25,22 @@ const release: Release = {
         },
       ],
       fixes: [
+        "Old body choices are mapped to the closest new shape, so existing bots do not lose their avatar.",
         "Local computer control accepts the new bundled driver version instead of rejecting every turn with an outdated pin.",
         "The Linux package smoke's stub driver and the X11 input smoke's metadata check follow the new version.",
       ],
     },
     "pt-br": {
-      lead: "O Cua Driver empacotado passa para 0.62.1, com avisos de terceiros, licenças e SBOM regerados a partir do commit exato do upstream.",
+      lead: "Este beta traz os novos formatos minimalistas de agente e a marca hexágono branca, junto com a atualização do Cua Driver 0.62.1.",
       features: [
+        {
+          title: "Novos formatos de agente",
+          body: "Oito contornos minimalistas substituem os dez corpos antigos na galeria de avatar e nos bots prontos. Cada formato tem os estados estático, pensando e trabalhando; a cor do bot é aplicada ao contorno. Bots salvos com um corpo antigo mantêm o visual por um mapeamento, e imagens próprias continuam funcionando.",
+        },
+        {
+          title: "Marca do Mimir em hexágono branco",
+          body: "O ícone do app e da barra lateral agora usa o hexágono branco sobre o tile escuro do Mimir, acompanhando a linguagem dos novos formatos de agente.",
+        },
         {
           title: "Cua Driver 0.62.1",
           body: "O controle do computador local passa a usar o Cua Driver 0.62.1 no macOS (universal), Windows x64 e Linux x64. O arquivo e cada membro que ele carrega foram medidos de novo a partir do release, e o SDK npm acompanha.",
@@ -34,6 +51,7 @@ const release: Release = {
         },
       ],
       fixes: [
+        "Os corpos antigos são mapeados para o formato novo mais próximo, então bots existentes não perdem o avatar.",
         "O controle do computador local aceita a versão nova do driver empacotado em vez de recusar todo turno com um pin antigo.",
         "O driver stub do smoke do pacote Linux e a checagem de metadados do smoke de X11 acompanham a versão nova.",
       ],
