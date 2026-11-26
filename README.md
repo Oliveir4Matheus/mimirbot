@@ -51,7 +51,7 @@ Watch the team hand work to each other, and approve what matters.
 A company does not run on one generalist with one chat box. It runs on roles, rituals, handoffs, approvals and a
 shared memory of what was decided. A single assistant can answer a question; it cannot run the shape of the work.
 
-MimirBot is that shape, built for agents. It is a chat app where every contact is an agent and every room is a
+MimirBot is that workspace, built for agents. It is a chat app where every contact is an agent and every room is a
 team: departments, direct messages, group chats, a Chief of Staff, recurring routines, shared memory, and a
 computer for each bot. The agents work **separately** when the job is theirs, and **together** when the job crosses
 a boundary.
