@@ -36,7 +36,7 @@ real Chrome whenever this machine has one, chosen once per machine
    `HKLM\SOFTWARE\Policies\Google\Chrome` key, or a JSON file in
    `/etc/opt/chrome/policies/managed`). Bots get their own profiles; the
    person's Chrome profile is never touched.
-2. Otherwise **Chrome for Testing** 153.0.8010.47, downloaded once into
+2. Otherwise **Chrome for Testing** 158.0.8127.88, downloaded once into
    `tools/chrome/` in the data directory at first launch, checked against its
    pinned size and SHA-256 before it is unpacked, and moved into place in one
    rename. Only platforms with a pin download (Apple silicon Macs and Linux

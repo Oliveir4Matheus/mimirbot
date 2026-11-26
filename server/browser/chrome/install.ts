@@ -8,7 +8,7 @@ import { pipeline } from "node:stream/promises";
 
 import { renameWithRetry } from "../../atomic.ts";
 
-export const CHROME_FOR_TESTING_VERSION = "153.0.8010.47";
+export const CHROME_FOR_TESTING_VERSION = "158.0.8127.88";
 
 export interface ChromeForTestingPin {
   version: string;
@@ -20,9 +20,9 @@ export interface ChromeForTestingPin {
 
 /** A platform without a SHA-256 here downloads nothing; scripts/pin-chrome-for-testing.ts measures new pins. */
 const PINS: Record<string, Omit<ChromeForTestingPin, "version">> = {
-  "darwin-arm64": { platform: "mac-arm64", bytes: 190878359, sha256: "939ef9dc3aa74240c929d793e123edab0fda89c5a9cfeb029686c34141d2ed58" },
-  "linux-x64": { platform: "linux64", bytes: 195709628, sha256: "89778cbf7a852726b6f51649b2586b894c00737e81f8031733721560d21bbea7" },
-  "linux-arm64": { platform: "linux-arm64", bytes: 195919275, sha256: "ef3d2fea85e675ba8e9a7894c0be4595e5130659a9ac95e04c6064ed09f411da" },
+  "darwin-arm64": { platform: "mac-arm64", bytes: 200_337_306, sha256: "6caf16b007aafaf6d4a4db252262be8ebbf0d91a2af005257e388996dbe463d6" },
+  "linux-x64": { platform: "linux64", bytes: 208_082_347, sha256: "59e3b43f8b3aaa292238fbdcfb36a93127debd53e212510dcdc2cc8812b4b57e" },
+  "linux-arm64": { platform: "linux-arm64", bytes: 205_794_810, sha256: "91669b5de79af808d498037dd974e4b09461776a1b5240b3bb656abd17e5d3ab" },
 };
 
 const EXECUTABLES: Record<string, string> = {
