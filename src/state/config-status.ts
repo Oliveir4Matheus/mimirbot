@@ -145,7 +145,7 @@ export interface BrowserEngineSummary {
   installable?: boolean;
   version?: string;
   /** The browser the engine starts, e.g. "Google Chrome 153 (installed)", or while Chrome for Testing downloads,
-   * "Chrome for Testing 153.0.8010.47 (downloading: 52 of 182 MB)". */
+   * "Chrome for Testing 158.0.8127.88 (downloading: 52 of 182 MB)". */
   chrome?: string;
   installing?: boolean;
   installError?: string;
