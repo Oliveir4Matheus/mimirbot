@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>MimirBot — a workspace of agents</title>
+<link rel="icon" href="../../public/app-icon.svg">
 <meta name="description" content="MimirBot is a local-first workspace of AI agents: departments, routines, workflows, shared memory and a computer for every bot.">
 <style>
   :root {
@@ -15,7 +16,7 @@
     --faint: #8494a7;
     --line: #dbe4ef;
     --line-soft: #e8eef6;
-    --blue: #0a7cff;
+    --blue: #0068d9;
     --blue-ink: #064f9e;
     --blue-soft: #eaf3ff;
     --mint: #1f9d62;
@@ -72,14 +73,19 @@
     height: 40px; padding: 0 18px; border-radius: 10px;
     background: var(--blue); color: #fff; text-decoration: none; font-size: 14px; font-weight: 600;
     border: 1px solid transparent; cursor: pointer;
-    box-shadow: 0 1px 0 rgba(255,255,255,.25) inset, 0 6px 14px -8px rgba(10, 124, 255, .8);
+    box-shadow: 0 1px 0 rgba(255,255,255,.25) inset, 0 6px 14px -8px rgba(0, 104, 217, .8);
     transition: background .18s ease, transform .18s ease;
   }
-  .btn:hover { background: #006fe8; color: #fff; }
+  .btn:hover { background: #005fc7; color: #fff; }
   .btn:active { transform: translateY(1px); }
   .btn.secondary { background: var(--panel); color: var(--ink); border-color: var(--line); box-shadow: none; }
   .btn.secondary:hover { border-color: #b9c9dc; background: #fbfdff; }
   .btn.small { height: 34px; padding: 0 13px; font-size: 13px; }
+  .menu-btn { display: none; align-items: center; justify-content: center; height: 36px; padding: 0 12px; border: 1px solid var(--line); border-radius: 9px; background: var(--panel); color: var(--ink-2); font-size: 13px; font-weight: 600; cursor: pointer; }
+  .menu-btn:hover { background: #f2f7fd; }
+  .mobile-nav { display: none; }
+  .mobile-nav[hidden] { display: none !important; }
+  [hidden] { display: none !important; }
 
   /* ---------- dot canvas ---------- */
   .canvas {
@@ -247,7 +253,8 @@
   .note { margin-top: 14px; color: var(--muted); font-size: 12.5px; line-height: 1.55; }
 
   /* ---------- capability ---------- */
-  .cap { margin-top: 36px; border: 1px solid var(--line); border-radius: 12px; overflow: auto; background: #fff; }
+  .cap { margin-top: 36px; border: 1px solid var(--line); border-radius: 12px; overflow: auto; background: #fff; -webkit-overflow-scrolling: touch; }
+  .table-hint { display: none; margin: 0 2px 10px; color: var(--blue-ink); font-size: 12.5px; font-weight: 600; }
   table.cap-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 620px; }
   .cap-table th, .cap-table td { text-align: left; padding: 11px 15px; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
   .cap-table th { font-size: 11.5px; color: var(--muted); font-weight: 600; background: #f8fafd; }
@@ -317,6 +324,7 @@
     .nav { display: none; }
     .top-actions .ghost-link { display: none; }
     .hero { padding-top: 44px; }
+    .table-hint { display: block; }
     section { padding: 60px 0; }
     .section-head { display: block; }
     .section-head p { margin-top: 12px; }
@@ -334,8 +342,19 @@
     .install span { grid-column: 1 / -1; }
     footer.site .right { margin-left: 0; }
   }
+  @media (max-width: 700px) {
+    dialog.lightbox { width: calc(100vw - 16px); max-height: calc(100vh - 16px); }
+    .lb-head { padding: 12px; gap: 10px; }
+    .lb-head p::after { content: " Scroll to pan the full screenshot."; color: var(--ink-2); }
+    .lb-body { max-height: calc(100vh - 108px); overflow: auto; -webkit-overflow-scrolling: touch; }
+    .lb-body img { width: 900px; max-width: none; }
+  }
   @media (max-width: 520px) {
     h1 { font-size: 40px; }
+    .menu-btn { display: inline-flex; }
+    .mobile-nav { display: block; position: fixed; z-index: 45; top: 64px; left: 12px; right: 12px; padding: 8px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 18px 40px -20px rgba(13,30,54,.4); }
+    .mobile-nav a { display: block; padding: 10px 12px; border-radius: 8px; color: var(--ink-2); text-decoration: none; font-size: 14px; }
+    .mobile-nav a:hover { background: var(--blue-soft); }
     .hero-actions .btn { width: 100%; }
     .float-card { position: static; width: auto; margin-top: 12px; border-radius: 10px; }
     .chrome .tab { display: none; }
@@ -363,9 +382,17 @@
     </nav>
     <div class="top-actions">
       <a class="ghost-link" href="https://github.com/Oliveir4Matheus/mimirbot" target="_blank" rel="noreferrer">GitHub</a>
+      <button class="menu-btn" id="menu-btn" type="button" aria-expanded="false" aria-controls="mobile-nav">Menu</button>
       <a class="btn" href="https://github.com/Oliveir4Matheus/mimirbot/releases/latest" target="_blank" rel="noreferrer">Download</a>
     </div>
   </div>
+  <nav class="mobile-nav" id="mobile-nav" aria-label="Sections" hidden>
+    <a href="#why">Why MimirBot</a>
+    <a href="#features">Features</a>
+    <a href="#how">How it works</a>
+    <a href="#quickstart">Get started</a>
+    <a href="https://github.com/Oliveir4Matheus/mimirbot" target="_blank" rel="noreferrer">GitHub</a>
+  </nav>
 </header>
 
 <main id="main">
@@ -608,6 +635,7 @@ pnpm dev:desktop</pre>
         <div><span class="eyebrow">Status</span><h2>Beta, with the guardrails visible</h2></div>
         <p>The loop works end to end. Windows and Ubuntu x64 have published builds; macOS builds from source. Wayland host control stays disabled while the safety gate is open.</p>
       </div>
+      <p class="table-hint">Scroll to see every platform →</p>
       <div class="cap">
         <table class="cap-table">
           <thead><tr><th>Capability</th><th>Windows</th><th>macOS</th><th>Ubuntu Xorg</th><th>Ubuntu Wayland</th></tr></thead>
@@ -690,6 +718,27 @@ pnpm dev:desktop</pre>
     dialog.addEventListener("click", (event) => {
       if (event.target === dialog) dialog.close();
     });
+
+    const menuBtn = document.getElementById("menu-btn");
+    const mobileNav = document.getElementById("mobile-nav");
+    if (menuBtn && mobileNav) {
+      menuBtn.addEventListener("click", () => {
+        const open = mobileNav.hidden;
+        mobileNav.hidden = !open;
+        menuBtn.setAttribute("aria-expanded", String(open));
+      });
+      mobileNav.querySelectorAll("a").forEach((link) => link.addEventListener("click", () => {
+        mobileNav.hidden = true;
+        menuBtn.setAttribute("aria-expanded", "false");
+      }));
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && !mobileNav.hidden) {
+          mobileNav.hidden = true;
+          menuBtn.setAttribute("aria-expanded", "false");
+          menuBtn.focus();
+        }
+      });
+    }
 
     const copy = document.getElementById("copy");
     copy.addEventListener("click", async () => {
