@@ -4,6 +4,7 @@ import { usePrefersReducedMotion } from "./mascot-clock";
 import {
   agentShapeAsset,
   agentShapeState,
+  thickenAgentShapeSvg,
   type AgentShapeId,
 } from "@/lib/agent-shapes";
 
@@ -34,7 +35,7 @@ function loadShape(url: string): Promise<string> {
 }
 
 function paint(raw: string, color: string): string {
-  return raw
+  return thickenAgentShapeSvg(raw)
     .replace(/<title>.*?<\/title>/s, "")
     .replace('color="#000000"', `color="${color}"`)
     .replace("<svg ", '<svg width="100%" height="100%" style="display:block" ');
