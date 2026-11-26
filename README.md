@@ -367,7 +367,7 @@ pnpm package:mac      # macOS: DMG + ZIP; requires Swift/Xcode tools
 
 | Capability | macOS | Ubuntu 24.04 Xorg | Ubuntu 24.04 Wayland | Windows |
 |---|---|---|---|---|
-| Packaged app, embedded harness, local agent CLIs | Supported | Beta | Beta | Supported |
+| Packaged app, embedded harness, local agent CLIs | Source | Beta | Beta | Supported |
 | Composio and cloud computers | Supported | Beta | Beta | Supported |
 | Explicit preview-only local screen capture | Supported | Beta | Beta | Supported |
 | Bot control of this computer | Supported | Beta, explicit opt-in | Disabled: Wayland safety gate | Supported |
