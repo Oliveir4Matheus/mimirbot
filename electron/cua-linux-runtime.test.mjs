@@ -67,7 +67,7 @@ function handshake(pid = 4321) {
   return {
     metadata: {
       driver_version: "0.62.1",
-      contract_version: "0.8.0",
+      contract_version: "0.9.0",
       tools_list_schema_version: "1",
       capability_version: "1",
       mcp_protocol_version: "2025-06-18",
@@ -386,7 +386,7 @@ describe.skipIf(process.platform === "win32")("Linux CUA opt-in and lifecycle", 
         manifestSchema: "1",
         fileIdentity: validateDriverCandidate(context.binary).fileIdentity,
       },
-      daemon: { pid: 4321, contractVersion: "0.8.0" },
+      daemon: { pid: 4321, contractVersion: "0.9.0" },
       mcp: {
         command: context.binary,
         args: ["mcp", "--embedded", "--socket", expect.stringMatching(/driver\.sock$/)],

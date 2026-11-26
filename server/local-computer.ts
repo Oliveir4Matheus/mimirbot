@@ -203,7 +203,7 @@ export function decodeLinuxDescriptor(value: LinuxConnectionDescriptor): LocalCo
     !isAbsolute(daemon.socketPath) ||
     !Number.isInteger(daemon.pid) ||
     (daemon.pid as number) <= 0 ||
-    daemon.contractVersion !== "0.8.0" ||
+    daemon.contractVersion !== "0.9.0" ||
     daemon.toolsListSchemaVersion !== "1" ||
     daemon.capabilityVersion !== "1" ||
     daemon.mcpProtocolVersion !== "2025-06-18" ||
