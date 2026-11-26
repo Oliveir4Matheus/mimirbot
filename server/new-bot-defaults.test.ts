@@ -9,6 +9,7 @@ describe("new-bot templates", () => {
     expect(resolveBotCreationDefaults(defaults, {}).profile).toEqual({ toolScope: { allow: ["native:read"] } });
     expect(resolveBotCreationDefaults(defaults, { settings: { toolScope: { allow: [] } } }).profile).toEqual({ toolScope: { allow: [] } });
     expect(resolveBotCreationDefaults(defaults, { settings: { toolScope: null } }).profile).toEqual({ toolScope: null });
+    expect(resolveBotCreationDefaults(defaults, { toolScope: { allow: [] } }).profile).toEqual({ toolScope: { allow: [] } });
     expect(newBotDefaultsSchema.safeParse({ profile: { toolScope: { deny: ["mcp:*:read"] } } }).success).toBe(false);
   });
   it("stores Full as a plain preference, with no consent field, and creates new bots with it", () => {

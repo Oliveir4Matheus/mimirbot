@@ -1,0 +1,951 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Workflow a partir da conversa — especificação</title>
+<style>
+  :root{
+    --ink:#101114;--ink-2:#3d4048;--ink-3:#6b6f78;
+    --line:#e6e6e9;--line-2:#d3d4d8;--paper:#fff;--paper-2:#fafafb;
+    --blue:#2f6fed;--blue-soft:#eef3fe;--green:#178a5a;--green-soft:#eaf7f0;
+    --amber:#9a6200;--amber-soft:#fff6e0;--red:#b4232c;--red-soft:#fdeeef;
+    --radius:14px;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.62;-webkit-font-smoothing:antialiased;overflow:hidden}
+  .app{height:100dvh;display:flex;flex-direction:column}
+  .top{flex:none;display:flex;align-items:center;gap:14px;padding:12px 22px;border-bottom:1px solid var(--line);background:var(--paper-2);z-index:5}
+  .brand{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);font-weight:700;white-space:nowrap}
+  .top .spacer{flex:1}
+  .counter{font-size:12px;color:var(--ink-3);font-variant-numeric:tabular-nums;white-space:nowrap}
+  .iconbtn{border:1px solid var(--line-2);background:#fff;border-radius:8px;padding:5px 10px;font-size:12px;font-weight:600;color:var(--ink-2);cursor:pointer}
+  .iconbtn:hover{border-color:var(--ink-3);color:var(--ink)}
+  .bar{flex:none;height:3px;background:var(--line);position:relative}
+  .bar span{position:absolute;inset:0 auto 0 0;background:var(--ink);width:3%;transition:width .25s ease}
+  .stage{flex:1;overflow-y:auto;overflow-x:hidden;scroll-behavior:smooth}
+  .step{display:none;max-width:860px;margin:0 auto;padding:42px 28px 70px}
+  .step.active{display:block;animation:in .22s ease}
+  @keyframes in{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
+  @media(prefers-reduced-motion:reduce){.step.active{animation:none}.bar span{transition:none}}
+  .step .kicker{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3);font-weight:700;margin:0 0 12px}
+  h1{font-size:clamp(32px,5vw,52px);line-height:1.05;letter-spacing:-.03em;margin:0 0 18px;font-weight:700}
+  h2{font-size:clamp(24px,3.4vw,33px);line-height:1.15;letter-spacing:-.02em;margin:0 0 14px;font-weight:680}
+  h3{font-size:18px;letter-spacing:-.01em;margin:30px 0 8px;font-weight:650}
+  h4{font-size:14.5px;margin:20px 0 4px;font-weight:650}
+  p{margin:0 0 14px}
+  .lead{font-size:19px;color:var(--ink-2);line-height:1.55;max-width:62ch}
+  .muted{color:var(--ink-3)} .small{font-size:13.5px;line-height:1.55}
+  a{color:var(--blue);text-decoration:none}
+  code{font-family:var(--mono);font-size:.88em;background:var(--paper-2);border:1px solid var(--line);border-radius:5px;padding:1px 5px}
+  ul,ol{margin:0 0 16px;padding-left:22px}
+  li{margin:6px 0} li>ul{margin:4px 0}
+  strong{font-weight:650}
+  em{font-style:normal;background:linear-gradient(transparent 62%,#ffe9a8 62%)}
+  .box{border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;margin:18px 0;background:var(--paper-2)}
+  .box.blue{border-color:#cddcfb;background:var(--blue-soft)}
+  .box.green{border-color:#c3e6d4;background:var(--green-soft)}
+  .box.amber{border-color:#f0dcae;background:var(--amber-soft)}
+  .box.red{border-color:#f2c9cc;background:var(--red-soft)}
+  .box h4{margin-top:0}
+  .box p:last-child,.box ul:last-child,.box ol:last-child{margin-bottom:0}
+  .rule{font-size:23px;line-height:1.4;letter-spacing:-.015em;font-weight:650;margin:0 0 8px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  @media(max-width:760px){.grid2,.grid3{grid-template-columns:1fr}.step{padding:28px 18px 60px}}
+  .card{border:1px solid var(--line);border-radius:12px;padding:16px;background:#fff}
+  .card h4{margin-top:0}
+  table{width:100%;border-collapse:collapse;margin:14px 0 20px;font-size:13.5px}
+  th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3);font-weight:700;background:var(--paper-2)}
+  td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+  tr.total td{font-weight:700;background:var(--paper-2);border-bottom:0}
+  .scroll{overflow-x:auto}
+  .pill{display:inline-block;font-size:10.5px;padding:2px 8px;border-radius:999px;border:1px solid var(--line-2);color:var(--ink-2);background:var(--paper-2)}
+  .pill.ok{color:var(--green);background:var(--green-soft);border-color:#c3e6d4}
+  .pill.warn{color:var(--amber);background:var(--amber-soft);border-color:#f0dcae}
+  .pill.bad{color:var(--red);background:var(--red-soft);border-color:#f2c9cc}
+  .pill.new{color:var(--blue);background:var(--blue-soft);border-color:#cddcfb}
+  pre{font-family:var(--mono);font-size:11.8px;line-height:1.5;background:#0f1116;color:#e8e9ee;border-radius:12px;padding:14px 16px;overflow-x:auto;margin:14px 0 18px}
+  pre .c{color:#9aa0ac} pre .k{color:#8ab4ff} pre .s{color:#9ee0b0} pre .w{color:#ffcf7a}
+
+  /* fluxo */
+  .flow{display:flex;flex-direction:column;margin:20px 0}
+  .flow-step{display:grid;grid-template-columns:44px 1fr;gap:0 16px}
+  .flow-step .rail{display:flex;flex-direction:column;align-items:center}
+  .flow-step .dot{width:30px;height:30px;border-radius:50%;border:1.5px solid var(--ink);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;background:#fff}
+  .flow-step .line{width:1.5px;background:var(--line-2);flex:1;min-height:16px}
+  .flow-step:last-child .line{display:none}
+  .flow-body{padding:2px 0 18px}
+  .flow-body h4{margin:0 0 2px;font-size:15.5px}
+  .flow-body p{margin:0;color:var(--ink-2);font-size:14px}
+
+  /* chat */
+  .chat{border:1px solid var(--line);border-radius:14px;overflow:hidden;margin:18px 0;background:#fff}
+  .chat-head{padding:9px 15px;border-bottom:1px solid var(--line);font-size:12px;color:var(--ink-3);background:var(--paper-2)}
+  .chat-body{padding:16px 15px}
+  .msg{max-width:88%;margin:0 0 12px;padding:9px 12px;border-radius:12px;font-size:13.5px;line-height:1.5}
+  .msg.person{background:#f1f2f5;border-bottom-right-radius:4px;margin-left:auto}
+  .msg.bot{background:var(--paper-2);border:1px solid var(--line);border-bottom-left-radius:4px}
+  .msg .tag{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-3);font-weight:700;margin-bottom:3px}
+  .msg .q{font-size:10.5px;color:var(--ink-3);margin-bottom:3px}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}
+  .chip{font-size:11.5px;border:1px solid var(--line-2);border-radius:999px;padding:2px 9px;color:var(--ink-2);background:#fff}
+  .proposal{border:1px solid var(--line-2);border-radius:12px;padding:11px 13px;background:#fff;max-width:88%;font-size:13px}
+  .proposal .row{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .proposal h5{margin:0;font-size:13px}
+
+  /* prévia */
+  .preview{border:1px solid var(--line-2);border-radius:14px;overflow:hidden;margin:18px 0;background:#fff}
+  .preview-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:13px 16px;border-bottom:1px solid var(--line);background:var(--paper-2)}
+  .preview-title{font-weight:650;font-size:14px}
+  .seal{font-size:10.5px;font-weight:700;color:var(--amber);background:var(--amber-soft);border:1px solid #f0dcae;border-radius:999px;padding:3px 8px;white-space:nowrap}
+  .preview-map{display:flex;align-items:center;gap:5px;padding:8px 16px;border-bottom:1px solid var(--line);overflow-x:auto}
+  .map-chip{flex:none;display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line-2);border-radius:999px;padding:2px 8px 2px 4px;font-size:10.5px;color:var(--ink-2);background:var(--paper-2);white-space:nowrap}
+  .map-chip b{display:inline-flex;width:16px;height:16px;border-radius:50%;background:var(--green);color:#fff;align-items:center;justify-content:center;font-size:9px}
+  .map-chip.bot b{background:var(--blue)}
+  .map-err{margin-left:auto;font-size:10.5px;color:var(--ink-3);white-space:nowrap}
+  .preview-list{list-style:none;margin:0;padding:4px 0}
+  .pstep{padding:11px 16px;border-bottom:1px solid var(--line)}
+  .pstep:last-child{border-bottom:0}
+  .pstep-head{display:flex;align-items:flex-start;gap:9px}
+  .pstep-num{flex:none;display:inline-flex;width:22px;height:22px;border-radius:50%;background:var(--ink);color:#fff;align-items:center;justify-content:center;font-size:11px;font-weight:700;margin-top:2px}
+  .pstep-title{font-size:13.5px;font-weight:650;line-height:1.35;margin:0}
+  .pstep-sub{font-size:11px;color:var(--ink-3);margin:1px 0 0}
+  .pstep-io{display:grid;grid-template-columns:56px 1fr;gap:1px 8px;font-size:12px;margin:6px 0 0 31px}
+  .pstep-io dt{color:var(--ink-3);font-size:9.5px;text-transform:uppercase;letter-spacing:.07em;font-weight:700;padding-top:3px}
+  .pstep-io dd{margin:0;color:var(--ink-2)}
+  .pstep-foot{display:flex;flex-wrap:wrap;gap:5px;align-items:center;margin:7px 0 0 31px}
+  .pstep.assume{background:linear-gradient(90deg,var(--amber-soft),#fff 45%)}
+  .pstep.diverge{background:linear-gradient(90deg,var(--red-soft),#fff 45%)}
+  .preview-note{padding:10px 16px;border-top:1px solid var(--line);background:var(--paper-2);font-size:12px;color:var(--ink-2)}
+  .preview-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 16px;border-top:1px solid var(--line);background:var(--paper-2);font-size:11.5px;color:var(--ink-3);flex-wrap:wrap}
+  .btn{display:inline-block;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;border:1px solid var(--line-2);background:#fff;color:var(--ink-2)}
+  .btn.primary{background:var(--ink);border-color:var(--ink);color:#fff}
+  .btn.ghost{border-color:transparent;background:transparent;color:var(--ink-3)}
+  .link{color:var(--blue);text-decoration:underline;cursor:pointer;font-size:11px;background:none;border:0;padding:0}
+
+  /* navegação */
+  .foot{flex:none;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 22px;border-top:1px solid var(--line);background:var(--paper-2);z-index:5}
+  .navbtn{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line-2);background:#fff;color:var(--ink-2);border-radius:10px;padding:9px 15px;font-size:13.5px;font-weight:650;cursor:pointer}
+  .navbtn:hover{border-color:var(--ink-3);color:var(--ink)}
+  .navbtn.primary{background:var(--ink);border-color:var(--ink);color:#fff}
+  .navbtn:disabled{opacity:.35;cursor:not-allowed}
+  .foot .hint{font-size:11.5px;color:var(--ink-3)}
+  @media(max-width:760px){.foot{padding:10px 14px}.foot .hint{display:none}.navbtn{padding:9px 13px}}
+  .overlay{position:fixed;inset:0;background:rgba(16,17,20,.35);display:none;z-index:20}
+  .overlay.open{display:block}
+  .panel{position:absolute;top:0;right:0;bottom:0;width:min(420px,92vw);background:#fff;border-left:1px solid var(--line);padding:20px;overflow-y:auto}
+  .panel h3{margin:0 0 12px}
+  .panel ol{margin:0;padding-left:20px}
+  .panel li{margin:7px 0}
+  .panel button{background:none;border:0;padding:0;text-align:left;font:inherit;color:var(--ink-2);cursor:pointer}
+  .panel button:hover{color:var(--blue);text-decoration:underline}
+  .panel li.current button{color:var(--ink);font-weight:700}
+  .cover{display:flex;flex-direction:column;justify-content:center;min-height:calc(100dvh - 150px)}
+  .cover .meta{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);font-weight:700;margin-bottom:14px}
+  .cover .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:26px}
+  .score{font-weight:700;font-variant-numeric:tabular-nums}
+  .quote{border-left:3px solid var(--ink);padding:4px 0 4px 16px;margin:18px 0;color:var(--ink-2);font-size:15.5px}
+  details{border:1px solid var(--line);border-radius:10px;padding:9px 13px;margin:12px 0;background:var(--paper-2)}
+  summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--ink-2)}
+  details[open] summary{margin-bottom:8px}
+  @media print{
+    body{overflow:visible;height:auto}
+    .app{height:auto;display:block}
+    .top,.bar,.foot,.overlay{display:none!important}
+    .stage{overflow:visible}
+    .step{display:block!important;page-break-after:always;max-width:none;padding:0 0 24px}
+    .step.active{animation:none}
+    .cover{min-height:0}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="top">
+    <span class="brand">MimirBot · Workflow a partir da conversa</span>
+    <span class="spacer"></span>
+    <span class="counter"><span id="cur">1</span> / <span id="total">28</span></span>
+    <button class="iconbtn" id="indexBtn" type="button">Índice</button>
+  </header>
+  <div class="bar"><span id="progress"></span></div>
+
+  <main class="stage" id="stage">
+
+    <!-- 1 -->
+    <section class="step active" data-title="Capa" id="p1">
+      <div class="cover">
+        <p class="meta">Especificação de produto · versão 6 · 12/11/2026</p>
+        <h1>Workflow a partir da conversa</h1>
+        <p class="lead">A pessoa conversa, aprova o resultado e diz: “transforme isso em um Workflow”. O bot entrevista, separa o processo em etapas com entrada, processamento e saída, mostra a prévia e só cria depois do “sim”.</p>
+        <p class="small muted" style="max-width:60ch">Esta versão foi auditada duas vezes contra o que já está implementado. Onde havia invenção de contrato, a spec passou a usar o que o motor já tem. Os pontos que realmente faltam estão marcados.</p>
+        <div class="actions">
+          <button class="navbtn primary" type="button" data-go="next">Começar →</button>
+          <button class="navbtn" type="button" id="openIndex">Ver os 28 passos</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2 -->
+    <section class="step" data-title="O problema" id="p2">
+      <p class="kicker">1 · O problema</p>
+      <h2>O conhecimento fica na conversa; o Workflow fica na tela em branco.</h2>
+      <p>Quando um trabalho dá certo, a ordem do que foi feito vive no texto do chat. No dia seguinte, se o mesmo trabalho voltar, alguém precisa lembrar a sequência, reescrever os pedidos e torcer para sair igual.</p>
+      <p>O motor já executa processos com etapas verificadas, arquivos de entrada e saída, pausa para aprovação, horários e scripts sem custo de modelo. Falta o começo: <strong>ninguém quer desenhar um fluxo do zero</strong> numa tela de quadradinhos e setas.</p>
+      <div class="box blue">
+        <h4>O que já existe hoje</h4>
+        <p class="small">Etapas de bot, script, condição e repetição; verificação de arquivos e <code>require</code>; pausa manual e pausa por aprovação; rotina com destino Workflow; scripts em JS, TS e Python; versões imutáveis; Studio e tela de Workflows em modo somente leitura.</p>
+      </div>
+    </section>
+
+    <!-- 3 -->
+    <section class="step" data-title="A regra de ouro" id="p3">
+      <p class="kicker">2 · A regra de ouro</p>
+      <h2>O bot nunca cria um Workflow sozinho.</h2>
+      <p>Ele só faz a proposta quando a pessoa pede claramente. Nada é salvo, nada roda e nada aparece na lista antes do “sim”.</p>
+      <div class="box">
+        <p class="rule">Três portões, três mecanismos.</p>
+        <ul class="small">
+          <li><strong>Pedido.</strong> A intenção precisa estar na conversa. O bot pode perguntar uma vez; nunca insiste.</li>
+          <li><strong>Aprovação.</strong> Entre o pedido e a criação existe um rascunho invisível, não executável e sem rotina.</li>
+          <li><strong>Execução.</strong> Todo Workflow criado assim nasce com a primeira etapa em modo manual: nenhuma run começa sem uma pessoa clicar em Continuar.</li>
+        </ul>
+      </div>
+      <p class="small muted">O terceiro portão usa um recurso que já existe — não é um campo novo. A próxima auditoria mostra onde.</p>
+    </section>
+
+    <!-- 4 -->
+    <section class="step" data-title="Auditoria 1 — o que já existe" id="p4">
+      <p class="kicker">Auditoria 1 · aderência ao código</p>
+      <h2>O que a spec usa do que já está implementado</h2>
+      <p>Esta tabela foi conferida no código atual. Nada aqui é promessa: é o motor que já roda hoje.</p>
+      <div class="scroll">
+      <table>
+        <thead><tr><th>Peça</th><th>Como está hoje</th><th>Como a spec usa</th></tr></thead>
+        <tbody>
+          <tr><td>Motor de etapas</td><td>Bot, script, condição, repetição; ordem e desvios</td><td>Sem mudança</td></tr>
+          <tr><td>Skills por etapa</td><td><code>bot</code>, <code>bundled</code> (intrínsecas) e <code>imported</code>; validação no save e na run</td><td>Já existe; a pessoa escolhe no Studio</td></tr>
+          <tr><td>Entradas e saídas</td><td><code>inputs[].from</code>, <code>outputs</code>, <code>result.json</code>, <code>require</code></td><td>Vira o “Input / Output / Proof” da prévia</td></tr>
+          <tr><td>Pausa manual</td><td><code>mode: "manual"</code>, status <code>waiting_manual</code></td><td>É o portão de execução</td></tr>
+          <tr><td>Aprovação por cartão</td><td><code>waiting_approval</code>, retomada após resposta</td><td>Efeito irreversível e pergunta no meio</td></tr>
+          <tr><td>Rotina com destino Workflow</td><td><code>target: "workflow"</code>, versão fixada na run</td><td>Passa a criar run parada, não a executar</td></tr>
+          <tr><td>Scripts</td><td>JS, TS, Python; timeout; env mínimo</td><td>Mesma execução + filtro estático</td></tr>
+          <tr><td>Versões</td><td>Imutáveis; run fixa a versão</td><td>Mesma base + hash de aprovação</td></tr>
+          <tr><td>Studio e tela F2</td><td>Editor e leitura com painel de etapa</td><td>A prévia reusa a leitura</td></tr>
+          <tr><td>Ferramentas do bot</td><td>List, run, status, cancel</td><td>Ganha <code>inputs</code>; cada etapa declara os seus parâmetros</td></tr>
+        </tbody>
+      </table>
+      </div>
+    </section>
+
+    <!-- 5 -->
+    <section class="step" data-title="Auditoria 2 — o que falta" id="p5">
+      <p class="kicker">Auditoria 2 · o que a spec acrescenta</p>
+      <h2>O que não existe e precisa ser construído</h2>
+      <p>Estes pontos não estão no motor hoje. A spec os marca como entrega, não como se já funcionassem.</p>
+      <div class="scroll">
+      <table>
+        <thead><tr><th>Novo</th><th>Por que</th></tr></thead>
+        <tbody>
+          <tr><td><span class="pill new">novo</span> parâmetros por etapa + <code>run_workflow(inputs)</code></td><td>Hoje a run não recebe valor de fora; só lê saída de etapa anterior. O parâmetro é declarado em cada step.</td></tr>
+          <tr><td><span class="pill new">novo</span> <code>params.json</code> por etapa</td><td>Nova origem de entrada; o motor grava em cada etapa o subconjunto que ela declarou.</td></tr>
+          <tr><td><span class="pill new">novo</span> rascunho e área de propostas</td><td>Hoje salvar já cria versão executável.</td></tr>
+          <tr><td><span class="pill new">novo</span> modal de prévia</td><td>Existe leitura na tela F2, não um modal de proposta.</td></tr>
+          <tr><td><span class="pill new">novo</span> scripts por versão</td><td>Hoje a pasta de scripts é única e o motor lê a mais recente.</td></tr>
+          <tr><td><span class="pill new">novo</span> hash de aprovação</td><td>Não existe aprovação presa ao conteúdo.</td></tr>
+          <tr><td><span class="pill new">novo</span> memória vazia por etapa (pequeno)</td><td>Hoje a etapa herda MEMORY.md, memória da equipe, trabalho recente e recall. A mudança é desligar isso só na conversa da etapa.</td></tr>
+          <tr><td><span class="pill new">novo</span> filtro de script (recomendado)</td><td>Hoje o script roda com as permissões do app, sem análise estática. Não tem relação com skills.</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <div class="box green">
+        <h4>Skills por etapa não estão nesta lista</h4>
+        <p class="small">Elas já existem: a etapa de bot declara <code>skills.bot</code>, <code>skills.bundled</code> (as intrínsecas do app) e <code>skills.imported</code>. A pessoa escolhe no Studio, o save valida e a run filtra o índice e os imports. Não é preciso desenvolver nada nessa frente.</p>
+      </div>
+      <div class="box amber">
+        <h4>Auditoria 2 — o que eu tirei da versão anterior</h4>
+        <p class="small">A v4 propunha <code>start: "person"</code> e um status <code>waiting_start</code>. Os dois já existem com outro nome: <code>mode: "manual"</code> e <code>waiting_manual</code>. A v5 não cria campo nem status — usa o que o motor tem. Para o portão de execução, a única mudança de comportamento é a rotina, que hoje recusa Workflow com primeira etapa manual e passa a criar a run parada.</p>
+      </div>
+    </section>
+
+    <!-- 6 -->
+    <section class="step" data-title="O portão de execução" id="p6">
+      <p class="kicker">Auditoria 2 · o mecanismo que já existe</p>
+      <h2>“Nunca roda sozinho” sem inventar nada</h2>
+      <p>O motor já sabe parar antes da primeira etapa. Basta a primeira etapa nascer manual — e a rotina deixar de bloquear.</p>
+      <div class="flow">
+        <div class="flow-step"><div class="rail"><div class="dot">1</div><div class="line"></div></div><div class="flow-body"><h4>Rotina ou pessoa inicia</h4><p>O pedido é registrado com a versão e os parâmetros.</p></div></div>
+        <div class="flow-step"><div class="rail"><div class="dot">2</div><div class="line"></div></div><div class="flow-body"><h4>A run nasce parada</h4><p>Primeira etapa com <code>mode: "manual"</code>: status <code>waiting_manual</code>, sem arquivo copiado e sem thread aberta.</p></div></div>
+        <div class="flow-step"><div class="rail"><div class="dot">3</div><div class="line"></div></div><div class="flow-body"><h4>A pessoa confirma</h4><p>O botão Continuar já existe. A etapa roda uma vez, com o relógio de timeout começando só aí.</p></div></div>
+      </div>
+      <div class="box green">
+        <h4>O que muda no código</h4>
+        <p class="small">Hoje <code>assertWorkflowCanStart</code> recusa a rotina com 400 quando a primeira etapa é manual. A mudança é criar a run e deixá-la em <code>waiting_manual</code> — um comportamento, não um status novo. O resto do motor fica intacto.</p>
+        <p class="small" style="margin-top:8px">Se o desenho começar com condição ou repetição — que não têm <code>mode</code> —, o bot insere uma etapa de entrada mecânica em modo manual, a mesma que valida os parâmetros. O portão continua sendo uma etapa comum.</p>
+      </div>
+    </section>
+
+    <!-- 7 -->
+    <section class="step" data-title="O caminho em oito momentos" id="p7">
+      <p class="kicker">3 · O caminho</p>
+      <h2>Da conversa à versão 1 em oito momentos</h2>
+      <div class="flow">
+        <div class="flow-step"><div class="rail"><div class="dot">1</div><div class="line"></div></div><div class="flow-body"><h4>A conversa que deu certo</h4><p>O bot executa a demanda de verdade. Essa conversa é a evidência.</p></div></div>
+        <div class="flow-step"><div class="rail"><div class="dot">2</div><div class="line"></div></div><div class="flow-body"><h4>O pedido explícito</h4><p>“Transforme isso em um Workflow.” Sem isso, nada começa.</p></div></div>
+        <div class="flow-step"><div class="rail"><div class="dot">3</div><div class="line"></div></div><div class="flow-body"><h4>A entrevista de três perguntas</h4><p>Uma por turno: pontual ou recorrente, o que muda, quem confirma.</p></div></div>
+        <div class="flow-step"><div class="rail"><div class="dot">4</div><div class="line"></div></div><div class="flow-body"><h4>Etapas verificáveis</h4><p>Input, Process, Output e Proof — em cada etapa.</p></div></div>
+        <div class="flow-step"><div class="rail"><div class="dot">5</div><div class="line"></div></div><div class="flow-body"><h4>Mecânico ou julgamento</h4><p>Programa onde é repetitivo; bot onde exige interpretação.</p></div></div>
+        <div class="flow-step"><div class="rail"><div class="dot">6</div><div class="line"></div></div><div class="flow-body"><h4>Parâmetros e regras</h4><p>O que muda vira parâmetro; o que é sempre igual vira regra visível.</p></div></div>
+        <div class="flow-step"><div class="rail"><div class="dot">7</div><div class="line"></div></div><div class="flow-body"><h4>A prévia anotada</h4><p>Lista, prova, suposições e o que foi testado.</p></div></div>
+        <div class="flow-step"><div class="rail"><div class="dot">8</div><div class="line"></div></div><div class="flow-body"><h4>O ensaio e a criação</h4><p>Exemplos reais, comparação com a saída esperada, versão 1.</p></div></div>
+      </div>
+    </section>
+
+    <!-- 8 -->
+    <section class="step" data-title="O pedido" id="p8">
+      <p class="kicker">4 · O pedido</p>
+      <h2>A proposta nasce no fim da conversa</h2>
+      <p>A pessoa aprova o trabalho e pede o Workflow. O bot não despeja um formulário: ele pergunta uma coisa por vez.</p>
+      <div class="chat">
+        <div class="chat-head">Financeiro · conversa com o bot de cobrança</div>
+        <div class="chat-body">
+          <div class="msg person"><span class="tag">Você</span>Fechou. Transforme isso em um Workflow, por favor.</div>
+          <div class="msg bot"><span class="tag">Bot</span>Antes de montar, preciso de três respostas rápidas. <div class="q">Pergunta 1 de 3</div>Isso vai se repetir todo mês ou foi só desta vez?</div>
+          <div class="msg person"><span class="tag">Você</span>Todo mês.</div>
+        </div>
+      </div>
+      <p class="small muted">“Agora não” arquiva a proposta na área de propostas. Ela não expira e não volta sozinha no chat.</p>
+    </section>
+
+    <!-- 9 -->
+    <section class="step" data-title="A entrevista de três perguntas" id="p9">
+      <p class="kicker">4 · A entrevista</p>
+      <h2>Três perguntas que mudam a forma — e só elas</h2>
+      <div class="grid3">
+        <div class="card"><h4>1 · Pontual ou recorrente?</h4><p class="small">Se for uma vez, não é Workflow: é uma tarefa concluída. O bot diz isso em vez de propor um fluxo.</p></div>
+        <div class="card"><h4>2 · O que muda a cada vez?</h4><p class="small">Datas, pessoas, arquivo, tipo, destino — ou “não sei”. É daqui que sai a lista de parâmetros.</p></div>
+        <div class="card"><h4>3 · Quem confirma?</h4><p class="small">Quem avisar quando faltar informação e quem aprova antes de um efeito irreversível.</p></div>
+      </div>
+      <div class="chat">
+        <div class="chat-head">Continuação</div>
+        <div class="chat-body">
+          <div class="msg bot"><span class="tag">Bot</span><div class="q">Pergunta 2 de 3</div>O que muda a cada mês?
+            <div class="chips"><span class="chip">Datas</span><span class="chip">Clientes</span><span class="chip">Tipo de relatório</span><span class="chip">Nada</span><span class="chip">Não sei</span></div>
+          </div>
+          <div class="msg person"><span class="tag">Você</span>Só as datas.</div>
+          <div class="msg bot"><span class="tag">Bot</span><div class="q">Pergunta 3 de 3</div>Se faltar uma data, quem eu aviso? Antes de enviar a cobrança, quem confirma?</div>
+          <div class="msg person"><span class="tag">Você</span>Me avisa. Eu confirmo antes de enviar.</div>
+        </div>
+      </div>
+      <p class="small muted">“Não sei” é resposta válida: vira suposição âmbar na prévia, nunca bloqueio nem pergunta repetida.</p>
+    </section>
+
+    <!-- 10 -->
+    <section class="step" data-title="Etapas verificáveis" id="p10">
+      <p class="kicker">5 · Etapas</p>
+      <h2>Cada etapa tem Input, Process, Output e Proof</h2>
+      <div class="grid2">
+        <div class="card"><h4>Input</h4><p class="small">Quais arquivos e campos ela recebe — e só esses. Nada de “a conversa inteira”.</p></div>
+        <div class="card"><h4>Process</h4><p class="small">O que acontece, em uma frase que uma pessoa entende. Para bot: por que não é programa.</p></div>
+        <div class="card"><h4>Output</h4><p class="small">Quais arquivos ela entrega. A próxima etapa só pode consumir saída obrigatória.</p></div>
+        <div class="card"><h4>Proof</h4><p class="small">O que precisa existir ou bater para a etapa ser considerada concluída. “Ok: verdadeiro” sozinho não prova nada.</p></div>
+      </div>
+      <div class="box">
+        <h4>Exemplo — etapa 4</h4>
+        <p class="small"><strong>Input:</strong> mensagens.json + dados.json. <strong>Process:</strong> compara cada mensagem com o título. <strong>Output:</strong> conferido.json. <strong>Proof:</strong> 0 divergências; se houver, a etapa falha.</p>
+      </div>
+    </section>
+
+    <!-- 11 -->
+    <section class="step" data-title="Mecânico ou julgamento" id="p11">
+      <p class="kicker">6 · A escolha</p>
+      <h2>Programa onde é repetitivo; bot onde exige julgamento</h2>
+      <div class="scroll">
+      <table>
+        <thead><tr><th>Sinal</th><th>Vira</th><th>Por quê</th></tr></thead>
+        <tbody>
+          <tr><td>Mesma entrada, mesma regra, resultado igual</td><td><strong>Parte mecânica</strong></td><td>Barato, testável byte a byte</td></tr>
+          <tr><td>Interpretar texto ambíguo, negociar, escrever para pessoa</td><td><strong>Etapa com bot</strong></td><td>Um programa rígido quebraria na variação</td></tr>
+          <tr><td>Escolher caminho a partir de um resultado</td><td><strong>Condição</strong></td><td>Não gasta modelo</td></tr>
+          <tr><td>Repetir até uma condição</td><td><strong>Repetição</strong></td><td>O motor controla as voltas</td></tr>
+          <tr><td>Enviar, pagar, apagar, publicar</td><td><strong>Espera você</strong></td><td>Efeito irreversível pede o “sim”</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <div class="box green">
+        <h4>Teste de “é mecânico mesmo?”</h4>
+        <p class="small">A operação cabe em algo fechado? A regra cabe em uma frase, sem “e se”? Dá para escrever três casos com saída óbvia? Não depende de rede, site logado ou texto livre? A evidência mostra a transformação (N linhas lidas, N escritas)? Falhou uma, vira bot.</p>
+      </div>
+    </section>
+
+    <!-- 12 -->
+    <section class="step" data-title="Parâmetros e regras" id="p12">
+      <p class="kicker">7 · Parâmetros</p>
+      <h2>O que muda vira parâmetro; o que é sempre igual vira regra</h2>
+      <div class="scroll">
+      <table>
+        <thead><tr><th>Natureza</th><th>Exemplo</th><th>Onde vive</th><th>Valor fixo?</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Parâmetro</strong></td><td>início, fim, regime, tipo, formato</td><td>Declarado na etapa</td><td><span class="pill bad">nunca no script</span></td></tr>
+          <tr><td><strong>Regra</strong></td><td>“até dia 3, mês anterior”</td><td>Etapa mecânica nomeada</td><td><span class="pill ok">sim, se for regra</span></td></tr>
+          <tr><td><strong>Constante</strong></td><td>“agrupar por CPF”</td><td>Instrução ou regra do script</td><td><span class="pill ok">sim, se for regra</span></td></tr>
+        </tbody>
+      </table>
+      </div>
+      <p><strong>O teste de manutenção:</strong> isso muda de pedido para pedido? Então é parâmetro. É sempre igual e cabe numa frase? Então é regra. Se mudar no mês que vem, quem edita — quem pede ou o dono do processo? Isso decide onde vive.</p>
+      <div class="grid2">
+        <div class="box red" style="margin:0"><h4>Errado</h4><pre><span class="k">const</span> tipo = params.tipo ?? <span class="s">"powerbi"</span>;
+<span class="k">const</span> inicio = params.inicio ?? <span class="s">"2026-11-01"</span>;</pre><p class="small">Decisão invisível. No mês seguinte, o relatório sai errado e ninguém sabe por quê.</p></div>
+        <div class="box green" style="margin:0"><h4>Certo</h4><pre><span class="k">for</span> (<span class="k">const</span> campo <span class="k">of</span> [<span class="s">"inicio"</span>, <span class="s">"fim"</span>]) {
+  <span class="k">if</span> (!params[campo]) <span class="w">fail</span>(<span class="s">`faltou ${campo}`</span>);
+}</pre><p class="small">O script nunca adivinha: para e diz qual campo falta.</p></div>
+      </div>
+    </section>
+
+    <!-- 13 -->
+    <section class="step" data-title="O caso do relatório" id="p13">
+      <p class="kicker">7 · O caso real</p>
+      <h2>“Relatório de ocorrências do dia tal ao dia tal”</h2>
+      <p>Quatro informações parecem bastar, mas um relatório real precisa de mais. A prévia lista tudo — e nenhum campo é inventado pelo script.</p>
+      <div class="scroll">
+      <table>
+        <thead><tr><th>Parâmetro</th><th>Tipo</th><th>Por que</th></tr></thead>
+        <tbody>
+          <tr><td><code>competencia</code> ou <code>inicio</code>+<code>fim</code></td><td>mês / data</td><td>Um dos dois, nunca os dois.</td></tr>
+          <tr><td><code>unidade</code>, <code>setor</code></td><td>lista</td><td>GRU, VCP…; ramp, pax, carga…</td></tr>
+          <tr><td><code>regime</code></td><td>enum</td><td>escala, mesa, todos. “Mesativos” é regime, não lista de nomes.</td></tr>
+          <tr><td><code>populacao</code> + <code>data_referencia</code></td><td>enum</td><td>Quem entra: ativos, afastados, demitidos no período; lidos em que instante.</td></tr>
+          <tr><td><code>tipos_ocorrencia</code></td><td>lista</td><td>falta, atraso, marcação ímpar, HE…</td></tr>
+          <tr><td><code>tipo_relatorio</code></td><td>enum</td><td>ocorrências, espelho, banco de horas.</td></tr>
+          <tr><td><code>formato</code></td><td>enum</td><td>xlsx, csv, pdf.</td></tr>
+          <tr><td><code>destino</code></td><td>enum</td><td>pasta, e-mail, Power BI. Publicar espera o “sim”.</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <p class="small muted">Se a lista de pessoas for necessária, ela é derivada do cadastro e mostrada com contagem e nomes (“15 excluídos”). Exceção por matrícula é explícita — nunca default.</p>
+    </section>
+
+    <!-- 14 -->
+    <section class="step" data-title="A regra de datas" id="p14">
+      <p class="kicker">7 · A regra</p>
+      <h2>Quando não há parâmetro, há uma regra visível</h2>
+      <p>Se o pedido é sempre o mesmo período, o fluxo fica fechado: uma etapa mecânica calcula e segue. A regra é testável e aparece na prévia.</p>
+      <div class="scroll">
+      <table>
+        <thead><tr><th>Hoje (America/Sao_Paulo)</th><th>Início</th><th>Fim</th></tr></thead>
+        <tbody>
+          <tr><td>dia 1, 2 ou 3</td><td>1º dia do mês anterior</td><td>último dia do mês anterior</td></tr>
+          <tr><td>dia 4 em diante</td><td>1º dia do mês atual</td><td>ontem</td></tr>
+          <tr><td>1º de janeiro</td><td>1º de dezembro do ano anterior</td><td>31 de dezembro do ano anterior</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <div class="box red">
+        <h4>A borda que a regra original deixava em aberto</h4>
+        <p class="small">Na forma “menor que 3” / “maior que 3”, o dia 3 não tem resposta e o período inverte. A regra acima fecha com <strong>até 3</strong> e <strong>a partir de 4</strong>. O ensaio testa dia 1, 2, 3, 4, último dia, ano bissexto e virada do ano.</p>
+      </div>
+      <p class="small muted">O “hoje” é congelado no nascimento da run, no fuso do departamento. Retomar no dia seguinte não muda o período. Ciclo 21→20, se existir, é declarado — não deduzido.</p>
+    </section>
+
+    <!-- 15 -->
+    <section class="step" data-title="A prévia" id="p15">
+      <p class="kicker">8 · A prévia</p>
+      <h2>Input, Process, Output e Proof — em cada etapa</h2>
+      <p>A prévia é um documento em lista, não o editor. O mapa no topo é atalho; a leitura começa pelo texto.</p>
+      <div class="preview">
+        <div class="preview-top">
+          <div><div class="preview-title">Prévia do Workflow “Cobrança mensal”</div><div class="small muted">Financeiro · versão 1 proposta · 5 etapas</div></div>
+          <span class="seal">nada foi criado</span>
+        </div>
+        <div class="preview-map">
+          <span class="map-chip"><b>1</b> entrada</span>
+          <span class="map-chip"><b>2</b> planilha</span>
+          <span class="map-chip bot"><b>3</b> mensagens</span>
+          <span class="map-chip"><b>4</b> conferência</span>
+          <span class="map-chip"><b>5</b> relatório</span>
+          <span class="map-err">erro: avisa você e para</span>
+        </div>
+        <ol class="preview-list">
+          <li class="pstep">
+            <div class="pstep-head"><span class="pstep-num">1</span><div><p class="pstep-title">Todo dia 1º, recebe o mês de referência</p><p class="pstep-sub">Input · parte mecânica · manual antes de começar</p></div></div>
+            <dl class="pstep-io"><dt>Input</dt><dd>mês de referência</dd><dt>Process</dt><dd>confere o formato e calcula o período</dd><dt>Output</dt><dd>params.json</dd><dt>Proof</dt><dd>início ≤ fim e fim antes de hoje</dd></dl>
+            <div class="pstep-foot"><span class="pill ok">testada</span><button class="link" type="button">ver o que o programa faz</button></div>
+          </li>
+          <li class="pstep">
+            <div class="pstep-head"><span class="pstep-num">2</span><div><p class="pstep-title">Pega a planilha de títulos em atraso</p><p class="pstep-sub">Parte mecânica · sem custo de modelo</p></div></div>
+            <dl class="pstep-io"><dt>Input</dt><dd>títulos.xlsx + params.json</dd><dt>Process</dt><dd>lê, filtra e normaliza</dd><dt>Output</dt><dd>dados.json</dd><dt>Proof</dt><dd>12 clientes, nenhum campo vazio</dd></dl>
+            <div class="pstep-foot"><span class="pill ok">testada</span><button class="link" type="button">ver o que o programa faz</button></div>
+          </li>
+          <li class="pstep assume">
+            <div class="pstep-head"><span class="pstep-num">3</span><div><p class="pstep-title">O bot escreve uma mensagem por cliente</p><p class="pstep-sub">Precisa de julgamento</p></div></div>
+            <dl class="pstep-io"><dt>Input</dt><dd>dados.json (12 clientes)</dd><dt>Process</dt><dd>uma mensagem por cliente, sem juros antes de 5 dias</dd><dt>Output</dt><dd>mensagens.json</dd><dt>Proof</dt><dd>12 mensagens; você lê 2 amostras</dd></dl>
+            <div class="pstep-foot"><span class="pill warn">não testada</span><span class="pill warn">1 suposição: tom cordial</span><button class="link" type="button">anotar</button></div>
+          </li>
+          <li class="pstep">
+            <div class="pstep-head"><span class="pstep-num">4</span><div><p class="pstep-title">Confere valor, vencimento e destinatário</p><p class="pstep-sub">Parte mecânica</p></div></div>
+            <dl class="pstep-io"><dt>Input</dt><dd>mensagens.json + dados.json</dd><dt>Process</dt><dd>compara cada mensagem com o título</dd><dt>Output</dt><dd>conferido.json</dd><dt>Proof</dt><dd>0 divergências; se houver, falha</dd></dl>
+            <div class="pstep-foot"><span class="pill ok">testada</span><button class="link" type="button">ver o que o programa faz</button></div>
+          </li>
+          <li class="pstep">
+            <div class="pstep-head"><span class="pstep-num">5</span><div><p class="pstep-title">Gera o relatório de envios e pendências</p><p class="pstep-sub">Parte mecânica</p></div></div>
+            <dl class="pstep-io"><dt>Input</dt><dd>conferido.json</dd><dt>Process</dt><dd>monta o arquivo final</dd><dt>Output</dt><dd>relatorio.xlsx</dd><dt>Proof</dt><dd>12 linhas e cabeçalho completo</dd></dl>
+            <div class="pstep-foot"><span class="pill ok">testada</span><button class="link" type="button">ver o que o programa faz</button></div>
+          </li>
+        </ol>
+        <div class="preview-note"><strong>O que eu assumi:</strong> o tom é o mesmo da conversa de ontem; a planilha continua com o mesmo nome. <span class="pill warn">confirmar</span></div>
+        <div class="preview-foot"><span>1 etapa com bot · 4 partes mecânicas</span><span><span class="btn">Testar de novo</span> <span class="btn primary">Criar Workflow</span></span></div>
+      </div>
+      <p class="small muted">Uma numeração só; “ver o que o programa faz” fica na etapa, com o que lê, o que escreve e quando pode dar errado.</p>
+    </section>
+
+    <!-- 16 -->
+    <section class="step" data-title="Estados da prévia" id="p16">
+      <p class="kicker">8 · Os estados</p>
+      <h2>O que acontece quando algo não fecha</h2>
+      <div class="grid2">
+        <div class="card"><h4>Divergiu</h4><p class="small">A parte mecânica não bateu com a saída esperada. “Criar Workflow” fica desabilitado com o motivo e um link para a diferença.</p></div>
+        <div class="card"><h4>Não testada</h4><p class="small">Não havia exemplo. A etapa de bot pode ser aceita com aviso; a parte mecânica crítica bloqueia.</p></div>
+        <div class="card"><h4>O que mudou</h4><p class="small">A partir da segunda rodada, o destaque é a diferença desde a última versão — mais útil que o desenho inteiro outra vez.</p></div>
+        <div class="card"><h4>Fechar sem criar</h4><p class="small">“Guardei em Workflows → Propostas.” Nada é descartado em silêncio.</p></div>
+      </div>
+      <div class="box">
+        <h4>Três rodadas, depois uma escada</h4>
+        <p class="small">Na terceira rodada sem resolver, a prévia oferece <strong>refazer do zero com o que aprendemos</strong> ou <strong>abrir no editor de Workflows</strong>, com as anotações preservadas. Desistir não é o único caminho.</p>
+      </div>
+    </section>
+
+    <!-- 17 -->
+    <section class="step" data-title="Contexto declarado" id="p17">
+      <p class="kicker">9 · Contexto</p>
+      <h2>Memória vazia e contexto declarado</h2>
+      <p>Por padrão, a etapa começa sem memória: nada de MEMORY.md, memória da equipe, trabalho recente ou recall de conversas. O texto da conversa de origem não é colado. O que entra é o declarado.</p>
+      <div class="grid2">
+        <div class="card"><h4>Recebe</h4><p class="small">Os arquivos e campos de “Input”, as instruções da etapa, as skills escolhidas, a persona e o SOUL do bot, e o departamento.</p></div>
+        <div class="card"><h4>Não recebe</h4><p class="small">MEMORY.md, memória da equipe, trabalho recente, recall de conversas, <code>session_search</code> e as ferramentas de memória.</p></div>
+      </div>
+      <div class="box green">
+        <h4>Por que é pequeno</h4>
+        <p class="small">A etapa já roda numa conversa nova. Basta a conversa nascer com memória desligada: quatro guardas no prompt (memory, team-memory, recent, recall), uma no início da memória do turno e uma no catálogo para esconder <code>memory_update</code>, <code>memory_log</code> e <code>session_search</code>. A lista de ferramentas é por conversa — e a etapa é uma conversa nova, então não quebra cache nem turno normal.</p>
+      </div>
+      <div class="box green">
+        <h4>O que já existe: skills por etapa</h4>
+        <p class="small">A etapa de bot declara <code>skills.bot</code>, <code>skills.bundled</code> (as intrínsecas do app) e <code>skills.imported</code>. A pessoa escolhe no Studio, o save recusa skill indisponível e a run filtra o índice e os imports. Esse nível de autonomia já está implementado — não entra como entrega.</p>
+      </div>
+      <div class="box">
+        <h4>O filtro de script é outra coisa</h4>
+        <p class="small">Ele olha o código gerado, não as skills nem a memória: evita rede, processos e caminho fora de <code>input/</code>/<code>output/</code>. Hoje não existe; o script roda com as permissões do app. É recomendado, mas pode ficar de fora se o risco for aceito.</p>
+      </div>
+      <p class="small muted">O único ponto que vê o pedido inteiro é o bot da conversa. Depois dele, a etapa recebe os dados normalizados e começa com a memória vazia.</p>
+    </section>
+
+    <!-- 18 -->
+    <section class="step" data-title="O ensaio" id="p18">
+      <p class="kicker">10 · O ensaio</p>
+      <h2>Exemplos reais, não a conversa</h2>
+      <p>O ensaio não usa o chat como contexto. Cada etapa roda com um conjunto de entradas congelado — <code>params.json</code> e os arquivos declarados — e é comparada com a saída esperada. <strong>Só a saída conta.</strong></p>
+      <div class="grid3">
+        <div class="card"><h4>1 · Exemplo</h4><p class="small">Entradas com origem e hash: da execução original, de um arquivo que a pessoa indica, ou de uma amostra marcada.</p></div>
+        <div class="card"><h4>2 · Execução</h4><p class="small">Pasta de ensaio, sem run de produção. Etapa com efeito externo não roda no ensaio.</p></div>
+        <div class="card"><h4>3 · Comparação</h4><p class="small">A saída produzida contra a saída esperada. Se confere, passou; se não confere, falhou. Não existe “quase”.</p></div>
+      </div>
+      <div class="scroll">
+      <table>
+        <thead><tr><th>Etiqueta</th><th>Significado</th></tr></thead>
+        <tbody>
+          <tr><td><span class="pill ok">Saída confere</span></td><td>Rodou com o exemplo e produziu o que foi declarado.</td></tr>
+          <tr><td><span class="pill warn">Não testada</span></td><td>Não havia exemplo real.</td></tr>
+          <tr><td><span class="pill bad">Divergiu</span></td><td>A saída ficou diferente do esperado; criação bloqueada.</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <div class="box green">
+        <h4>Só a saída importa</h4>
+        <p class="small">Workflow existe para rodar de forma determinística. Como o bot chegou ao resultado — o caminho, as ferramentas, o raciocínio — <strong>não é critério de aceite</strong>. Se a saída confere, está certo; se não confere, está errado. Para etapa de bot, o ensaio compara a entrega, não tenta reproduzir o raciocínio.</p>
+      </div>
+      <div class="box amber"><h4>Regras se testam nas bordas</h4><p class="small">Data: dia 1, 2, 3, 4, último dia, bissexto. Valor: zero, negativo, alto. População: excluídos ≠ 0 e ≠ efetivo inteiro; a soma por pessoa fecha com o total.</p></div>
+    </section>
+
+    <!-- 20 -->
+    <section class="step" data-title="O que impede dar errado" id="p20">
+      <p class="kicker">11 · Garantias</p>
+      <h2>Cada garantia tem um mecanismo</h2>
+      <div class="grid2">
+        <div class="card"><h4>Nunca roda sozinho</h4><p class="small">Primeira etapa em <code>mode: "manual"</code>; a run para em <code>waiting_manual</code> até alguém clicar Continuar. Rotina cria a run parada.</p></div>
+        <div class="card"><h4>Parâmetros checados</h4><p class="small">Faltou, sobrou ou está inválido? A run não nasce; o bot devolve a lista e pergunta.</p></div>
+        <div class="card"><h4>Rascunho não é Workflow</h4><p class="small">Não lista, não executa, não dispara rotina. Propostas vão para “Propostas”.</p></div>
+        <div class="card"><h4>Aprovação presa ao conteúdo</h4><p class="small">Hash da definição, instruções, modelo/ferramentas, scripts e parâmetros. Mudou um byte, expirou.</p></div>
+        <div class="card"><h4>Scripts não mudam embaixo da run</h4><p class="small">Cada versão guarda os seus scripts; a v1 executa os bytes aprovados.</p></div>
+        <div class="card"><h4>Memória vazia por etapa</h4><p class="small">A conversa da etapa nasce sem MEMORY.md, memória da equipe, trabalho recente ou recall — e sem as ferramentas de memória.</p></div>
+        <div class="card"><h4>Quem fez o quê</h4><p class="small">Origem, autor, aprovador (o dono designado), versão e diff. Uma aprovação por etapa; não existe segunda.</p></div>
+      </div>
+      <div class="box amber"><h4>Conversa contaminada</h4><p class="small">Se entrou e-mail, página ou arquivo de terceiro, o cartão avisa. O bot não transforma instrução maliciosa em etapa que envia dados para fora.</p></div>
+    </section>
+
+    <!-- 21 -->
+    <section class="step" data-title="Técnico 1 — a chamada" id="p21">
+      <p class="kicker">12 · Parte técnica</p>
+      <h2>Como o bot chama um fluxo</h2>
+      <p>Cada etapa declara os próprios parâmetros, no mesmo lugar em que declara <code>inputs</code>, <code>outputs</code> e <code>result</code>. Não existe bloco <code>parameters</code> no topo do Workflow. Um parâmetro opcional declara o que acontece quando falta — nunca um default escondido.</p>
+      <pre>{
+  <span class="s">"name"</span>: <span class="s">"Relatório de ocorrências"</span>,
+  <span class="s">"steps"</span>: [
+    {
+      <span class="s">"id"</span>: <span class="s">"periodo"</span>, <span class="s">"kind"</span>: <span class="s">"script"</span>, <span class="s">"mode"</span>: <span class="s">"manual"</span>, <span class="s">"run"</span>: <span class="s">"periodo.py"</span>,
+      <span class="s">"parameters"</span>: [
+        { <span class="s">"name"</span>: <span class="s">"inicio"</span>, <span class="s">"type"</span>: <span class="s">"date"</span>, <span class="s">"required"</span>: <span class="k">false</span>, <span class="s">"whenAbsent"</span>: <span class="s">"rule:periodo_padrao"</span> },
+        { <span class="s">"name"</span>: <span class="s">"fim"</span>,    <span class="s">"type"</span>: <span class="s">"date"</span>, <span class="s">"required"</span>: <span class="k">false</span>, <span class="s">"whenAbsent"</span>: <span class="s">"rule:periodo_padrao"</span> }
+      ]
+    },
+    {
+      <span class="s">"id"</span>: <span class="s">"consultar"</span>, <span class="s">"kind"</span>: <span class="s">"script"</span>, <span class="s">"run"</span>: <span class="s">"consultar.py"</span>,
+      <span class="s">"parameters"</span>: [
+        { <span class="s">"name"</span>: <span class="s">"regime"</span>, <span class="s">"type"</span>: <span class="s">"enum"</span>, <span class="s">"values"</span>: [<span class="s">"escala"</span>, <span class="s">"mesa"</span>, <span class="s">"todos"</span>], <span class="s">"required"</span>: <span class="k">true</span> },
+        { <span class="s">"name"</span>: <span class="s">"tipo_relatorio"</span>, <span class="s">"type"</span>: <span class="s">"enum"</span>, <span class="s">"values"</span>: [<span class="s">"ocorrencias"</span>, <span class="s">"espelho"</span>], <span class="s">"required"</span>: <span class="k">true</span> },
+        { <span class="s">"name"</span>: <span class="s">"formato"</span>, <span class="s">"type"</span>: <span class="s">"enum"</span>, <span class="s">"values"</span>: [<span class="s">"xlsx"</span>, <span class="s">"csv"</span>, <span class="s">"pdf"</span>], <span class="s">"required"</span>: <span class="k">true</span> }
+      ]
+    },
+    <span class="c">/* processar → verificar → entregar */</span>
+  ]
+}</pre>
+      <p>A primeira etapa em <code>mode: "manual"</code> é o portão: nada roda antes do Continuar. O motor valida a união dos parâmetros de todas as etapas antes de criar a run; cada etapa recebe em <code>params.json</code> só o subconjunto que declarou.</p>
+      <p>O bot lê a união, preenche o que existe, pergunta o que falta e chama com um mapa plano. Um nome declarado por mais de uma etapa é o mesmo valor:</p>
+      <pre>run_workflow({
+  <span class="s">"workflow_id"</span>: <span class="s">"8a5b1c2d-..."</span>,
+  <span class="s">"inputs"</span>: {
+    <span class="s">"inicio"</span>: <span class="s">"2026-11-01"</span>, <span class="s">"fim"</span>: <span class="s">"2026-11-12"</span>,
+    <span class="s">"regime"</span>: <span class="s">"escala"</span>, <span class="s">"tipo_relatorio"</span>: <span class="s">"ocorrencias"</span>,
+    <span class="s">"formato"</span>: <span class="s">"xlsx"</span>
+  },
+  <span class="s">"request_id"</span>: <span class="s">"pedido-2026-11-12-001"</span>
+})</pre>
+      <p>Faltou algo? A run não nasce, e o erro diz qual etapa pediu:</p>
+      <pre>{ <span class="s">"status"</span>: <span class="s">"needs_input"</span>,
+  <span class="s">"missing"</span>: [{ <span class="s">"step"</span>: <span class="s">"consultar"</span>, <span class="s">"name"</span>: <span class="s">"regime"</span> }],
+  <span class="s">"invalid"</span>: [{ <span class="s">"step"</span>: <span class="s">"periodo"</span>, <span class="s">"name"</span>: <span class="s">"fim"</span>, <span class="s">"reason"</span>: <span class="s">"fim must be after inicio"</span> }],
+  <span class="s">"unknown"</span>: [<span class="s">"tipo"</span>],
+  <span class="s">"allowed"</span>: [<span class="s">"inicio"</span>, <span class="s">"fim"</span>, <span class="s">"regime"</span>, <span class="s">"tipo_relatorio"</span>, <span class="s">"formato"</span>] }</pre>
+    </section>
+
+    <!-- 22 -->
+    <section class="step" data-title="Técnico 2 — a execução" id="p22">
+      <p class="kicker">12 · Parte técnica</p>
+      <h2>O que acontece dentro da run</h2>
+      <p>A pessoa confirma; o motor grava <code>params.json</code> em cada etapa que declarou parâmetros e copia só os arquivos declarados.</p>
+      <pre>runs/20261112-090000-a1b2c3/
+  step-1/input/params.json      (inicio, fim)
+  step-1/output/periodo.json
+  step-2/input/params.json      (regime, tipo_relatorio, formato)
+  step-2/input/periodo.json
+  step-2/output/relatorio.xlsx
+  step-3/input/relatorio.xlsx
+  step-3/output/result.json</pre>
+      <pre><span class="k">const</span> params = readJson(<span class="s">"input/params.json"</span>);
+<span class="k">for</span> (<span class="k">const</span> campo <span class="k">of</span> [<span class="s">"regime"</span>, <span class="s">"tipo_relatorio"</span>, <span class="s">"formato"</span>]) {
+  <span class="k">if</span> (!params[campo]) <span class="w">fail</span>(<span class="s">`faltou ${campo}`</span>);
+}</pre>
+      <pre>pessoa
+  │  "gera o relatório de 01/11 a 12/11, sem mesativos, em xlsx"
+  ▼
+bot da conversa ── falta algo? ──► pergunta na conversa
+  │  run_workflow(inputs, request_id)          ▲
+  ▼                                           │
+validação: missing / invalid / unknown ───────┘
+  │  ok
+  ▼
+run criada e PARADA em waiting_manual
+  │  pessoa clica Continuar
+  ▼
+motor grava params.json nas etapas que declaram
+  │
+  ├─ etapa 1 (mecânica)  calcula período → periodo.json
+  ├─ etapa 2 (mecânica)  consulta       → dados.json
+  ├─ etapa 3 (mecânica)  verifica       → result.json
+  └─ etapa 4 (bot)       escreve o texto final (se o fluxo pedir)
+  ▼
+verificação das saídas → run concluída</pre>
+      <div class="scroll">
+      <table>
+        <thead><tr><th>Peça</th><th>Hoje</th><th>Com a proposta</th></tr></thead>
+        <tbody>
+          <tr><td>Definição</td><td>Etapas e saídas</td><td>Cada etapa ganha <code>parameters</code>; sem bloco no topo</td></tr>
+          <tr><td>Ferramenta</td><td><code>run_workflow(id, version)</code></td><td>Ganha <code>inputs</code> e <code>request_id</code></td></tr>
+          <tr><td>Listagem</td><td>Nome, id, versão, etapas</td><td>Também devolve os parâmetros de cada etapa</td></tr>
+          <tr><td>Pasta da etapa</td><td>Só saídas anteriores</td><td>Ganha a origem <code>params</code></td></tr>
+          <tr><td>Memória da etapa</td><td>Herda MEMORY.md, equipe e recentes</td><td>Vazia por padrão: sem memória, recall ou ferramentas de memória</td></tr>
+          <tr><td>Rotina</td><td>Recusa primeira etapa manual</td><td>Cria a run parada</td></tr>
+          <tr><td>Scripts</td><td>Pasta única</td><td>Pasta por versão + hash</td></tr>
+        </tbody>
+      </table>
+      </div>
+    </section>
+
+    <!-- 23 -->
+    <section class="step" data-title="Limites desta versão" id="p23">
+      <p class="kicker">13 · Limites</p>
+      <h2>O que ainda não está pronto</h2>
+      <ul>
+        <li><strong>Parâmetros por etapa e <code>params.json</code></strong> ainda não existem no contrato. Entram na fatia 3.</li>
+        <li><strong>Rascunho e propostas</strong> não existem; hoje salvar cria versão. Entram na fatia 1.</li>
+        <li><strong>Prévia</strong> ainda não é um modal; a leitura da tela F2 é a base, mas a casca do diálogo atual é estreita demais — a prévia precisa de uma casca própria. Entra na fatia 2.</li>
+        <li><strong>Contexto declarado não é sandbox.</strong> A memória vazia é uma entrega pequena da fatia 4; as ferramentas/MCP continuam as do bot. O filtro de script é recomendado, não bloqueante.</li>
+        <li><strong>A prova é estrutural.</strong> O motor confere arquivos, formato e campos; conteúdo exige etapa de verificação.</li>
+        <li><strong>Fixtures</strong> podem conter dado pessoal; acesso restrito e remoção com a proposta.</li>
+      </ul>
+    </section>
+
+    <!-- 24 -->
+    <section class="step" data-title="Fora de escopo" id="p24">
+      <p class="kicker">14 · Fora de escopo</p>
+      <h2>O que esta spec não faz</h2>
+      <p>Para não misturar entrega com ideia, estes pontos estão explicitamente fora — não são pendência, não são “fatia futura” desta spec:</p>
+      <div class="grid2">
+        <div class="card">
+          <h4>Custo por etapa</h4>
+          <p class="small">A spec não mede, registra, mostra nem acompanha custo por etapa. A eficiência vem de usar parte mecânica onde dá, não de um painel de custo.</p>
+        </div>
+        <div class="card">
+          <h4>Limite mensal</h4>
+          <p class="small">Não existe teto de gasto por Workflow, departamento ou pessoa. Não é entrega desta versão.</p>
+        </div>
+        <div class="card">
+          <h4>Aprovação única por etapa</h4>
+          <p class="small">Não existe segunda aprovação. Cada etapa tem no máximo <strong>uma aprovação</strong>, feita pelo <strong>dono designado</strong> do Workflow. A etapa manual ou o cartão que espera a pessoa é essa aprovação.</p>
+        </div>
+        <div class="card">
+          <h4>Perfil restrito de ferramentas</h4>
+          <p class="small">Não vamos tirar ferramentas, MCP, navegador ou computador da etapa. Skills por etapa já existem; a autonomia do bot é mantida. A única restrição nova é a memória vazia.</p>
+        </div>
+      </div>
+      <div class="box amber">
+        <h4>“Caminho não comparável” também não existe</h4>
+        <p class="small">O ensaio compara só a saída. Se o bot chegou ao mesmo resultado por outro caminho, isso não é um estado do produto — é o funcionamento normal de um bot. Saída confere ou divergiu.</p>
+      </div>
+      <p class="small muted">Se algum desses pontos voltar, entra como spec própria — não como detalhe escondido nesta.</p>
+    </section>
+
+    <!-- 25 -->
+    <section class="step" data-title="Três alternativas" id="p25">
+      <p class="kicker">15 · Alternativas</p>
+      <h2>Três caminhos que podem entrar depois</h2>
+      <div class="grid3">
+        <div class="card">
+          <h4>Gravar e promover</h4>
+          <p class="small">O app grava a execução real (ferramenta, arquivo, decisão) e a proposta nasce do que aconteceu, não da lembrança do modelo.</p>
+          <p class="small"><strong>A favor:</strong> fidelidade e exemplo real. <strong>Contra:</strong> armazenamento e privacidade.</p>
+        </div>
+        <div class="card">
+          <h4>Biblioteca de blocos</h4>
+          <p class="small">Blocos já aprovados (“ler planilha”, “conferir CPF”) são encaixados em vez de inventados.</p>
+          <p class="small"><strong>A favor:</strong> seguro, barato, padroniza. <strong>Contra:</strong> curadoria e cobertura limitada.</p>
+        </div>
+        <div class="card">
+          <h4>Checklist no chat</h4>
+          <p class="small">O processo vira passos vivos na conversa; cada um é confirmado antes do próximo. Vira Workflow depois.</p>
+          <p class="small"><strong>A favor:</strong> atrito zero. <strong>Contra:</strong> não automatiza.</p>
+        </div>
+      </div>
+      <div class="box blue"><h4>Recomendação</h4><p class="small">Construir o caminho principal primeiro, com todo Workflow nascendo em “me avise e me mostre”. A biblioteca de blocos é a evolução; gravar e promover fica para processos longos; o checklist é a porta de entrada de quem tem medo de automatizar.</p></div>
+    </section>
+
+    <!-- 25 -->
+    <section class="step" data-title="Comparativo" id="p26">
+      <p class="kicker">15 · Comparativo</p>
+      <h2>Quando cada caminho faz sentido</h2>
+      <div class="scroll">
+      <table>
+        <thead><tr><th>Critério</th><th>Da conversa</th><th>Gravar</th><th>Blocos</th><th>Checklist</th></tr></thead>
+        <tbody>
+          <tr><td>Fidelidade</td><td>Boa</td><td>Muito alta</td><td>Alta</td><td>Total</td></tr>
+          <tr><td>Esforço de criar</td><td>Baixo</td><td>Médio</td><td>Muito baixo</td><td>Zero</td></tr>
+          <tr><td>Esforço de executar</td><td>Baixo</td><td>Baixo</td><td>Muito baixo</td><td>Alto</td></tr>
+          <tr><td>Automatiza</td><td>Sim, com “sim”</td><td>Sim, com “sim”</td><td>Sim, com “sim”</td><td>Não</td></tr>
+          <tr><td>Esforço para não técnico</td><td>Baixo</td><td>Baixo</td><td>Muito baixo</td><td>Nenhum</td></tr>
+          <tr><td>Complexidade</td><td>Média</td><td>Alta</td><td>Média</td><td>Baixa</td></tr>
+        </tbody>
+      </table>
+      </div>
+    </section>
+
+    <!-- 26 -->
+    <section class="step" data-title="Como construir" id="p27">
+      <p class="kicker">16 · Construção</p>
+      <h2>Seis fatias, cada uma útil sozinha</h2>
+      <div class="scroll">
+      <table>
+        <thead><tr><th>Fatia</th><th>Entrega</th></tr></thead>
+        <tbody>
+          <tr><td><strong>1. Pedido e proposta</strong></td><td>Entrevista, rascunho invisível, validação, cartão e propostas arquivadas.</td></tr>
+          <tr><td><strong>2. Prévia</strong></td><td>Lista com input/process/output/proof, mapa, etiquetas, suposições e “ver o código”.</td></tr>
+          <tr><td><strong>3. Parâmetros</strong></td><td><code>parameters</code> por etapa, <code>inputs</code>, validação, <code>params.json</code> e falha clara.</td></tr>
+          <tr><td><strong>4. Portão de execução</strong></td><td>Primeira etapa manual, rotina que cria run parada, memória vazia por etapa, hash de aprovação e, se aprovado, filtro de script.</td></tr>
+          <tr><td><strong>5. Ensaio</strong></td><td>Exemplos com origem, execução isolada, comparação e bordas.</td></tr>
+          <tr><td><strong>6. Anotação e escada</strong></td><td>Anotação por etapa, “o que mudou”, três rodadas e saída para o editor.</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <div class="box green">
+        <h4>Como saber que está pronto</h4>
+        <ul class="small">
+          <li>Sem pedido, nenhum Workflow é criado.</li>
+          <li>Nenhuma run começa sem confirmação registrada.</li>
+          <li>Parâmetro faltando impede a run e lista o que falta.</li>
+          <li>Nenhum script tem default para informação que varia.</li>
+          <li>Mudar definição, script ou parâmetro invalida a aprovação.</li>
+          <li>Toda etapa tem entrada, saída e prova.</li>
+          <li>Regra com borda é testada nas bordas.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 27 -->
+    <section class="step" data-title="Decisões" id="p28">
+      <p class="kicker">17 · Decisões</p>
+      <h2>O que está fechado e o que falta decidir</h2>
+      <h3>Fechadas</h3>
+      <ol class="small">
+        <li><strong>O bot pode oferecer e perguntar?</strong> Sim — três perguntas, uma por turno.</li>
+        <li><strong>Quem vê o código?</strong> A pessoa, em cada parte mecânica, com o cabeçalho do que lê, escreve e pode dar errado.</li>
+        <li><strong>Custo por etapa e limite mensal?</strong> Fora de escopo.</li>
+        <li><strong>Quando nasce automático?</strong> Nunca. Primeira etapa manual, sempre.</li>
+        <li><strong>Quem aprova cada etapa?</strong> O dono designado do Workflow. Uma aprovação por etapa; não existe segunda.</li>
+        <li><strong>Onde ficam os parâmetros?</strong> Cada etapa declara os seus; o run recebe um mapa plano.</li>
+        <li><strong>Propostas abandonadas?</strong> Arquivadas em “Propostas”, recuperáveis.</li>
+      </ol>
+      <h3>Abertas</h3>
+      <ol class="small">
+        <li><strong>Ciclo de apuração.</strong> Mês-calendário ou 21→20? Precisa ser declarado por departamento.</li>
+      </ol>
+    </section>
+
+    <!-- 28 -->
+    <section class="step" data-title="Avaliação e resumo" id="p29">
+      <p class="kicker">18 · Avaliação</p>
+      <h2>Cinco lentes, nota 8,0</h2>
+      <div class="scroll">
+      <table>
+        <thead><tr><th>Lente</th><th>Foco</th><th class="num">v3</th><th class="num">v4/v5</th></tr></thead>
+        <tbody>
+          <tr><td>Arquiteto do motor</td><td>Parâmetros, contrato e portão</td><td class="num">6</td><td class="num"><span class="score">8</span></td></tr>
+          <tr><td>Relatórios/ponto</td><td>Caso real, parâmetros e datas</td><td class="num">6</td><td class="num"><span class="score">8</span></td></tr>
+          <tr><td>Segurança</td><td>Portões, contexto e scripts</td><td class="num">6</td><td class="num"><span class="score">8</span></td></tr>
+          <tr><td>Produto/UX</td><td>Prévia, entrevista e estados</td><td class="num">6</td><td class="num"><span class="score">8</span></td></tr>
+          <tr><td>Engenharia de agentes</td><td>Geração, evidência e prova</td><td class="num">6</td><td class="num"><span class="score">8</span></td></tr>
+          <tr class="total"><td>Média</td><td>Cinco lentes</td><td class="num">6,0</td><td class="num">8,0</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <div class="box amber">
+        <h4>O que ainda separa de 9</h4>
+        <ul class="small">
+          <li>O que acontece com uma run parada que ninguém confirma: expira, escala ou fica?</li>
+          <li>Prova de conteúdo e regra nomeada do <code>whenAbsent</code> ainda precisam de etapa versionada.</li>
+        </ul>
+      </div>
+      <div class="box">
+        <p class="rule" style="font-size:19px;margin-bottom:0">A conversa vira proposta; a proposta vira prévia com input, process, output e proof; a prévia só vira Workflow depois de testada e aprovada — e o Workflow nunca roda sem uma pessoa confirmar.</p>
+      </div>
+      <p class="small muted">Fim. Use “Anterior” para rever ou “Índice” para pular para um ponto.</p>
+    </section>
+
+  </main>
+
+  <footer class="foot">
+    <button class="navbtn" id="prev" type="button">← Anterior</button>
+    <span class="hint">Use ← → para navegar · Esc fecha o índice</span>
+    <button class="navbtn primary" id="next" type="button">Próximo →</button>
+  </footer>
+</div>
+
+<div class="overlay" id="overlay" aria-hidden="true">
+  <div class="panel" role="dialog" aria-modal="true" aria-label="Índice">
+    <h3>Índice</h3>
+    <ol id="indexList"></ol>
+    <p class="small muted" style="margin-top:18px">Esc ou clique fora para fechar.</p>
+  </div>
+</div>
+
+<script>
+(function(){
+  const steps = Array.from(document.querySelectorAll('.step'));
+  const total = steps.length;
+  const cur = document.getElementById('cur');
+  const totalEl = document.getElementById('total');
+  const bar = document.getElementById('progress');
+  const prev = document.getElementById('prev');
+  const next = document.getElementById('next');
+  const overlay = document.getElementById('overlay');
+  const list = document.getElementById('indexList');
+  let i = 0;
+
+  totalEl.textContent = total;
+
+  steps.forEach((s, n) => {
+    const li = document.createElement('li');
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = s.dataset.title || ('Passo ' + (n + 1));
+    btn.addEventListener('click', () => { show(n); closeIndex(); });
+    li.appendChild(btn);
+    li.dataset.step = n;
+    list.appendChild(li);
+  });
+
+  function show(n, push){
+    n = Math.max(0, Math.min(total - 1, n));
+    steps[i].classList.remove('active');
+    i = n;
+    steps[i].classList.add('active');
+    cur.textContent = i + 1;
+    bar.style.width = ((i + 1) / total * 100).toFixed(2) + '%';
+    prev.disabled = i === 0;
+    next.textContent = i === total - 1 ? 'Fim' : 'Próximo →';
+    next.disabled = i === total - 1;
+    Array.from(list.children).forEach((li, k) => li.classList.toggle('current', k === i));
+    if (push !== false) { try { history.replaceState(null, '', '#p' + (i + 1)); } catch (_) {} }
+    const h = steps[i].querySelector('h1,h2');
+    if (h) { h.setAttribute('tabindex','-1'); h.focus({preventScroll:true}); }
+    document.getElementById('stage').scrollTop = 0;
+  }
+
+  function openIndex(){
+    overlay.classList.add('open');
+    overlay.setAttribute('aria-hidden','false');
+    const b = list.querySelector('li.current button') || list.querySelector('button');
+    if (b) b.focus();
+  }
+  function closeIndex(){
+    overlay.classList.remove('open');
+    overlay.setAttribute('aria-hidden','true');
+  }
+
+  prev.addEventListener('click', () => show(i - 1));
+  next.addEventListener('click', () => show(i + 1));
+  document.getElementById('indexBtn').addEventListener('click', openIndex);
+  const openIndexBtn = document.getElementById('openIndex');
+  if (openIndexBtn) openIndexBtn.addEventListener('click', openIndex);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) closeIndex(); });
+  document.querySelectorAll('[data-go="next"]').forEach((b) => b.addEventListener('click', () => show(i + 1)));
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { closeIndex(); return; }
+    if (overlay.classList.contains('open')) return;
+    const t = e.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT')) return;
+    if (e.key === 'ArrowRight' || e.key === 'PageDown') { e.preventDefault(); show(i + 1); }
+    else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); show(i - 1); }
+    else if (e.key === 'Home') { e.preventDefault(); show(0); }
+    else if (e.key === 'End') { e.preventDefault(); show(total - 1); }
+  });
+
+  const m = /^#p(\d+)$/.exec(location.hash);
+  if (m) show(Number(m[1]) - 1, false);
+  else show(0, false);
+})();
+</script>
+</body>
+</html>

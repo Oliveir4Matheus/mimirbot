@@ -135,3 +135,42 @@ describe("canDismissOptionCard", () => {
     })).toBe(true);
   });
 });
+
+describe("Workflow proposal cards", () => {
+  const proposalCard = msg({
+    id: "workflow-proposal",
+    kind: "options",
+    card: {
+      title: "Proposta de Workflow: Cobrança mensal",
+      subtitle: "2 etapas",
+      options: ["Criar Workflow", "Agora não"],
+      workflowProposal: { id: "p-1", name: "Cobrança mensal", department: "Financeiro", steps: 2, assumptions: 1 },
+    },
+  });
+  const later: Message = msg({ id: "later", role: "user", kind: "text", text: "Criar Workflow" });
+
+  it("stays visible after the conversation continues", () => {
+    expect(shouldHideOnboardingCard(proposalCard, [proposalCard, later])).toBe(false);
+  });
+
+  it("keeps Criar Workflow disabled until the interview is confirmed", () => {
+    const markup = renderToStaticMarkup(createElement(StoreProvider, null, createElement(OptionCard, { botId: "atlas", message: proposalCard })));
+    const createAt = markup.indexOf(">Criar Workflow</span>");
+    const createButton = markup.slice(markup.lastIndexOf("<button", createAt), createAt);
+    const archiveAt = markup.indexOf(">Agora não</span>");
+    const archiveButton = markup.slice(markup.lastIndexOf("<button", archiveAt), archiveAt);
+    expect(createAt).toBeGreaterThan(-1);
+    expect(createButton).toContain('disabled=""');
+    expect(archiveButton).not.toContain('disabled=""');
+    expect(markup).toContain(t("workflows.proposals.interviewCreateBlocked"));
+  });
+
+  it("still hides an ordinary onboarding card once the person speaks again", () => {
+    const quiz = msg({
+      id: "ordinary",
+      kind: "options",
+      card: { title: "What do you mostly want help with?", subtitle: "Pick one", options: ["Work", "Personal"] },
+    });
+    expect(shouldHideOnboardingCard(quiz, [quiz, later])).toBe(true);
+  });
+});

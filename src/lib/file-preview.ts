@@ -1,4 +1,16 @@
-export type PreviewFormat = "md" | "html" | "csv" | "tsv" | "xlsx" | "mp4" | "pdf";
+export type PreviewFormat =
+  | "md"
+  | "html"
+  | "text"
+  | "json"
+  | "csv"
+  | "tsv"
+  | "xlsx"
+  | "mp4"
+  | "video"
+  | "image"
+  | "audio"
+  | "pdf";
 
 const FORMAT_BY_EXTENSION: Readonly<Record<string, PreviewFormat>> = {
   md: "md",
@@ -25,10 +37,15 @@ export function previewFormatLabel(format: PreviewFormat): string {
   switch (format) {
     case "md": return "Markdown";
     case "html": return "HTML";
+    case "text": return "TXT";
+    case "json": return "JSON";
     case "csv": return "CSV";
     case "tsv": return "TSV";
     case "xlsx": return "XLSX";
     case "mp4": return "MP4";
+    case "video": return "VIDEO";
+    case "image": return "IMG";
+    case "audio": return "AUDIO";
     case "pdf": return "PDF";
   }
 }
@@ -41,7 +58,7 @@ export function previewFileSize(bytes: number | null | undefined): string {
 }
 
 export function isTextPreviewFormat(format: PreviewFormat | null): boolean {
-  return format === "md" || format === "html" || format === "csv" || format === "tsv";
+  return format === "md" || format === "html" || format === "text" || format === "json" || format === "csv" || format === "tsv";
 }
 
 export const TEXT_PREVIEW_MAX_BYTES = 50 * 1024 * 1024;

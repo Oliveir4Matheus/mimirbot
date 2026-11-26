@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
 import { StoreProvider, type Bot } from "@/state/store";
-import { MASCOT_BODY_IDS, MASCOT_BODIES } from "../../shared/mascot-bodies";
+import { AGENT_SHAPE_IDS, AGENT_SHAPE_NAMES, DEFAULT_AGENT_SHAPE } from "@/lib/agent-shapes";
 import { HALLOWEEN_BODIES, HALLOWEEN_BODY_IDS } from "../../shared/halloween-bodies";
 import { BotProfileAvatarCard } from "./BotProfileAvatarCard";
 
@@ -44,8 +44,8 @@ describe("BotProfileAvatarCard body picker", () => {
     const markup = renderCard(makeBot());
 
     expect(markup).toContain(">Body<");
-    for (const id of MASCOT_BODY_IDS) {
-      expect(markup).toContain(`aria-label="Use the ${MASCOT_BODIES[id].name} body"`);
+    for (const id of AGENT_SHAPE_IDS) {
+      expect(markup).toContain(`aria-label="Use the ${AGENT_SHAPE_NAMES[id]} body"`);
     }
   });
 
@@ -59,18 +59,18 @@ describe("BotProfileAvatarCard body picker", () => {
     expect(markup).toContain(`aria-pressed="true" aria-label="Use the ${HALLOWEEN_BODIES.witch.name} body"`);
   });
 
-  it("marks the current body pressed and the rest unpressed, defaulting to cursor", () => {
+  it("marks the current body pressed and the rest unpressed, defaulting to the default shape", () => {
     const markup = renderCard(makeBot());
 
-    expect(markup).toContain(`aria-pressed="true" aria-label="Use the ${MASCOT_BODIES.cursor.name} body"`);
-    expect(markup).toContain(`aria-pressed="false" aria-label="Use the ${MASCOT_BODIES.star.name} body"`);
+    expect(markup).toContain(`aria-pressed="true" aria-label="Use the ${AGENT_SHAPE_NAMES[DEFAULT_AGENT_SHAPE]} body"`);
+    expect(markup).toContain(`aria-pressed="false" aria-label="Use the ${AGENT_SHAPE_NAMES.hexagon} body"`);
   });
 
   it("reflects an explicitly chosen body", () => {
-    const markup = renderCard(makeBot({ mascotBody: "star" }));
+    const markup = renderCard(makeBot({ mascotBody: "hexagon" }));
 
-    expect(markup).toContain(`aria-pressed="true" aria-label="Use the ${MASCOT_BODIES.star.name} body"`);
-    expect(markup).toContain(`aria-pressed="false" aria-label="Use the ${MASCOT_BODIES.cursor.name} body"`);
+    expect(markup).toContain(`aria-pressed="true" aria-label="Use the ${AGENT_SHAPE_NAMES.hexagon} body"`);
+    expect(markup).toContain(`aria-pressed="false" aria-label="Use the ${AGENT_SHAPE_NAMES[DEFAULT_AGENT_SHAPE]} body"`);
   });
 
   it("offers zoom and drag framing for a custom image", () => {
@@ -94,7 +94,7 @@ describe("BotProfileAvatarCard body picker", () => {
     const markup = renderCard(makeBot({ avatarCrop: "circle" }));
 
     expect(markup).not.toContain(">Body<");
-    expect(markup).not.toContain(`aria-label="Use the ${MASCOT_BODIES.cursor.name} body"`);
+    expect(markup).not.toContain(`aria-label="Use the ${AGENT_SHAPE_NAMES[DEFAULT_AGENT_SHAPE]} body"`);
   });
 
   it("hides the body picker for every flat crop, not just circle", () => {
@@ -116,7 +116,7 @@ describe("BotProfileAvatarCard compact layout", () => {
     for (const folded of [">Expression<", ">Shape<", "Upload image", ">Halloween<", "Reset mascot"]) {
       expect(markup.indexOf(folded), folded).toBeGreaterThan(more);
     }
-    for (const id of MASCOT_BODY_IDS) expect(markup).toContain(`aria-label="Use the ${MASCOT_BODIES[id].name} body"`);
+    for (const id of AGENT_SHAPE_IDS) expect(markup).toContain(`aria-label="Use the ${AGENT_SHAPE_NAMES[id]} body"`);
   });
 
   it("leaves the settings card as it was", () => {

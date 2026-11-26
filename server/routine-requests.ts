@@ -115,6 +115,8 @@ export interface RoutineRequestServiceOptions {
   ) => { ok: true } | { ok: false; status: number; error: string };
   /** Re-authorizes a cross-bot target at propose and confirm time: the card can outlive the target's section. */
   validateTarget?: (proposerBotId: string, target: { botId: string; name: string }) => string | null;
+  /** Re-checks a Workflow routine's target: the Workflow must exist when the routine is created. */
+  validateWorkflow?: (botId: string, workflowId: string) => string | null;
   engines?: LimitResetEngines;
 }
 
@@ -361,20 +363,28 @@ function normalizeScheduleChanges(
 
 function normalizeDefinition(input: RoutineToolDefinitionInput, now: number, ownEngine?: string): RoutineRequestDefinition {
   const timeoutMinutes = timeout(input.timeoutMinutes);
+  if (input.target !== "workflow" && input.workflowId != null) {
+    throw new RoutineRequestError("workflowId needs target workflow");
+  }
+  const workflowId = input.target === "workflow" ? text(input.workflowId ?? "", "workflowId", 128) : undefined;
   return {
     name: text(input.name, "name", 80),
-    instructions: text(input.instructions, "instructions", 20_000),
+    instructions: workflowId === undefined ? text(input.instructions, "instructions", 20_000) : "",
     schedule: normalizeSchedule(input.schedule, now, ownEngine),
-    runOn: runOn(input.runOn),
+    runOn: workflowId === undefined ? runOn(input.runOn) : "maus",
     durationMinutes: duration(input.durationMinutes),
     ...(timeoutMinutes == null ? {} : { timeoutMinutes }),
-    ...(input.continuity === true ? { continuity: true } : {}),
+    ...(workflowId === undefined ? {} : { target: "workflow" as const, workflowId }),
+    ...(input.continuity === true && workflowId === undefined ? { continuity: true } : {}),
     ...(input.overlap === "queue" ? { overlap: "queue" as const } : {}),
-    ...(input.runOnStartup === true ? { runOnStartup: true } : {}),
+    ...(input.runOnStartup === true && workflowId === undefined ? { runOnStartup: true } : {}),
   };
 }
 
 function normalizeChanges(input: RoutineToolChangesInput, now: number, ownEngine?: string): RoutineRequestChanges {
+  if (input.target !== undefined || input.workflowId !== undefined) {
+    throw new RoutineRequestError("A routine's target is fixed when it is created; a Workflow routine is created after its Workflow");
+  }
   const changes: RoutineRequestChanges = {};
   if (input.name !== undefined) changes.name = text(input.name, "name", 80);
   if (input.instructions !== undefined) changes.instructions = text(input.instructions, "instructions", 20_000);
@@ -627,6 +637,7 @@ function effectiveDefinition(operation: RoutineRequestOperation, manager: Routin
     ...(existing.continuity ? { continuity: true } : {}),
     ...(existing.overlap ? { overlap: existing.overlap } : {}),
     ...(existing.runOnStartup ? { runOnStartup: true } : {}),
+    ...(existing.target === "workflow" && existing.workflowId ? { target: "workflow" as const, workflowId: existing.workflowId } : {}),
   };
   if (operation.action !== "update") return base;
   const { schedule, timeoutMinutes, ...changes } = operation.changes;
@@ -667,7 +678,10 @@ function cardCopy(
   const nextRunAt = nextForOperation(operation, manager, now, engines);
   const scheduleTimeZone = definition.schedule.type === "cron" ? definition.schedule.timeZone : timeZone;
   const when = operation.action === "run_now" ? "Now" : scheduleText(definition.schedule, timeZone, engines);
-  const destination = definition.runOn === "cloud" ? "Bot’s current model on its cloud desktop" : "Bot’s current model, where it usually works";
+  const workflowRoutine = definition.target === "workflow";
+  const destination = workflowRoutine
+    ? "The Workflow's steps, starting at its first manual step"
+    : definition.runOn === "cloud" ? "Bot’s current model on its cloud desktop" : "Bot’s current model, where it usually works";
   const current = operation.action === "create"
     ? null
     : manager.listRoutines().find((routine) => routine.id === operation.routineId) ?? null;
@@ -708,18 +722,18 @@ function cardCopy(
         ? [`Next 3 runs (${scheduleTimeZone}): ${nextCronRuns(definition.schedule, now, 3).map((at) => formatInstant(at, scheduleTimeZone)).join(" · ")}`]
         : []),
       `Runs on: ${destination}`,
+      ...(workflowRoutine ? ["Stops: every run waits in waiting_manual at the first manual step until someone continues it; the routine supplies no inputs."] : []),
       `Run limit: ${definition.timeoutMinutes === undefined ? "No limit" : `${definition.timeoutMinutes} minutes`}`,
-      `Continuity: ${definition.continuity ? "Carries the previous run's report into the next run" : "Each run starts fresh"}`,
+      ...(workflowRoutine ? [] : [`Continuity: ${definition.continuity ? "Carries the previous run's report into the next run" : "Each run starts fresh"}`]),
       `While busy: ${definition.overlap === "queue" ? "Queue one scheduled run; skip further occurrences until it starts" : "Skip overlapping scheduled occurrences"}`,
       ...(definition.runOnStartup || (operation.action === "update" && operation.changes.runOnStartup !== undefined)
         ? [`On startup: ${definition.runOnStartup ? "Also runs once each time MimirBot starts" : "Runs only on its schedule"}`]
         : []),
       ...(operation.action === "create" || operation.action === "update"
-        ? [consequenceLine(definition.schedule, Boolean(definition.continuity))]
+        ? [workflowRoutine ? "Starts a new run of the Workflow at each matching time." : consequenceLine(definition.schedule, Boolean(definition.continuity))]
         : []),
       "",
-      "Instructions:",
-      visibleInstructions,
+      ...(workflowRoutine ? [] : ["Instructions:", visibleInstructions]),
     ].join("\n"),
     nextRunAt,
     tool: operation.action === "create" ? "schedule_routine" : "manage_routine",
@@ -736,6 +750,7 @@ function inputFromDefinition(definition: RoutineRequestDefinition, botId: string
     schedule: asSchedule(definition.schedule, now),
     durationMinutes: definition.durationMinutes,
     ...(definition.timeoutMinutes === undefined ? {} : { timeoutMinutes: definition.timeoutMinutes }),
+    ...(definition.target === "workflow" && definition.workflowId ? { target: "workflow" as const, workflowId: definition.workflowId } : {}),
     ...(definition.continuity ? { continuity: true } : {}),
     ...(definition.overlap === "queue" ? { overlap: "queue" as const } : {}),
     ...(definition.runOnStartup ? { runOnStartup: true } : {}),
@@ -918,6 +933,7 @@ function routineSnapshot(routine: Routine): RoutineRequestSnapshot | undefined {
     ...(routine.runOnStartup ? { runOnStartup: true } : {}),
     enabled: routine.enabled,
     ...(routine.target === "room-goal" ? { target: "room-goal" as const } : {}),
+    ...(routine.target === "workflow" && routine.workflowId ? { target: "workflow" as const, workflowId: routine.workflowId } : {}),
     ...(routine.groupId ? { groupId: routine.groupId } : {}),
     ...(routine.resultsThreadId ? { resultsThreadId: routine.resultsThreadId } : {}),
   };
@@ -935,6 +951,7 @@ function restorePatch(before: RoutineRequestSnapshot, now: number): Partial<Rout
       : schedule,
     durationMinutes: before.durationMinutes,
     timeoutMinutes: before.timeoutMinutes ?? null,
+    ...(before.target === "workflow" && before.workflowId ? { target: "workflow" as const, workflowId: before.workflowId } : {}),
     continuity: before.continuity === true,
     overlap: before.overlap ?? "skip",
     runOnStartup: before.runOnStartup === true,
@@ -949,6 +966,7 @@ export class RoutineRequestService {
   private readonly cloudReady?: (botId: string) => Promise<{ ready: boolean; reason?: string }>;
   private readonly canPersist?: RoutineRequestServiceOptions["canPersist"];
   private readonly validateTarget?: RoutineRequestServiceOptions["validateTarget"];
+  private readonly validateWorkflow?: RoutineRequestServiceOptions["validateWorkflow"];
   private readonly autoApply?: RoutineRequestServiceOptions["autoApply"];
   private readonly engines?: LimitResetEngines;
 
@@ -960,6 +978,7 @@ export class RoutineRequestService {
     this.cloudReady = options.cloudReady;
     this.canPersist = options.canPersist;
     this.validateTarget = options.validateTarget;
+    this.validateWorkflow = options.validateWorkflow;
     this.autoApply = options.autoApply;
     this.engines = options.engines;
   }
@@ -990,6 +1009,13 @@ export class RoutineRequestService {
     if (operation.forBot && this.validateTarget) {
       const refusal = this.validateTarget(botId, operation.forBot);
       if (refusal) throw new RoutineRequestError(refusal, 403);
+    }
+    if (this.validateWorkflow) {
+      const target = effectiveDefinition(operation, this.routines);
+      if (target?.target === "workflow" && target.workflowId) {
+        const refusal = this.validateWorkflow(operation.forBot?.botId ?? botId, target.workflowId);
+        if (refusal) throw new RoutineRequestError(refusal, 400);
+      }
     }
     await this.requireCloudReadiness(operation, botId);
     // The probe is async: re-check the captured revision before persisting the snapshot.

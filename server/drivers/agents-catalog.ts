@@ -1,8 +1,10 @@
 // The agents tool catalog and which tools a turn sees: definitions only, no environment, no calls.
 import { CREDENTIAL_TARGETS } from "../../shared/credential-request.ts";
 import { OPTIONS_CARD_LIMITS, WATCHER_OPTIONS_CARD_BOT_ID } from "../../shared/options-card.ts";
+import { WORKFLOW_APPROVAL_NO_FALLBACK, WORKFLOW_APPROVAL_RULE } from "../../shared/workflow-approval.ts";
 import { agentToolAnnotations } from "../agent-tool-policy.ts";
 import { CHAT_CARD_TOOL_DEFINITIONS } from "./agents-chat-card-tools.ts";
+import { WORKFLOW_PROPOSAL_TOOL_DEFINITIONS } from "./agents-workflow-proposal-tools.ts";
 import { HELPER_TOOL_DEFINITIONS } from "./agents-helper-tools.ts";
 import { WAIT_TOOL_DEFINITIONS, WAIT_TOOL_NAMES } from "./agents-wait-tools.ts";
 import { MAUSBOT_TOOL_DEFINITIONS } from "./agents-mausbot-tools.ts";
@@ -143,6 +145,16 @@ const TRIGGER_FIELDS_SCHEMA = {
     // "box" is Boat's historical run_on destination id (agents wire contract).
     enum: ["maus", "box"],
     description: "Omit normally: maus (default) keeps the bot's model and configured computer, INCLUDING a self-hosted VPS. box runs on the bot's cloud computer, same model, once cloud computers are set up; a legacy cloud value from trigger_info means box.",
+  },
+  target: {
+    type: "string",
+    enum: ["workflow"],
+    description: "Schedules only: workflow runs one existing Workflow instead of a bot turn. It needs workflow_id returned by create_workflow_from_proposal; a routine never supplies a Workflow's inputs, so the first manual step collects them and every run waits there.",
+  },
+  workflow_id: {
+    type: "string",
+    maxLength: 128,
+    description: "Schedules only, with target=workflow: the Workflow's id. It must already exist; never create the routine before the Workflow.",
   },
   timeout_minutes: {
     type: "integer",
@@ -617,7 +629,7 @@ const TOOL_DEFINITIONS = [
   {
     name: "trigger",
     description:
-      "Set up or change work that happens on its own (was create_trigger / manage_trigger): when <something happens>, a bot does <instructions>. create in this turn whenever the person describes recurring or event-based work (\"every morning send me…\", \"whenever I get an email from…\", \"when another app calls…\"); never ask for confirmation first. when=schedule runs on a time rule, cron included (call trigger_info first for relative dates: it has the authoritative time and timezone); when=app_event runs when something happens in a connected app (trigger_info action=events first; prefer it to a schedule that keeps checking); when=webhook gives an address another app sends to: the result carries its private address, so you can paste it into that app's setup yourself (never anywhere else). when=limit_reset runs when an AI's usage limit resets (\"run this when my limit resets\", or to finish work your own limit stopped). To the person these are automations: write name and instructions as they would say them. Something to do once, now, is not a trigger. update (only the fields to change), pause, resume and run_now (an app event or webhook gets a test event) act on one of the bot's routines, app events or webhooks, by its trigger_id from trigger_info; delete_trigger deletes one. Each applies at once; the person sees it with Edit, Pause and Undo. for_bot_id: a trigger of ANOTHER bot in your section, which keeps that bot's engine and permissions.",
+      "Set up or change work that happens on its own (was create_trigger / manage_trigger): when <something happens>, a bot does <instructions>. create in this turn whenever the person describes recurring or event-based work (\"every morning send me…\", \"whenever I get an email from…\", \"when another app calls…\"); never ask for confirmation first. when=schedule runs on a time rule, cron included (call trigger_info first for relative dates: it has the authoritative time and timezone); when=app_event runs when something happens in a connected app (trigger_info action=events first; prefer it to a schedule that keeps checking); when=webhook gives an address another app sends to: the result carries its private address, so you can paste it into that app's setup yourself (never anywhere else). when=limit_reset runs when an AI's usage limit resets (\"run this when my limit resets\", or to finish work your own limit stopped). target=workflow with workflow_id schedules an existing Workflow instead of a bot turn, only after it was created, and its runs wait at the first manual step for the person. To the person these are automations: write name and instructions as they would say them. Something to do once, now, is not a trigger. update (only the fields to change), pause, resume and run_now (an app event or webhook gets a test event) act on one of the bot's routines, app events or webhooks, by its trigger_id from trigger_info; delete_trigger deletes one. Each applies at once; the person sees it with Edit, Pause and Undo. for_bot_id: a trigger of ANOTHER bot in your section, which keeps that bot's engine and permissions.",
     inputSchema: {
       type: "object",
       additionalProperties: false,
@@ -861,6 +873,55 @@ const TOOL_DEFINITIONS = [
       required: ["name"],
     },
   },
+  {
+    name: "list_workflows",
+    description: "List the Workflows of your department that you can start, with only the values a person must supply before the run starts.",
+    inputSchema: { type: "object", additionalProperties: false, properties: {} },
+  },
+  {
+    name: "run_workflow",
+    description: "Start a Workflow from list_workflows. This starts the run; it does not run the steps inside this turn. A step may ask the person to confirm something: " + WORKFLOW_APPROVAL_RULE + ". In a step's instructions, " + WORKFLOW_APPROVAL_NO_FALLBACK + ".",
+    inputSchema: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        workflow_id: { type: "string", minLength: 1, maxLength: 64, description: "The Workflow id from list_workflows." },
+        version: { type: "integer", minimum: 1, description: "Optional definition version; omit for the latest." },
+        inputs: {
+          type: "object",
+          additionalProperties: true,
+          description: "The flat parameter map: only the names list_workflows shows; a value produced during the run is never asked here. If the answer is needs_input, ask for what it names.",
+        },
+        request_id: { type: "string", minLength: 1, maxLength: 200, description: "Optional caller id stored on the run; it does not deduplicate." },
+      },
+      required: ["workflow_id"],
+    },
+  },
+  {
+    name: "workflow_status",
+    description: "Show a run's current step, each step's status and verified outputs, what a paused run waits for, the comparison a condition took, and why it failed.",
+    inputSchema: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        run_id: { type: "string", minLength: 1, maxLength: 64, description: "The run id returned by run_workflow." },
+      },
+      required: ["run_id"],
+    },
+  },
+  {
+    name: "cancel_workflow",
+    description: "Stop a Workflow run you started. Files already written stay on disk; steps that have not started do not start.",
+    inputSchema: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        run_id: { type: "string", minLength: 1, maxLength: 64, description: "The run id returned by run_workflow." },
+      },
+      required: ["run_id"],
+    },
+  },
+  ...WORKFLOW_PROPOSAL_TOOL_DEFINITIONS,
 ].map((tool) => {
   const annotations = agentToolAnnotations(tool.name);
   return annotations ? { ...tool, annotations } : tool;
@@ -872,6 +933,8 @@ export const SHARED_COMPUTER_TOOL_NAMES = new Set(["list_shared_computers", "sha
 const VOICE_TOOL_NAMES = new Set(["send_voice_note"]);
 const CHIEF_ONLY_TOOL_NAMES = new Set([
   "create_bot", "list_team_setup", "list_team_library", "propose_team_setup", "propose_bot_deletion", "manage_room", "retry_thread",
+  // Authoring a Workflow is a Chief's act, like creating a bot: every other bot asks a reachable Chief.
+  "propose_workflow", "create_workflow_from_proposal", "archive_workflow_proposal",
 ]);
 const CHIEF_TARGET_TOOL_NAMES = new Set(["propose_profile", "propose_model"]);
 const WATCHER_TOOL_NAMES = new Set(["create_options_card"]);

@@ -667,6 +667,13 @@ describe("agents-proxy MCP surface", () => {
       "skills_list",
       "skill_manage",
       "add_mcp_server",
+      "list_workflows",
+      "run_workflow",
+      "workflow_status",
+      "cancel_workflow",
+      "propose_workflow",
+      "create_workflow_from_proposal",
+      "archive_workflow_proposal",
     ]);
     const tool = (name: string) => list.result.tools.find((entry: { name: string }) => entry.name === name);
     const coordinate = tool("coordinate_bots");
@@ -748,6 +755,7 @@ describe("agents-proxy MCP surface", () => {
       "assignment_status", "list_bots", "list_rooms", "list_threads",
       "list_team_setup",
       "session_search", "trigger_info", "list_waits", "skills_list",
+      "list_workflows", "workflow_status",
     ];
     expect(list.result.tools.filter((tool: any) => tool.annotations?.readOnlyHint)
       .map((tool: any) => tool.name)).toEqual(readNames);
@@ -2081,7 +2089,8 @@ describe("standing external runtime", () => {
   it("sees the same one tool surface as every turn: the switches it sets change nothing", async () => {
     const list = await externalRpc("tools/list");
     // the main child is a Chief's turn that may pick its computer; this one is neither, so only those differ
-    const chiefOnly = ["create_bot", "list_team_setup", "list_team_library", "propose_team_setup", "propose_bot_deletion", "manage_room", "retry_thread"];
+    const chiefOnly = ["create_bot", "list_team_setup", "list_team_library", "propose_team_setup", "propose_bot_deletion", "manage_room", "retry_thread",
+      "propose_workflow", "create_workflow_from_proposal", "archive_workflow_proposal"];
     const everyTurn = (await rpc("tools/list")).result.tools.filter((tool: any) => !chiefOnly.includes(tool.name) && tool.name !== "select_computer");
     const names = list.result.tools.map((tool: any) => tool.name);
     expect(names).toEqual(everyTurn.map((tool: any) => tool.name));
@@ -2199,7 +2208,8 @@ describe("with computer sharing off and no Chief of Staff (the defaults)", () =>
   it("shows a bot that is not a Chief none of the Chief-only tools or parameters", async () => {
     type ListedTool = { name: string; description: string; inputSchema: { properties: Record<string, unknown> } };
     const tools = new Map(((await gatedRpc("tools/list")).result.tools as ListedTool[]).map((tool) => [tool.name, tool]));
-    for (const name of ["create_bot", "list_team_setup", "propose_team_setup", "propose_bot_deletion", "manage_room", "retry_thread"]) {
+    for (const name of ["create_bot", "list_team_setup", "propose_team_setup", "propose_bot_deletion", "manage_room", "retry_thread",
+      "propose_workflow", "create_workflow_from_proposal", "archive_workflow_proposal"]) {
       expect(tools.has(name), name).toBe(false);
     }
     for (const name of ["propose_profile", "propose_model"]) {

@@ -66,7 +66,7 @@ function linuxDescriptor(userData: string, { session = "x11" }: { session?: "x11
     daemon: {
       socketPath: socket,
       pid: process.pid,
-      contractVersion: "0.8.0",
+      contractVersion: "0.9.0",
       toolsListSchemaVersion: "1",
       capabilityVersion: "1",
       mcpProtocolVersion: "2025-06-18",

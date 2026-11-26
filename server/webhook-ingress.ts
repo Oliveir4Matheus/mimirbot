@@ -2,6 +2,7 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import { z } from "zod";
 
 import { parseJson, type JsonValue } from "./schema.ts";
+import type { WorkflowTriggerManager } from "./workflow-triggers.ts";
 import type { WebhookManager } from "./webhooks.ts";
 
 export const MAX_WEBHOOK_BODY_BYTES = 256 * 1024;
@@ -88,7 +89,31 @@ function eventName(req: IncomingMessage): string | undefined {
   )?.trim() || undefined;
 }
 
-export function createWebhookIngressHandler(manager: WebhookManager, claimRequest?: () => () => void) {
+/** Repeated headers survive here as a list, so a binding can refuse an ambiguous value. */
+function rawHeaders(req: IncomingMessage): Record<string, string | string[]> {
+  const headers: Record<string, string | string[]> = {};
+  for (let index = 0; index + 1 < req.rawHeaders.length; index += 2) {
+    const name = req.rawHeaders[index]!.toLowerCase();
+    const value = req.rawHeaders[index + 1] ?? "";
+    const previous = headers[name];
+    if (previous === undefined) headers[name] = value;
+    else if (Array.isArray(previous)) previous.push(value);
+    else headers[name] = [previous, value];
+  }
+  return headers;
+}
+
+function queryMap(url: URL): Record<string, string[]> {
+  const query: Record<string, string[]> = {};
+  for (const name of new Set(url.searchParams.keys())) query[name] = url.searchParams.getAll(name);
+  return query;
+}
+
+export function createWebhookIngressHandler(
+  manager: WebhookManager,
+  claimRequest?: () => () => void,
+  workflowTriggers?: WorkflowTriggerManager,
+) {
   return async (req: IncomingMessage, res: ServerResponse) => {
     let url: URL;
     try {
@@ -98,6 +123,44 @@ export function createWebhookIngressHandler(manager: WebhookManager, claimReques
     }
     if (req.method === "GET" && url.pathname === "/health") {
       return json(res, 200, { app: "openmausbot-webhooks", ready: true });
+    }
+    const workflowMatch = url.pathname.match(/^\/hooks\/(wfw_[A-Za-z0-9_-]+)(?:\/([^/]+))?$/);
+    if (workflowMatch) {
+      if (req.method !== "POST") return json(res, 405, { error: "Webhooks accept POST requests" });
+      let release: (() => void) | undefined;
+      try {
+        release = claimRequest?.();
+        let secret = "";
+        try {
+          secret = (workflowMatch[2] ? decodeURIComponent(workflowMatch[2]) : "") || bearerSecret(req);
+        } catch {
+        }
+        // A downgraded app has no Workflow trigger manager, so `wfw_` fails closed without buffering input.
+        if (!workflowTriggers || !workflowTriggers.authorize(workflowMatch[1], secret)) {
+          workflowTriggers?.recordUnauthorized(workflowMatch[1], { deliveryId: deliveryId(req), eventName: eventName(req) });
+          return json(res, 401, { error: "Invalid webhook URL or secret" });
+        }
+        const raw = await readRawBody(req);
+        const contentType = header(req, "content-type")?.split(";")[0]?.trim().toLowerCase() ?? "text/plain";
+        const payload = parsePayload(raw, contentType);
+        const result = await workflowTriggers.receive(workflowMatch[1], secret, {
+          payload,
+          eventName: eventName(req),
+          deliveryId: deliveryId(req),
+          headers: rawHeaders(req),
+          query: queryMap(url),
+        });
+        return json(res, 202, result as unknown as JsonValue);
+      } catch (error) {
+        const parsedError = statusErrorSchema.safeParse(error);
+        const status = parsedError.success ? parsedError.data.status ?? 500 : 500;
+        const body = error !== null && typeof error === "object" && "body" in error
+          ? (error as { body: JsonValue }).body
+          : { error: error instanceof Error ? error.message : String(error) };
+        return json(res, status, body);
+      } finally {
+        release?.();
+      }
     }
     const match = url.pathname.match(/^\/hooks\/(wh_[A-Za-z0-9_-]+)(?:\/([^/]+))?$/);
     if (!match) return json(res, 404, { error: "Unknown webhook endpoint" });
@@ -166,11 +229,17 @@ export function advertisedWebhookBase(raw: string): string {
 
 export async function listenWebhookIngress(
   manager: WebhookManager,
-  options: { host?: string; port: number; publicBaseUrl?: string; claimRequest?: () => () => void },
+  options: {
+    host?: string;
+    port: number;
+    publicBaseUrl?: string;
+    claimRequest?: () => () => void;
+    workflowTriggers?: WorkflowTriggerManager;
+  },
 ): Promise<WebhookIngress> {
   const host = options.host ?? "127.0.0.1";
   const advertised = options.publicBaseUrl === undefined ? undefined : advertisedWebhookBase(options.publicBaseUrl);
-  const handle = createWebhookIngressHandler(manager, options.claimRequest);
+  const handle = createWebhookIngressHandler(manager, options.claimRequest, options.workflowTriggers);
   const server = createServer((req, res) => {
     handle(req, res).catch((error: unknown) => {
       console.error("webhooks: receiver failed", error);

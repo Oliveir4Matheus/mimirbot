@@ -108,6 +108,43 @@ built-in browser panel, and updater UI—is still not proven by the harness. Use
 the relevant Electron/package smoke test and state that limitation. Add a map
 entry only after the shared control surface can really drive it.
 
+The [Workflow approval fixture](workflow-approval.md) pauses a Workflow run on
+a card and resumes it through the real server and the fake engine. `control-omb`
+has no Workflow verbs, so it drives the HTTP routes directly. The
+[Workflow proposal fixture](workflow-proposal.md) keeps a bot-made Workflow as a
+draft until the person says yes, requires the person's confirmation of the three
+interview answers before the create, then creates it with a manual first step.
+[The authoring contract fixture](workflow-authoring.md) proves the rules that
+reach the author: an extension in every output name, `shape` on a `.json` a
+condition reads, `.mjs` as the only runtime, `modules` checked before a
+rehearsal, and a create that requires the rehearsal to pass.
+[The parameter origin fixture](workflow-parameters.md) collects a value at a
+manual step, extracts a field of an earlier step's JSON into a later step's
+`params.json`, and starts a routine that targets an existing Workflow and stops
+in `waiting_manual`.
+[The impact review prompt](workflow-impact-review-prompt.md) asks a reviewer to
+compare the feature files against the Workflow spec and the project's main
+branch. The
+[Workflow trigger fixture](workflow-trigger.md) starts a run from a routine and
+checks the trigger as its origin. The
+[Workflow webhook fixture](workflow-trigger-webhook.md) configures a webhook
+trigger, previews its map, delivers an event twice, and checks the run origin,
+attempts and refusals. The [Workflow loop fixture](workflow-loop.md) runs a Do While body and checks
+its iterations. The [Workflow script fixture](workflow-script.md)
+runs a real Node script step, follows its `when` branch and checks the skipped
+step and the run snapshot. The [Workflow Studio fixture](workflow-studio.md)
+saves a Workflow from the editor, runs a condition step that reads the previous
+step's `result.json`, checks the screen the F2 page draws, and proves a bot
+step's skill selection against the fake engine's prompt dump.
+The [Workflow environment fixture](workflow-environment.md) prepares the
+installation's own venv and `node_modules` from the panel's menu, checks the
+status the panel reads, refuses a run whose module version changed, and keeps
+the environment when preparation fails.
+The [run files fixture](workflow-artifacts.md) lists, previews and downloads the
+files each step and Do While round left in `output/`, checks the stream headers,
+Range and HEAD, refuses symlinks and HTML inline, and proves both zip caps
+before the first byte.
+
 The [switchable local environments recipe](local-environments.md) verifies
 creating, switching between and recovering named local environments by hand on
 a packaged desktop install; the control surface cannot drive it, so it is not

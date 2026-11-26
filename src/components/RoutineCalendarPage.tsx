@@ -28,6 +28,7 @@ import {
   UserRoundPlus,
   UsersRound,
   Video,
+  Workflow,
   X,
   XCircle,
 } from "lucide-react";
@@ -366,6 +367,17 @@ export function EventEditor({
     setBotIds(ids);
   };
   const [routineTarget, setRoutineTarget] = useState<RoutineTarget>(existingRoutine?.target ?? "bot");
+  const [workflowId, setWorkflowId] = useState(existingRoutine?.workflowId ?? "");
+  const [workflowOptions, setWorkflowOptions] = useState<Array<{ id: string; name: string; version: number; department: string; steps?: Array<{ kind?: string; mode?: string }> }>>([]);
+  const [workflowOptionsError, setWorkflowOptionsError] = useState("");
+  useEffect(() => {
+    if (routineTarget !== "workflow" || workflowOptions.length > 0) return;
+    let live = true;
+    api<{ workflows: Array<{ id: string; name: string; version: number; department: string; steps?: Array<{ kind?: string; mode?: string }> }> }>("/api/workflows")
+      .then((data) => { if (live) setWorkflowOptions(data.workflows); })
+      .catch(() => { if (live) setWorkflowOptionsError(t("routines.editor.workflowsUnavailable")); });
+    return () => { live = false; };
+  }, [routineTarget, workflowOptions.length]);
   const [groupId, setGroupId] = useState(existingRoutine?.groupId ?? "");
   const [runOn, setRunOn] = useState<RoutineRunOn>(existingRoutine?.runOn ?? defaultRunOn ?? "maus");
   const [attachments, setAttachments] = useState<Array<RoutineContextAttachment | CalendarCallAttachment>>(
@@ -382,6 +394,13 @@ export function EventEditor({
   const selectedRoom = rooms.find((group) => group.id === groupId);
   const roomMembers = selectedRoom ? activeRoomMembers(selectedRoom, state.bots) : bots;
   const isRoomGoal = kind === "routine" && routineTarget === "room-goal";
+  const isWorkflow = kind === "routine" && routineTarget === "workflow";
+  const chosenWorkflow = workflowOptions.find((workflow) => workflow.id === workflowId);
+  const firstWorkflowStep = chosenWorkflow?.steps?.[0];
+  const workflowStartsManual = isWorkflow
+    && firstWorkflowStep !== undefined
+    && firstWorkflowStep.kind !== "condition"
+    && firstWorkflowStep.mode === "manual";
   const cloudHome = state.config?.cloudHome === true;
   const at = fromLocalDateAndTime(date, startTime, existingRoutine || existingCall ? initialAt : undefined);
   const endAt = at + durationMinutes * 60_000;
@@ -450,6 +469,10 @@ export function EventEditor({
     setRunOn("maus");
     setAttachments([]);
     setAttachmentNotice("");
+    if (target === "workflow") {
+      setGroupId("");
+      return;
+    }
     const room = selectedRoom ?? rooms[0];
     setGroupId(room?.id ?? "");
     const lead = preferredRoomLead(room, state.bots, botIds[0]);
@@ -504,11 +527,12 @@ export function EventEditor({
         if (!nextSchedule) throw new Error(cron?.error || "Choose a valid schedule.");
         const input: RoutineInput = {
           name,
-          prompt: description,
+          prompt: isWorkflow ? "" : description,
           target: routineTarget,
           botId: lockedBotId ?? botIds[0] ?? "",
           groupId: routineTarget === "room-goal" && groupId ? groupId : null,
-          runOn: routineTarget === "room-goal" ? "maus" : runOn,
+          ...(isWorkflow ? { workflowId: workflowId || null } : {}),
+          runOn: routineTarget === "room-goal" || isWorkflow ? "maus" : runOn,
           enabled: existingRoutine && (existingRoutine.enabled || !isDone(existingRoutine, savedAt)) ? undefined : true,
           schedule: nextSchedule,
           durationMinutes,
@@ -516,7 +540,7 @@ export function EventEditor({
           overlap,
           continuity: routineTarget === "bot" && recurrence !== "none" && continuity,
           runOnStartup: recurrence !== "none" && runOnStartup,
-          attachments: routineTarget === "room-goal" ? [] : attachments as RoutineContextAttachment[],
+          attachments: routineTarget === "room-goal" || isWorkflow ? [] : attachments as RoutineContextAttachment[],
           ...(routineTarget === "bot" ? { resultsThreadId } : {}),
         };
         const response = await editorRequest(existingRoutine ? `/api/routines/${existingRoutine.id}` : "/api/routines", { method: existingRoutine ? "PATCH" : "POST", body: JSON.stringify(input) });
@@ -548,7 +572,8 @@ export function EventEditor({
 
   const valid = Boolean(
     name.trim()
-    && (kind === "call" || description.trim())
+    && (kind === "call" || description.trim() || isWorkflow)
+    && (!isWorkflow || Boolean(workflowId))
     && (!lockedBotId || botIds[0] === lockedBotId)
     && (kind === "call"
       ? botIds.length > 0
@@ -565,6 +590,7 @@ export function EventEditor({
   const advanced = useAdvancedMode() && !plain;
   const [moreOpen, setMoreOpen] = useState(() => !(["none", "daily", "weekdays", "weekly"] as RecurrenceChoice[]).includes(recurrence)
     || routineTarget === "room-goal"
+    || routineTarget === "workflow"
     || attachments.length > 0
     || runOn === "cloud"
     || timeoutMinutes != null
@@ -582,7 +608,7 @@ export function EventEditor({
   const routineTypeControl = kind === "routine" && !lockedBotId && (
             <div className={cn(advanced && "ml-10")}>
               <div className="mb-2 text-[11px] font-medium uppercase tracking-wider text-ink-secondary">{t("routines.editor.type")}</div>
-              <div className="grid gap-2 sm:grid-cols-2">
+              <div className="grid gap-2 sm:grid-cols-3">
                 <button
                   type="button"
                   onClick={() => selectRoutineTarget("bot")}
@@ -599,7 +625,28 @@ export function EventEditor({
                   <Target size={17} className={cn("mt-0.5 shrink-0", routineTarget === "room-goal" ? "text-accent" : "text-ink-secondary")} />
                   <span><span className="block text-[12.5px] font-medium text-ink">{t("routines.editor.teamGoal")}</span><span className="mt-1 block text-[11px] leading-relaxed text-ink-secondary">{t("routines.editor.teamGoalHelp")}</span></span>
                 </button>
+                <button
+                  type="button"
+                  onClick={() => selectRoutineTarget("workflow")}
+                  className={cn("flex items-start gap-3 rounded-xl border p-3 text-left transition", routineTarget === "workflow" ? "border-accent/60 bg-accent/10" : "border-hairline/50 bg-inset hover:bg-raised")}
+                >
+                  <Workflow size={17} className={cn("mt-0.5 shrink-0", routineTarget === "workflow" ? "text-accent" : "text-ink-secondary")} />
+                  <span><span className="block text-[12.5px] font-medium text-ink">{t("routines.editor.workflowTask")}</span><span className="mt-1 block text-[11px] leading-relaxed text-ink-secondary">{t("routines.editor.workflowTaskHelp")}</span></span>
+                </button>
               </div>
+              {isWorkflow && (
+                <div className="mt-3">
+                  <label htmlFor="routine-workflow" className="mb-2 block text-[12.5px] font-medium text-ink">{t("routines.editor.chooseWorkflow")}</label>
+                  <Select id="routine-workflow" value={workflowId} onChange={(event) => setWorkflowId(event.target.value)} className="w-full">
+                    <option value="">{t("routines.editor.chooseWorkflow")}</option>
+                    {workflowOptions.map((workflow) => (
+                      <option key={workflow.id} value={workflow.id}>{workflow.name} · v{workflow.version} · {workflow.department}</option>
+                    ))}
+                  </Select>
+                  {workflowStartsManual && <div className="mt-2 text-[11.5px] text-warning">{t("routines.editor.workflowManualFirst")}</div>}
+                  {workflowOptionsError && <div className="mt-2 text-[11.5px] text-warning">{workflowOptionsError}</div>}
+                </div>
+              )}
             </div>
           );
   const whenControls = recurrence !== "interval" && recurrence !== "limit_reset" && !isCronChoice(recurrence) && (
@@ -812,7 +859,7 @@ export function EventEditor({
                   </div>
                 </details>
               );
-  const continuityControl = kind === "routine" && !isRoomGoal && recurrence !== "none" && (
+  const continuityControl = kind === "routine" && !isRoomGoal && !isWorkflow && recurrence !== "none" && (
           <label className={cn("flex items-start gap-3 rounded-xl border border-hairline/40 bg-inset/40 px-3.5 py-3", advanced && "ml-8")}>
             <input type="checkbox" aria-label={t("routines.continuityLabel")} checked={continuity} onChange={(event) => setContinuity(event.target.checked)} className="mt-0.5 accent-accent" />
             <span>
@@ -821,13 +868,15 @@ export function EventEditor({
             </span>
           </label>
         );
-  const resultsControl = kind === "routine" && !isRoomGoal && <div className={cn(advanced && "ml-8")}>
+  const resultsControl = kind === "routine" && !isRoomGoal && !isWorkflow && <div className={cn(advanced && "ml-8")}>
             <ResultsDestination bot={bots.find((bot) => bot.id === botIds[0])} value={resultsThreadId} allowCurrent={Boolean(existingRoutine)} onChange={setResultsThreadId} />
           </div>;
   const attachmentsRow = (
           <div className="flex items-start gap-4">
             <Paperclip size={18} className="mt-2.5 shrink-0 text-ink-secondary" />
-            {isRoomGoal ? (
+            {isWorkflow ? (
+              <div className="min-w-0 flex-1 rounded-xl border border-hairline/50 bg-inset px-3.5 py-3 text-[11.5px] leading-relaxed text-ink-secondary">{t("routines.editor.workflowInstructions")}</div>
+            ) : isRoomGoal ? (
               <div className="min-w-0 flex-1 rounded-xl border border-hairline/50 bg-inset px-3.5 py-3">
                 <div className="text-[12.5px] font-medium text-ink">Use the group’s shared context</div>
                 <div className="mt-1 text-[11px] leading-relaxed text-ink-secondary">{t("routines.editor.teamGoalAttachments")}</div>
@@ -847,7 +896,7 @@ export function EventEditor({
             </div>}
           </div>
   );
-  const runOnRow = kind === "routine" && (
+  const runOnRow = kind === "routine" && !isWorkflow && (
             <div className="flex items-start gap-4">
               {isRoomGoal ? <Target size={18} className="mt-2.5 shrink-0 text-ink-secondary" /> : runOn === "cloud" ? <Cloud size={18} className="mt-2.5 shrink-0 text-ink-secondary" /> : <Laptop size={18} className="mt-2.5 shrink-0 text-ink-secondary" />}
               <div className="min-w-0 flex-1">
@@ -956,7 +1005,7 @@ export function EventEditor({
                   {bots.length > 0 ? (
                 <>
                   <BotPicker bots={bots} selected={botIds} multiple={kind === "call"} locked={Boolean(lockedBotId)} onChange={selectBots} />
-                  <div className="mt-2 text-[11.5px] text-ink-secondary">{kind === "routine" ? "This bot owns each scheduled run." : `${selectedBots.length || "No"} bot${selectedBots.length === 1 ? "" : "s"} invited to the call.`}</div>
+                  <div className="mt-2 text-[11.5px] text-ink-secondary">{kind === "routine" ? (isWorkflow ? t("routines.editor.workflowOwnerHelp") : "This bot owns each scheduled run.") : `${selectedBots.length || "No"} bot${selectedBots.length === 1 ? "" : "s"} invited to the call.`}</div>
                 </>
               ) : (
                 <button type="button" onClick={() => { dispatch({ type: "toggleNewBot", open: true }); onClose(); }} className="w-full rounded-xl border border-dashed border-accent/45 bg-accent/[0.06] px-4 py-4 text-left hover:bg-accent/10">
@@ -972,7 +1021,11 @@ export function EventEditor({
           {advanced && resultsControl}
           <div className="flex items-start gap-4">
             <FileText size={18} className="mt-2.5 shrink-0 text-ink-secondary" />
-            <textarea value={description} onChange={(event) => setDescription(event.target.value)} rows={5} placeholder={isRoomGoal ? "What should the team accomplish?" : kind === "routine" ? (advanced ? "Add instructions for the bot" : t("routines.editor.instructionsPlaceholder")) : "Add description or agenda"} className="min-w-0 flex-1 resize-y rounded-xl border border-hairline/50 bg-inset px-3.5 py-3 text-[13px] leading-relaxed text-ink outline-none placeholder:text-ink-tertiary focus:border-accent" />
+            {isWorkflow ? (
+              <div className="min-w-0 flex-1 rounded-xl border border-hairline/50 bg-inset px-3.5 py-3 text-[11.5px] leading-relaxed text-ink-secondary">{t("routines.editor.workflowInstructions")}</div>
+            ) : (
+              <textarea value={description} onChange={(event) => setDescription(event.target.value)} rows={5} placeholder={isRoomGoal ? "What should the team accomplish?" : kind === "routine" ? (advanced ? "Add instructions for the bot" : t("routines.editor.instructionsPlaceholder")) : "Add description or agenda"} className="min-w-0 flex-1 resize-y rounded-xl border border-hairline/50 bg-inset px-3.5 py-3 text-[13px] leading-relaxed text-ink outline-none placeholder:text-ink-tertiary focus:border-accent" />
+            )}
           </div>
           {continuityControl}
 

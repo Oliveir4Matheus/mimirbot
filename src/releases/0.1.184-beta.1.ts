@@ -1,7 +1,7 @@
 import type { Release } from "@/lib/release-notes";
 
 const release: Release = {
-  version: "0.1.173",
+  version: "0.1.184-beta.1",
   date: "2026-11-25",
   notes: {
     en: {
@@ -9,7 +9,7 @@ const release: Release = {
       features: [
         {
           title: "Chrome 158",
-          body: "The packaged headless shell and the full Chrome for Testing downloaded on a Linux server are pinned at 158.0.8127.88, with new sizes and SHA-256 for every shipped target.",
+          body: "The packaged headless shell and the full Chrome for Testing downloaded on a Linux server are pinned at 158.0.8127.88, with new sizes and SHA-256 for every shipped target. A server that already had 153 downloads 158 on its next browser start.",
         },
       ],
       fixes: [
@@ -21,7 +21,7 @@ const release: Release = {
       features: [
         {
           title: "Chrome 158",
-          body: "O headless empacotado e o Chrome for Testing completo baixado num servidor Linux estão fixados em 158.0.8127.88, com tamanhos e SHA-256 novos para cada alvo.",
+          body: "O headless empacotado e o Chrome for Testing completo baixado num servidor Linux estão fixados em 158.0.8127.88, com tamanhos e SHA-256 novos para cada alvo. Um servidor que já tinha o 153 baixa o 158 na próxima abertura do navegador.",
         },
       ],
       fixes: [

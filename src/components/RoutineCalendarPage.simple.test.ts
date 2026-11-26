@@ -322,6 +322,24 @@ describe("routine editor", () => {
     expect(JSON.parse(init.body)).toMatchObject({ target: "room-goal", botId: bot.id, groupId: null });
   });
 
+  it("saves a Workflow trigger with its Workflow id and no prompt", () => {
+    const workflowRoutine: Routine = {
+      ...routine, id: "nightly", name: "Nightly close", prompt: "", target: "workflow",
+      workflowId: "11111111-1111-4111-8111-111111111111", resultsThreadId: undefined,
+    };
+    const html = editor(workflowRoutine);
+    expect(html).toContain("Choose a Workflow");
+    expect(html).toContain("This trigger starts the Workflow as it is saved.");
+    expect(html).not.toContain("Tell the bot what to do each time");
+
+    fixture.values = [];
+    const props = { seed: { kind: "routine" as const, at: Date.now() + 3_600_000, durationMinutes: 30, botIds: [bot.id], routine: workflowRoutine }, bots: [bot], onClose: vi.fn(), onSavedCall: vi.fn() };
+    click(buttons(capture(() => EventEditor(props))).get("Save"));
+    const [path, init] = fixture.api.mock.calls.at(-1) as unknown as [string, { body: string }];
+    expect(path).toBe(`/api/routines/${workflowRoutine.id}`);
+    expect(JSON.parse(init.body)).toMatchObject({ target: "workflow", workflowId: workflowRoutine.workflowId, prompt: "" });
+  });
+
   it("hides Remember the last run for a one-time routine", () => {
     expect(editor()).not.toContain("Remember the last run");
   });

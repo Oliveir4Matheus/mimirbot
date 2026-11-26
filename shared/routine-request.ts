@@ -48,6 +48,7 @@ export type RoutineRequestScheduleChanges =
 
 export interface RoutineRequestDefinition {
   name: string;
+  /** Empty for a Workflow routine: its steps say what to do. */
   instructions: string;
   schedule: RoutineRequestSchedule;
   runOn: RoutineRequestRunOn;
@@ -61,6 +62,10 @@ export interface RoutineRequestDefinition {
   overlap?: "skip" | "queue";
   /** Also run once each time MimirBot starts. Repeating routines only. */
   runOnStartup?: boolean;
+  /** Starts an existing Workflow instead of a bot turn. */
+  target?: "workflow";
+  /** The Workflow this routine starts; it must exist when the routine is created. */
+  workflowId?: string;
 }
 
 export type RoutineRequestChanges =
@@ -92,10 +97,11 @@ export type RoutineRequestOperation =
 /** A routine as it stood before a change applied without a person, so Undo
  * can put it back. Room goals keep their room; attachments are not kept, so
  * a routine that has any is not offered an Undo for its update or delete. */
-export interface RoutineRequestSnapshot extends RoutineRequestDefinition {
+export interface RoutineRequestSnapshot extends Omit<RoutineRequestDefinition, "target"> {
   enabled: boolean;
-  target?: "room-goal";
+  target?: "room-goal" | "workflow";
   groupId?: string;
+  workflowId?: string;
   resultsThreadId?: string;
 }
 

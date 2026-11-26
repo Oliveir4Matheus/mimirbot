@@ -34,7 +34,8 @@ beforeEach(() => {
   rmSync(DATA_DIR, { recursive: true, force: true });
   mkdirSync(DATA_DIR, { recursive: true });
   for (const entry of [sample, { ...sample, id: "spend", kind: "spend" as const, body: "$12 of $20 spent this month" },
-    { ...sample, id: "workspace-spend", kind: "spend" as const, threadId: "" }]) insertNotificationLog(entry);
+    { ...sample, id: "workspace-spend", kind: "spend" as const, threadId: "" },
+    { ...sample, id: "workflow", kind: "workflow-waiting" as const, threadId: "workflow-only", workflowRunId: "run-1" }]) insertNotificationLog(entry);
 });
 afterEach(async () => {
   if (server) await new Promise((done) => server!.close(done));
@@ -63,29 +64,30 @@ describe.each(callers)("$label notification feed", ({ auth, admin }) => {
       .toEqual([{ kind: "notifications.read", threadId: "shared", ids: admin ? ["done", "spend"] : ["done"] }]);
   });
 
-  it("lists spend alerts only for admins, including alerts in visible shared conversations", async () => {
+  it("lists spend alerts and Workflow holds only for admins, including alerts in visible shared conversations", async () => {
     const url = await serve(auth);
     const res = await fetch(url);
     expect(res.status).toBe(200);
     const { notifications } = await res.json() as { notifications: NotificationLogEntry[] };
-    expect(notifications.map((entry) => entry.id).sort()).toEqual(admin ? ["done", "spend", "workspace-spend"] : ["done"]);
+    expect(notifications.map((entry) => entry.id).sort()).toEqual(admin ? ["done", "spend", "workflow", "workspace-spend"] : ["done"]);
+    expect(notifications.find((entry) => entry.id === "workflow")?.workflowRunId).toBe(admin ? "run-1" : undefined);
   });
 
-  it("allows only admins to mark a spend alert read", async () => {
+  it("allows only admins to mark an admin-only alert read", async () => {
     const url = await serve(auth);
-    for (const id of ["spend", "workspace-spend"]) {
+    for (const id of ["spend", "workspace-spend", "workflow"]) {
       expect((await fetch(`${url}/${id}/read`, { method: "POST" })).status, id).toBe(admin ? 200 : 404);
     }
     expect(recentNotificationLog().filter((entry) => entry.read).map((entry) => entry.id).sort())
-      .toEqual(admin ? ["spend", "workspace-spend"] : []);
+      .toEqual(admin ? ["spend", "workflow", "workspace-spend"] : []);
   });
 
   it("preserves admin-only unread alerts when a non-admin reads all", async () => {
     const url = await serve(auth);
     expect((await fetch(`${url}/read-all`, { method: "POST" })).status).toBe(200);
     expect(recentNotificationLog().filter((entry) => entry.read).map((entry) => entry.id).sort())
-      .toEqual(admin ? ["done", "spend", "workspace-spend"] : ["done"]);
+      .toEqual(admin ? ["done", "spend", "workflow", "workspace-spend"] : ["done"]);
     expect(recentNotificationLog().filter((entry) => !entry.read).map((entry) => entry.id).sort())
-      .toEqual(admin ? [] : ["spend", "workspace-spend"]);
+      .toEqual(admin ? [] : ["spend", "workflow", "workspace-spend"]);
   });
 });

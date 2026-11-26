@@ -188,6 +188,11 @@ import {
 } from "./config.ts";
 import { serveStatic } from "./static-files.ts";
 import { startUpkeep } from "./host/start-upkeep.ts";
+import { createWorkflowHost } from "./host/workflows.ts";
+import { WorkflowTriggerManager } from "./workflow-triggers.ts";
+import { createWorkflowTriggerRoutes } from "./routes/workflow-triggers.ts";
+import { createWorkflowHoldNotifier } from "./workflows/hold-notifier.ts";
+import { workflowRequiredStartParameters } from "./workflows/parameters.ts";
 import { ComputerControl } from "./computer-control.ts";
 import { resetPathCache } from "./env-path.ts";
 import { registerEnginesBinDir } from "./engine-install.ts";
@@ -409,11 +414,13 @@ import {
   PROFILE_PROMPT,
   TEAM_MEMORY_PROMPT,
   TRIGGER_PROMPT,
+  WORKFLOWS_PROMPT,
   ROUTINE_EXECUTION_PROMPT,
   WEBHOOK_PROMPT, AUTOMATION_REPLY_PROMPT,
   resolveComputerPromptKind,
   savedLoginsPrompt,
   teamAvailabilityPart,
+  workflowStepPart,
 } from "./system-prompt.ts";
 import { shellTimeoutHookResult } from "./shell-timeout-hint.ts";
 import { spillToolResult } from "./tool-result-spill.ts";
@@ -509,6 +516,7 @@ import { computerFreeAfterText, computerParkedText, computerPersonAwayText, comp
 import { modelContextWindow } from "./model-context-window.ts";
 import { browserIsThePlace, chosenPin, cloudPlaceRefusal, computerSkippedNote, computerToolsRefusal, openBrowserBeside, parseSurface, PlaceUnavailableError, placeUnavailable, resolveSurface, surfaceLabel, surfaceOfComputerKind, surfacePrompt, type ComputerWant, type PlaceSource, type Surface } from "./surface.ts";
 import { cloudRefusal, type PlaceRow } from "../shared/place-view.ts";
+import type { WorkflowSkillOptions, WorkflowStepSkills } from "../shared/workflow.ts";
 import {
   PendingTurnCancellations,
   ProviderTurnGenerationRegistry,
@@ -1115,6 +1123,8 @@ function cardAnswerRefusal(auth: RequestAuth, threadId: string, requestId: strin
   // A Cloud guest may read along but never answer: its words would reach the owner's turn and a lent Mac.
   if (CLOUD_PERSONAL) return cloudCardRefusal(auth);
   if (auth.scopes.includes("admin") || !sharedMembership()) return null;
+  // A Workflow step belongs to its department, not to the person who started the run: any member may answer it.
+  if (workflows.engine.ownsThread(threadId)) return null;
   const known = [threadStarters.get(threadId), cardRequesterKey(threadId, requestId)].filter((person): person is string => Boolean(person));
   if (!known.length || known.includes(personKey(auth.session))) return null;
   return "Only the person who started this conversation or sent this request, or a workspace admin, can answer this card.";
@@ -1874,13 +1884,14 @@ function agentsIntegration(
   generation: string,
   roomHandoffId?: string,
   hostFiles = false,
+  memoryDisabled = false,
 ) {
   const bot = store.bot(botId), speaking = botForThread(botId, threadId) ?? bot;
   // Only advertises the tools; the routes behind them refuse regardless.
   const host = { skillAuthoring: skillAuthoringEnabled(cfg), sharedComputers: lendingEnabled(), cloudHome: Boolean(CLOUD_HOME), team: Boolean(CLOUD_TEAM), escalations: chiefEscalationsEnabled(cfg),
     voiceNotes: tts.voiceReady(cfg, speaking?.voice) && speaking?.voiceNotes !== false, research: Boolean(researchCredential(cfg.treg?.key)) };
   return { ...agentsProxyLaunch(), env: agentsServerEnv({ threadId, bot: bot ?? { id: botId }, room: Boolean(store.groupByThread(threadId)), teamComputer: Boolean(bot && inheritedTeamComputer(bot)), host },
-    { generation, depth, skillAuthoring, roomHandoffId, ...(hostFiles && !CLOUD_HOME && !HOSTED_WORKSPACE ? { deliversSavedFiles: true } : {}) },
+    { generation, depth, skillAuthoring, roomHandoffId, ...(memoryDisabled ? { memoryDisabled: true } : {}), ...(hostFiles && !CLOUD_HOME && !HOSTED_WORKSPACE ? { deliversSavedFiles: true } : {}) },
     (turn) => mintInternalCapability({ botId, threadId, kind: "agents", createdBots: 0, openedThreads: 0, ...turn }), `http://127.0.0.1:${PORT}`) };
 }
 
@@ -2010,6 +2021,17 @@ function resumableCards(threadId: string, since: number, memberId?: string): Arr
   return open;
 }
 
+/** Cards still waiting on a person in a step's conversation: the run waits on them, however long the answer takes. */
+function openWorkflowCards(threadId: string): Array<{ id: string; question: string }> {
+  const waiting: Array<{ id: string; question: string }> = [];
+  for (const message of store.messagesFor(threadId)) {
+    const card = message.card;
+    if (!card?.requestId || card.answered || card.dismissed || card.expired || card.autoApplied || card.quotaSwitch || card.outboundRequest) continue;
+    waiting.push({ id: message.id, question: card.title });
+  }
+  return waiting;
+}
+
 function turnRows(node: HandoffView): Message[] {
   const since = node.startedAt ?? node.createdAt;
   const rows = store.activePath(node.threadId).filter((message) => message.at >= since);
@@ -2082,6 +2104,7 @@ function settleDirectCoordination(generation: string | undefined, outcome: Direc
   directCoordinationSettlers.delete(generation);
   const node = coordinator.node(settler?.nodeId ?? generation);
   const result = hostTurnResult(node, generation, outcome);
+  if (node) workflows.engine.turnSettled(node.threadId, generation, result);
   if (settler) { settler.settle(result); return; }
   if (node && !node.parentId && (node.status === "source" || node.status === "running")) coordinator.endTurn(generation, result);
 }
@@ -2879,6 +2902,66 @@ const store = new Store(
   (instanceId) => registry.cliTarget(instanceId)?.driverKind,
   () => appLanguage() ?? Intl.DateTimeFormat().resolvedOptions().locale,
 );
+let workflowTriggers: WorkflowTriggerManager | null = null;
+const workflowTriggerIngress = { baseUrl: `http://127.0.0.1:${WEBHOOK_PORT}` };
+const workflows = createWorkflowHost({
+  dataDir: DATA_DIR,
+  log: (line) => console.warn(line),
+  createTask: (botId, title, cwd) => store.createTask(botId, title, false, undefined, undefined, undefined, undefined, cwd)?.threadId ?? null,
+  bot: (id) => store.bot(id) ?? undefined,
+  startTurn: (botId, text, opts) => startTurn(botId, text, opts),
+  broadcast: (frame) => broadcast(frame, { adminOnly: true }),
+  interrupt: (botId, threadId) => { void interruptDirectThread(botId, threadId, "workflow cancelled"); },
+  openCards: (threadId) => openWorkflowCards(threadId),
+  onRun: (run) => { routines?.noteWorkflowRun(run); notifyWorkflowHold(run); workflowTriggers?.noteRun(run); },
+  triggers: () => workflowTriggers ?? undefined,
+  skillOptions: (botId) => {
+    const bot = store.bot(botId);
+    return bot ? workflowSkillOptionsFor(bot) : undefined;
+  },
+  proposalCard: (proposal, botId, threadId) => {
+    const bot = store.bot(botId);
+    const steps = proposal.definition.steps.length;
+    store.appendMessage(threadId, {
+      role: "bot",
+      kind: "options",
+      ...(bot ? { from: { botId: bot.id, name: bot.name, color: bot.color } } : {}),
+      card: {
+        title: `Proposta de Workflow: ${proposal.definition.name}`,
+        subtitle: proposal.summary || `${steps} ${steps === 1 ? "etapa" : "etapas"} · nada foi criado ainda`,
+        options: ["Criar Workflow", "Agora não"],
+        fixedOptions: true,
+        workflowProposal: {
+          id: proposal.id,
+          name: proposal.definition.name,
+          department: proposal.department,
+          steps,
+          assumptions: proposal.assumptions.length,
+        },
+      },
+    });
+  },
+});
+const workflowTriggerManager = new WorkflowTriggerManager({
+  file: join(DATA_DIR, "workflow-triggers.json"),
+  store: workflows.store,
+  engine: workflows.engine,
+  bot: (id) => store.bot(id) ?? undefined,
+  baseUrl: () => workflowTriggerIngress.baseUrl,
+  log: (line) => console.warn(line),
+});
+workflowTriggers = workflowTriggerManager;
+const notifyWorkflowHold = createWorkflowHoldNotifier({
+  bot: (id) => {
+    const bot = store.bot(id);
+    return bot ? { ...bot, threadId: botMainThread(id) ?? bot.threadId } : undefined;
+  },
+  workflow: (id, version) => workflows.store.workflow(id, version),
+  send: (notification, options) => notify(notification, options),
+});
+ROUTES.push(workflows.routes);
+ROUTES.push(workflows.proposalRoutes);
+ROUTES.push(createWorkflowTriggerRoutes({ triggers: workflowTriggerManager }));
 const { cloudLendingTurn, cloudLendingRefusalNotice, cloudLendingRefusal, cloudThreadStarters, cloudLendingView, cloudReportFromOthers, roomTurnStarted, roomTurnEnded } = createCloudLendingTurns({
   store, cloudHome: CLOUD_HOME !== null, directRequest: (threadId) => directRequestOwners.get(threadId), threadStarter: (threadId) => threadStarters.get(threadId),
   ownerPerson: cloudProvenOwnerPerson, cardAnswerer: cloudCardAnswerer, activeRoutineRun: activeRoutineRunForThread, ownerStartedRun: (runId) => ownerStartedRoutineRuns.has(runId),
@@ -2893,6 +2976,22 @@ const creditMoves = cloudCredit && createCreditMoves({ credit: cloudCredit, stor
   defaults: () => [cfg.defaultModelSelection, cfg.newBotDefaults?.profile.modelSelection], engineName: id => registry.get(id)?.displayName ?? id,
   log: line => console.warn(line) });
 const skillsHost = createSkillsLibraryHost({ store, cfg, appendSkillRequestCard, engineConfig: (instanceId) => providerConfigs()[instanceId], instanceOf: (instanceId) => { const instance = registry.get(instanceId); return instance ? { instanceId, driverKind: instance.driverKind } : undefined; } });
+function workflowSkillOptionsFor(bot: BotRecord): WorkflowSkillOptions {
+  const instance = registry.get(bot.modelSelection.instanceId);
+  const capabilities = new Set<string>([
+    ...(instance?.adapter.capabilities.phoneMcp === true && !CLOUD_HOME && !HOSTED_WORKSPACE ? ["phoneMcp"] : []),
+    ...(instance?.adapter.capabilities.agentsMcp === true && skillAuthoringEnabled(cfg) ? ["skillAuthoring"] : []),
+  ]);
+  return {
+    ...skillsHost.workflowSkillOptions(bot),
+    bundled: availableSkills().map((skill) => ({
+      name: skill.manifest.id,
+      label: skill.manifest.name,
+      description: skill.manifest.description,
+      available: skill.manifest.requiredCapabilities.every((capability) => capabilities.has(capability)),
+    })),
+  };
+}
 const { listBotSkills, readBotSkillFile } = skillsHost; const cloudConnections = createCloudConnectionsHost({ cloudHome: CLOUD_HOME, config: () => cfg, environmentId: ENVIRONMENT_ID, mcpOAuth, highlevel, heldKeys, dataDir: DATA_DIR, engines: async () => selectableInstances(await registry.describe()).filter((instance) => readyToRun(instance, selectionContext)).map((instance) => instance.instanceId) });
 const highlevelHost = createHighLevelHost({ service: highlevel, dataDir: DATA_DIR, bot: (id) => store.bot(id),
   inRoom: (threadId) => Boolean(store.groupByThread(threadId)), appendMessage: (threadId, message) => { store.appendMessage(threadId, message as Parameters<typeof store.appendMessage>[1]); } });
@@ -3055,6 +3154,7 @@ function previewSystemPrompt(bot: BotRecord) {
     { id: "coordination", label: "Team", text: agentsMounted && coordination ? ` ${coordination}` : "" },
     { id: "credential", label: "Credentials", text: agentsMounted ? CREDENTIAL_PROMPT : "" },
     { id: "routine", label: "Triggers", text: agentsMounted ? TRIGGER_PROMPT : "" },
+    { id: "workflows", label: "Workflows", text: agentsMounted ? WORKFLOWS_PROMPT : "" },
     { id: "profile", label: "Profile changes", text: agentsMounted ? PROFILE_PROMPT : "" },
     { id: "section-context", label: "Section context", text: sectionContextSystemPrompt(bot.section) },
     { id: "team-memory", label: "Team memory", text: teamMemory.systemPrompt(bot.section) + (agentsMounted ? TEAM_MEMORY_PROMPT : "") },
@@ -4981,6 +5081,7 @@ async function answerRequest(
       decision: behavior === "allow" ? "user-approved" : "user-denied",
       source: "user",
     });
+    if (behavior === "deny") workflows.engine.refuse(threadId, cardMessage?.id);
   }
   if (outcome === "unavailable") {
     const messageId = askMessageByRequest.get(`${threadId}:${requestId}`);
@@ -5092,9 +5193,12 @@ const providerLabel = (provider: string): string => {
 const quietTurnThreads = new Set<string>();
 const QUIET_TURN_NEWS: ReadonlySet<Notification["kind"]> = new Set(["done", "turn-failed", "incident"]);
 
-function notify(notification: Notification | null) {
+function notify(notification: Notification | null, options: { adminOnly?: boolean } = {}) {
   if (notification && QUIET_TURN_NEWS.has(notification.kind) && quietTurnThreads.has(notification.threadId)) return;
-  if (notification) { broadcast({ kind: "notify", notification: logNotification(notification) }); teamOwners.notified(notification); }
+  if (notification) {
+    broadcast({ kind: "notify", notification: logNotification(notification) }, options);
+    if (!options.adminOnly) teamOwners.notified(notification);
+  }
 }
 
 const roomTurnLevels = createRoomTurnLevels();
@@ -7769,6 +7873,9 @@ async function startTurn(
     onTurnSettled?: () => void;
     /** The turn's outcome, for a caller that runs it outside any coordinated work. */
     onSettled?: (outcome: HostTurnResult) => void;
+    /** One step of a Workflow: fixed rules join the volatile half, the task travels in the user message. */
+    workflowStep?: { runId: string; stepId: string };
+    skills?: WorkflowStepSkills;
     coordination?: { id: string; resumed: boolean; settle: (outcome: HostTurnResult) => void };
   },
 ) {
@@ -7871,7 +7978,7 @@ async function startTurn(
   }));
   const instanceId = instance.instanceId;
   const automated = commsDepth > 0 || opts?.automationSource !== undefined
-    || Boolean(opts?.unattended || opts?.cardContinuation || opts?.peerAsk || opts?.coordination || opts?.compactOnly || opts?.computerSelectionContinuation);
+    || Boolean(opts?.unattended || opts?.cardContinuation || opts?.peerAsk || opts?.coordination || opts?.compactOnly || opts?.computerSelectionContinuation || opts?.workflowStep);
   const route = routeDirectTurn(bot, task, store.activePath(threadId), resolvedImages, instance, automated, quickFallback.refused(instance.instanceId));
   const { model, effort, variant } = route;
   assertModelVariantSupported({ variant, effort }, instance.adapter.capabilities);
@@ -7972,7 +8079,7 @@ async function startTurn(
     coordinator.beginTurn({ id: dispatchClaimId, address: { botId: bot.id, threadId }, brief: resolvedImages.text,
       level: approvalModeForTurn(bot, commsDepth > 0, threadId), ...(opener ? { opener } : {}), origin: requestOrigin });
   }
-  if (!opts?.computerSelectionContinuation && !opts?.cardContinuation && !opts?.automationSource && !opts?.unattended &&
+  if (!opts?.computerSelectionContinuation && !opts?.cardContinuation && !opts?.automationSource && !opts?.unattended && !opts?.workflowStep &&
       !opts?.commsDepth && !opts?.coordination && !inheritedTeamComputer(bot) && bot.computer !== "off" && agentsMounted) {
     const source = store.activePath(threadId).findLast(message => message.id === userMessage?.id && message.role === "user" && !message.peerAsk);
     if (source) computerSelectionTurns.set(threadId, { generation: dispatchClaimId, botId: bot.id, source, text, dataContext: opts?.dataContext });
@@ -8054,7 +8161,7 @@ async function startTurn(
         createHash("sha256").update(JSON.stringify([...persistentConfig, soul])).digest("hex").slice(0, 16);
       const plannedConfig = sessionConfig(bot.soul);
       const skillAuthoring = skillAuthoringEnabled(cfg) && agentsMounted;
-      const skillCommandText = supportsWorkspaceFiles(instance.driverKind)
+      const skillCommandText = supportsWorkspaceFiles(instance.driverKind) && opts?.workflowStep === undefined
         ? skillsHost.expandSkillCommand(bot, threadId, providerText, instance)
         : providerText;
       const setupText = agentsMounted ? expandSetupTurnText(skillCommandText) : skillCommandText;
@@ -8115,14 +8222,16 @@ async function startTurn(
       const integrations: NonNullable<Parameters<typeof instance.adapter.sendTurn>[0]["integrations"]> = {};
       let browser: Awaited<ReturnType<typeof browserIntegration>> = null;
       const skills = availableSkills(), phoneOffered = usbPhoneOffered(instance, skills) && !proactive.fence.confines(threadId);
-      const selectedSkills = selectBundledSkills(
-        providerText,
-        [
-          ...(phoneOffered ? ["phoneMcp"] : []),
-          ...(skillAuthoring ? ["skillAuthoring"] : []),
-        ],
-        skills,
-      );
+      const skillCapabilities = [
+        ...(phoneOffered ? ["phoneMcp"] : []),
+        ...(skillAuthoring ? ["skillAuthoring"] : []),
+      ];
+      const selectedSkills = opts?.workflowStep === undefined
+        ? selectBundledSkills(providerText, skillCapabilities, skills)
+        : (opts.skills?.bundled ?? []).flatMap((id) => {
+          const skill = skills.find((candidate) => candidate.manifest.id === id);
+          return skill && skill.manifest.requiredCapabilities.every((capability) => skillCapabilities.includes(capability)) ? [skill] : [];
+        });
       if (phoneOffered) integrations.phone = phoneIntegration(bot.id, threadId, dispatchClaimId);
       if (bot.composio !== false && composio.configured(cfg) && instance.adapter.capabilities.composioMcp === true) {
         Object.assign(integrations, await teamConnections.appsIntegrations(bot, threadId, dispatchClaimId, instance.adapter.capabilities.mcpToolsFoundByName ? "dotted" : "plain"));
@@ -8136,9 +8245,12 @@ async function startTurn(
       const worksInWorkspace = supportsWorkspaceFiles(instance.driverKind);
       if (worksInWorkspace) {
         ensureWorkspace(bot.id, appLanguage());
-        if (bot.memoryEnabled !== false) beginMemoryTurn(teamHost.layer(bot.id, threadId), threadId); botBox.lend(bot.id, threadId, teamHost.layerDirs(bot.id, threadId));
+        if (bot.memoryEnabled !== false && opts?.workflowStep === undefined) beginMemoryTurn(teamHost.layer(bot.id, threadId), threadId); botBox.lend(bot.id, threadId, teamHost.layerDirs(bot.id, threadId));
       }
-      const privateWorkspace = worksInWorkspace ? ensureTaskWorkspaceWithSkills(bot.id, threadId, skillsHost.turnImports(bot, threadId, instance)) : undefined;
+      const privateWorkspace = worksInWorkspace
+        ? ensureTaskWorkspaceWithSkills(bot.id, threadId, skillsHost.turnImports(bot, threadId, instance,
+          opts?.workflowStep === undefined ? undefined : { imported: opts.skills?.imported ?? [] }))
+        : undefined;
       const skillInstructions = renderSkillInstructions(selectedSkills, {
         includeRoot: worksInWorkspace,
       });
@@ -8471,7 +8583,7 @@ async function startTurn(
       // One reachability rule: a bot is never told about a peer that coordinate_bots would refuse.
       const sectionPeers = reachablePeers(store.bots, bot);
       if (agentsMounted) {
-        integrations.agents = agentsIntegration(bot.id, threadId, commsDepth, skillAuthoring, dispatchClaimId, opts?.coordination?.id, worksInWorkspace);
+        integrations.agents = agentsIntegration(bot.id, threadId, commsDepth, skillAuthoring, dispatchClaimId, opts?.coordination?.id, worksInWorkspace, opts?.workflowStep !== undefined);
       }
       if (instance.adapter.capabilities.hooks === true && hooksEnabled()) {
         integrations.hooks = hooksIntegration(bot.id, threadId, dispatchClaimId);
@@ -8489,8 +8601,9 @@ async function startTurn(
           : "";
       const credentialPrompt = integrations.agents ? CREDENTIAL_PROMPT + THREADS_PROMPT + WIDGET_PROMPT : "";
       const routinePrompt = integrations.agents ? TRIGGER_PROMPT : "";
+      const workflowsPrompt = integrations.agents ? WORKFLOWS_PROMPT : "";
       const profilePrompt = integrations.agents ? PROFILE_PROMPT : "";
-      const recallPrompt = integrations.agents && bot.memoryEnabled !== false ? SESSION_SEARCH_SYSTEM_PROMPT : "";
+      const recallPrompt = integrations.agents && bot.memoryEnabled !== false && opts?.workflowStep === undefined ? SESSION_SEARCH_SYSTEM_PROMPT : "";
       const learnPrompt = skillAuthoring ? LEARN_PROMPT : "";
 
       // Wait for the snapshot right before dispatch: the engine must not edit the project until it settles.
@@ -8592,21 +8705,24 @@ async function startTurn(
         }),
         { id: "coordination", label: "Team", text: coordinationPrompt ? ` ${coordinationPrompt}` : "" },
         { id: "assignment", label: "Teammate task", text: coordinationNode?.parentId ? `\n${coordinationSystemInstructions()}` : "" },
+        workflowStepPart(opts?.workflowStep !== undefined),
         { id: "outstanding", label: "Outstanding teammate work", text: outstandingAssignmentsPrompt(threadId) },
         { id: "credential", label: "Credentials", text: credentialPrompt },
         { id: "recall", label: "Recall", text: recallPrompt },
         { id: "routine", label: "Routines", text: routinePrompt },
+        { id: "workflows", label: "Workflows", text: workflowsPrompt },
         { id: "routine-execution", label: "Routine execution", text: opts?.automationSource === "schedule" || opts?.automationSource === "manual" || opts?.automationSource === "startup" ? ROUTINE_EXECUTION_PROMPT : "" },
         { id: "profile", label: "Profile changes", text: profilePrompt },
         { id: "learn", label: "Skill authoring", text: learnPrompt },
         { id: "section-context", label: "Section context", text: sectionContextSystemPrompt(bot.section) },
-        { id: "team-memory", label: "Team memory", text: teamMemory.systemPrompt(bot.section) + (integrations.agents ? TEAM_MEMORY_PROMPT : "") },
+        { id: "team-memory", label: "Team memory", text: opts?.workflowStep === undefined ? teamMemory.systemPrompt(bot.section) + (integrations.agents ? TEAM_MEMORY_PROMPT : "") : "" },
         // Volatile, so a teammate starting or finishing never changes the stable half.
         teamAvailabilityPart(coordinationPrompt ? sectionPeers : []),
-        { id: "recent", label: "Recent work", text: recentWorkPrompt(recentWork(recentWorkSources(bot), bot, { userName: CLOUD_TEAM ? teamHost.personName(teamConversationPerson(threadId)) ?? "the team" : cfg.profile?.name?.trim() || "User", currentThreadId: threadId, ...recentWorkFilter(threadId) })) },
-        { id: "memory", label: "Memory", text: memorySystemPrompt(teamHost.layer(bot.id, threadId), { managedWrites: Boolean(integrations.agents), fileTools: worksInWorkspace, enabled: bot.memoryEnabled !== false, writesRefused: notesRefused }) + teamHost.sharedNotesPrompt(bot.id, threadId) },
+        { id: "recent", label: "Recent work", text: opts?.workflowStep === undefined ? recentWorkPrompt(recentWork(recentWorkSources(bot), bot, { userName: CLOUD_TEAM ? teamHost.personName(teamConversationPerson(threadId)) ?? "the team" : cfg.profile?.name?.trim() || "User", currentThreadId: threadId, ...recentWorkFilter(threadId) })) : "" },
+        { id: "memory", label: "Memory", text: opts?.workflowStep === undefined ? memorySystemPrompt(teamHost.layer(bot.id, threadId), { managedWrites: Boolean(integrations.agents), fileTools: worksInWorkspace, enabled: bot.memoryEnabled !== false, writesRefused: notesRefused }) + teamHost.sharedNotesPrompt(bot.id, threadId) : "" },
         // liveBot predates awaited setup work; an assignment PUT in that window must still reach this prompt.
-        { id: "skills", label: "Skills index", text: privateWorkspace ? skillsHost.skillsIndex(store.bot(bot.id) ?? bot, threadId, instance) : "" },
+        { id: "skills", label: "Skills index", text: privateWorkspace ? skillsHost.skillsIndex(store.bot(bot.id) ?? bot, threadId, instance,
+          opts?.workflowStep === undefined ? undefined : { bot: opts.skills?.bot ?? [], imported: opts.skills?.imported ?? [] }) : "" },
         { id: "skill-instructions", label: "Skill instructions", text: skillInstructions },
         { id: "playbooks", label: "Playbooks", text: packagePlaybooks },
         { id: "webhook", label: "Webhook provenance", text: opts?.automationSource === "webhook" ? WEBHOOK_PROMPT : "" },
@@ -8615,7 +8731,7 @@ async function startTurn(
       ].filter((part) => !confined || READ_AND_DRAFT_PARTS.has(part.id)), integrations.agents, { replyStyle: liveBot?.replyStyle ?? bot.replyStyle });
       turnPromptBytes.set(threadId, { stable: Buffer.byteLength(prompt.stable), volatile: Buffer.byteLength(prompt.volatile) });
       // Recall rides in front of this turn's message, never the system prompt, whose volatile half is re-sent whole on any change.
-      const recalled = autoRecallPrompt(bot, threadId, resolvedImages.text, {
+      const recalled = opts?.workflowStep !== undefined ? "" : autoRecallPrompt(bot, threadId, resolvedImages.text, {
         // A routine run starts fresh, and a webhook is untrusted: neither pulls earlier conversations in.
         conversations: commsDepth === 0 && !coordinationNode && !opts?.automationSource && !opts?.unattended,
         userName: userNameFor(threadId),
@@ -8630,7 +8746,7 @@ async function startTurn(
       // Before sendTurn: an adapter may emit the whole turn before it resolves.
       handoffs.dispatching(threadId, dispatchClaimId, dispatchContext.handoff);
       const clock = takesTurnClock(userTurnText) ? turnClockLine(Date.now(), hostTimeZone()) + nearLimitNote(limitClock.limit(instanceId), engineName(instanceId), hostTimeZone()) : "";
-      const shareNote = skillsHost.shareNote(bot, threadId, Boolean(privateWorkspace));
+      const shareNote = skillsHost.shareNote(bot, threadId, Boolean(privateWorkspace) && opts?.workflowStep === undefined);
       const startupRecovery = (opts?.automaticRecoveryIndex ?? 0) < startupBackups(liveBot ?? bot, cfg.automaticRecovery).length;
       const held = limitTakeover.heldAtStart(bot, { instanceId, model }, startupRecovery); // a limit or a sign-out already known: straight to an AI that can carry on, with the reset only when one was named
       if (held) throw held.scope === "signed-out" ? new TurnAuthenticationRefusedError(`signed-out-${randomUUID()}`, `${engineName(instanceId)} is signed out.`, true) : new TurnUsageLimitRefusedError(`limit-${randomUUID()}`, `${engineName(instanceId)} is at its usage limit.`, held.resetsAt, held.scope, true);
@@ -8974,6 +9090,19 @@ const limitFailovers = new LimitFailovers({ file: join(DATA_DIR, "limit-failover
   } });
 const automationDestinations = createAutomationDestinations({ store, mainThread: botMainThread, runs: () => routines?.listRuns() ?? [],
   cloud: CLOUD_HOME ? { owner: CLOUD_OWNER_KEY!, opener: routineOpener, reportFromOthers: cloudReportFromOthers, opened: (threadId, person) => threadStarters.set(threadId, person) } : null });
+const workflowRoutineRefusal = (botId: string, workflowId: string): string | null => {
+  const workflow = workflows.store.workflow(workflowId);
+  if (!workflow) return "That Workflow does not exist yet; create it before scheduling it";
+  const department = store.bot(botId)?.section?.trim() || "General";
+  if (workflow.department.trim().toLowerCase() !== department.toLowerCase()) {
+    return "That Workflow belongs to another department";
+  }
+  const required = workflowRequiredStartParameters(workflow).map((parameter) => parameter.name);
+  if (required.length > 0) {
+    return `That Workflow needs ${required.join(", ")} at the start; a routine cannot supply them. Remove the start parameters or run it manually.`;
+  }
+  return null;
+};
 routines = new RoutineManager({
   emit: broadcast, limitResetAt: (engine) => limitClock.resetAt(engine), checks: proactive.checks,
   limitBackup: (botId, scope) => { const bot = store.bot(botId); return quotaSwitchEnabled() ? Boolean(bot && limitTakeover.backups(botId, bot.modelSelection, scope, approvalModeFor(bot)).length) : Boolean(bot && startupBackups(bot, cfg.automaticRecovery).length); },
@@ -9044,6 +9173,23 @@ routines = new RoutineManager({
       goalCoordinatorBotId: coordinatorBotId,
       goalRunId: runId,
     });
+  },
+  startWorkflow: (routine) => {
+    if (!routine.workflowId) return { error: "The routine's Workflow is unavailable" };
+    const started = workflows.engine.start(routine.workflowId, {
+      triggeredBy: { routineId: routine.id, routineName: routine.name },
+    });
+    return started.ok ? { runId: started.run.id } : { error: started.error };
+  },
+  cancelWorkflow: (runId, reason) => { workflows.engine.cancel(runId, reason); },
+  pausedWorkflowRuns: (workflowId) => workflows.store
+    .listRuns({ workflowId, limit: Number.POSITIVE_INFINITY })
+    .map((run) => ({ id: run.id, status: run.status })),
+  workflowState: (workflowId) => workflowId && workflows.store.workflow(workflowId) ? "ready" : "missing",
+  workflowRefusal: workflowRoutineRefusal,
+  workflowRunState: (runId) => {
+    const run = runId ? workflows.store.readRun(runId) : undefined;
+    return run ? { status: run.status, ...(run.error === undefined ? {} : { error: run.error }) } : undefined;
   },
   interruptTurn: async (botId, threadId) => {
     const bot = botForThread(botId, threadId);
@@ -9200,6 +9346,7 @@ const routineRequests = new RoutineRequestService({
     }
     return null;
   },
+  validateWorkflow: workflowRoutineRefusal,
 });
 async function deleteBotWithLifecycle(botId: string, revalidate: () => void = () => {}, setupRequest?: TeamSetupRequest) {
   const deletionResponse = (status: number, body: { error?: string; ok?: boolean; notice?: string }) => ({ status, body });
@@ -9721,7 +9868,9 @@ try {
   webhookIngress = await listenWebhookIngress(webhooks, {
     port: WEBHOOK_PORT, publicBaseUrl: WEBHOOK_PUBLIC_URL,
     claimRequest: () => { moveFreeze.assertTurns(); return workspaceMaintenance.request(); },
+    workflowTriggers: workflowTriggerManager,
   });
+  workflowTriggerIngress.baseUrl = webhookIngress.baseUrl;
   const advertised = WEBHOOK_PUBLIC_URL ? ` (advertised as ${webhookIngress.baseUrl})` : "";
   console.log(`openmausbot webhook receiver on http://${webhookIngress.host}:${webhookIngress.port}${advertised}`);
 } catch (error) {
@@ -10352,6 +10501,7 @@ async function runClaimedGroupMemberTurn(
     integrations.agents && (CREDENTIAL_PROMPT + (orchestration && !orchestration.roomHandoffId ? THREADS_PROMPT : "")).trim(),
     integrations.agents && (!orchestration || orchestration.roomHandoffId) && "For actual MimirBot teamwork, discover IDs with list_room_targets and use coordinate_bots for advice or work in this or another room. Do not substitute native coding helpers for these named bots. Consult only when needed to make a decision; no discussion step is mandatory. Give concrete responsibilities, exact accessible paths and acceptance checks. End your turn after assigning; busy teammates queue and results automatically resume you. When they return, finish the requested verification and give the user one final answer. Native helper names are not evidence that an MimirBot teammate participated. Plain @mentions are only for conversational replies in this room." + requesterRule,
     integrations.agents && TRIGGER_PROMPT.trim(),
+    integrations.agents && WORKFLOWS_PROMPT.trim(),
     integrations.agents && PROFILE_PROMPT.trim(),
     integrations.agents && skillAuthoringEnabled(cfg) && LEARN_PROMPT.trim(),
     orchestration?.systemInstructions,
@@ -13396,6 +13546,8 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
           throw Object.assign(new Error(TURN_ENDED_REFUSAL), { status: 401 });
         }
       };
+      if (await workflows.proposalInternal({ method, path, res, json, readBody: readInternalBody, botId: internalSender.id, threadId: internalCapability.threadId, department: internalSender.section?.trim() || "General" }) !== PASS) return;
+      if (await workflows.internal({ method, path, res, json, readBody: readInternalBody, botId: internalSender.id, threadId: internalCapability.threadId }) !== PASS) return;
       const botFolders = async () => ({ roots: messageFileRootsForThread(internalSender.id, internalCapability.threadId).filter((root) => root !== ATTACHMENTS_DIR), vmWorkspace: (await attachmentVmForTurn(internalCapability))?.workspaceDir ?? null }); if (await internalToolRoutes({ method, path, res, json, botId: internalSender.id, readBody: readInternalBody, folders: botFolders }) !== PASS || await waitRoutes({ method, path, res, json, botId: internalSender.id, threadId: internalCapability.threadId, readBody: readInternalBody, ...waitTurnChecks(internalCapability, internalSender) }) !== PASS) return; const pagesCall = new AbortController(); res.once("close", () => { if (!res.writableEnded) pagesCall.abort(); }); if (await publishedPages.internal({ method, path, res, json, botId: internalSender.id, threadId: internalCapability.threadId, readBody: readInternalBody, requireActive: requireActiveInternalCapability, signal: pagesCall.signal, folders: botFolders, post: (text, publishedPage, bundle) => { const source = connectorThread(internalSender.id, internalCapability.threadId); return !source ? null : (!source.group && bundle && publishedPages.show({ threadId: internalCapability.threadId, card: publishedPage, bundle })) || store.appendMessage(internalCapability.threadId, { role: "bot", kind: "text", text, publishedPage, ...(source.group ? { from: { botId: internalSender.id, name: internalSender.name, color: internalSender.color } } : {}) }).id; } }) !== PASS) return;
       const delegatedThisTurn = (taskId: string) => {
         (internalCapability.delegatedThisTurn ??= new Set()).add(taskId);
@@ -16026,6 +16178,8 @@ server.listen(PORT, "127.0.0.1", async () => {
   // Only once every registry is initialized and the endpoint listens: earlier dispatch can hit uninitialized bindings.
   moveFreeze.hold(() => { routines!.start(); botWaits.start(); proactive.start(); }, () => { routines!.stop(); botWaits.stop(); proactive.stop(); });
   limitClock.start();
+  workflows.engine.recover();
+  workflows.retention();
   moveFreeze.hold(() => memoryUpkeep.start(), () => memoryUpkeep.stop());
 });
 

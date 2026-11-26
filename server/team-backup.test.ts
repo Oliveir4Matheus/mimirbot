@@ -19,6 +19,7 @@ function fixture() {
   const routines = new RoutineManager({
     botState: (id) => store.bot(id) ? "ready" : "missing",
     goalState: (id, botId) => store.group(id ?? "")?.memberIds.includes(botId) ? "ready" : "missing",
+    workflowState: () => "ready",
     createTask: (id, title) => store.createTask(id, title),
     startTurn: async () => { throw new Error("Import must never run a bot"); },
   });
@@ -59,6 +60,18 @@ function fixture() {
 
 describe("additive portable team backups", () => {
   beforeEach(() => rmSync(DATA_DIR, { recursive: true, force: true }));
+
+  it("leaves a Workflow routine out, since its Workflow stays in this workspace", () => {
+    const { store, routines, chief } = fixture();
+    const routine = routines.create({
+      name: "Cortes diários", prompt: "", target: "workflow", workflowId: "3a042dfb-28e2-4ecf-bfa9-bb9718751048",
+      botId: chief.id, schedule: { type: "daily", time: "08:00", weekdays: [1, 2, 3] },
+    });
+    const backup = createTeamBackup(store, routines.listRoutines(), "With a workflow");
+    expect(backup.routines.map((entry) => entry.name)).not.toContain("Cortes diários");
+    expect(backup.warnings.join(" ")).toContain("stays in this workspace");
+    routines.remove(routine.id);
+  });
 
   it("carries tool restrictions through backup and import without restoring execution grants", () => {
     const { store, routines, chief, scout } = fixture();

@@ -85,6 +85,14 @@ describe("desktop notifications", () => {
     expect(notices).toHaveLength(3);
   });
 
+  it("keeps a Workflow hold in the in-app feed, never in the operating system", () => {
+    const { notices } = installNotification("granted");
+
+    showNotification({ ...frame, kind: "workflow-waiting" }, vi.fn());
+
+    expect(notices).toHaveLength(0);
+  });
+
   it("shows a notification after permission is granted", () => {
     const { notices } = installNotification("granted");
     showNotification(frame, vi.fn());

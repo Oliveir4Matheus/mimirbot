@@ -6,7 +6,7 @@ import { t } from "@/lib/i18n";
 import type { LocaleKey } from "@/locales";
 import { colorSwatch, MAUS_COLOR_LABEL, MAUS_COLOR_NAMES, PICKABLE_STATES, type MausState } from "@/lib/mascot";
 import { useStore, type Bot } from "@/state/store";
-import { MASCOT_BODIES, MASCOT_BODY_IDS } from "../../../shared/mascot-bodies";
+import { AGENT_SHAPE_IDS, AGENT_SHAPE_NAMES, DEFAULT_AGENT_SHAPE, agentShapesPreview } from "@/lib/agent-shapes";
 import { HALLOWEEN_BODIES, HALLOWEEN_BODY_IDS } from "../../../shared/halloween-bodies";
 import { isHalloweenBody, type BotBodyId } from "../../../shared/bot-body";
 import { useHalloweenDressed, wornBody } from "@/lib/halloween-dress";
@@ -64,9 +64,10 @@ export function AvatarEditorCard({ bot, activeState, onPatch, onClose }: {
     tabsRef.current?.querySelector<HTMLElement>('[aria-selected="true"]')?.focus();
   }, []);
   const pickMascot = (patch: AvatarPatch) => onPatch(crop === "mascot" ? patch : { ...patch, avatarCrop: "mascot" });
-  const body = bot.mascotBody ?? "cursor";
+  const body = bot.mascotBody ?? DEFAULT_AGENT_SHAPE;
+  const previewShapes = agentShapesPreview();
   const { state, dispatch } = useStore();
-  const othersToMatch = state.bots.filter((other) => other.id !== bot.id && (other.mascotBody ?? "cursor") !== body);
+  const othersToMatch = state.bots.filter((other) => other.id !== bot.id && (other.mascotBody ?? DEFAULT_AGENT_SHAPE) !== body);
   const costume = wornBody(bot.mascotBody, bot.color, useHalloweenDressed());
   const dressedAs = costume !== body && isHalloweenBody(costume) ? HALLOWEEN_BODIES[costume].name : null;
   const bodyButton = (id: BotBodyId, name: string) => (
@@ -134,15 +135,19 @@ export function AvatarEditorCard({ bot, activeState, onPatch, onClose }: {
         {tab === "bot" && (
           <>
             <div className="grid grid-cols-5 gap-1.5">
-              {MASCOT_BODY_IDS.map((id) => bodyButton(id, MASCOT_BODIES[id].name))}
+              {AGENT_SHAPE_IDS.map((id) => bodyButton(id, AGENT_SHAPE_NAMES[id]))}
             </div>
-            <div className="flex flex-wrap items-baseline gap-x-2 px-1 pb-1.5 pt-3 text-[12px] text-ink-tertiary">
-              <span>{t("botPanel.avatar.halloween")}</span>
-              {dressedAs && <span data-avatar-costume>{t("botPanel.avatar.costume", { name: dressedAs })}</span>}
-            </div>
-            <div className="grid grid-cols-5 gap-1.5" data-halloween-bodies>
-              {HALLOWEEN_BODY_IDS.map((id) => bodyButton(id, HALLOWEEN_BODIES[id].name))}
-            </div>
+            {!previewShapes && (
+              <>
+                <div className="flex flex-wrap items-baseline gap-x-2 px-1 pb-1.5 pt-3 text-[12px] text-ink-tertiary">
+                  <span>{t("botPanel.avatar.halloween")}</span>
+                  {dressedAs && <span data-avatar-costume>{t("botPanel.avatar.costume", { name: dressedAs })}</span>}
+                </div>
+                <div className="grid grid-cols-5 gap-1.5" data-halloween-bodies>
+                  {HALLOWEEN_BODY_IDS.map((id) => bodyButton(id, HALLOWEEN_BODIES[id].name))}
+                </div>
+              </>
+            )}
             {!showsImage && othersToMatch.length > 0 && (
               <button
                 type="button"
@@ -174,25 +179,27 @@ export function AvatarEditorCard({ bot, activeState, onPatch, onClose }: {
                 />
               ))}
             </div>
-            <div className="flex flex-wrap items-center justify-center gap-1.5 pt-2.5" role="group" aria-label={t("botPanel.avatar.face")}>
-              <span className="mr-0.5 text-[12px] text-ink-tertiary">{t("botPanel.avatar.face")}</span>
-              {PICKABLE_STATES.map((expression) => (
-                <button
-                  key={expression}
-                  type="button"
-                  disabled={busy}
-                  data-avatar-face={expression}
-                  aria-pressed={activeState === expression}
-                  onClick={() => pickMascot({ mascotExpression: expression })}
-                  className={cn(
-                    "rounded-full px-2.5 py-1 text-[12px] disabled:opacity-50",
-                    activeState === expression ? "bg-ink/[0.15] text-ink" : "bg-ink/[0.04] text-ink-secondary hover:text-ink",
-                  )}
-                >
-                  {faceLabel(expression)}
-                </button>
-              ))}
-            </div>
+            {!previewShapes && (
+              <div className="flex flex-wrap items-center justify-center gap-1.5 pt-2.5" role="group" aria-label={t("botPanel.avatar.face")}>
+                <span className="mr-0.5 text-[12px] text-ink-tertiary">{t("botPanel.avatar.face")}</span>
+                {PICKABLE_STATES.map((expression) => (
+                  <button
+                    key={expression}
+                    type="button"
+                    disabled={busy}
+                    data-avatar-face={expression}
+                    aria-pressed={activeState === expression}
+                    onClick={() => pickMascot({ mascotExpression: expression })}
+                    className={cn(
+                      "rounded-full px-2.5 py-1 text-[12px] disabled:opacity-50",
+                      activeState === expression ? "bg-ink/[0.15] text-ink" : "bg-ink/[0.04] text-ink-secondary hover:text-ink",
+                    )}
+                  >
+                    {faceLabel(expression)}
+                  </button>
+                ))}
+              </div>
+            )}
           </>
         )}
 

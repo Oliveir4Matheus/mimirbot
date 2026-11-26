@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 
 import type { SkillRequestCardData, SkillShareRecord } from "../../shared/skill-request.ts";
+import type { WorkflowSkillOptions } from "../../shared/workflow.ts";
 import { narrowestAudience, intersectAudience } from "../bot-visibility.ts";
 import { DATA_DIR, type AppConfig } from "../config.ts";
 import { appendDecision } from "../decision-log.ts";
@@ -55,6 +56,11 @@ export interface SkillsLibraryHostDeps {
   engineConfig?(instanceId: string): { config?: unknown; environment?: Record<string, string> } | undefined;
   /** The engine instance a bot's new turns run on, for listings made outside a turn. */
   instanceOf?(instanceId: string): TurnInstance | undefined;
+}
+
+export interface SkillTurnAllowlist {
+  bot?: readonly string[];
+  imported?: readonly string[];
 }
 
 /** The engine instance a turn runs on. */
@@ -242,15 +248,42 @@ export function createSkillsLibraryHost(deps: SkillsLibraryHostDeps) {
 
     /** A turn's skills index, or the preview's without a thread: the bot's own and library skills, then the ones from
      * this computer, each with a budget of its own. */
-    skillsIndex(bot: BotRecord, threadId: string | undefined, instance?: TurnInstance): string {
+    skillsIndex(bot: BotRecord, threadId: string | undefined, instance?: TurnInstance, allow?: SkillTurnAllowlist): string {
       const assigned = threadId === undefined ? (skillsLibraryEnabled(cfg) ? bot.assignedSkills ?? [] : undefined) : conversationSkills(bot, threadId);
-      return skillsSystemPrompt(bot.id, assigned, threadId === undefined ? undefined : conversationStartedAt(threadId)) +
-        importedSkillsPrompt(importsFor(bot, assigned, instance));
+      if (allow === undefined) {
+        return skillsSystemPrompt(bot.id, assigned, threadId === undefined ? undefined : conversationStartedAt(threadId)) +
+          importedSkillsPrompt(importsFor(bot, assigned, instance));
+      }
+      const allowedImports = new Set(allow.imported ?? []);
+      return skillsSystemPrompt(bot.id, assigned, threadId === undefined ? undefined : conversationStartedAt(threadId), new Set(allow.bot ?? [])) +
+        importedSkillsPrompt(importsFor(bot, assigned, instance).filter((skill) => allowedImports.has(skill.name)));
     },
 
     /** The imported skills a turn links into its task folder: the same ones its index lists. */
-    turnImports(bot: BotRecord, threadId: string, instance?: TurnInstance): ImportedSkillView[] {
-      return importsFor(bot, conversationSkills(bot, threadId), instance);
+    turnImports(bot: BotRecord, threadId: string, instance?: TurnInstance, allow?: SkillTurnAllowlist): ImportedSkillView[] {
+      const imports = importsFor(bot, conversationSkills(bot, threadId), instance);
+      if (allow === undefined) return imports;
+      const allowed = new Set(allow.imported ?? []);
+      return imports.filter((skill) => allowed.has(skill.name));
+    },
+
+    workflowSkillOptions(bot: BotRecord): WorkflowSkillOptions {
+      const own = ownSkills(bot);
+      return {
+        bot: own.map((skill) => ({
+          name: skill.name,
+          label: skill.name,
+          description: skill.description,
+          available: skill.enabled,
+        })),
+        bundled: [],
+        imported: importedSkillListings(bot.id, new Set(own.map((skill) => skill.name))).map((skill) => ({
+          name: skill.name,
+          label: skill.name,
+          description: skill.description,
+          available: skill.enabled,
+        })),
+      };
     },
 
     /** `/name` for one of the bot's own, library or imported skills, or one its engine loads by itself. */

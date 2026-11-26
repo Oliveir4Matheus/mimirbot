@@ -189,7 +189,7 @@ export function createBotPackageExport(input: {
 
   const routineKeys = new Set<string>();
   const routines: NonNullable<BotPackageDefinition["routines"]> = input.routines.flatMap((routine, index) => {
-    if (routine.target === "room-goal" || !portable(routine)) return [];
+    if (routine.target !== "bot" || !portable(routine)) return [];
     const agent = idToKey.get(routine.botId);
     if (!agent) return [];
     return [{
@@ -264,6 +264,7 @@ export type TeamExportSkipReason =
   | "insecure_address"
   | "files_not_shared"
   | "lead_not_in_group_chat"
+  | "workflow_not_shared"
   | "notes_too_large"
   | "skill_changed"
   | "skill_conflict"
@@ -621,7 +622,10 @@ export function createTeamPackageExport(input: TeamExportInput): TeamExportResul
     roomMembers.set(group.id, new Set(members));
   }
 
-  const owned = input.routines.filter((routine) => botKeys.has(routine.botId) && portable(routine) &&
+  for (const routine of input.routines) {
+    if (routine.target === "workflow" && botKeys.has(routine.botId)) skipped.push({ part: `routines[${routine.name}]`, reason: "workflow_not_shared" });
+  }
+  const owned = input.routines.filter((routine) => botKeys.has(routine.botId) && routine.target !== "workflow" && portable(routine) &&
     (routine.target !== "room-goal" || (routine.groupId !== undefined && roomMembers.has(routine.groupId))));
   const routineKeys = stableKeys(owned, recorded?.routines, () => undefined, "routine");
   const routines: PackageRoutine[] = owned.flatMap((routine) => {

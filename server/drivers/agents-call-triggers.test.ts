@@ -99,3 +99,44 @@ describe("delete_trigger", () => {
     expect(calls).toEqual([{ path: "/api/internal/trigger-requests", body: { fromBotId: "scout", fromThreadId: "thread-1", action: "delete", triggerId: "t-1", forBotId: "helper" } }]);
   });
 });
+
+describe("a schedule for an existing Workflow", () => {
+  it("sends a workflow target with no instructions", async () => {
+    const { calls, context: ctx } = context();
+    const result = await callTool("create_trigger", {
+      when: "schedule", name: "Cortes diários", target: "workflow", workflow_id: " 3a042dfb-28e2-4ecf-bfa9-bb9718751048 ",
+      schedule: { type: "daily", time: "08:00" },
+    }, ctx);
+    expect(result.isError).toBeUndefined();
+    expect(calls[0]).toEqual({
+      path: "/api/internal/trigger-requests",
+      body: {
+        fromBotId: "scout", fromThreadId: "thread-1", action: "create", kind: "schedule",
+        routine: {
+          name: "Cortes diários", instructions: "",
+          schedule: { type: "weekly", time: "08:00", weekdays: ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"] },
+          target: "workflow", workflowId: "3a042dfb-28e2-4ecf-bfa9-bb9718751048",
+        },
+      },
+    });
+  });
+
+  it("refuses instructions, a missing workflow id, and a target on another kind", async () => {
+    const { calls, context: ctx } = context();
+    expect((await callTool("create_trigger", {
+      when: "schedule", name: "Cortes", target: "workflow", workflow_id: "3a04", instructions: "Peça o link.",
+      schedule: { type: "daily", time: "08:00" },
+    }, ctx)).text).toContain("takes no instructions");
+    expect((await callTool("create_trigger", {
+      when: "schedule", name: "Cortes", target: "workflow", schedule: { type: "daily", time: "08:00" },
+    }, ctx)).text).toContain("needs workflow_id");
+    expect((await callTool("create_trigger", {
+      when: "webhook", name: "Cortes", target: "workflow", workflow_id: "3a04",
+    }, ctx)).text).toContain("target=workflow applies only to when=schedule");
+    expect((await callTool("create_trigger", {
+      when: "schedule", name: "Cortes", instructions: "Resuma.", workflow_id: "3a04",
+      schedule: { type: "daily", time: "08:00" },
+    }, ctx)).text).toContain("workflow_id needs target=workflow");
+    expect(calls).toEqual([]);
+  });
+});

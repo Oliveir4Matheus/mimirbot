@@ -1,11 +1,13 @@
-import { useState } from "react";
-import { MessageCircleQuestion, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { FlaskConical, MessageCircleQuestion, X } from "lucide-react";
 import { useStore, visibleMessages, type Message } from "@/state/store";
+import { readProposal } from "@/lib/workflows-api";
 import { cn } from "@/lib/cn";
 import { t } from "@/lib/i18n";
 import { isPersistentQuestionCard, parseChoices } from "../../shared/ask-question";
 import { ASK_FIELD, ASK_QUIET_BUTTON, AskCard, AskSettledLine, moveChoiceFocus, returnFocusToComposer } from "./AskCard";
 import { ExpandableText } from "./ExpandableText";
+import { ProposalPreviewDialog } from "./workflows/ProposalPreviewDialog";
 
 const LETTERS = ["A", "B", "C", "D", "E", "F"];
 
@@ -15,6 +17,8 @@ export function isOnboardingCard(message: Message): boolean {
 
 export function shouldHideOnboardingCard(message: Message, transcript: Message[]): boolean {
   if (!isOnboardingCard(message) || !message.card) return false;
+  // A Workflow proposal outlives later turns: the person may answer it days later.
+  if (message.card.workflowProposal) return false;
   if (message.card.dismissed || message.card.answered) return true;
   const index = transcript.findIndex((entry) => entry.id === message.id);
   if (index < 0) return false;
@@ -39,6 +43,17 @@ export function OptionCard({
 }) {
   const { state, dispatch } = useStore();
   const [custom, setCustom] = useState("");
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const proposalId = message.card?.workflowProposal?.id;
+  const [proposalConfirmed, setProposalConfirmed] = useState<boolean>();
+  useEffect(() => {
+    if (proposalId === undefined) return;
+    let cancelled = false;
+    readProposal(proposalId)
+      .then((proposal) => { if (!cancelled) setProposalConfirmed(proposal.interview.confirmedAt !== undefined); })
+      .catch(() => { if (!cancelled) setProposalConfirmed(undefined); });
+    return () => { cancelled = true; };
+  }, [proposalId, previewOpen]);
   const card = message.card;
   const bot = state.bots.find((candidate) => candidate.id === botId);
   const transcript = bot ? visibleMessages(bot) : [];
@@ -89,6 +104,26 @@ export function OptionCard({
       onDismiss={dismiss}
       dismissLabel={t("onboarding.card.dismiss")}
     >
+      {card.workflowProposal && (
+        <div className="rounded-xl border border-hairline/50 bg-inset/60 px-3 py-2 text-[12px] text-ink-secondary">
+          <p className="font-medium text-ink">{t("workflows.proposals.cardTitle", { name: card.workflowProposal.name })}</p>
+          <p className="mt-0.5">
+            {card.workflowProposal.department} · {t("workflows.proposals.stepCount", { count: card.workflowProposal.steps })}
+            {card.workflowProposal.assumptions > 0 ? ` · ${t("workflows.proposals.assumptionCount", { count: card.workflowProposal.assumptions })}` : ""}
+          </p>
+          <p className="mt-1 text-[11px] text-ink-tertiary">{t("workflows.proposals.cardHint")}</p>
+          {proposalConfirmed !== true && (
+            <p className="mt-1 text-[11px] text-warning">{t("workflows.proposals.interviewCreateBlocked")}</p>
+          )}
+          <button
+            type="button"
+            onClick={() => setPreviewOpen(true)}
+            className="mt-1.5 flex items-center gap-1.5 rounded-lg border border-hairline px-2.5 py-1 text-[11.5px] font-medium text-ink-secondary hover:bg-raised/60"
+          >
+            <FlaskConical size={13} /> {t("workflows.proposals.previewOpen")}
+          </button>
+        </div>
+      )}
       {options.length > 0 && (
         <div onKeyDown={moveChoiceFocus} className="overflow-hidden rounded-2xl border border-hairline/40">
           {options.map((opt, i) => (
@@ -96,8 +131,8 @@ export function OptionCard({
               key={opt}
               type="button"
               data-ask-choice=""
-              disabled={!!card.answered}
-              onClick={() => answer(opt)}
+              disabled={!!card.answered || (card.workflowProposal !== undefined && i === 0 && proposalConfirmed !== true)}
+              onClick={() => card.workflowProposal && i === 0 ? setPreviewOpen(true) : answer(opt)}
               className={cn(
                 "flex w-full items-center gap-2.5 px-3 py-2 text-start text-[13px] font-medium leading-5 text-ink",
                 i > 0 && "border-t border-hairline/40",
@@ -113,6 +148,17 @@ export function OptionCard({
             </button>
           ))}
         </div>
+      )}
+
+      {previewOpen && card.workflowProposal && (
+        <ProposalPreviewDialog
+          proposalId={card.workflowProposal.id}
+          onClose={() => setPreviewOpen(false)}
+          onCreated={() => {
+            setPreviewOpen(false);
+            answer(options[0] ?? t("workflows.proposals.create"));
+          }}
+        />
       )}
 
       {!card.answered && !card.tool && !card.fixedOptions && (

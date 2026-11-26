@@ -453,17 +453,17 @@ describe("the hero", () => {
 describe("the avatar editor", () => {
   const editor = (bot: Bot) => capture(() => AvatarEditorCard({ bot, activeState: "idle", onPatch: patch, onClose }));
 
-  it("picks one of the ten bodies, ten Halloween bodies, twelve colors and a face for the mascot", () => {
+  it("picks one of the shape bodies, ten Halloween bodies, twelve colors and a face for the mascot", () => {
     const bot = makeBot();
     const rendered = editor(bot);
-    expect(rendered.html.match(/aria-label="Use the \w+ body"/g)).toHaveLength(20);
+    expect(rendered.html.match(/aria-label="Use the [^"]+ body"/g)).toHaveLength(18);
     expect(rendered.html).toContain(">Halloween<");
     click(find(rendered, "aria-label", "Use the Pumpkin body"));
     expect(patch).toHaveBeenLastCalledWith({ mascotBody: "pumpkin" });
     expect(rendered.html.match(/aria-label="Use \w+ mascot color"/g)).toHaveLength(12);
-    expect(find(rendered, "aria-label", "Use the Cursor body").props["aria-pressed"]).toBe(true);
-    click(find(rendered, "aria-label", "Use the Blob body"));
-    expect(patch).toHaveBeenLastCalledWith({ mascotBody: "blob" });
+    expect(find(rendered, "aria-label", "Use the Seixo compacto body").props["aria-pressed"]).toBe(true);
+    click(find(rendered, "aria-label", "Use the Seixo orgânico body"));
+    expect(patch).toHaveBeenLastCalledWith({ mascotBody: "seixo-organico" });
     click(find(rendered, "aria-label", "Use blue mascot color"));
     expect(patch).toHaveBeenLastCalledWith({ color: "blue" });
     expect(find(rendered, "aria-label", "Use silver mascot color").props.title).toBe("Silver");
@@ -481,13 +481,13 @@ describe("the avatar editor", () => {
   it("switches back to the mascot when a body is picked over a picture", () => {
     const bot = makeBot({ avatarUrl: "/api/attachments/cat.webp", avatarCrop: "circle" });
     click(find(editor(bot), "data-avatar-tab", "bot"));
-    click(find(editor(bot), "aria-label", "Use the Star body"));
-    expect(patch).toHaveBeenLastCalledWith({ mascotBody: "star", avatarCrop: "mascot" });
+    click(find(editor(bot), "aria-label", "Use the Hexagon body"));
+    expect(patch).toHaveBeenLastCalledWith({ mascotBody: "hexagon", avatarCrop: "mascot" });
   });
 
   it("resets the mascot as the Advanced card does", () => {
     click(find(editor(makeBot()), "data-avatar-reset"));
-    expect(patch).toHaveBeenLastCalledWith({ avatarCrop: "mascot", color: "green", mascotExpression: null, mascotBody: "cursor" });
+    expect(patch).toHaveBeenLastCalledWith({ avatarCrop: "mascot", color: "green", mascotExpression: null, mascotBody: "seixo-compacto" });
   });
 
   it("generates with the shared generator, and uploads with shape and framing", () => {

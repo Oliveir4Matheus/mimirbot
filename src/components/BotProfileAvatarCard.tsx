@@ -12,7 +12,7 @@ import {
   type MausState,
 } from "@/lib/mascot";
 import { BOT_AVATAR_CROPS } from "../../shared/bot-avatar";
-import { MASCOT_BODIES, MASCOT_BODY_IDS } from "../../shared/mascot-bodies";
+import { AGENT_SHAPE_IDS, AGENT_SHAPE_NAMES, DEFAULT_AGENT_SHAPE, agentShapesPreview } from "@/lib/agent-shapes";
 import { HALLOWEEN_BODIES, HALLOWEEN_BODY_IDS } from "../../shared/halloween-bodies";
 import type { BotBodyId } from "../../shared/bot-body";
 import { BotAvatar, MausAvatar } from "./Avatar";
@@ -76,7 +76,7 @@ export function BotProfileAvatarCard({
         ))}
       </div>
 
-      {mascot && (
+      {mascot && !agentShapesPreview() && (
         <>
           <PickerLabel>{t("botIdentity.expression")}</PickerLabel>
           <div className="grid grid-cols-5 gap-2">
@@ -103,7 +103,7 @@ export function BotProfileAvatarCard({
     </>
   );
 
-  const halloween = (
+  const halloween = agentShapesPreview() ? null : (
     <>
       <PickerLabel>{t("botPanel.avatar.halloween")}</PickerLabel>
       <div className="grid grid-cols-5 gap-1.5" data-halloween-bodies>
@@ -133,8 +133,8 @@ export function BotProfileAvatarCard({
             <>
               <PickerLabel first>{t("botIdentity.body")}</PickerLabel>
               <div className="grid grid-cols-5 gap-1.5 sm:grid-cols-10" data-new-bot-bodies>
-                {MASCOT_BODY_IDS.map((id) => (
-                  <BodyButton key={id} id={id} name={MASCOT_BODIES[id].name} bot={bot} busy={busy} onPatch={onPatch} />
+                {AGENT_SHAPE_IDS.map((id) => (
+                  <BodyButton key={id} id={id} name={AGENT_SHAPE_NAMES[id]} bot={bot} busy={busy} onPatch={onPatch} />
                 ))}
               </div>
               <PickerLabel>{t("botIdentity.color")}</PickerLabel>
@@ -197,8 +197,8 @@ export function BotProfileAvatarCard({
 
             <PickerLabel>{t("botIdentity.body")}</PickerLabel>
             <div className="grid grid-cols-5 gap-1.5">
-              {MASCOT_BODY_IDS.map((id) => (
-                <BodyButton key={id} id={id} name={MASCOT_BODIES[id].name} bot={bot} busy={busy} onPatch={onPatch} />
+              {AGENT_SHAPE_IDS.map((id) => (
+                <BodyButton key={id} id={id} name={AGENT_SHAPE_NAMES[id]} bot={bot} busy={busy} onPatch={onPatch} />
               ))}
             </div>
             {halloween}
@@ -291,7 +291,7 @@ function BodyButton({ id, name, bot, busy, onPatch }: {
   busy: boolean;
   onPatch: (patch: AvatarPatch) => void;
 }) {
-  const selected = (bot.mascotBody ?? "cursor") === id;
+  const selected = (bot.mascotBody ?? DEFAULT_AGENT_SHAPE) === id;
   return (
     <button
       type="button"

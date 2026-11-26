@@ -111,7 +111,12 @@ export function resolveBotCreationDefaults(saved: NewBotDefaults | undefined, bo
     throw Object.assign(new Error("useDefaults must be true or false"), { status: 400 });
   }
   const template = newBotDefaultsSchema.parse(body.useDefaults === false ? {} : saved ?? {});
-  const checked = botDefaultsProfileSchema.safeParse(body.settings === undefined ? {} : body.settings);
+  const rawSettings = body.settings === undefined ? {} : body.settings;
+  const settingsRecord = rawSettings && typeof rawSettings === "object" && !Array.isArray(rawSettings) ? rawSettings as Record<string, unknown> : null;
+  const settingsInput = body.toolScope !== undefined && settingsRecord !== null && !Object.hasOwn(settingsRecord, "toolScope")
+    ? { ...settingsRecord, toolScope: body.toolScope }
+    : rawSettings;
+  const checked = botDefaultsProfileSchema.safeParse(settingsInput);
   if (!checked.success) throw Object.assign(new Error(checked.error.message), { status: 400 });
   const explicit = checked.data;
   const profile = { ...template.profile, ...explicit };

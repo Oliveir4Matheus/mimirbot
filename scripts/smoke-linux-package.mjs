@@ -121,7 +121,7 @@ writeFileSync(state, String(count));
 writeFileSync(pidFile, String(process.pid), { mode: 0o600 });
 const metadata = {
   driver_version: "0.62.1",
-  contract_version: "0.8.0",
+  contract_version: "0.9.0",
   tools_list_schema_version: "1",
   capability_version: "1",
   mcp_protocol_version: "2025-06-18",

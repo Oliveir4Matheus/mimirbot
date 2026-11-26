@@ -9,6 +9,8 @@ import {
 } from "react";
 import { CHROME_EYES, CHROME_GRADIENT, MAUS_COLORS, type MausColor, type MausMotion, type MausState } from "@/lib/mascot";
 import { CursorAvatar, type CursorAvatarHandle } from "./CursorAvatar";
+import { AgentShapeAvatar } from "./AgentShapeAvatar";
+import { agentShapeForBody, agentShapesPreview } from "@/lib/agent-shapes";
 import { avatarCropRadius, botAvatarProfile, clampAvatarFocus, clampAvatarZoom, type BotAvatarCrop } from "../../shared/bot-avatar";
 import { MASCOT_BODIES, botMascotBody } from "../../shared/mascot-bodies";
 import { isHalloweenBody, type BotBodyId } from "../../shared/bot-body";
@@ -97,7 +99,7 @@ export type MausAvatarProps = {
 
 function MausAvatarComponent(props: MausAvatarProps, ref: React.Ref<MausAvatarHandle>) {
   const { bodyId, color, size, state, motion, motionKey, gaze, trackPointer, animated, label } = props;
-  if (isHalloweenBody(bodyId)) {
+  if (!agentShapesPreview() && isHalloweenBody(bodyId)) {
     return (
       <CarvedAvatar
         ref={ref}
@@ -143,6 +145,9 @@ function GradientAvatarComponent(
 ) {
   const silhouette = MASCOT_BODIES[botMascotBody(bodyId)];
   const chrome = color === "chrome";
+  const previewShapes = agentShapesPreview();
+  const previewShape = agentShapeForBody(bodyId);
+  const previewColor = chrome ? CHROME_GRADIENT[2] : MAUS_COLORS[color] ?? MAUS_COLORS.green;
   const inner = useRef<CursorAvatarHandle>(null);
   useImperativeHandle(ref, () => ({
     blink: () => inner.current?.blink(),
@@ -174,6 +179,19 @@ function GradientAvatarComponent(
     });
   };
   const onPointerLeave = () => setPointer({ x: 0, y: 0 });
+
+  if (previewShapes) {
+    return (
+      <AgentShapeAvatar
+        shapeId={previewShape}
+        state={motionState ?? state}
+        size={size}
+        color={previewColor}
+        animated={animated}
+        label={label}
+      />
+    );
+  }
 
   return (
     <span

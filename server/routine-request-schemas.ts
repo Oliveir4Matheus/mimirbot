@@ -50,6 +50,8 @@ export const routineToolDefinitionSchema = z.object({
   continuity: z.boolean().optional(),
   overlap: z.enum(["skip", "queue"]).optional(),
   runOnStartup: z.boolean().optional(),
+  target: z.literal("workflow").optional(),
+  workflowId: z.string().max(128).optional(),
 }).strict();
 
 export const routineToolChangesSchema = routineToolDefinitionSchema
@@ -171,7 +173,7 @@ export const storedScheduleChangesSchema = z.discriminatedUnion("type", [
 });
 export const storedDefinitionSchema = z.object({
   name: z.string().trim().min(1).max(80),
-  instructions: z.string().trim().min(1).max(20_000),
+  instructions: z.string().trim().max(20_000),
   schedule: storedScheduleSchema,
   runOn: z.enum(["maus", "cloud"]),
   durationMinutes: z.number().int().min(5).max(240),
@@ -179,6 +181,8 @@ export const storedDefinitionSchema = z.object({
   continuity: z.boolean().optional(),
   overlap: z.enum(["skip", "queue"]).optional(),
   runOnStartup: z.boolean().optional(),
+  target: z.literal("workflow").optional(),
+  workflowId: z.string().min(1).max(128).optional(),
 }).strict();
 export const storedChangesSchema = storedDefinitionSchema
   .omit({ schedule: true, timeoutMinutes: true })
@@ -207,8 +211,9 @@ export const storedOperationSchema = z.discriminatedUnion("action", [
 ]);
 export const storedSnapshotSchema = storedDefinitionSchema.extend({
   enabled: z.boolean(),
-  target: z.literal("room-goal").optional(),
+  target: z.enum(["room-goal", "workflow"]).optional(),
   groupId: z.string().min(1).max(128).optional(),
+  workflowId: z.string().min(1).max(128).optional(),
   resultsThreadId: z.string().min(1).max(128).optional(),
 }).strict();
 export const storedUndoSchema = z.object({

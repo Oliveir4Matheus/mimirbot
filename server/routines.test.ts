@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { GroupGoalRunStatus } from "../shared/group-goal-run.ts";
 import { isRoutineProblemRun } from "../shared/routines.ts";
+import type { WorkflowRun } from "../shared/workflow.ts";
 import { ROUTINE_SKIPPED_WHILE_WAITING, ROUTINE_SUPERSEDED } from "./routine-execution.ts";
 import {
   nextOccurrence,
@@ -31,6 +32,11 @@ function harness(start = new Date(2026, 7, 17, 8, 0, 0).getTime()) {
   let now = start;
   let bot: "ready" | "busy" | "missing" = "ready";
   let goal: "ready" | "busy" | "missing" = "ready";
+  let workflow: "ready" | "missing" = "ready";
+  let workflowRefusal: string | null = null;
+  let workflowRun: Pick<WorkflowRun, "status" | "error"> | undefined;
+  let pausedWorkflowRuns: Record<string, Array<Pick<WorkflowRun, "id" | "status">>> = {};
+  let workflowSequence = 0;
   let task = 0;
   let goalTask = 0;
   const started: Array<{ botId: string; threadId: string; prompt: string }> = [];
@@ -52,6 +58,8 @@ function harness(start = new Date(2026, 7, 17, 8, 0, 0).getTime()) {
     threadId: string;
     outcome?: { status: "stopped" | "limit-reached"; detail: string };
   }> = [];
+  const startedWorkflows: Array<{ routineId: string; runId: string; name: string }> = [];
+  const cancelledWorkflows: Array<{ runId: string; reason?: string }> = [];
   const emitted: any[] = [];
   const changed: any[] = [];
   const failed: any[] = [];
@@ -62,6 +70,18 @@ function harness(start = new Date(2026, 7, 17, 8, 0, 0).getTime()) {
     emit: (payload) => emitted.push(payload),
     botState: () => bot,
     goalState: () => goal,
+    workflowState: () => workflow,
+    workflowRefusal: () => workflowRefusal,
+    workflowRunState: () => workflowRun,
+    startWorkflow: (routine) => {
+      const runId = `wrun-${++workflowSequence}`;
+      startedWorkflows.push({ routineId: routine.id, runId, name: routine.name });
+      return { runId };
+    },
+    cancelWorkflow: (runId, reason) => {
+      cancelledWorkflows.push({ runId, ...(reason === undefined ? {} : { reason }) });
+    },
+    pausedWorkflowRuns: (workflowId) => pausedWorkflowRuns[workflowId] ?? [],
     createTask: (_botId, _title) => {
       taskTitles.push(_title);
       return { threadId: `thread-${++task}` };
@@ -101,12 +121,18 @@ function harness(start = new Date(2026, 7, 17, 8, 0, 0).getTime()) {
     goalTasks,
     interruptedTurns,
     interruptedGoals,
+    startedWorkflows,
+    cancelledWorkflows,
     changed,
     failed,
     deferred,
     setNow: (value: number) => (now = value),
     setBot: (value: typeof bot) => (bot = value),
     setGoal: (value: typeof goal) => (goal = value),
+    setWorkflow: (value: typeof workflow) => (workflow = value),
+    setWorkflowRefusal: (value: string | null) => (workflowRefusal = value),
+    setWorkflowRun: (value: typeof workflowRun) => (workflowRun = value),
+    setPausedWorkflowRuns: (value: typeof pausedWorkflowRuns) => (pausedWorkflowRuns = value),
   };
 }
 
@@ -3958,5 +3984,203 @@ describe("runs that report into a chat", () => {
     routineTurn = true;
     h.manager.handleRuntimeEvent(event("thread-1", "turn.started"));
     expect(h.manager.handleRuntimeEvent(event("thread-1", "turn.completed"))).toMatchObject({ id: run.id, status: "completed" });
+  });
+});
+
+describe("workflow trigger", () => {
+  const start = new Date(2026, 7, 17, 8, 0, 0).getTime();
+  const at = start + 60_000;
+  const workflowId = "11111111-1111-4111-8111-111111111111";
+  const input = (extra: Record<string, unknown> = {}) => ({
+    name: "Nightly",
+    prompt: "",
+    target: "workflow" as const,
+    workflowId,
+    botId: "maus-1",
+    schedule: { type: "once" as const, at },
+    ...extra,
+  });
+  const workflowRun = (status: WorkflowRun["status"], extra: Partial<WorkflowRun> = {}): WorkflowRun => ({
+    id: "wrun-1",
+    workflowId,
+    workflowVersion: 1,
+    department: "General",
+    status,
+    currentStep: 0,
+    steps: [{ id: "step", status: "pending" }],
+    createdAt: start,
+    updatedAt: start,
+    ...extra,
+  });
+
+  it("starts the Workflow instead of a bot turn and mirrors its states", async () => {
+    const h = harness(start);
+    h.manager.create(input());
+    h.setNow(at);
+    await h.manager.tick();
+
+    expect(h.started).toEqual([]);
+    expect(h.startedWorkflows).toEqual([{ routineId: expect.any(String), runId: "wrun-1", name: "Nightly" }]);
+    expect(h.manager.listRuns()[0]).toMatchObject({ target: "workflow", status: "running", workflowId, workflowRunId: "wrun-1" });
+
+    h.manager.noteWorkflowRun(workflowRun("waiting_manual"));
+    expect(h.manager.listRuns()[0]).toMatchObject({ status: "waiting", attention: "Waiting for you to continue" });
+
+    h.manager.noteWorkflowRun(workflowRun("waiting_approval"));
+    expect(h.manager.listRuns()[0]).toMatchObject({ status: "waiting", attention: "Waiting for approval" });
+
+    h.manager.noteWorkflowRun(workflowRun("succeeded", { finishedAt: at + 60_000 }));
+    expect(h.manager.listRuns()[0]).toMatchObject({ status: "completed", finishedAt: at + 60_000 });
+  });
+
+  it("refuses a Workflow whose start inputs a routine cannot supply", () => {
+    const h = harness(start);
+    h.setWorkflowRefusal("That Workflow needs customer_id at the start; a routine cannot supply them.");
+    expect(() => h.manager.create(input())).toThrow(/customer_id/);
+    h.setWorkflowRefusal(null);
+    const routine = h.manager.create(input());
+    h.setWorkflowRefusal("That Workflow needs customer_id at the start; a routine cannot supply them.");
+    expect(() => h.manager.update(routine.id, { name: "Renamed" })).toThrow(/customer_id/);
+  });
+
+  it("keeps the Workflow id and the empty prompt across a reload", () => {
+    const h = harness(start);
+    h.manager.create(input());
+    expect(new RoutineManager(h.options).listRoutines()[0]).toMatchObject({ target: "workflow", workflowId, prompt: "" });
+  });
+
+  it("keeps the Workflow id on an edit and drops it when the target changes", () => {
+    const h = harness(start);
+    const routine = h.manager.create(input());
+    expect(h.manager.update(routine.id, { name: "Renamed" })).toMatchObject({ target: "workflow", workflowId, name: "Renamed" });
+    expect(h.manager.update(routine.id, { target: "bot", prompt: "Do it" })).toMatchObject({ target: "bot", prompt: "Do it" });
+    expect(h.manager.listRoutines()[0].workflowId).toBeUndefined();
+  });
+
+  it("fails the run when the Workflow no longer exists", async () => {
+    const h = harness(start);
+    h.manager.create(input());
+    h.setWorkflow("missing");
+    h.setNow(at);
+    await h.manager.tick();
+    expect(h.manager.listRuns()[0]).toMatchObject({ status: "failed", error: "The assigned Workflow no longer exists" });
+    expect(h.startedWorkflows).toEqual([]);
+  });
+
+  it("cancels the Workflow run when the person cancels the routine run", async () => {
+    const h = harness(start);
+    h.manager.create(input());
+    h.setNow(at);
+    await h.manager.tick();
+    const run = h.manager.listRuns()[0];
+    await h.manager.cancelRun(run.id, "stop");
+    expect(h.cancelledWorkflows).toEqual([{ runId: "wrun-1", reason: "stop" }]);
+    expect(h.manager.listRuns()[0]).toMatchObject({ status: "cancelled", error: "stop" });
+  });
+
+  it("cancels the Workflow run when the routine reaches its time limit", async () => {
+    const h = harness(start);
+    h.manager.create(input({ timeoutMinutes: 5 }));
+    h.setNow(at);
+    await h.manager.tick();
+    h.setNow(at + 6 * 60_000);
+    await h.manager.tick();
+    expect(h.cancelledWorkflows).toEqual([{ runId: "wrun-1", reason: "Stopped after reaching the 5-minute run limit" }]);
+    expect(h.manager.listRuns()[0]).toMatchObject({ status: "failed", error: "Stopped after reaching the 5-minute run limit" });
+  });
+
+  it("reports a Workflow failure once and keeps a run that is still active", async () => {
+    const h = harness(start);
+    h.manager.create(input());
+    h.setNow(at);
+    await h.manager.tick();
+
+    h.manager.noteWorkflowRun(workflowRun("failed", { error: "step 2 left no result.json" }));
+    expect(h.manager.listRuns()[0]).toMatchObject({ status: "failed", error: "step 2 left no result.json" });
+    expect(h.failed).toHaveLength(1);
+    h.manager.noteWorkflowRun(workflowRun("failed", { error: "step 2 left no result.json" }));
+    expect(h.failed).toHaveLength(1);
+
+    const active = harness(start);
+    active.manager.create(input());
+    active.setNow(at);
+    await active.manager.tick();
+    active.setWorkflowRun({ status: "running" });
+    expect(new RoutineManager(active.options).listRuns()[0]).toMatchObject({ status: "running", workflowRunId: "wrun-1" });
+  });
+
+  it("keeps a restart run waiting when the Workflow waits for a person", async () => {
+    const h = harness(start);
+    h.manager.create(input());
+    h.setNow(at);
+    await h.manager.tick();
+    h.setWorkflowRun({ status: "waiting_manual" });
+    expect(new RoutineManager(h.options).listRuns()[0]).toMatchObject({ status: "waiting", attention: "Waiting for you to continue" });
+  });
+
+  it("finishes a run a restart left active when the Workflow already ended", async () => {
+    const h = harness(start);
+    h.manager.create(input());
+    h.setNow(at);
+    await h.manager.tick();
+    h.setWorkflowRun({ status: "succeeded" });
+    expect(new RoutineManager(h.options).listRuns()[0]).toMatchObject({ status: "completed", workflowRunId: "wrun-1" });
+  });
+
+  it("saves a routine whose Workflow starts with a manual step: the run is created parked", () => {
+    const h = harness(start);
+    expect(h.manager.create(input())).toMatchObject({ target: "workflow", workflowId });
+    const routine = h.manager.create(input({ name: "Renamed" }));
+    expect(h.manager.update(routine.id, { name: "Renamed again" })).toMatchObject({ name: "Renamed again" });
+  });
+
+  describe("a scheduled run settles the previous paused run", () => {
+    const moment = (ms: number) => {
+      const date = new Date(ms);
+      const pad = (value: number) => String(value).padStart(2, "0");
+      return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+    };
+    const recurring = async (h: ReturnType<typeof harness>) => {
+      const routine = h.manager.create(input({ schedule: { type: "interval" as const, everyMinutes: 60, anchorAt: start } }));
+      const first = routine.nextRunAt!;
+      h.setNow(first);
+      await h.manager.tick();
+      h.manager.noteWorkflowRun(workflowRun("waiting_approval"));
+      return { routine, first, second: first + 60 * 60_000 };
+    };
+
+    it.each(["waiting_approval", "waiting_manual"] as const)("cancels the %s run with the scheduled moment", async (status) => {
+      const h = harness(start);
+      const { second } = await recurring(h);
+      h.setPausedWorkflowRuns({ [workflowId]: [{ id: "paused-old", status }] });
+      h.setNow(second);
+      await h.manager.tick();
+
+      expect(h.cancelledWorkflows).toContainEqual({
+        runId: "paused-old",
+        reason: `substituída pela run agendada de ${moment(second)}`,
+      });
+      expect(h.startedWorkflows).toHaveLength(2);
+    });
+
+    it("leaves a running run alone", async () => {
+      const h = harness(start);
+      const { second } = await recurring(h);
+      h.setPausedWorkflowRuns({ [workflowId]: [{ id: "running-one", status: "running" }] });
+      h.setNow(second);
+      await h.manager.tick();
+
+      expect(h.cancelledWorkflows.some((cancel) => cancel.runId === "running-one")).toBe(false);
+    });
+
+    it("does not touch a paused run of another Workflow", async () => {
+      const h = harness(start);
+      const { second } = await recurring(h);
+      h.setPausedWorkflowRuns({ ["22222222-2222-4222-8222-222222222222"]: [{ id: "other-paused", status: "waiting_manual" }] });
+      h.setNow(second);
+      await h.manager.tick();
+
+      expect(h.cancelledWorkflows.some((cancel) => cancel.runId === "other-paused")).toBe(false);
+    });
   });
 });

@@ -42,7 +42,7 @@ export type RoutineScheduleInput =
 
 export type RoutineRunOn = "maus" | "cloud";
 
-export type RoutineTarget = "bot" | "room-goal";
+export type RoutineTarget = "bot" | "room-goal" | "workflow";
 export type RoutineGoalStatus =
   | "completed"
   | "needs-input"
@@ -116,6 +116,8 @@ export interface Routine {
   botId: string;
   /** The room a "room-goal" runs in; none runs the goal in the bot's own one-on-one chat, a room of one. */
   groupId?: string;
+  /** The Workflow a "workflow" target starts; the run pins the version current at that moment. */
+  workflowId?: string;
   runOn: RoutineRunOn;
   enabled: boolean;
   schedule: RoutineSchedule;
@@ -164,6 +166,9 @@ export interface RoutineRun {
   goalStatus?: RoutineGoalStatus;
   botId: string;
   groupId?: string;
+  /** The Workflow this trigger started, and the run it created. */
+  workflowId?: string;
+  workflowRunId?: string;
   runOn: RoutineRunOn;
   scheduledFor: number;
   status: RoutineRunStatus;
@@ -204,6 +209,7 @@ export interface RoutineInput {
   target?: RoutineTarget;
   botId: string;
   groupId?: string | null;
+  workflowId?: string | null;
   runOn?: RoutineRunOn;
   enabled?: boolean;
   schedule: RoutineScheduleInput;
