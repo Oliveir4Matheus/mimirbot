@@ -10,7 +10,7 @@ export {
 export type AgentShapeState = "estatico" | "pensando" | "trabalhando";
 
 /** Stroke added to the filled outline, in the SVG's 180-unit viewBox. */
-export const AGENT_SHAPE_STROKE_WIDTH = 4;
+export const AGENT_SHAPE_STROKE_WIDTH = 9;
 
 export function thickenAgentShapeSvg(raw: string, width = AGENT_SHAPE_STROKE_WIDTH): string {
   return raw.replace(
