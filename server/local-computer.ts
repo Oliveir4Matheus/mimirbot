@@ -195,7 +195,7 @@ export function decodeLinuxDescriptor(value: LinuxConnectionDescriptor): LocalCo
   if (
     typeof driver.path !== "string" ||
     !isAbsolute(driver.path) ||
-    driver.version !== "0.40.6" ||
+    driver.version !== "0.62.1" ||
     !["bundled", "environment", "user-local", "path"].includes(String(driver.source)) ||
     driver.manifestSchema !== "1" ||
     !validDriverFileIdentity(driver.fileIdentity) ||

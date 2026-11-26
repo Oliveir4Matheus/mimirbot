@@ -1,14 +1,14 @@
-# Cua Driver 0.40.6 third-party notices
+# Cua Driver 0.62.1 third-party notices
 
-MimirBot redistributes two executables from the official Cua Driver 0.40.6 Linux x64 release: `cua-driver` and `cua-cursor-theme`.
+MimirBot redistributes two executables from the official Cua Driver 0.62.1 Linux x64 release: `cua-driver` and `cua-cursor-theme`.
 
-- Upstream source commit: [`6d840c54da418192fc2f4fd61b7140893da24a2d`](https://github.com/trycua/cua/commit/6d840c54da418192fc2f4fd61b7140893da24a2d)
-- Upstream `Cargo.lock` SHA-256: `af5def22320e4ad2532d4cd5c64eae0dcff68de6079017d6bd3a86b3de024ffc`
-- Release archive SHA-256: `0b3d4913773a88c46bbceb364809254a6ca636e285e81392b69c0c86d42cb922`
+- Upstream source commit: [`3f69010ccd901a04ecf7b009b2b95400c3cb4ab8`](https://github.com/trycua/cua/commit/3f69010ccd901a04ecf7b009b2b95400c3cb4ab8)
+- Upstream `Cargo.lock` SHA-256: `406adfa04fd63691b5c48f0ff1c30946e7f979cd7c05d2dfc7b18e51072e2411`
+- Release archive SHA-256: `2900f9860f62e9d95994243f68695fb08d930800d1e7045ca5d98c16023631c0`
 - Cua's workspace components remain under the accompanying MIT `LICENSE.md`.
 - The embedded Inter 4.001 font remains under the accompanying SIL OFL 1.1 `Inter-OFL-1.1.txt`.
-- Full license texts and attribution for all 381 crates.io packages and Inter are in `THIRD_PARTY_LICENSES.html`.
-- The machine-readable inventory contains 381 registry packages, 9 Cua packages, and Inter in `SBOM.cdx.json`.
+- Full license texts and attribution for all 388 crates.io packages and Inter are in `THIRD_PARTY_LICENSES.html`.
+- The machine-readable inventory contains 388 registry packages, 10 Cua packages, and Inter in `SBOM.cdx.json`.
 
 ## MPL-2.0 source availability
 
@@ -32,15 +32,16 @@ The registry inventory is the union of two root-scoped `cargo-about 0.8.4` graph
 
 | Package | Version | License |
 |---|---:|---|
-| cua-driver | 0.40.6 | MIT |
-| cua-driver-contract | 0.40.6 | MIT |
-| cua-driver-core | 0.40.6 | MIT |
-| cua-driver-sdk | 0.40.6 | MIT |
-| cursor-overlay | 0.40.6 | MIT |
-| cursor-theme-cli | 0.40.6 | MIT |
-| pip-preview | 0.40.6 | MIT |
-| platform-linux | 0.40.6 | MIT |
-| cua-telemetry | 0.11.0 | MIT |
+| cua-driver | 0.62.1 | MIT |
+| cua-driver-contract | 0.62.1 | MIT |
+| cua-driver-core | 0.62.1 | MIT |
+| cua-driver-sdk | 0.62.1 | MIT |
+| cursor-overlay | 0.62.1 | MIT |
+| cursor-theme-cli | 0.62.1 | MIT |
+| platform-linux | 0.62.1 | MIT |
+| cua-telemetry | 0.31.0 | MIT |
+| cua-agent-setup | 0.31.0 | MIT |
+| cua-home | 0.31.0 | MIT |
 
 ### crates.io release-build inventory
 
@@ -126,6 +127,7 @@ The registry inventory is the union of two root-scoped `cargo-about 0.8.4` graph
 | ctutils | 0.4.2 | Apache-2.0 OR MIT | `7d5515a3834141de9eafb9717ad39eea8247b5674e6066c404e8c4b365d2a29e` |
 | data-encoding | 2.11.0 | MIT | `a4ae5f15dda3c708c0ade84bfee31ccab44a3da4f88015ed22f63732abe300c8` |
 | deranged | 0.5.8 | MIT OR Apache-2.0 | `7cd812cc2bc1d69d4764bd80df88b4317eaef9e773c75226407d9bc0876b211c` |
+| des | 0.8.1 | MIT OR Apache-2.0 | `ffdd80ce8ce993de27e9f063a444a4d53ce8e8db4c1f00cc03af5ad5a9867a1e` |
 | digest | 0.10.7 | MIT OR Apache-2.0 | `9ed9a281f7bc9b7576e61468ba615a66a5c8cfdff42420a70aa82701a3b1e292` |
 | dirs-sys | 0.4.1 | MIT OR Apache-2.0 | `520f05a5cbd335fae5a99ff7a6ab8627577660ee5cfd6a94a6a929b52ff0321c` |
 | dirs | 5.0.1 | MIT OR Apache-2.0 | `44c45a9d03d6676652bcb5e724c7e988de1acad23a711b5217ab9cbecbec2225` |
@@ -196,6 +198,8 @@ The registry inventory is the union of two root-scoped `cargo-about 0.8.4` graph
 | idna_adapter | 1.2.2 | Apache-2.0 OR MIT | `cb68373c0d6620ef8105e855e7745e18b0d00d3bdb07fb532e434244cdb9a714` |
 | idna | 1.1.0 | MIT OR Apache-2.0 | `3b0875f23caa03898994f6ddc501886a45c7d3d62d04d2d90788d47be1b1e4de` |
 | image | 0.25.10 | MIT OR Apache-2.0 | `85ab80394333c02fe689eaf900ab500fbd0c2213da414687ebf995a65d5a6104` |
+| include_dir_macros | 0.7.4 | MIT | `7cab85a7ed0bd5f0e76d93846e0147172bed2e2d3f859bcc33a8d9699cad1a75` |
+| include_dir | 0.7.4 | MIT | `923d117408f1e49d914f1a379a309cffe4f18c05cf4e3d12e613a15fc81bd0dd` |
 | indexmap | 2.14.0 | Apache-2.0 OR MIT | `d466e9454f08e4a911e14806c24e16fba1b4c121d1ea474396f396069cf949d9` |
 | inout | 0.1.4 | MIT OR Apache-2.0 | `879f10e63c20629ecabbb64a8010319738c66a5cd0c29b02d63d272b03751d01` |
 | inout | 0.2.2 | MIT OR Apache-2.0 | `4250ce6452e92010fdf7268ccc5d14faa80bb12fc741938534c58f16804e03c7` |
@@ -205,12 +209,14 @@ The registry inventory is the union of two root-scoped `cargo-about 0.8.4` graph
 | ipnet | 2.12.0 | MIT OR Apache-2.0 | `d98f6fed1fde3f8c21bc40a1abb88dd75e67924f9cffc3ef95607bad8017f8e2` |
 | itoa | 1.0.18 | MIT OR Apache-2.0 | `8f42a60cbdf9a97f5d2305f08a87dc4e09308d1276d28c869c684d7777685682` |
 | jobserver | 0.1.35 | MIT OR Apache-2.0 | `1c00acbd29eabad4a2392fa0e921c874934dbbf4194312ad20f04a0ed67a3cb3` |
+| jsonc-parser | 0.33.2 | MIT | `9ff5a48f48971be8e762a6ff955725a0802b6e46c441057992da5a673db9fd3a` |
 | jsonschema-regex | 0.46.10 | MIT | `6dbd1086b01b9349fd4ef9a07433965af64c8ce8159abe633a189e4ff817bd13` |
 | jsonschema | 0.46.10 | MIT | `f0a699d3e77675e6aa4bfffe3b907c8b5f7ed3241f9965bffb25475ad4b08d05` |
 | keyring-core | 1.0.0 | MIT OR Apache-2.0 | `fb1e621458ca9c51aa110bd0339d4751a056b9576bf1253aee1aa560dda0fc9d` |
 | keyring | 4.1.6 | MIT OR Apache-2.0 | `72585bb6cc9bc370d1d545b7e23fcce71dfd4461c5e15275e3cf51bdfd9a980a` |
 | lazy_static | 1.5.0 | MIT OR Apache-2.0 | `bbd2bcb4c963f2ddae06a2efc7e9f3591312473c50c6685e1f298068316e66fe` |
 | libc | 0.2.186 | MIT OR Apache-2.0 | `68ab91017fe16c622486840e4c83c9a37afeff978bd239b5293d61ece587de66` |
+| libloading | 0.8.9 | ISC | `d7c4b02199fee7c5d21a5ae7d8cfa79a6ef5bb2fc834d6e9058e89c825efdc55` |
 | linux-raw-sys | 0.12.1 | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT | `32a66949e030da00e8c7d4434b251670a91556f4144941d37452769c25d58a53` |
 | litemap | 0.8.2 | Unicode-3.0 | `92daf443525c4cce67b150400bc2316076100ce0b3686209eb8cf3c31612e6f0` |
 | lock_api | 0.4.14 | MIT OR Apache-2.0 | `224399e74b87b5f3557511d98dff8b14089b3dadafcab6bb93eab67d3aace965` |
@@ -218,6 +224,7 @@ The registry inventory is the union of two root-scoped `cargo-about 0.8.4` graph
 | lru | 0.18.1 | MIT | `0b6180140927ee907000b0aa540091f6ea512ead4447c92b8fc35bc72788a5a6` |
 | matchers | 0.2.0 | MIT | `d1525a2a28c7f4fa0fc98bb91ae755d1e2d1505079e05539e35bc876b5d65ae9` |
 | maybe-owned | 0.3.4 | MIT OR Apache-2.0 | `4facc753ae494aeb6e3c22f839b158aebd4f9270f55cd3c79906c45476c47ab4` |
+| md-5 | 0.10.6 | MIT OR Apache-2.0 | `d89e7ee0cfbedfc4da3340218492196241d89eefb6dab27de5df917a6d2e78cf` |
 | memchr | 2.8.0 | Unlicense OR MIT | `f8ca58f447f06ed17d5fc4043ce1b10dd205e060fb3ce5b979b8ed8e59ff3f79` |
 | memmap2 | 0.9.10 | MIT OR Apache-2.0 | `714098028fe011992e1c3962653c96b2d578c4b4bce9036e15ff220319b1e0e3` |
 | memoffset | 0.6.5 | MIT | `5aa361d4faea93603064a027415f07bd8e1d5c88c9fbf68bf56a285428fd79ce` |
@@ -382,6 +389,7 @@ The registry inventory is the union of two root-scoped `cargo-about 0.8.4` graph
 | vsimd | 0.8.0 | MIT | `5c3082ca00d5a5ef149bb8b555a72ae84c9c59f7250f013ac822ac2e49b19c64` |
 | wayland-backend | 0.3.15 | MIT | `2857dd20b54e916ec7253b3d6b4d5c4d7d4ca2c33c2e11c6c76a99bd8744755d` |
 | wayland-client | 0.31.14 | MIT | `645c7c96bb74690c3189b5c9cb4ca1627062bb23693a4fad9d8c3de958260144` |
+| wayland-protocols-plasma | 0.3.12 | MIT | `2b6d8cf1eb2c1c31ed1f5643c88a6e53538129d4af80030c8cabd1f9fa884d91` |
 | wayland-protocols-wlr | 0.3.12 | MIT | `eb04e52f7836d7c7976c78ca0250d61e33873c34156a2a1fc9474828ec268234` |
 | wayland-protocols | 0.32.12 | MIT | `563a85523cade2429938e790815fd7319062103b9f4a2dc806e9b53b95982d8f` |
 | wayland-scanner | 0.31.10 | MIT | `9c324a910fd86ebdc364a3e61ec1f11737d3b1d6c273c0239ee8ff4bc0d24b4a` |
