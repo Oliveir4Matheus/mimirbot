@@ -42,8 +42,8 @@ Watch the team hand work to each other, and approve what matters.
 
 ---
 
-> **MimirBot is local-first and open source (Apache 2.0).** Your agent processes, transcripts, memory and keys
-> stay on your computer, under `~/.mimirbot`. There is no MimirBot account in the middle.
+> **MimirBot is local-first and open source (Apache 2.0).** By default, agent processes, transcripts, memory and
+> keys stay on your computer, under `~/.mimirbot`; local bots need no MimirBot account.
 > MimirBot has no token or cryptocurrency. Any coin using the name is not affiliated with this project.
 
 ## Why you need MimirBot
@@ -347,7 +347,7 @@ git clone https://github.com/Oliveir4Matheus/mimirbot && cd mimirbot
 pnpm install
 
 pnpm dev:server    # harness server -> 127.0.0.1:8799
-pnpm dev           # app -> http://127.0.0.1:5199
+pnpm dev           # app -> http://127.0.0.1:5173
 pnpm dev:desktop   # Electron shell; keep the two commands above running
 ```
 
@@ -371,7 +371,7 @@ pnpm package:mac      # macOS: DMG + ZIP; requires Swift/Xcode tools
 | Composio and cloud computers | Supported | Beta | Beta | Supported |
 | Explicit preview-only local screen capture | Supported | Beta | Beta | Supported |
 | Bot control of this computer | Supported | Beta, explicit opt-in | Disabled: Wayland safety gate | Supported |
-| Native on-device dictation | Supported | Planned | Planned | Planned |
+| Native on-device dictation | Supported | Planned | Planned | Not yet |
 
 The Linux preview is user-initiated and never enables local bot control or Auto routing. On Xorg, the reviewed
 Cua Driver runtime starts only after explicit opt-in and without its full-screen cursor overlay. On Wayland the
