@@ -10,16 +10,9 @@ Every bot in the sidebar is a real agent — Claude, Codex or another CLI runnin
 model, instructions, memory, skills, routines and computer. Talk to them like contacts. Put them in rooms.
 Watch the team hand work to each other, and approve what matters.
 
-![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)
-![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
-![Electron](https://img.shields.io/badge/Electron-Windows%20%C2%B7%20Linux%20%C2%B7%20macOS-2B2E3A?logo=electron&logoColor=9FEAF9)
-![Agents](https://img.shields.io/badge/agents-Claude%20%C2%B7%20Codex-d97757)
-[![Release](https://img.shields.io/github/v/release/Oliveir4Matheus/mimirbot?label=release&color=1084fe&cacheSeconds=300)](https://github.com/Oliveir4Matheus/mimirbot/releases/latest)
-![License](https://img.shields.io/badge/license-Apache%202.0-38d591)
+![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white) ![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black) ![Electron](https://img.shields.io/badge/Electron-Windows%20%C2%B7%20Linux%20%C2%B7%20macOS-2B2E3A?logo=electron&logoColor=9FEAF9) ![Agents](https://img.shields.io/badge/agents-Claude%20%C2%B7%20Codex-d97757) [![Release](https://img.shields.io/github/v/release/Oliveir4Matheus/mimirbot?label=release&color=1084fe&cacheSeconds=300)](https://github.com/Oliveir4Matheus/mimirbot/releases/latest) ![License](https://img.shields.io/badge/license-Apache%202.0-38d591)
 
-[![Download for Windows](https://img.shields.io/badge/%E2%AC%87%EF%B8%8F%20%20Download%20for%20Windows-MimirBot%20setup.exe-4cc2ff?style=for-the-badge&labelColor=070707)](https://github.com/Oliveir4Matheus/mimirbot/releases/latest)
-[![Download for Linux](https://img.shields.io/badge/%E2%AC%87%EF%B8%8F%20%20Download%20for%20Linux-.deb%20%2F%20.AppImage-e95420?style=for-the-badge&labelColor=070707)](https://github.com/Oliveir4Matheus/mimirbot/releases/latest)
-[![Build for macOS](https://img.shields.io/badge/%E2%AC%87%EF%B8%8F%20%20Download%20for%20macOS-build%20from%20source-2a9d8f?style=for-the-badge&labelColor=070707)](https://github.com/Oliveir4Matheus/mimirbot/releases/latest)
+[![Download for Windows](https://img.shields.io/badge/%E2%AC%87%EF%B8%8F%20%20Download%20for%20Windows-MimirBot%20setup.exe-4cc2ff?style=for-the-badge&labelColor=070707)](https://github.com/Oliveir4Matheus/mimirbot/releases/latest) [![Download for Linux](https://img.shields.io/badge/%E2%AC%87%EF%B8%8F%20%20Download%20for%20Linux-.deb%20%2F%20.AppImage-e95420?style=for-the-badge&labelColor=070707)](https://github.com/Oliveir4Matheus/mimirbot/releases/latest) [![Build for macOS](https://img.shields.io/badge/%E2%AC%87%EF%B8%8F%20%20Download%20for%20macOS-build%20from%20source-2a9d8f?style=for-the-badge&labelColor=070707)](https://github.com/Oliveir4Matheus/mimirbot/releases/latest)
 
 <sub>Windows x64 installer · Ubuntu 24.04 x64 `.deb` or AppImage · macOS builds from source · [all releases](https://github.com/Oliveir4Matheus/mimirbot/releases)</sub>
 
