@@ -58,7 +58,7 @@ function linuxDescriptor(userData: string, { session = "x11" }: { session?: "x11
     generation: "01234567-89ab-cdef-0123-456789abcdef",
     driver: {
       path: binary,
-      version: "0.40.6",
+      version: "0.62.1",
       source: "environment",
       manifestSchema: "1",
       fileIdentity,

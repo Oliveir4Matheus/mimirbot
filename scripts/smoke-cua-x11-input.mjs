@@ -203,7 +203,7 @@ try {
     },
     "the overlay-free driver handshake",
   );
-  if (metadata.driver_version !== "0.40.6" || metadata.embedded !== true) {
+  if (metadata.driver_version !== "0.62.1" || metadata.embedded !== true) {
     throw new Error(`unexpected driver metadata: ${JSON.stringify(metadata)}`);
   }
 
@@ -233,7 +233,7 @@ try {
     }),
     "start_session",
   );
-  // Cua Driver 0.40.6 refuses a pixel action on a window whose own screenshot the
+  // Cua Driver 0.62.1 refuses a pixel action on a window whose own screenshot the
   // session has not read, so the test reads it the way the desktop guidance asks.
   assertToolResult(
     await rpc("tools/call", {

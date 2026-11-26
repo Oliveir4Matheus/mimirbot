@@ -68,7 +68,7 @@ const keepsFromSaving = (event: RuntimeEvent): boolean =>
 
 export function createSavedSteps(deps: SavedStepsDeps): SavedSteps {
   const platform = deps.platform ?? process.platform;
-  // The bundled cua-driver 0.40.6 is not known to answer list_windows and elements_complete as replay needs.
+  // The bundled cua-driver 0.62.1 is not known to answer list_windows and elements_complete as replay needs.
   const enabled = () => platform === "darwin" && deps.enabled();
   const journal = new ComputerJournal();
   const now = deps.now ?? Date.now;

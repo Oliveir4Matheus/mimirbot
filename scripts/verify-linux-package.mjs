@@ -207,7 +207,7 @@ function verifyCompliance(licenses, label) {
     fail(`${label} MPL component set changed`);
   }
   const rootDependency = sbom.dependencies?.find(
-    (dependency) => dependency.ref === "pkg:generic/cua-driver-linux-x64@0.40.6",
+    (dependency) => dependency.ref === "pkg:generic/cua-driver-linux-x64@0.62.1",
   );
   const rootReferences = rootDependency?.dependsOn;
   const uniqueRootReferences = new Set(rootReferences ?? []);
@@ -279,7 +279,7 @@ function verifyCuaResources(resources, label, {
     env: commandEnvironment,
     timeout: 5_000,
   }).trim();
-  if (version !== "cua-driver 0.40.6") fail(`${label} CUA version is ${JSON.stringify(version)}`);
+  if (version !== "cua-driver 0.62.1") fail(`${label} CUA version is ${JSON.stringify(version)}`);
   const manifest = JSON.parse(
     execFileSync(driver, ["manifest"], {
       encoding: "utf8",
@@ -297,7 +297,7 @@ function verifyCuaResources(resources, label, {
   }
   if (
     manifest.schema_version !== "1" ||
-    manifest.binary_version !== "0.40.6" ||
+    manifest.binary_version !== "0.62.1" ||
     invocationPath !== realpathSync(driver) ||
     JSON.stringify(manifest.mcp_invocation?.args) !== JSON.stringify(["mcp"])
   ) {
@@ -312,18 +312,18 @@ function verifyCuaResources(resources, label, {
   const release = JSON.parse(readFileSync(path.join(cuaRoot, "release.json"), "utf8"));
   const expectedRelease = {
     schemaVersion: 1,
-    version: "0.40.6",
+    version: "0.62.1",
     platform: "linux",
     arch: "x64",
     archive: {
-      name: "cua-driver-rs-0.40.6-linux-x86_64-binary.tar.gz",
+      name: "cua-driver-rs-0.62.1-linux-x86_64-binary.tar.gz",
       url:
-        "https://github.com/trycua/cua/releases/download/cua-driver-rs-v0.40.6/" +
-        "cua-driver-rs-0.40.6-linux-x86_64-binary.tar.gz",
-      size: 38_337_354,
-      sha256: "0b3d4913773a88c46bbceb364809254a6ca636e285e81392b69c0c86d42cb922",
+        "https://github.com/trycua/cua/releases/download/cua-driver-rs-v0.62.1/" +
+        "cua-driver-rs-0.62.1-linux-x86_64-binary.tar.gz",
+      size: 30_475_920,
+      sha256: "2900f9860f62e9d95994243f68695fb08d930800d1e7045ca5d98c16023631c0",
     },
-    sourceCommit: "6d840c54da418192fc2f4fd61b7140893da24a2d",
+    sourceCommit: "3f69010ccd901a04ecf7b009b2b95400c3cb4ab8",
     files: {
       "cua-driver": { sha256: expectedHashes.get(driver), mode: "0755" },
       "cua-cursor-theme": { sha256: expectedHashes.get(cursorTheme), mode: "0755" },

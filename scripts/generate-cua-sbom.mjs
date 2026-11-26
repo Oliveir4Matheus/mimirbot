@@ -27,13 +27,13 @@ if (
   );
 }
 
-const SOURCE_COMMIT = "6d840c54da418192fc2f4fd61b7140893da24a2d";
+const SOURCE_COMMIT = "3f69010ccd901a04ecf7b009b2b95400c3cb4ab8";
 const SOURCE_ROOT = `https://github.com/trycua/cua/tree/${SOURCE_COMMIT}/libs/cua-driver/rust`;
-const RELEASE_VERSION = "0.40.6";
+const RELEASE_VERSION = "0.62.1";
 const ARCHIVE_SHA256 =
-  "0b3d4913773a88c46bbceb364809254a6ca636e285e81392b69c0c86d42cb922";
+  "2900f9860f62e9d95994243f68695fb08d930800d1e7045ca5d98c16023631c0";
 const CARGO_LOCK_SHA256 =
-  "af5def22320e4ad2532d4cd5c64eae0dcff68de6079017d6bd3a86b3de024ffc";
+  "406adfa04fd63691b5c48f0ff1c30946e7f979cd7c05d2dfc7b18e51072e2411";
 const INTER_LICENSE_SHA256 =
   "ecfea75d8a36217d19528567070745a516072ffe907c9fffecbab92eb3b6fc59";
 const INTER_FONT_SHA256 =
@@ -43,17 +43,18 @@ const INTER_COMMIT = "66647c0bbbe41a850d79d9c76fb13add3378940f";
 const REGISTRY_SOURCE_PREFIX =
   "registry+https://github.com/rust-lang/crates.io-index";
 
-const EXPECTED_DRIVER_REGISTRY_COUNT = 376;
+const EXPECTED_DRIVER_REGISTRY_COUNT = 383;
 const EXPECTED_CURSOR_THEME_REGISTRY_COUNT = 239;
-const EXPECTED_REGISTRY_UNION_COUNT = 381;
+const EXPECTED_REGISTRY_UNION_COUNT = 388;
 const EXPECTED_DRIVER_LOCAL = Object.freeze([
-  "cua-driver@0.40.6",
-  "cua-telemetry@0.11.0",
-  "cursor-overlay@0.40.6",
-  "pip-preview@0.40.6",
-  "platform-linux@0.40.6",
+  "cua-agent-setup@0.31.0",
+  "cua-driver@0.62.1",
+  "cua-home@0.31.0",
+  "cua-telemetry@0.31.0",
+  "cursor-overlay@0.62.1",
+  "platform-linux@0.62.1",
 ]);
-const EXPECTED_CURSOR_THEME_LOCAL = Object.freeze(["cursor-overlay@0.40.6"]);
+const EXPECTED_CURSOR_THEME_LOCAL = Object.freeze(["cursor-overlay@0.62.1"]);
 const EXPECTED_CURSOR_THEME_ONLY = Object.freeze([
   "bumpalo@3.20.2",
   "typed-path@0.12.3",
@@ -77,9 +78,10 @@ const TRYCUA_COMPONENTS = Object.freeze([
   { name: "cua-driver-sdk", version: RELEASE_VERSION },
   { name: "cursor-overlay", version: RELEASE_VERSION },
   { name: "cursor-theme-cli", version: RELEASE_VERSION },
-  { name: "pip-preview", version: RELEASE_VERSION },
   { name: "platform-linux", version: RELEASE_VERSION },
-  { name: "cua-telemetry", version: "0.11.0", root: "cua" },
+  { name: "cua-telemetry", version: "0.31.0", root: "cua" },
+  { name: "cua-agent-setup", version: "0.31.0", root: "cua" },
+  { name: "cua-home", version: "0.31.0", root: "cua" },
 ]);
 
 function sha256(bytes) {
