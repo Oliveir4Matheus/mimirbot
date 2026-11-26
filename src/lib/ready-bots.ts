@@ -1,5 +1,5 @@
 import type { BotRoutineTemplate, NewBotDefaults } from "../../shared/new-bot-defaults";
-import type { MascotBodyId } from "../../shared/mascot-bodies";
+import type { AgentShapeId } from "@/lib/agent-shapes";
 import type { MausColor } from "../../shared/wire";
 
 export type ReadyBotCategory = "everyday" | "work" | "writing" | "design" | "sales" | "personal";
@@ -13,7 +13,7 @@ export interface ReadyBot {
   title: string;
   description: string;
   soul: string;
-  look: { color: MausColor; mascotBody: MascotBodyId };
+  look: { color: MausColor; mascotBody: AgentShapeId };
   tryAsking: string[];
   /** Connected apps the bot works best with; suggested, never connected for the person. */
   apps: string[];
@@ -40,7 +40,7 @@ export const READY_BOTS: ReadyBot[] = [
       "Say plainly when you are unsure or could not check something, and never present a guess as a fact.",
       "When a task will take several steps, say what you are about to do in one line before doing it.",
     ].join("\n"),
-    look: { color: "green", mascotBody: "cursor" },
+    look: { color: "green", mascotBody: "seixo-compacto" },
     tryAsking: ["Plan my week from this list of to-dos", "Explain this contract clause in plain English", "Draft a polite reply declining this meeting"],
     apps: [],
   },
@@ -74,7 +74,7 @@ export const READY_BOTS: ReadyBot[] = [
       "Never present a guess as a finding. If the evidence is thin, say so and suggest what would settle it.",
       "Keep briefs scannable: a three-line summary, then sections, then sources.",
     ].join("\n"),
-    look: { color: "purple", mascotBody: "diamond" },
+    look: { color: "purple", mascotBody: "quadrado-macio" },
     tryAsking: ["What changed in EU AI rules this year? Sources please", "Compare the top three note-taking apps for a small team", "Fact-check the claims in this paragraph"],
     apps: [],
   },
@@ -106,7 +106,7 @@ export const READY_BOTS: ReadyBot[] = [
       "Track recurring questions in memory and say when one keeps coming back.",
       "Never post, reply, or react in the channels yourself; you report to the user.",
     ].join("\n"),
-    look: { color: "orange", mascotBody: "shield" },
+    look: { color: "orange", mascotBody: "drop" },
     tryAsking: ["What did the community ask about since yesterday?", "List open bug reports from this week", "Which question keeps coming up?"],
     apps: ["discord", "slack"],
     routines: [paused("Community digest", "Summarise what happened in my community channels since the last digest.", "17:00", WEEKDAYS)],
@@ -123,7 +123,7 @@ export const READY_BOTS: ReadyBot[] = [
       "Draft messages when a follow-up is due, but always ask before sending, booking, or changing anything.",
       "Flag clashes and days that are overbooked before they happen.",
     ].join("\n"),
-    look: { color: "yellow", mascotBody: "capsule" },
+    look: { color: "yellow", mascotBody: "seixo-alongado" },
     tryAsking: ["What's on today, and what's overdue?", "Find an hour for deep work this week", "Which follow-ups am I late on?"],
     apps: ["googlecalendar", "notion", "linear"],
     routines: [paused("Daily plan", "Give me today's commitments, anything overdue, and the next action for each.", "08:00", WEEKDAYS)],
@@ -191,7 +191,7 @@ export const READY_BOTS: ReadyBot[] = [
       "Keep the user's travel preferences in memory/travel.md and use them every time.",
       "Never book or pay for anything; give links and options instead.",
     ].join("\n"),
-    look: { color: "blue", mascotBody: "star" },
+    look: { color: "blue", mascotBody: "seixo-compacto" },
     tryAsking: ["Plan four relaxed days in Lisbon in May", "What should I book now for a Japan trip in autumn?", "Make a packing list for a rainy week in Scotland"],
     apps: ["googlecalendar"],
     notes: {
@@ -211,7 +211,7 @@ export const READY_BOTS: ReadyBot[] = [
       "Keep a list of weak topics in memory/study.md and suggest reviewing them.",
       "Do not write graded work for the user to hand in as their own; teach them to do it.",
     ].join("\n"),
-    look: { color: "purple", mascotBody: "blob" },
+    look: { color: "purple", mascotBody: "seixo-organico" },
     tryAsking: ["Explain recursion like I'm new to programming", "Quiz me on the French Revolution", "Make a one-week revision plan for my exam"],
     apps: [],
     notes: {
@@ -231,7 +231,7 @@ export const READY_BOTS: ReadyBot[] = [
       "Reply with the rewritten text first, then a short list of changes, each with the reason (for example: cut a cliché, split a long sentence).",
       "If the user shares samples of their writing, note their voice in memory/voice.md and match it.",
     ].join("\n"),
-    look: { color: "pink", mascotBody: "blob" },
+    look: { color: "pink", mascotBody: "seixo-organico" },
     tryAsking: ["Make this email sound less robotic", "Rewrite this landing page intro in my voice", "Here are three posts I wrote; learn my style"],
     apps: [],
     notes: {
@@ -251,7 +251,7 @@ export const READY_BOTS: ReadyBot[] = [
       "Check text contrast against WCAG AA and say which elements fail.",
       "End with the two or three things that already work well, so they survive the next round.",
     ].join("\n"),
-    look: { color: "red", mascotBody: "diamond" },
+    look: { color: "red", mascotBody: "quadrado-macio" },
     tryAsking: ["Critique this landing page screenshot", "What would make this dashboard easier to scan?", "Check this mobile screen for accessibility problems"],
     apps: ["figma"],
   },
@@ -268,7 +268,7 @@ export const READY_BOTS: ReadyBot[] = [
       "Finish with the three changes that would help most on the next call, each with an example line the rep could say.",
       "Keep recurring patterns for each rep in memory so coaching builds over time.",
     ].join("\n"),
-    look: { color: "orange", mascotBody: "star" },
+    look: { color: "orange", mascotBody: "seixo-compacto" },
     tryAsking: ["Score this discovery call transcript", "How did I handle the pricing objection?", "What should I ask differently next time?"],
     apps: ["gong", "hubspot"],
   },
