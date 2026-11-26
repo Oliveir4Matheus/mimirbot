@@ -1,7 +1,7 @@
 import type { Release } from "@/lib/release-notes";
 
 const release: Release = {
-  version: "0.1.189",
+  version: "0.1.189-beta.1",
   date: "2026-11-26",
   notes: {
     en: {
