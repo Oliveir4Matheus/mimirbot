@@ -136,7 +136,8 @@ it("saves keys for any OpenCode provider on a Cloud, shows only their names, and
   const turnPid = JSON.parse(readFileSync(prompts, "utf8").trim().split("\n").at(-1)!).pid as number;
   expect(started().pid).toBe(turnPid);
   expect(started().env.VENICE_API_KEY).toBe(VENICE);
-  expect(started().env.ANTHROPIC_API_KEY).toBe(OWNER_ANTHROPIC);
+  // A turn gets a turn-scoped capability token, never the owner's Cloud key.
+  expect(started().env.ANTHROPIC_API_KEY).toMatch(/^omb_t0_/);
   expect(started().env.OPENAI_API_KEY).toBeUndefined();
   await expect.poll(async () => (await api("GET", "/api/bots")).body.bots.find((entry: any) => entry.id === bot.id)
     ?.tasks.find((task: any) => task.threadId === thread)?.busy, { timeout: 15_000 }).toBe(false);
