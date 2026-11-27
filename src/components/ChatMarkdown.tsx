@@ -719,6 +719,7 @@ interface MessageScope {
   threads: ThreadRefsValue["threads"];
   currentBotId?: string;
   delivered?: DeliveredFiles;
+  attachedFiles?: readonly string[];
 }
 
 export type DeliveredFiles = Readonly<Record<string, string>>;
@@ -763,7 +764,7 @@ function MarkdownImage(props: ComponentProps<"img"> & ExtraProps) {
 function MarkdownLink({ href, children, ...rest }: { href?: string; children?: ReactNode }) {
   // SAFETY: react-markdown hands hast data-* attributes through as string props
   const props = rest as Record<string, unknown>;
-  const { threads, currentBotId, message, delivered } = useContext(MessageScopeContext);
+  const { threads, currentBotId, message, delivered, attachedFiles } = useContext(MessageScopeContext);
   const linkMenu = useThreadLinkMenu(href), openPage = usePageOpener();
   if (!href) return <span className="break-words">{children}</span>;
   if (isUseMyComputerUrl(href)) return <UseMyComputerLink>{children}</UseMyComputerLink>;
@@ -774,7 +775,7 @@ function MarkdownLink({ href, children, ...rest }: { href?: string; children?: R
   const localPath = localFilePath(href);
   if (localPath) {
     const copy = delivered && Object.hasOwn(delivered, fileName(localPath)) ? delivered[fileName(localPath)] : undefined;
-    return <LocalFileLink filePath={copy ?? localPath} name={copy ? fileName(localPath) : undefined} message={message} attached={Boolean(copy)}>{children}</LocalFileLink>;
+    return <LocalFileLink filePath={copy ?? localPath} name={copy ? fileName(localPath) : undefined} message={message} attached={Boolean(copy && attachedFiles?.includes(fileName(localPath)))}>{children}</LocalFileLink>;
   }
   if (!/^https?:\/\//i.test(href)) {
     return (
@@ -871,10 +872,11 @@ const MARKDOWN_COMPONENTS: Components = {
 const MAY_LINK_THREAD = /#|openmausbot/i;
 const NO_THREAD_REFS: ThreadRefsValue = { threads: [] };
 
-function ChatMarkdownComponent({ text, message, mentionPeers = NO_MENTION_PEERS, everyone = false, mentionPerson, delivered }: {
+function ChatMarkdownComponent({ text, message, mentionPeers = NO_MENTION_PEERS, everyone = false, mentionPerson, delivered, attachedFiles }: {
   text: string; message?: MessageAttachmentContext;
   mentionPeers?: readonly MentionPeer[]; everyone?: boolean; mentionPerson?: MentionPerson;
   delivered?: DeliveredFiles;
+  attachedFiles?: readonly string[];
 }) {
   // use() may be called conditionally: only a message that can hold a thread link subscribes to the thread list.
   const { threads, currentBotId } = MAY_LINK_THREAD.test(text) ? use(ThreadRefsContext) : NO_THREAD_REFS;
@@ -898,7 +900,7 @@ function ChatMarkdownComponent({ text, message, mentionPeers = NO_MENTION_PEERS,
   }, [needsMath]);
   const mathPlugin = needsMath && katexReady ? katexPlugin : null;
   return (
-    <MessageScopeContext.Provider value={{ message, imageOffsets, threads, currentBotId, delivered }}>
+    <MessageScopeContext.Provider value={{ message, imageOffsets, threads, currentBotId, delivered, attachedFiles }}>
       <div className="chat-md min-w-0 [&>*+*]:mt-2">
         <Markdown
           remarkPlugins={[[remarkGfm, GFM_OPTIONS], remarkMath, remarkWindowsPathDestinations, unwrapLinkedImages, remarkGithubRefs, [remarkMentions, { peers: mentionPeers, everyone, person: mentionPerson }], remarkThreadRefs(threads, currentBotId)]}
@@ -929,7 +931,14 @@ export const ChatMarkdown = memo(ChatMarkdownComponent, (previous, next) => (
   && previous.message?.threadId === next.message?.threadId
   && previous.message?.messageId === next.message?.messageId
   && sameDelivered(previous.delivered, next.delivered)
+  && sameList(previous.attachedFiles, next.attachedFiles)
 ));
+
+function sameList(previous: readonly string[] | undefined, next: readonly string[] | undefined): boolean {
+  if (previous === next) return true;
+  if ((previous?.length ?? 0) !== (next?.length ?? 0)) return false;
+  return (previous ?? []).every((value, index) => value === next![index]);
+}
 
 function sameDelivered(previous: DeliveredFiles | undefined, next: DeliveredFiles | undefined): boolean {
   if (previous === next) return true;

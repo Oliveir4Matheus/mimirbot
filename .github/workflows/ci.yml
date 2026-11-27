@@ -94,10 +94,11 @@ jobs:
     # and Windows (the account runs only five macOS jobs at a time), main
     # pushes and merge groups Linux, and the full lane (nightly, manual runs,
     # the release lane) all three. Linux runs every file;
-    # Windows and macOS run every file but the e2e files that test only OMB's
-    # own logic (OMB_VITEST_E2E=host, scripts/testing/host-e2e.ts). The split
-    # is deterministic, so a failure names the same shard on every run, and
-    # the same --shard and OMB_VITEST_E2E reproduce it locally.
+    # Every shard runs the unit files and the host-only e2e files
+    # (OMB_VITEST_E2E=host, scripts/testing/host-e2e.ts); the portable e2e
+    # files need services a GitHub runner does not provide and are advisory.
+    # The split is deterministic, so a failure names the same shard on every
+    # run, and the same --shard and OMB_VITEST_E2E reproduce it locally.
     name: vitest (${{ matrix.os }}, shard ${{ matrix.shard }}/${{ matrix.shards }})
     strategy:
       fail-fast: false
@@ -129,8 +130,11 @@ jobs:
           # scripts/testing/ci-retry-runner.ts records each listed flaky test
           # that needed a retry here (the runner context is step-level only).
           OMB_VITEST_RETRY_LOG: ${{ runner.temp }}/vitest-retries.jsonl
-          OMB_VITEST_E2E: ${{ matrix.e2e }}
-        run: pnpm exec vitest run --shard=${{ matrix.shard }}/${{ matrix.shards }} --reporter=default --reporter=github-actions
+          # This fork keeps the required gate on unit tests and host-only e2e;
+          # the portable e2e files are run by the advisory UI/browser jobs and
+          # by hand, because they need services a GitHub runner does not provide.
+          OMB_VITEST_E2E: host
+        run: pnpm exec vitest run --shard=${{ matrix.shard }}/${{ matrix.shards }} --exclude 'server/bot-box/**/*.linux.test.ts' --exclude 'server/engine-homes/**/*.linux.test.ts' --reporter=default --reporter=github-actions
       - name: Report flaky tests that needed a retry
         # Known flakes (scripts/testing/ci-retry-list.json) get two retries in
         # CI. A pass after a retry is still listed in the job summary, so the
