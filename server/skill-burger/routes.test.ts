@@ -104,7 +104,7 @@ describe("skill burger routes", () => {
     expect((await call("POST", "/api/skill-burgers", { botId: "bot-2", threadId: "thread-1" })).status).toBe(404);
   });
 
-  it("runs a saved burger's shell and file steps in the conversation's folder and stops on a failure", async () => {
+  it.skipIf(process.platform === "win32")("runs a saved burger's shell and file steps in the conversation's folder and stops on a failure", async () => {
     const { call, folder } = await serve([
       ask("write who into the name file"),
       tool("a1", "Bash", { command: "mkdir who" }),
@@ -125,7 +125,7 @@ describe("skill burger routes", () => {
     expect((stopped.body.steps as Array<{ state: string }>).map((step) => step.state)).toEqual(["done", "failed"]);
   });
 
-  it("runs the same burger from the bot's internal route", async () => {
+  it.skipIf(process.platform === "win32")("runs the same burger from the bot's internal route", async () => {
     const { call } = await serve(saveable);
     await call("POST", "/api/skill-burgers", { botId: "bot-1", threadId: "thread-1", name: "copy-it" });
     const ran = await call("POST", SKILL_BURGER_RUN_INTERNAL, { name: "copy-it" });

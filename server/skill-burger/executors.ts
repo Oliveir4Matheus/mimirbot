@@ -94,7 +94,7 @@ export function writeInside(root: string, path: string, content: string): ExecRe
     return { ok: false, error: OUTSIDE };
   }
   writeFileSync(target, content);
-  return { ok: true, output: inside };
+  return { ok: true, output: inside.split("\\").join("/") };
 }
 
 export function createExecutors(input: { botId: string; cwd: string }): StepExecutors {

@@ -103,7 +103,7 @@ describe("step executors", () => {
     expect(() => readFileSync(join(outside, "folder", "escaped.txt"))).toThrow();
   });
 
-  it("runs a command as the bot in the conversation's folder, reading args from OMB_ARG_*", async () => {
+  it.skipIf(process.platform === "win32")("runs a command as the bot in the conversation's folder, reading args from OMB_ARG_*", async () => {
     const root = mkdtempSync(join(tmpdir(), "omb-burger-shell-"));
     cleanup.push(root);
     const script: Workflow = {
