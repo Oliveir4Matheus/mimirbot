@@ -87,6 +87,7 @@ describe("CI concurrency", () => {
       .find((step) => step.name === "Run tests")!;
     expect(run.run).toContain("--shard=${{ matrix.shard }}/${{ matrix.shards }} ");
     expect(run.env?.OMB_VITEST_E2E).toBe("host");
+    expect(run.run).toContain("**/*.e2e.test.ts");
     expect(run.run).toContain("server/bot-box/**/*.linux.test.ts");
     expect(run.run).toContain("server/engine-homes/**/*.linux.test.ts");
     const { include } = vitestMatrix(["macos-latest", "ubuntu-latest", "windows-latest"]);

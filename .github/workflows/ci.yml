@@ -134,7 +134,7 @@ jobs:
           # the portable e2e files are run by the advisory UI/browser jobs and
           # by hand, because they need services a GitHub runner does not provide.
           OMB_VITEST_E2E: host
-        run: pnpm exec vitest run --shard=${{ matrix.shard }}/${{ matrix.shards }} --exclude 'server/bot-box/**/*.linux.test.ts' --exclude 'server/engine-homes/**/*.linux.test.ts' --reporter=default --reporter=github-actions
+        run: pnpm exec vitest run --shard=${{ matrix.shard }}/${{ matrix.shards }} --exclude '**/*.e2e.test.ts' --exclude 'server/bot-box/**/*.linux.test.ts' --exclude 'server/engine-homes/**/*.linux.test.ts' --reporter=default --reporter=github-actions
       - name: Report flaky tests that needed a retry
         # Known flakes (scripts/testing/ci-retry-list.json) get two retries in
         # CI. A pass after a retry is still listed in the job summary, so the

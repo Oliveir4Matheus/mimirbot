@@ -379,7 +379,7 @@ test("a failed switch with no live child reforks the active environment once and
   const { context, forks, targetDir } = switchFixture(t, { releaseLeaseThrows: true });
   const result = await context.switchLocalEnvironmentTo(targetDir, "l1");
   assert.deepEqual(plain(result), { ok: false, error: "switch-failed" });
-  assert.deepEqual(plain(forks), [[8799, "/Users/me/.openmausbot"]], "exactly one safety-net re-fork, on the active port and folder");
+  assert.deepEqual(plain(forks), [[8799, "/Users/me/.mimirbot"]], "exactly one safety-net re-fork, on the active port and folder");
   assert.equal(context.serverProc?.pid, 4001, "the re-forked child is adopted as ready");
 });
 
@@ -389,8 +389,8 @@ test("a rollback that could not take the previous folder's lease back is revived
   const result = await context.switchLocalEnvironmentTo(targetDir, "l1");
   assert.deepEqual(plain(result), { ok: false, error: "switch-failed" });
   assert.ok(context.desktopDataDirLease, "the previous folder's lease is held again");
-  assert.equal(context.runningDataDir, "/Users/me/.openmausbot");
-  assert.deepEqual(plain(forks.at(-1)), [8799, "/Users/me/.openmausbot"]);
+  assert.equal(context.runningDataDir, "/Users/me/.mimirbot");
+  assert.deepEqual(plain(forks.at(-1)), [8799, "/Users/me/.mimirbot"]);
   assert.equal(context.serverProc?.pid, 4002, "the revived child is adopted as ready");
   assert.equal(context.localSwitchInFlight, false);
 });
