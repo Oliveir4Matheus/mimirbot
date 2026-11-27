@@ -287,10 +287,16 @@ test("lends Chrome only when the person turns it on, and tells only a Cloud that
   await until(() => sockets.open().length === 1 && sharing.cloudState(env).chromeLink === "on", "the device link to open");
   assert.equal(home.connects[0].chrome, true);
   assert.equal(sharing.cloudState(env).chrome, true);
-  await sharing.saveCloud(env, { folders: [{ id: randomUUID(), path: tmpdir(), write: false }], screen: false });
-  await until(() => home.connects.length === 2, "the second connect");
-  assert.equal(home.connects[1].chrome, false);
-  assert.equal(sharing.cloudState(env).chrome, false);
+  const sharedFolder = path.join(tmpdir(), `omb-shared-${randomUUID()}`);
+  await mkdir(sharedFolder, { recursive: true });
+  try {
+    await sharing.saveCloud(env, { folders: [{ id: randomUUID(), path: sharedFolder, write: false }], screen: false });
+    await until(() => home.connects.length === 2, "the second connect");
+    assert.equal(home.connects[1].chrome, false);
+    assert.equal(sharing.cloudState(env).chrome, false);
+  } finally {
+    await rm(sharedFolder, { recursive: true, force: true });
+  }
 });
 
 test("a Chrome-only grant keeps the device link open, and the link refuses web streams", async (t) => {
