@@ -5848,6 +5848,252 @@
       "status": "ignored",
       "decidedAt": "2026-11-06",
       "note": "Já coberto por ae8b92b62 e f198d0241 (regex e teste do lookahead já no fork)."
+    },
+    {
+      "sha": "b2e66200745d105debcd987e9e48cc8fa9287d76",
+      "subject": "Antigravity CLI: fit connected apps and the person's servers into the session tool budget (#7715)",
+      "status": "ignored",
+      "decidedAt": "2026-11-26",
+      "note": "Arquitetura own-mcp-http/session-tool-budget não existe no fork."
+    },
+    {
+      "sha": "3529752e965e03e14f7684e7502712342bd5f897",
+      "subject": "Bot pages can call the connector tools they declare, with the person's own connection (#7678)",
+      "status": "deferred",
+      "decidedAt": "2026-11-26",
+      "note": "Nova capacidade (connector-gate.ts, packages/phone-protocol/src/app*.ts). Avaliar como feature separada."
+    },
+    {
+      "sha": "09adc3db6a1b2bd1602062069e53ac4563eee285",
+      "subject": "CI: fail the broker deploy when it cannot deploy, and deploy nightly too (#6908)",
+      "status": "ignored",
+      "decidedAt": "2026-11-26",
+      "note": "CI-only do broker do upstream; o fork não publica esse broker."
+    },
+    {
+      "sha": "d0d95ebe9dbf1d1233ff30f2439bac4f383141ce",
+      "subject": "fix(mcp): keep JSON-RPC frames with U+2028/U+2029 whole on stdio",
+      "status": "applied",
+      "decidedAt": "2026-11-26",
+      "ourCommit": "56c302f2e71b0f1f0d4ba1395145aedb428a64a9",
+      "note": "Portado com server/stdio-lines.ts e os 7 leitores stdio."
+    },
+    {
+      "sha": "7beafaa1f658c73eeb34cc28c438939d158e113b",
+      "subject": "Antigravity CLI: bots keep OpenMausBot's own MCP tools on the native runtime (#7488)",
+      "status": "ignored",
+      "decidedAt": "2026-11-26",
+      "note": "Runtime nativo de MCP do upstream ausente no fork."
+    },
+    {
+      "sha": "85b08241fb4e40a0d6c1768d22c976d3c96a4388",
+      "subject": "GitHub sign-in card: ask again before saying connected, and release a turn parked on a dismissed card",
+      "status": "ignored",
+      "decidedAt": "2026-11-26",
+      "note": "Feature de GitHub sign-in card não existe no fork."
+    },
+    {
+      "sha": "2bc18664c270462061740b7ed76025c2d94d6dfe",
+      "subject": "GitHub sign-in card: a GitHub row in Apps and a Connect GitHub card in a chat after a failed push",
+      "status": "ignored",
+      "decidedAt": "2026-11-26",
+      "note": "Feature de GitHub sign-in card não existe no fork."
+    },
+    {
+      "sha": "640c87342320d8b1ee6c13b55c5cf79c60e85c55",
+      "subject": "fix(connector): name the usable accounts when a call names no account and the app has more than one",
+      "status": "deferred",
+      "decidedAt": "2026-11-26",
+      "note": "server/connector-account-hint.ts e withAccountHint ausentes; portar a base inteira antes."
+    },
+    {
+      "sha": "3f15b33c41ef5dfa9b7a620ea1579ba82f3fe0a0",
+      "subject": "fix(mcp): name the refused tool call's wrong argument and document Composio argument names",
+      "status": "applied",
+      "decidedAt": "2026-11-26",
+      "ourCommit": "56c302f2e71b0f1f0d4ba1395145aedb428a64a9",
+      "note": "Recusa nomeia ferramenta e argumento; docs/composio.md documenta os nomes."
+    },
+    {
+      "sha": "488ee674fcb4b2abfbdabfaf21551b74dd94e9dc",
+      "subject": "App-event runs carried on later check the bot's account limit before the turn is sent",
+      "status": "deferred",
+      "decidedAt": "2026-11-26",
+      "note": "Depende de ConnectorScopes.accounts (limite por conta), ausente no fork."
+    },
+    {
+      "sha": "8cb9d26ff5f792ea9237964a62beb8ebfbd868c6",
+      "subject": "Check the account limit again right before an app-event turn is sent",
+      "status": "deferred",
+      "decidedAt": "2026-11-26",
+      "note": "Depende de ConnectorScopes.accounts, ausente no fork."
+    },
+    {
+      "sha": "c7b049aec3687aa1ea5d18bae0fa1c483c61fab9",
+      "subject": "Check the account limit as a queued app-event run starts",
+      "status": "deferred",
+      "decidedAt": "2026-11-26",
+      "note": "Depende de ConnectorScopes.accounts, ausente no fork."
+    },
+    {
+      "sha": "64ba5ebeda09b74a1c3598de129700cddd1e83ff",
+      "subject": "Cancel queued app-event runs when the bot loses the account",
+      "status": "deferred",
+      "decidedAt": "2026-11-26",
+      "note": "Depende de ConnectorScopes.accounts, ausente no fork."
+    },
+    {
+      "sha": "e1eaf3ff3ed620b5b3ef27fe865662735c50733c",
+      "subject": "Keep a bot's app-event automations to the accounts it may use",
+      "status": "deferred",
+      "decidedAt": "2026-11-26",
+      "note": "Depende de ConnectorScopes.accounts (limite por conta), ausente no fork."
+    },
+    {
+      "sha": "46b29b0a91791f12794ad375c6e87a0999fc856e",
+      "subject": "fix(mcp): point bots at connected Google Drive, Sheets and Docs instead of an MCP sign-in that cannot finish (#6994)",
+      "status": "deferred",
+      "decidedAt": "2026-11-26",
+      "note": "server/mcp-server-app.ts ausente; portar o swap de servidores MCP antes."
+    },
+    {
+      "sha": "4d225552f36e13063a73269ceb45b2eed13dc6ad",
+      "subject": "fix(connectors): list the connected-apps service's own tools when discovery fails (#6992)",
+      "status": "applied",
+      "decidedAt": "2026-11-26",
+      "ourCommit": "56c302f2e71b0f1f0d4ba1395145aedb428a64a9",
+      "note": "Fallback dos quatro COMPOSIO_* em queda; lista vazia em recusa."
+    },
+    {
+      "sha": "ca4b35bcb51ed4de39e0bbd88b2ba09bb9339530",
+      "subject": "fix(train): the Retry-After test builds its deferred promise itself (#6822)",
+      "status": "ignored",
+      "decidedAt": "2026-11-26",
+      "note": "Test-only; o teste portado já usa helper local."
+    },
+    {
+      "sha": "78cc680998a0dcfbacfe2ea8e806c3cb076395cb",
+      "subject": "fix(train): the stop/restart test builds its deferred promises itself (#6830)",
+      "status": "ignored",
+      "decidedAt": "2026-11-26",
+      "note": "Test-only; o teste portado já usa helper local."
+    },
+    {
+      "sha": "896e2e94a05ee9e72f42faf95fef4f2dde8e214d",
+      "subject": "fix(app-events): serialize automation identity checks",
+      "status": "applied",
+      "decidedAt": "2026-11-26",
+      "ourCommit": "56c302f2e71b0f1f0d4ba1395145aedb428a64a9",
+      "note": "Checagem de id dentro do exclusive e adopt concorrente sob o mesmo id."
+    },
+    {
+      "sha": "ac39e88c7a4229b3858b1c05b375bd72f3501b8d",
+      "subject": "fix(app-events): retire polling loops across stop and restart",
+      "status": "applied",
+      "decidedAt": "2026-11-26",
+      "ourCommit": "56c302f2e71b0f1f0d4ba1395145aedb428a64a9",
+      "note": "Versão de loop por start; stop aposenta o loop antigo."
+    },
+    {
+      "sha": "5ca1b7a25397aca60ea57c5d59e3005383b17c68",
+      "subject": "fix(app-events): keep shared trigger switches in sync",
+      "status": "applied",
+      "decidedAt": "2026-11-26",
+      "ourCommit": "56c302f2e71b0f1f0d4ba1395145aedb428a64a9",
+      "note": "Create/restore/remove mantêm a cópia remota compartilhada no switch certo."
+    },
+    {
+      "sha": "5a211dd76842e174d059aa34a8e683554bfc6d84",
+      "subject": "fix(app-events): honor service retry-after responses",
+      "status": "applied",
+      "decidedAt": "2026-11-26",
+      "ourCommit": "56c302f2e71b0f1f0d4ba1395145aedb428a64a9",
+      "note": "Retry-After em segundos ou data HTTP, inclusive em 429/5xx."
+    },
+    {
+      "sha": "464175e2970c1036cd26e18af5c54df1ba251ee2",
+      "subject": "Apps: a long list mounts only the rows on screen (#6765)",
+      "status": "deferred",
+      "decidedAt": "2026-11-26",
+      "note": "O painel do fork não usa AppsSection/app-tile-window; virtualizar exige reescrever o componente."
+    },
+    {
+      "sha": "0df49051656a84e906d452e495dd8a14481692db",
+      "subject": "Permissions: Ask reaches open chats, sending rule shows what Full access does; clearer Apps screen and grey-bot switches (#6744)",
+      "status": "deferred",
+      "decidedAt": "2026-11-26",
+      "note": "UI de permissões divergiu; portar só a parte de Apps depois de um diff dedicado."
+    },
+    {
+      "sha": "81e3365c79198dba33aaa412810172631c50243c",
+      "subject": "Train Y3: declare the Apps list's load error after the panel's other state",
+      "status": "deferred",
+      "decidedAt": "2026-11-26",
+      "note": "loadError/hostedCards não existem no McpServersPanel do fork."
+    },
+    {
+      "sha": "71ada2b579ccb8624c5a4abb3a460d603d70516d",
+      "subject": "perf(broker): keep catalog pages and reuse a checked Session on connector routes (#6720)",
+      "status": "ignored",
+      "decidedAt": "2026-11-26",
+      "note": "O fork não publica o broker gerenciado; session-identity.ts ausente."
+    },
+    {
+      "sha": "a5760dbedc8fc85608dc7a87acd47a003543a8d7",
+      "subject": "Train Y3: the Apps list error replaces the cards only before any list has loaded, and reads in Portuguese",
+      "status": "deferred",
+      "decidedAt": "2026-11-26",
+      "note": "Depende de 81e3365c7."
+    },
+    {
+      "sha": "ecabd15caa08f674877e155d03c553c30a35a63b",
+      "subject": "Apps: the connected-apps list opens at once from a kept copy, and tiles stop re-rendering (#6688)",
+      "status": "deferred",
+      "decidedAt": "2026-11-26",
+      "note": "Refactor grande sobre um composio.ts já divergente; fazer junto de uma atualização ampla do módulo."
+    },
+    {
+      "sha": "779ac78e9561979f46e31e1a86444f7b647cc0a3",
+      "subject": "MCP servers: finishing the list load no longer crashes a translated page",
+      "status": "applied",
+      "decidedAt": "2026-11-26",
+      "ourCommit": "56c302f2e71b0f1f0d4ba1395145aedb428a64a9",
+      "note": "Spinner com span próprio."
+    },
+    {
+      "sha": "f6743316a8f2faec9bc8ed628fdd82cd730f7f33",
+      "subject": "Shorten the outdated-service doc comment so the reply text alone gives the retry advice",
+      "status": "ignored",
+      "decidedAt": "2026-11-26",
+      "note": "server/connector-files.ts não existe no fork."
+    },
+    {
+      "sha": "e0eab4bd3776f34b6f73e3a9a1de72eebcc09385",
+      "subject": "Say the connected-apps service is out of date when its upload route is missing",
+      "status": "ignored",
+      "decidedAt": "2026-11-26",
+      "note": "Upload de arquivos do serviço não existe no fork."
+    },
+    {
+      "sha": "63bd6356cfe87cc21f55f593bfa66dc2479fc62e",
+      "subject": "fix: accept Composio upload links on Cloudflare R2",
+      "status": "ignored",
+      "decidedAt": "2026-11-26",
+      "note": "Upload de arquivos do serviço não existe no fork."
+    },
+    {
+      "sha": "03c52603809431308d5d6f434e4ef054b29ca85a",
+      "subject": "fix(apps): show an MCP list failure once",
+      "status": "deferred",
+      "decidedAt": "2026-11-26",
+      "note": "Depende de loadError/hostedCards; o painel atual mostra o erro num lugar só."
+    },
+    {
+      "sha": "902b09591a83e4ecf53cf48974a8d65b82bc276c",
+      "subject": "fix(connector): restore secret redaction on load and redact at output boundary",
+      "status": "deferred",
+      "decidedAt": "2026-11-26",
+      "note": "Connector do fork é v1 (token) e não tem audit/customer-run/images; adaptar a redação no load à base v1. Segurança: fazer antes de uso multi-tenant do connector."
     }
   ]
 }
