@@ -86,7 +86,9 @@ describe("CI concurrency", () => {
     const run = (workflow.jobs.vitest.steps as { name?: string; run?: string; env?: Record<string, string> }[])
       .find((step) => step.name === "Run tests")!;
     expect(run.run).toContain("--shard=${{ matrix.shard }}/${{ matrix.shards }} ");
-    expect(run.env?.OMB_VITEST_E2E).toBe("${{ matrix.e2e }}");
+    expect(run.env?.OMB_VITEST_E2E).toBe("host");
+    expect(run.run).toContain("server/bot-box/**/*.linux.test.ts");
+    expect(run.run).toContain("server/engine-homes/**/*.linux.test.ts");
     const { include } = vitestMatrix(["macos-latest", "ubuntu-latest", "windows-latest"]);
     for (const os of ["macos-latest", "ubuntu-latest", "windows-latest"]) {
       const shards = include.filter((entry) => entry.os === os);
