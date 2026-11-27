@@ -4,12 +4,13 @@ import { useEffect, useRef, useState } from "react";
 
 import { useStore, type Bot } from "@/state/store";
 import { useBotEditor } from "./BotEditorContext";
-import { skillAuthoringEnabled, skillsLibraryEnabled } from "@/lib/feature-flags";
+import { skillAuthoringEnabled, skillBurgerEnabled, skillsLibraryEnabled } from "@/lib/feature-flags";
 import { Switch } from "../SettingsPrimitives";
 import { inputCls } from "./field";
 import { OrgSkillsCard } from "./OrgSkillsCard";
 import { WriteCommandCard } from "./WriteCommandCard";
 import { Select } from "../Select";
+import { SavedWorkflowsCard } from "../skill-burger/SavedWorkflowsCard";
 
 export interface ManagedSkill {
   name: string;
@@ -524,6 +525,8 @@ export function SkillsSection({ bot }: { bot: Bot }) {
           onEnable={() => void enableReviewed()}
         />
       )}
+
+      {skillBurgerEnabled(state.config) && <SavedWorkflowsCard botId={bot.id} threadId={bot.threadId} />}
 
       {viewing && (
         <div
