@@ -10,6 +10,7 @@ import { useAdvancedMode } from "@/lib/interface-mode";
 import { useWebPanels } from "@/lib/web-panel-preferences";
 import { useSidebarToolsLayout, type SidebarDensity } from "@/lib/sidebar-preferences";
 import { useStore } from "@/state/store";
+import { showPublishedAppsList } from "@/lib/app-preview";
 
 import { SidebarSectionHeader } from "./SidebarSectionHeader";
 import { UpdateIndicator } from "./UpdateIndicator";
@@ -59,6 +60,31 @@ function NavRow({
           className={cn("size-2 shrink-0 rounded-full bg-danger", iconsOnly && (rail ? "absolute right-1 top-1" : "absolute right-2 top-2"))}
         />
       )}
+    </button>
+  );
+}
+
+/** The right-hand panel's entry in the rail, for the bot chat in view. */
+export function SidebarPublishedAppsButton() {
+  const { state, dispatch } = useStore();
+  const group = (state.groups ?? []).some((candidate) => candidate.id === state.selectedId);
+  const bot = state.bots.find((candidate) => candidate.id === state.selectedId && !candidate.hidden);
+  if (!bot || group || state.activeView !== "chat") return null;
+  const label = t("publishedApps.title");
+  return (
+    <button
+      type="button"
+      data-sidebar-nav="published-apps"
+      onClick={() => { showPublishedAppsList(); dispatch({ type: "togglePublishedApps" }); }}
+      aria-label={label}
+      title={label}
+      aria-pressed={state.publishedAppsOpen}
+      className={cn(
+        "flex size-9 shrink-0 items-center justify-center rounded-xl transition-colors",
+        state.publishedAppsOpen ? "bg-raised text-accent" : "text-ink-secondary hover:bg-raised/50 hover:text-ink",
+      )}
+    >
+      <Globe size={18} />
     </button>
   );
 }
@@ -127,6 +153,7 @@ export function SidebarBottomButtons() {
           onClick={() => dispatch({ type: "showTeamMap" })}
         />
       </>}
+      <SidebarPublishedAppsButton />
       <SidebarAppsButton />
       <UpdateIndicator />
     </div>

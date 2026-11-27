@@ -7527,6 +7527,7 @@
   "skillBurger.list.title": "Skill Burgers",
   "skillBurger.list.empty": "Runs you save from a chat appear here.",
   "skillBurger.list.loadFailed": "Couldn't load saved skills.",
+  "skillBurger.list.pickBot": "Choose a bot chat to run it from.",
   "skillBurger.list.remove": "Remove {name}",
   "skillBurger.list.removeFailed": "Couldn't remove that skill.",
   "skillBurger.list.removed": "{name} removed",

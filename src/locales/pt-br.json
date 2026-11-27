@@ -7126,6 +7126,7 @@
   "skillBurger.list.title": "Skill Burgers",
   "skillBurger.list.empty": "Execuções que você salva no chat aparecem aqui.",
   "skillBurger.list.loadFailed": "Não foi possível carregar as skills salvas.",
+  "skillBurger.list.pickBot": "Escolha o chat de um bot para executá-la.",
   "skillBurger.list.remove": "Remover {name}",
   "skillBurger.list.removeFailed": "Não foi possível remover essa skill.",
   "skillBurger.list.removed": "{name} removida",

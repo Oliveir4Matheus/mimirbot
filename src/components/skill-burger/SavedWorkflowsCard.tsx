@@ -35,7 +35,7 @@ export function useBurgerRemoval() {
 }
 
 /** The bot panel's Skill Burgers: every saved one, its steps, Run, and a removal with an Undo. */
-export function SavedWorkflowsCard({ botId, threadId }: { botId: string; threadId: string }) {
+export function SavedWorkflowsCard({ botId, threadId }: { botId?: string; threadId?: string }) {
   const { skills, error } = useSavedBurgers();
   const [open, setOpen] = useState<string | null>(null);
   const [running, setRunning] = useState<SavedWorkflow | null>(null);
@@ -70,10 +70,11 @@ export function SavedWorkflowsCard({ botId, threadId }: { botId: string; threadI
               <button
                 type="button"
                 data-panel-action={`run-skill-burger:${skill.name}`}
-                onClick={() => setRunning(skill)}
+                onClick={() => { if (botId && threadId) setRunning(skill); }}
+                disabled={!botId || !threadId}
                 aria-label={t("skillBurger.runName", { name: skill.summary })}
-                title={t("skillBurger.run.button")}
-                className="flex size-7 shrink-0 items-center justify-center rounded-lg text-ink-secondary hover:bg-ink/[0.05] hover:text-ink"
+                title={botId && threadId ? t("skillBurger.run.button") : t("skillBurger.list.pickBot")}
+                className="flex size-7 shrink-0 items-center justify-center rounded-lg text-ink-secondary hover:bg-ink/[0.05] hover:text-ink disabled:cursor-default disabled:opacity-40"
               >
                 <CirclePlay size={14} aria-hidden="true" />
               </button>
@@ -97,7 +98,7 @@ export function SavedWorkflowsCard({ botId, threadId }: { botId: string; threadI
         </div>
       )}
       {problem && <NoteRow tone="warn">{problem}</NoteRow>}
-      {running && <RunBurger skill={running} botId={botId} threadId={threadId} onClose={() => setRunning(null)} />}
+      {running && botId && threadId && <RunBurger skill={running} botId={botId} threadId={threadId} onClose={() => setRunning(null)} />}
     </Card>
   );
 }
