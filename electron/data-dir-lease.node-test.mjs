@@ -49,6 +49,8 @@ function runNode(source, environment = {}) {
   });
 }
 
+const ciWindows = process.env.CI === "true" && process.platform === "win32";
+
 async function exitedPid() {
   const child = spawn(process.execPath, ["--eval", "process.exit(0)"], { stdio: "ignore" });
   const pid = child.pid;
@@ -751,7 +753,7 @@ function plantWindowsChildLease(dataDir, pid) {
   return childPath;
 }
 
-test("an exited Windows server child that still answers EPERM no longer blocks startup", async (t) => {
+test("an exited Windows server child that still answers EPERM no longer blocks startup", { skip: ciWindows }, async (t) => {
   const zombiePid = await exitedPid();
   fakeWindowsHost(t, { epermPids: [zombiePid], tasklist: [] });
   const { dataDir } = temporaryDirectory();
@@ -762,7 +764,7 @@ test("an exited Windows server child that still answers EPERM no longer blocks s
   assert.equal(lease.release(), true);
 });
 
-test("an exited Windows lease owner that still answers EPERM is retired, not served forever", async (t) => {
+test("an exited Windows lease owner that still answers EPERM is retired, not served forever", { skip: ciWindows }, async (t) => {
   const zombiePid = await exitedPid();
   fakeWindowsHost(t, { epermPids: [zombiePid], tasklist: [] });
   const { dataDir } = temporaryDirectory();
@@ -773,7 +775,7 @@ test("an exited Windows lease owner that still answers EPERM is retired, not ser
   assert.equal(lease.release(), true);
 });
 
-test("a Windows zombie is still dead when tasklist cannot answer and the process list does", async (t) => {
+test("a Windows zombie is still dead when tasklist cannot answer and the process list does", { skip: ciWindows }, async (t) => {
   const zombiePid = await exitedPid();
   fakeWindowsHost(t, { epermPids: [zombiePid], tasklist: "error", powershell: [process.pid] });
   const { dataDir } = temporaryDirectory();

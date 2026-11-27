@@ -393,6 +393,8 @@ it("switching channel points the next check at that feed and is broadcast to the
 
   await handlers.get("update:set-channel")(local.event, "main");
   await settle();
+  await vi.advanceTimersByTimeAsync(1_000);
+  await settle();
   expect(autoUpdater.channel).toBe(null);
   expect(autoUpdater.allowPrerelease).toBe(false);
   expect(autoUpdater.checkForUpdates).toHaveBeenCalledTimes(2);

@@ -3,6 +3,7 @@
 // runs: the app is already Node, so there is no second runtime to ship. It gets
 // the same user permissions as the app; this is not a sandbox.
 import { spawn, type ChildProcess } from "node:child_process";
+import { realpathSync } from "node:fs";
 import { delimiter } from "node:path";
 
 import { WORKFLOW_SCRIPT_TIMEOUT_MAX_MS } from "../../shared/workflow.ts";
@@ -67,11 +68,19 @@ const tail = (value: string): string => value.trim().slice(-ERROR_KEEP);
 export function runWorkflowScript(options: WorkflowScriptOptions): WorkflowScriptHandle {
   const timeoutMs = Math.min(Math.max(options.timeoutMs, 1_000), WORKFLOW_SCRIPT_TIMEOUT_MAX_MS);
   const { command, args } = workflowScriptCommand(options.scriptPath);
+  const resolved = (path: string) => { try { return realpathSync(path); } catch { return path; } };
+  const cwd = resolved(options.stepDir);
+  const env = workflowScriptEnvironment({
+    ...options,
+    stepDir: cwd,
+    inputDir: resolved(options.inputDir),
+    outputDir: resolved(options.outputDir),
+  });
   let child: ChildProcess;
   try {
     child = spawn(command, args, {
-      cwd: options.stepDir,
-      env: workflowScriptEnvironment(options),
+      cwd,
+      env,
       shell: false,
       stdio: ["ignore", "pipe", "pipe"],
       detached: process.platform !== "win32",
