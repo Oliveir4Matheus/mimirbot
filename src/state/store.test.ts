@@ -2536,6 +2536,42 @@ describe("activity panel", () => {
   });
 });
 
+describe("published apps panel", () => {
+  it("starts closed", () => {
+    expect(initialState.publishedAppsOpen).toBe(false);
+  });
+
+  it("togglePublishedApps opens it and closes every other side panel", () => {
+    const withPanels = {
+      ...initialState, settingsOpen: true, computerOpen: true, inspectorOpen: true, activityOpen: true, appSettingsOpen: true, notificationsOpen: true,
+    };
+    const next = reducer(withPanels, { type: "togglePublishedApps" });
+    expect(next.publishedAppsOpen).toBe(true);
+    expect(next).toMatchObject({ settingsOpen: false, computerOpen: false, inspectorOpen: false, activityOpen: false, appSettingsOpen: false, notificationsOpen: false });
+    expect(reducer(next, { type: "togglePublishedApps" }).publishedAppsOpen).toBe(false);
+  });
+
+  it("opening another side panel closes it", () => {
+    const open = { ...initialState, publishedAppsOpen: true };
+    for (const action of [
+      { type: "toggleSettings", open: true },
+      { type: "toggleComputer", open: true },
+      { type: "toggleInspector", open: true },
+      { type: "toggleActivity", open: true },
+      { type: "toggleAppSettings", open: true },
+      { type: "toggleNotifications", open: true },
+    ] as const) {
+      expect(reducer(open, action).publishedAppsOpen).toBe(false);
+    }
+  });
+
+  it("switching to another page closes it", () => {
+    const open = { ...initialState, publishedAppsOpen: true };
+    expect(reducer(open, { type: "showRoutines" }).publishedAppsOpen).toBe(false);
+    expect(reducer(open, { type: "showTeamMap" }).publishedAppsOpen).toBe(false);
+  });
+});
+
 describe("live config frames", () => {
   const baseFrame: ConfigStatusFrame = {
     composio: { configured: false },

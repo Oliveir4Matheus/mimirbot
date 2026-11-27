@@ -337,6 +337,12 @@ export function Composer({
       label: "/cworkflow",
       description: t("composer.command.cworkflowDesc"),
     });
+    if (!group && supportsAgents(bot)) available.push({
+      kind: "command",
+      id: "create-apps",
+      label: "/create-apps",
+      description: t("composer.command.createAppsDesc"),
+    });
     available.push(...skillSlashCommands(slashSkills));
     return available.filter((command) => slashCommandMatches(command, slash.query));
   }, [slash, dismissedSlashAt, group, members, bot, state.config, state.instances, locale, slashSkills]);
@@ -401,7 +407,7 @@ export function Composer({
   const pickCommand = (command: ComposerSlashCommand | undefined) => {
     if (!slash || !command) return;
     const replacement = command.kind === "skill" ? `${command.label} `
-      : command.id === "learn" ? "/learn " : command.id === "setup" ? "/setup " : command.id === "cworkflow" ? "/cworkflow " : "";
+      : command.id === "learn" ? "/learn " : command.id === "setup" ? "/setup " : command.id === "cworkflow" ? "/cworkflow " : command.id === "create-apps" ? "/create-apps " : "";
     const next = replaceComposerSlashTrigger(text, slash, replacement);
     editText(next.text);
     setCaret(next.caret);

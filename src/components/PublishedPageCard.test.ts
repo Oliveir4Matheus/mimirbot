@@ -13,6 +13,8 @@ vi.mock("@/state/store", async () => {
 });
 const openExternalLink = vi.fn(async (_url: string) => {});
 vi.mock("@/lib/app-links", () => ({ openExternalLink: (url: string) => openExternalLink(url) }));
+const previewPublishedApp = vi.fn();
+vi.mock("@/lib/app-preview", () => ({ previewPublishedApp: (preview: unknown) => previewPublishedApp(preview) }));
 import { StoreContext } from "@/state/store";
 import { usePanelPage, type PanelPage } from "@/lib/page-open";
 import { PublishedPageCard } from "./PublishedPageCard";
@@ -46,14 +48,14 @@ describe("a published page's card", () => {
       expect(container.textContent).toContain("Bake sale");
       expect(container.textContent).toContain(URL);
       expect(container.textContent).toContain("3 of 5 pages");
-      expect(buttons(container).map((button) => button.textContent)).toEqual(["Copy link", "Open", "Unpublish"]);
-      buttons(container)[1]!.click();
+      expect(buttons(container).map((button) => button.textContent)).toEqual(["Preview", "Copy link", "Open", "Unpublish"]);
+      buttons(container)[2]!.click();
       container.querySelector("a")!.click();
       expect(openExternalLink.mock.calls).toEqual([[URL], [URL]]);
       expect(panel).toEqual([]);
       expect(dispatch).not.toHaveBeenCalled();
       expect(api).not.toHaveBeenCalled();
-      buttons(container)[2]!.click();
+      buttons(container)[3]!.click();
       await vi.waitFor(() => expect(api).toHaveBeenCalledWith("/api/published-pages/abcdefghijklmnopqrstuvwxyz/unpublish", { method: "POST", body: "{}" }));
     } finally { root.unmount(); }
   });
@@ -62,12 +64,35 @@ describe("a published page's card", () => {
     desktop();
     const { container, root, panel } = render(live);
     try {
-      buttons(container)[1]!.click();
+      buttons(container)[2]!.click();
       container.querySelector("a")!.click();
       expect(panel.map(({ botId, url }) => [botId, url])).toEqual([["pepper", URL], ["pepper", URL]]);
       expect(dispatch.mock.calls).toEqual([[{ type: "toggleComputer", open: true }], [{ type: "toggleComputer", open: true }]]);
       expect(openExternalLink).not.toHaveBeenCalled();
       expect(api).not.toHaveBeenCalled();
+    } finally { root.unmount(); }
+  });
+
+  it("in the desktop app, Preview opens the Published apps panel on this page", () => {
+    desktop();
+    const { container, root, panel } = render(live);
+    try {
+      buttons(container)[0]!.click();
+      expect(previewPublishedApp).toHaveBeenCalledWith({ url: URL, title: "Bake sale" });
+      expect(dispatch).toHaveBeenCalledWith({ type: "togglePublishedApps", open: true });
+      expect(panel).toEqual([]);
+      expect(openExternalLink).not.toHaveBeenCalled();
+    } finally { root.unmount(); }
+  });
+
+  it("with a remote client, Preview keeps the card's external behavior", () => {
+    desktop({ remoteClient: { active: true } });
+    const { container, root } = render(live);
+    try {
+      buttons(container)[0]!.click();
+      expect(openExternalLink).toHaveBeenCalledWith(URL);
+      expect(previewPublishedApp).not.toHaveBeenCalled();
+      expect(dispatch).not.toHaveBeenCalled();
     } finally { root.unmount(); }
   });
 
@@ -81,7 +106,7 @@ describe("a published page's card", () => {
       desktop(bridge);
       const { container, root, panel } = render(live, state);
       try {
-        buttons(container)[1]!.click();
+        buttons(container)[2]!.click();
         expect(openExternalLink).toHaveBeenCalledWith(URL);
         expect(panel).toEqual([]);
         expect(dispatch).not.toHaveBeenCalled();

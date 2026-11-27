@@ -23,6 +23,7 @@ import { SIDEBAR_AND_PANEL_FIT, SIDEBAR_INLINE, TWO_SIDE_PANELS_FIT, useMediaQue
 import { PluginsPanel, preloadConnectedApps } from "@/components/PluginsPanel";
 import {
   ActivityPanel, ComputerPanel, FilesView, InspectorPanel, KeyboardShortcutsModal, LocalVmWorkspace, NewBotDialog,
+  PublishedAppsPanel,
   preloadScreens, RemoteAgentSettingsPanel, RemoteDesktopPanel, SettingsModal, TeamMapPage, TriggersPage, UsagePage,
 } from "@/components/lazy-screens";
 import { WorkspaceBackupRecovery } from "@/components/WorkspaceBackupSettings";
@@ -137,7 +138,7 @@ function Shell({ viewer }: { viewer: WelcomeViewer | null }) {
   const group = state.groups.find((g) => g.id === state.selectedId);
   const bot = group ? undefined : (state.bots.find((b) => b.id === state.selectedId) ?? state.bots[0]);
   const notificationFeed = useNotificationFeed() && !remoteClient;
-  const sidePanelOpen = (Boolean(bot) && (state.settingsOpen || state.computerOpen || state.inspectorOpen || state.activityOpen)) || (notificationFeed && state.notificationsOpen);
+  const sidePanelOpen = (Boolean(bot) && (state.settingsOpen || state.computerOpen || state.inspectorOpen || state.activityOpen || state.publishedAppsOpen)) || (notificationFeed && state.notificationsOpen);
   const collapseSidebar = sidePanelOpen && !sidebarAndPanelFit;
   const calendarFocus = state.activeView === "routines" && state.routinesFocus.view === "calendar";
   const fullWidthView = calendarFocus || state.activeView === "workflow-console";
@@ -389,7 +390,7 @@ function Shell({ viewer }: { viewer: WelcomeViewer | null }) {
           <BotSettingsPanel
             key={`settings:${bot.id}`}
             bot={bot}
-            overlay={(state.inspectorOpen || state.computerOpen || (notificationFeed && state.notificationsOpen)) && !twoSidePanelsFit}
+            overlay={(state.inspectorOpen || state.computerOpen || state.publishedAppsOpen || (notificationFeed && state.notificationsOpen)) && !twoSidePanelsFit}
           />
         )}
         {state.settingsOpen && bot && remoteClient && (
@@ -410,6 +411,7 @@ function Shell({ viewer }: { viewer: WelcomeViewer | null }) {
       )}
       {!remoteClient && state.inspectorOpen && bot && <InspectorPanel key={bot.threadId} bot={bot} />}
       {!remoteClient && state.activityOpen && bot && <ActivityPanel key={`activity:${bot.id}`} bot={bot} />}
+      {!remoteClient && state.publishedAppsOpen && bot && <PublishedAppsPanel key={`published-apps:${bot.id}`} bot={bot} />}
       {notificationFeed && !fullWidthView && state.notificationsOpen && <NotificationsPanel />}
       {notificationFeed && !fullWidthView && <NotificationRail />}
       {state.appSettingsOpen && <SettingsModal />}

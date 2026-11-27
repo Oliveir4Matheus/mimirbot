@@ -12,12 +12,13 @@ const fixture = vi.hoisted(() => {
     menus: [] as { ariaLabel: string; items: SidebarMenuItem[]; placement?: string; openOnHover?: boolean; trigger: string }[],
     dispatch: vi.fn(),
     inspectorOpen: false,
+    publishedAppsOpen: false,
     find: vi.fn(),
   };
 });
 vi.mock("@/state/store", async (importOriginal) => {
   const original = await importOriginal<typeof import("@/state/store")>();
-  return { ...original, useStore: () => ({ state: { ...original.initialState, inspectorOpen: fixture.inspectorOpen }, dispatch: fixture.dispatch }) };
+  return { ...original, useStore: () => ({ state: { ...original.initialState, inspectorOpen: fixture.inspectorOpen, publishedAppsOpen: fixture.publishedAppsOpen }, dispatch: fixture.dispatch }) };
 });
 vi.mock("@/lib/interface-mode", () => ({ useAdvancedMode: () => fixture.advanced, setAdvancedMode: vi.fn() }));
 vi.mock("@/lib/thread-preferences", () => ({ useShowThreads: () => fixture.advanced && fixture.threadsChosen }));
@@ -64,6 +65,7 @@ beforeEach(() => {
   fixture.advanced = false;
   fixture.threadsChosen = true;
   fixture.inspectorOpen = false;
+  fixture.publishedAppsOpen = false;
   fixture.dispatch.mockClear();
   fixture.find.mockClear();
 });
@@ -79,7 +81,7 @@ describe("ChatMoreMenu, the round ⋯ for the bot panel", () => {
 
   it("offers threads in Simple mode, and Usage and the Inspector unlocked", () => {
     const menu = menuOf(createElement(ChatMoreMenu, { bot }));
-    expect(keys(menu.items)).toEqual(["find", "new-thread", "threads", "copy", "download", "activity", "inspector"]);
+    expect(keys(menu.items)).toEqual(["find", "new-thread", "threads", "copy", "download", "activity", "published-apps", "inspector"]);
     for (const item of menu.items) {
       expect(item.disabled, item.key).toBeFalsy();
       expect(item.heading ?? "", item.key).not.toBe("In Advanced mode");
@@ -115,7 +117,7 @@ describe("ChatMoreMenu, the round ⋯ for the bot panel", () => {
 
   it("leaves All threads out while the bot has one thread", () => {
     const single = { ...bot, threadId: "main", tasks: [task("main", "Our chat", 1), task("routine", "Morning digest", 5, { routineRunId: "run-1" })] };
-    expect(keys(menuOf(createElement(ChatMoreMenu, { bot: single })).items)).toEqual(["find", "new-thread", "copy", "download", "activity", "inspector"]);
+    expect(keys(menuOf(createElement(ChatMoreMenu, { bot: single })).items)).toEqual(["find", "new-thread", "copy", "download", "activity", "published-apps", "inspector"]);
     expect(keys(menuOf(createElement(ChatMoreMenu, { bot: { ...bot, tasks: undefined } })).items)).not.toContain("threads");
   });
 
@@ -140,13 +142,23 @@ describe("ChatMoreMenu, the round ⋯ for the bot panel", () => {
     expect(fixture.dispatch).toHaveBeenCalledWith({ type: "toggleInspector" });
     expect(menu.trigger).toContain("text-accent");
   });
+
+  it("opens the Published apps panel from the ⋯ and marks the button while it is open", () => {
+    fixture.publishedAppsOpen = true;
+    const menu = menuOf(createElement(ChatMoreMenu, { bot }));
+    const item = menu.items.find((entry) => entry.key === "published-apps")!;
+    expect(item).toMatchObject({ label: "Published apps", active: true });
+    item.onSelect();
+    expect(fixture.dispatch).toHaveBeenCalledWith({ type: "togglePublishedApps" });
+    expect(menu.trigger).toContain("text-accent");
+  });
 });
 
 describe("ChatHeaderMenu, Advanced mode's header ⋯", () => {
   it("keeps main's items, trigger and hover menu below the header", () => {
     fixture.advanced = true;
     const menu = menuOf(createElement(ChatHeaderMenu, { bot }));
-    expect(keys(menu.items)).toEqual(["find", "copy", "download", "activity", "inspector"]);
+    expect(keys(menu.items)).toEqual(["find", "copy", "download", "activity", "published-apps", "inspector"]);
     expect(menu.items.find((item) => item.key === "inspector")).toMatchObject({ separatorBefore: true });
     expect(menu.items.every((item) => !item.disabled && item.heading !== "In Advanced mode")).toBe(true);
     expect(menu).toMatchObject({ placement: "below", openOnHover: true });
