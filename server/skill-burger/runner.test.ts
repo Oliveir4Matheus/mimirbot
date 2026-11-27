@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -87,6 +87,20 @@ describe("step executors", () => {
     for (const path of ["../escape.txt", "/etc/passwd", "."]) {
       expect(writeInside(root, path, "no"), path).toMatchObject({ ok: false });
     }
+  });
+
+  it("never follows a symlink at the target or through a symlinked folder", () => {
+    const root = mkdtempSync(join(tmpdir(), "omb-burger-symlink-"));
+    const outside = mkdtempSync(join(tmpdir(), "omb-burger-outside-"));
+    cleanup.push(root, outside);
+    writeFileSync(join(outside, "target.txt"), "original");
+    symlinkSync(join(outside, "target.txt"), join(root, "file-link"));
+    expect(writeInside(root, "file-link", "escaped")).toMatchObject({ ok: false });
+    expect(readFileSync(join(outside, "target.txt"), "utf8")).toBe("original");
+    mkdirSync(join(outside, "folder"));
+    symlinkSync(join(outside, "folder"), join(root, "folder-link"));
+    expect(writeInside(root, "folder-link/escaped.txt", "escaped")).toMatchObject({ ok: false });
+    expect(() => readFileSync(join(outside, "folder", "escaped.txt"))).toThrow();
   });
 
   it("runs a command as the bot in the conversation's folder, reading args from OMB_ARG_*", async () => {

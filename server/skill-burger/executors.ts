@@ -1,7 +1,7 @@
 // Where a saved Skill Burger's steps really run. Security invariant: a shell step goes through the same bot box a bot's
 // own command goes through (spawnCli as "bot"), starting in the conversation's folder; a file is written only inside
 // that folder, after resolving the folder itself so a symlinked parent cannot escape it.
-import { mkdirSync, realpathSync, writeFileSync } from "node:fs";
+import { mkdirSync, lstatSync, realpathSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, relative, resolve as resolvePath } from "node:path";
 
 import { spawnCli } from "../procs.ts";
@@ -81,6 +81,12 @@ export function writeInside(root: string, path: string, content: string): ExecRe
   const target = resolvePath(base, path);
   const inside = relative(base, target);
   if (!inside || inside.startsWith("..") || isAbsolute(inside)) return { ok: false, error: OUTSIDE };
+  try {
+    // An existing symlink at the target would make writeFileSync follow it outside the folder.
+    if (lstatSync(target).isSymbolicLink()) return { ok: false, error: OUTSIDE };
+  } catch {
+    // The target does not exist yet: the folder check below covers a symlinked parent.
+  }
   mkdirSync(dirname(target), { recursive: true });
   try {
     if (relative(base, realpathSync(dirname(target))).startsWith("..")) return { ok: false, error: OUTSIDE };
