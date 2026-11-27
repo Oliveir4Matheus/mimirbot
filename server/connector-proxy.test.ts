@@ -11,6 +11,8 @@ import { schemaBytes, TOOL_SCHEMA_PROFILE_ENV } from "./tool-schema-profile.ts";
 import { TOOL_LIMIT_ENV } from "./tool-count-limit.ts";
 
 const ENTRY = join(dirname(fileURLToPath(import.meta.url)), "connector-proxy.ts");
+/** What the bridge lists when the connected-apps service does not answer discovery. */
+const SERVICE_TOOLS = ["COMPOSIO_SEARCH_TOOLS", "COMPOSIO_GET_TOOL_SCHEMAS", "COMPOSIO_MULTI_EXECUTE_TOOL", "COMPOSIO_MANAGE_CONNECTIONS"];
 let child: ChildProcessWithoutNullStreams | null = null;
 let server: Server | null = null;
 
@@ -367,14 +369,61 @@ describe("connector MCP bridge", () => {
     expect(reply.result.tools).toEqual([{ name: "COMPOSIO_MANAGE_CONNECTIONS" }]);
   });
 
-  it("returns a JSON-RPC error, not a tools result, when a non-call relay fails", async () => {
+  it("lists the service's own tools when discovery is out, and sends their calls on", async () => {
+    let offline = true;
+    const calls: string[] = [];
+    const upstream = await listen((request, response) => {
+      let body = "";
+      request.on("data", (chunk) => { body += chunk; });
+      request.on("end", () => {
+        const rpc = JSON.parse(body);
+        if (offline) {
+          response.writeHead(503, { "content-type": "application/json" });
+          return response.end(JSON.stringify({ error: "connected apps are busy" }));
+        }
+        calls.push(rpc.params?.name);
+        response.writeHead(200, { "content-type": "application/json" });
+        response.end(JSON.stringify({ jsonrpc: "2.0", id: rpc.id, result: { content: [{ type: "text", text: "GOOGLESHEETS_BATCH_GET" }] } }));
+      });
+    });
+    const lines = start({ OMB_CONNECTOR_UPSTREAM_URL: upstream });
+    const ask = async (id: number, method: string, params = {}) => {
+      child!.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", id, method, params })}\n`);
+      return nextJson(lines);
+    };
+    const listed = (await ask(1, "tools/list")).result.tools.map((tool: { name: string }) => tool.name);
+    expect(listed).toEqual(SERVICE_TOOLS);
+    offline = false;
+    const found = await ask(2, "tools/call", { name: "COMPOSIO_SEARCH_TOOLS", arguments: { queries: [{ use_case: "read a Google Sheet" }] } });
+    expect(found.result.content[0].text).toBe("GOOGLESHEETS_BATCH_GET");
+    expect(calls).toEqual(["COMPOSIO_SEARCH_TOOLS"]);
+  });
+
+  it.each([
+    ["an HTTP refusal", 403, { error: "connected apps are not enabled for this bot" }],
+    ["a refusal answered as a result", 200, { jsonrpc: "2.0", id: 8, result: { content: [{ type: "text", text: "Only the member's own turn may use this." }], isError: true } }],
+  ])("lists nothing, once, after %s of the tool list", async (_case, status, body) => {
+    let listings = 0;
+    const upstream = await listen((request, response) => {
+      request.resume();
+      listings += 1;
+      response.writeHead(status, { "content-type": "application/json" });
+      response.end(JSON.stringify(body));
+    });
+    const lines = start({ OMB_CONNECTOR_UPSTREAM_URL: upstream });
+    child!.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", id: 8, method: "tools/list" })}\n`);
+    expect(await nextJson(lines)).toEqual({ jsonrpc: "2.0", id: 8, result: { tools: [] } });
+    expect(listings).toBe(1);
+  });
+
+  it("keeps the MCP server available when connected apps are not configured", async () => {
     const lines = start({});
     child!.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", id: 3, method: "tools/list", params: {} })}\n`);
     const reply = await nextJson(lines);
     expect(reply).toEqual({
       jsonrpc: "2.0",
       id: 3,
-      error: { code: -32000, message: "connected apps are unavailable" },
+      result: { tools: [] },
     });
   });
 

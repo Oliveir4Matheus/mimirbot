@@ -2,7 +2,6 @@
 import { spawn } from "node:child_process";
 import { mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { createInterface } from "node:readline";
 import { allowsTool, parseToolScope, type ToolScope } from "../shared/tool-scope.ts";
 
 import { bridgedCallTarget } from "./drivers/agents-bridge.ts";
@@ -13,6 +12,7 @@ import { QUERY_TOOL, QUERY_TOOL_NAME, ResultStore, answerQuery, describeShape, e
 import { fitToolList } from "./mcp-tool-schema.ts";
 import { DEFAULT_RESULT_BUDGET, type HeldResult, trimResultText, trimStructured } from "./mcp-trim.ts";
 import { killCliTree } from "./procs.ts";
+import { readStdioLines } from "./stdio-lines.ts";
 import { toolSchemaProfileFromEnv } from "./tool-schema-profile.ts";
 import { capToolListResult, toolLimitFromEnv } from "./tool-count-limit.ts";
 
@@ -264,7 +264,7 @@ function callTarget(name: string, args: unknown): string | undefined {
 /** JSON-RPC string and numeric IDs are separate, even when their text is equal. */
 const pending = new Map<string, Pending>();
 
-createInterface({ input: process.stdin }).on("line", (line) => {
+readStdioLines(process.stdin, (line) => {
   let message: Json | undefined;
   if (line.trim()) {
     try {
@@ -325,7 +325,7 @@ createInterface({ input: process.stdin }).on("line", (line) => {
 });
 process.stdin.on("end", () => child.stdin.end());
 
-createInterface({ input: child.stdout }).on("line", (line) => {
+readStdioLines(child.stdout, (line) => {
   if (!line.trim()) return;
   let message: Json | undefined;
   try {

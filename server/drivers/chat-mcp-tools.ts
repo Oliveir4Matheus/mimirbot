@@ -323,7 +323,9 @@ function omitBlankDefaults(builtInBrowser: boolean, tool: string, args: unknown)
 
 type CheckedTool = { tool: Record<string, unknown> & { name: string; inputSchema: Record<string, unknown> }; schema: ValidateFunction; check: ServerToolCheck };
 type ToolOrigin = Omit<RegisteredTool, "name" | "schema">;
-const ARGUMENTS_MISFIT = "Tool arguments do not match the advertised input schema; use its required fields and types";
+const ARGUMENTS_MISFIT = (tool: string, problems: readonly string[]): string =>
+  `Tool arguments do not match the advertised input schema: ${tool}: ${problems.join("; ") || "use its required fields and types"}.`;
+const ARGUMENTS_NOT_OBJECT = "arguments must be an object";
 
 function checkedTools(tools: readonly unknown[], server: string): CheckedTool[] {
   const names = new Set<string>();
@@ -582,14 +584,17 @@ export async function mountChatTools(integrations: SendTurnInput["integrations"]
     if (listedAs) {
       const call = listedAs === CALL_TOOL ? searchedCall(args) : undefined;
       if (call && selectionExcludes(call.tool, call.args)) throw new Error("Tool selection excludes this tool");
-      if (!object(args)) throw new Error(ARGUMENTS_MISFIT);
+      if (!object(args)) throw new Error(ARGUMENTS_MISFIT(name, [ARGUMENTS_NOT_OBJECT]));
       return;
     }
     const tool = registered.get(name);
     if (!tool) throw new Error("The requested tool was not advertised for this turn");
     if (selectionExcludes(tool, args)) throw new Error("Tool selection excludes this tool");
     omitBlankDefaults(tool.builtInBrowser, tool.name, args);
-    if (!object(args) || (!(tool.searched && isDirectoryTool(tool.name)) && !tool.schema(args))) throw new Error(ARGUMENTS_MISFIT);
+    if (!object(args) || (!(tool.searched && isDirectoryTool(tool.name)) && !tool.schema(args))) {
+      const problems = object(args) ? schemaProblems(tool.schema.errors) : [ARGUMENTS_NOT_OBJECT];
+      throw new Error(ARGUMENTS_MISFIT(name, problems));
+    }
   };
   const viewOf = (tool: RegisteredTool, args: Record<string, unknown>, title: string): ChatToolCallView => {
     const runs = target(tool, args);

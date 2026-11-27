@@ -207,6 +207,7 @@ export class AppTriggerManager {
   private abort = new AbortController();
   private nextReconcileAt = 0;
   private loop: Promise<void> | null = null;
+  private runVersion = 0;
   /** A deleted automation's service copy could not be removed yet; reconciliation removes it. */
   private releasePending = false;
 
@@ -270,9 +271,6 @@ export class AppTriggerManager {
     const account = await this.resolveAccount(app, input.account);
     const filter = cleanFilter(input.filter);
     const config = triggerConfig(type, input.config ?? {}, filter);
-    const duplicate = this.triggers.find((trigger) => trigger.enabled && trigger.botId === input.botId && trigger.event === type.slug &&
-      trigger.accountId === account.id && trigger.prompt === prompt && JSON.stringify(trigger.config) === JSON.stringify(config));
-    if (duplicate) throw new AppTriggerError(`The same automation already exists (${duplicate.id}). Use trigger_info to review it, then change that one instead.`, 409);
     const now = this.now();
     const trigger: StoredTrigger = {
       id: input.id ?? randomUUID(), name, prompt, botId: input.botId, runOn: input.runOn ?? "maus", enabled: input.enabled ?? true,
@@ -282,9 +280,13 @@ export class AppTriggerManager {
       received: 0, filtered: 0, createdAt: now, updatedAt: now,
     };
     await this.exclusive(async () => {
+      if (this.triggers.some((candidate) => candidate.id === trigger.id)) throw new AppTriggerError("An automation with this id already exists.", 409);
+      const duplicate = this.triggers.find((trigger) => trigger.enabled && trigger.botId === input.botId && trigger.event === type.slug &&
+        trigger.accountId === account.id && trigger.prompt === prompt && JSON.stringify(trigger.config) === JSON.stringify(config));
+      if (duplicate) throw new AppTriggerError(`The same automation already exists (${duplicate.id}). Use trigger_info to review it, then change that one instead.`, 409);
       try {
         await this.bind(trigger);
-        if (!trigger.enabled) await this.applyEnabled(trigger.remote.triggerId);
+        await this.applyEnabled(trigger.remote.triggerId, trigger.enabled);
       } catch (error) {
         // Composio refused this config: nothing to save. Anything else is retried by reconciliation.
         if (error instanceof BrokerError && !error.transient && error.status !== 403) throw new AppTriggerError(error.message, 400);
@@ -305,8 +307,16 @@ export class AppTriggerManager {
     if (this.triggers.some((candidate) => candidate.id === record.id)) {
       return (await this.update(record.id, { name: record.name, prompt: record.prompt, runOn: record.runOn, filter: record.filter ?? null, config }))!;
     }
-    return this.create({ id: record.id, botId: record.botId, name: record.name, prompt: record.prompt, app: record.app, event: record.event, account: record.accountId,
-      ...(record.filter ? { filter: record.filter } : {}), config, runOn: record.runOn, enabled: false, ...(record.sourceThreadId ? { sourceThreadId: record.sourceThreadId } : {}) });
+    try {
+      return await this.create({ id: record.id, botId: record.botId, name: record.name, prompt: record.prompt, app: record.app, event: record.event, account: record.accountId,
+        ...(record.filter ? { filter: record.filter } : {}), config, runOn: record.runOn, enabled: false, ...(record.sourceThreadId ? { sourceThreadId: record.sourceThreadId } : {}) });
+    } catch (error) {
+      // Another copy of the same move may have completed while this one validated its account and event.
+      if (error instanceof AppTriggerError && error.status === 409 && this.triggers.some((candidate) => candidate.id === record.id)) {
+        return (await this.update(record.id, { name: record.name, prompt: record.prompt, runOn: record.runOn, filter: record.filter ?? null, config }))!;
+      }
+      throw error;
+    }
   }
 
   async update(id: string, patch: AppTriggerPatch): Promise<AppTrigger | null> {
@@ -382,20 +392,20 @@ export class AppTriggerManager {
   /** Brings back one deleted in the last week, with its settings; the service copy is made again. */
   async restore(id: string): Promise<AppTrigger | null> {
     this.assertWritable();
-    const entry = this.deleted.find((candidate) => candidate.trigger.id === id && candidate.at >= this.now() - RESTORE_WINDOW_MS);
-    if (!entry || this.triggers.some((trigger) => trigger.id === id)) return null;
-    if (this.options.botState(entry.trigger.botId) === "missing") throw new AppTriggerError("The assigned bot no longer exists.", 410);
-    const trigger: StoredTrigger = { ...structuredClone(entry.trigger), remote: { state: "pending" }, updatedAt: this.now() };
-    await this.exclusive(async () => {
-      try { await this.bind(trigger); await this.applyEnabled(trigger.remote.triggerId); }
+    return this.exclusive(async () => {
+      const entry = this.deleted.find((candidate) => candidate.trigger.id === id && candidate.at >= this.now() - RESTORE_WINDOW_MS);
+      if (!entry || this.triggers.some((trigger) => trigger.id === id)) return null;
+      if (this.options.botState(entry.trigger.botId) === "missing") throw new AppTriggerError("The assigned bot no longer exists.", 410);
+      const trigger: StoredTrigger = { ...structuredClone(entry.trigger), remote: { state: "pending" }, updatedAt: this.now() };
+      try { await this.bind(trigger); await this.applyEnabled(trigger.remote.triggerId, trigger.enabled); }
       catch (error) { this.markRemoteFailure(trigger, error); }
       this.deleted = this.deleted.filter((candidate) => candidate !== entry);
       this.triggers.unshift(trigger);
       this.save();
+      this.emitTrigger(trigger);
+      this.wake();
+      return publicTrigger(trigger);
     });
-    this.emitTrigger(trigger);
-    this.wake();
-    return publicTrigger(trigger);
   }
 
   /** A test event marked as one, sent through the service's real queue when the automation has its copy there. */
@@ -425,14 +435,16 @@ export class AppTriggerManager {
     this.stopped = false;
     this.abort = new AbortController();
     this.nextReconcileAt = 0;
-    this.loop = this.run().catch((error) => this.log(`app events stopped: ${error instanceof Error ? error.message : String(error)}`));
+    this.loop = this.run(++this.runVersion).catch((error) => this.log(`app events stopped: ${error instanceof Error ? error.message : String(error)}`));
   }
 
   async stop(): Promise<void> {
+    const loop = this.loop;
     this.stopped = true;
+    this.runVersion += 1;
     this.abort.abort();
-    await this.loop;
-    this.loop = null;
+    await loop;
+    if (this.loop === loop) this.loop = null;
   }
 
   /** Cuts the current wait short: a trigger changed, or access to the service arrived. */
@@ -526,9 +538,9 @@ export class AppTriggerManager {
     }
   }
 
-  private async run(): Promise<void> {
+  private async run(version: number): Promise<void> {
     let failures = 0;
-    while (!this.stopped) {
+    while (!this.stopped && version === this.runVersion) {
       const signal = this.abort.signal;
       try {
         if (this.options.service().available && this.now() >= this.nextReconcileAt && (this.triggers.length > 0 || this.releasePending)) {
@@ -538,6 +550,7 @@ export class AppTriggerManager {
             this.log(`reconciliation failed: ${error instanceof Error ? error.message : String(error)}`);
           });
         }
+        if (this.stopped || version !== this.runVersion) break;
         if (!this.pollable()) {
           await this.sleep(IDLE_CHECK_MS, signal);
           continue;
@@ -545,10 +558,10 @@ export class AppTriggerManager {
         await this.pollOnce(signal);
         failures = 0;
       } catch (error) {
-        if (this.stopped) break;
+        if (this.stopped || version !== this.runVersion) break;
         if (signal.aborted) continue;
         failures += 1;
-        const retry = error instanceof BrokerError && error.status === 409 && error.retryAfterS ? error.retryAfterS * 1000 : 0;
+        const retry = error instanceof BrokerError && (error.status === 409 || error.transient) && error.retryAfterS ? error.retryAfterS * 1000 : 0;
         await this.sleep(retry || Math.min(60_000, 1_000 * 2 ** Math.min(failures, 6)), this.abort.signal);
       }
     }
@@ -557,6 +570,7 @@ export class AppTriggerManager {
   /** One long-poll: acks everything handled so far (the cursor) and handles what comes back. */
   async pollOnce(signal?: AbortSignal, waitS = POLL_WAIT_S): Promise<number> {
     const { events, cursor } = await this.options.broker.poll({ after: this.cursor, waitS, poller: this.pollerId, signal });
+    if (signal?.aborted) return 0;
     if (events.length || cursor > this.cursor) this.receive(events, cursor);
     return events.length;
   }
@@ -676,12 +690,17 @@ export class AppTriggerManager {
 
   /** Several automations with the same settings share one service copy; it goes only when the last one does. */
   private async release(triggerId: string | undefined): Promise<void> {
-    if (!triggerId || this.triggers.some((trigger) => trigger.remote.triggerId === triggerId)) return;
+    if (!triggerId) return;
+    if (this.triggers.some((trigger) => trigger.remote.triggerId === triggerId)) {
+      await this.applyEnabled(triggerId);
+      return;
+    }
     await this.options.broker.remove(triggerId);
   }
 
-  private async applyEnabled(triggerId: string | undefined): Promise<void> {
-    if (triggerId) await this.options.broker.setEnabled(triggerId, this.wantsEnabled(triggerId));
+  /** A new or restored automation is not in this.triggers yet when its binding is configured. */
+  private async applyEnabled(triggerId: string | undefined, alsoEnabled = false): Promise<void> {
+    if (triggerId) await this.options.broker.setEnabled(triggerId, alsoEnabled || this.wantsEnabled(triggerId));
   }
 
   private wantsEnabled(triggerId: string): boolean {
