@@ -1,7 +1,7 @@
 import { t } from "./i18n";
 
 export interface FeatureFlagConfig {
-  features?: { skillAuthoring?: boolean; skillReview?: boolean; skillReviewSteps?: number; showToolCalls?: boolean; browser?: boolean; sharedComputers?: boolean; claudeUserMcp?: boolean; claudeUserSkills?: boolean; llmThreadTitles?: boolean; skillsLibrary?: boolean; shareLearnedSkills?: "off" | "ask" | "auto"; roomMemoryCapture?: boolean; savedSteps?: boolean; savedStepsHere?: boolean };
+  features?: { skillAuthoring?: boolean; skillReview?: boolean; skillReviewSteps?: number; showToolCalls?: boolean; browser?: boolean; sharedComputers?: boolean; claudeUserMcp?: boolean; claudeUserSkills?: boolean; llmThreadTitles?: boolean; skillsLibrary?: boolean; shareLearnedSkills?: "off" | "ask" | "auto"; roomMemoryCapture?: boolean; savedSteps?: boolean; savedStepsHere?: boolean; skillBurger?: boolean };
   browserEngine?: { kind: "engine" | "unavailable"; reason?: string; installable?: boolean; installing?: boolean; installError?: string };
 }
 
@@ -96,4 +96,9 @@ export function savedStepsEnabled(config: FeatureFlagConfig | null | undefined):
 /** The server can run saved steps (a Mac, not Windows or a Cloud home); unsaid counts as no. */
 export function savedStepsHere(config: FeatureFlagConfig | null | undefined): boolean {
   return config?.features?.savedStepsHere === true;
+}
+
+/** The chat's run card can save a run as a Skill Burger, and the bot panel lists saved ones. On unless false. */
+export function skillBurgerEnabled(config: FeatureFlagConfig | null | undefined): boolean {
+  return config?.features?.skillBurger !== false;
 }

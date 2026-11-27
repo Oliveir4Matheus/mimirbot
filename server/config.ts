@@ -258,6 +258,8 @@ const featureConfigSchema = z.object({
   /** A teammate parked on a gate only the person can lift is reported to its Chief of Staff. Off unless true. */
   chiefEscalations: z.boolean().optional(),
   acpPlanLines: z.boolean().optional(), // An ACP agent's plan as activity lines. Off unless true.
+  /** The chat's run card can save commands and file writes as a reusable skill, and the bot panel lists them. On unless false. */
+  skillBurger: z.boolean().optional(),
 }).extend({ agentsToolBridge: z.boolean().optional(), savedSteps: z.boolean().optional() }); // agentsToolBridge: the find_tool / use_tool bridge, off unless true; savedSteps: repeat a computer task from its saved steps, on unless false
 const onboardingConfigSchema = z.object({
   completedAt: z.string().trim().max(40).optional(),

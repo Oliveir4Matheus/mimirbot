@@ -48,7 +48,7 @@ import { isProviderSafetyBlock, PROVIDER_SAFETY_GUIDANCE, PROVIDER_SAFETY_HELP_U
 import { isCancelledTranscriptRow } from "../../shared/client-cancel";
 import { BotAvatar } from "./Avatar";
 import { TurnPresence } from "./TurnPresence";
-import { showToolCallsEnabled, skillAuthoringEnabled } from "@/lib/feature-flags";
+import { showToolCallsEnabled, skillAuthoringEnabled, skillBurgerEnabled } from "@/lib/feature-flags";
 import { normalizeState } from "@/lib/mascot";
 import { peerLine, peerRequest, type PeerLine } from "@/lib/peer-message";
 import { showWorkingDots } from "@/lib/turn-tail";
@@ -62,6 +62,7 @@ import { ThreadChip } from "./ThreadChip";
 import { HandoffChip } from "./HandoffReply";
 import { NewConversationInstead } from "./NewConversationInstead";
 import { VerifyCard } from "./VerifyCard";
+import { SkillBurgerSlot } from "./skill-burger/SkillBurgerSlot";
 import { askText, runSkill, runSteps, runSummary, showRun, skillPrompt } from "@/lib/verify-steps";
 import { useShowRunCard } from "@/lib/run-card-preferences";
 import { sendsMessage, useSendKey } from "@/lib/send-key";
@@ -877,8 +878,11 @@ export function ChatView({ bot: profile }: { bot: Bot }) {
   const canSaveRun =
     skillAuthoringEnabled(state.config) && engineSupportsAgents && recordedRunCounts.passed > 0 && recordedRunCounts.running === 0 && recordedRunCounts.unverified === 0 && !bot.busy;
   const [runDismissed, setRunDismissed] = useState<ReadonlyMap<string, string>>(() => new Map());
+  const [burgerShown, setBurgerShown] = useState(false);
   const lastRunStep = recordedRun.at(-1);
   const showRunCard = useShowRunCard();
+  const burgerEnabled = skillBurgerEnabled(state.config) && showRunCard;
+  useEffect(() => { if (!burgerEnabled) setBurgerShown(false); }, [burgerEnabled]);
 
   const {
     scrollRef,
@@ -1209,7 +1213,19 @@ export function ChatView({ bot: profile }: { bot: Bot }) {
       <TranscriptAnnouncer threadKey={transcriptKey} snapshot={announcement} />
 
       <div ref={composerDockRef} className="pointer-events-none absolute inset-x-0 bottom-0 z-[2] chat-column-dock">
-      {lastRunStep && showRun(recordedRun) && showRunCard && runDismissed.get(transcriptKey) !== lastRunStep.id && (
+      {burgerEnabled && (
+        <SkillBurgerSlot
+          botId={bot.id}
+          threadId={bot.threadId}
+          busy={busy}
+          canSave={canWrite !== false && !busy}
+          messages={messages}
+          liveTools={liveTools}
+          transcriptKey={transcriptKey}
+          onShownChange={setBurgerShown}
+        />
+      )}
+      {lastRunStep && showRun(recordedRun) && showRunCard && !burgerShown && runDismissed.get(transcriptKey) !== lastRunStep.id && (
         <div className="flex justify-end px-5 pb-2">
           <VerifyCard
             key={transcriptKey}

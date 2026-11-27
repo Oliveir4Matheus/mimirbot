@@ -669,6 +669,7 @@ describe("agents-proxy MCP surface", () => {
       "add_mcp_server",
       "list_workflows",
       "run_workflow",
+      "run_saved_workflow",
       "workflow_status",
       "cancel_workflow",
       "propose_workflow",

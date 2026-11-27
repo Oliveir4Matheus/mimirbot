@@ -289,6 +289,29 @@ export async function callTool(called: string, input: Json, context: ToolCallCon
     const total = Array.isArray(run.steps) ? run.steps.length : 0;
     return { text: `Started Workflow run ${String(run.id ?? "?")}: step 1 of ${total || "?"}. The engine runs the steps and verifies their files; use workflow_status with this run id to follow it.` };
   }
+  if (name === "run_saved_workflow") {
+    const saved = String(args.name ?? "").trim();
+    if (!saved) return { text: "run_saved_workflow needs the saved skill's name.", isError: true };
+    const { ok, status, body } = await apiResponse("/api/internal/skill-burgers/run", {
+      method: "POST",
+      body: JSON.stringify({ name: saved, ...(jsonRecord(args.args) ? { args: args.args } : {}) }),
+    });
+    if (!ok) {
+      return { text: status === 404 ? "No saved skill has that name. Read the skills index for the names you can run." : String(body.error ?? `HTTP ${status}`), isError: true };
+    }
+    const steps = Array.isArray(body.steps) ? body.steps.filter(jsonRecord) : [];
+    const lines = steps.map((step) => {
+      const mark = step.state === "done" ? "✓" : step.state === "failed" ? "✕" : "–";
+      const error = typeof step.error === "string" && step.error ? `: ${step.error}` : "";
+      return `${mark} ${String(step.label ?? step.id)}${error}`;
+    });
+    const output = typeof body.output === "string" ? body.output.replace(/\s+$/, "") : body.output === undefined ? "" : JSON.stringify(body.output);
+    const head = body.ok ? `Ran "${saved}" without AI (${steps.length} step${steps.length === 1 ? "" : "s"}).` : `"${saved}" stopped at a failed step. Nothing after it ran.`;
+    return {
+      text: [head, ...lines, ...(output ? ["", "Result:", output.slice(-4_000)] : [])].join("\n"),
+      ...(body.ok ? {} : { isError: true }),
+    };
+  }
   if (name === "workflow_status") {
     const id = String(args.run_id ?? "").trim();
     if (!id) return { text: "workflow_status needs run_id from run_workflow.", isError: true };

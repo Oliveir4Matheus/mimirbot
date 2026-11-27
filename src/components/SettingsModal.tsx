@@ -68,6 +68,7 @@ import { parseSendKey, SEND_KEYS, sendKeyLabel, setSendKey, useSendKey } from "@
 import { effectiveLanguage, setLanguageChoice, useLanguageChoice } from "@/lib/language-preference";
 import { Select } from "./Select";
 import { SavedStepsRow } from "./SavedStepsRow";
+import { SkillBurgerRow } from "./SkillBurgerRow";
 
 // labelKey, not a label: t() reads the active pack when called, so a label resolved at module scope would freeze the
 // boot language.
@@ -714,6 +715,7 @@ export function SettingsModal() {
             <OpenAtLoginRow />
             <NewBotEffortRow />
             <SavedStepsRow />
+            <SkillBurgerRow />
             <AnalyticsRow />
             <DefaultBotSettings />
 

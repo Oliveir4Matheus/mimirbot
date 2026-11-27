@@ -898,6 +898,19 @@ const TOOL_DEFINITIONS = [
     },
   },
   {
+    name: "run_saved_workflow",
+    description: "Run a Skill Burger: a run the person saved as a skill from chat. Its recorded shell commands and file writes repeat in this conversation's folder, without an AI, in order. This is not a Workflow (list_workflows); it has no Workflow id. Stops at the first failed step.",
+    inputSchema: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        name: { type: "string", minLength: 1, maxLength: 64, description: "The saved skill's name, as its skills index lists it." },
+        args: { type: "object", additionalProperties: true, description: "Values for the saved args the person's request supplies; omit ones whose default fits." },
+      },
+      required: ["name"],
+    },
+  },
+  {
     name: "workflow_status",
     description: "Show a run's current step, each step's status and verified outputs, what a paused run waits for, the comparison a condition took, and why it failed.",
     inputSchema: {
