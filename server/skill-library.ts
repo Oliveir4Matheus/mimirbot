@@ -223,6 +223,21 @@ export function librarySkillFilePath(name: string, root: string = skillsLibraryR
   return join(root, "skills", name, "SKILL.md");
 }
 
+/** The only supporting file a library skill may carry: a saved workflow's exact steps. */
+export const LIBRARY_SKILL_FILE = "workflow.json";
+export const LIBRARY_FILE_MAX_BYTES = 256 * 1024;
+
+/** One supporting file stored beside SKILL.md, read back by its exact name. */
+export function librarySkillFile(name: string, file: string, root: string = skillsLibraryRoot()): string | null {
+  if (!isSkillName(name) || file !== LIBRARY_SKILL_FILE) return null;
+  if (!readSkillLibraryIndex(root)[name]) return null;
+  try {
+    return readFileSync(join(librarySkillDirectory(root, name), file), "utf8");
+  } catch {
+    return null;
+  }
+}
+
 export function libraryArchiveDirectory(root: string, botId: string, name: string): string {
   return join(root, "archive", botId, name);
 }
@@ -324,12 +339,20 @@ export function installLibrarySkill(input: {
   warnings?: string[];
   reviewState?: LibraryReviewState;
   package?: SkillPackageStamp;
+  /** Supporting files written beside SKILL.md; only a saved workflow's workflow.json. */
+  files?: Array<{ path: string; content: string }>;
   root?: string;
 }): LibrarySkillListing | { error: string } {
   const root = input.root ?? skillsLibraryRoot();
   if (!isSkillName(input.name)) return { error: "invalid skill name" };
   if (Buffer.byteLength(input.instructions, "utf8") > SKILL_FILE_MAX_BYTES) {
     return { error: `SKILL.md is larger than ${SKILL_FILE_MAX_BYTES / 1024}KB` };
+  }
+  for (const file of input.files ?? []) {
+    if (file.path !== LIBRARY_SKILL_FILE) return { error: `a library skill carries only ${LIBRARY_SKILL_FILE} beside SKILL.md` };
+    if (Buffer.byteLength(file.content, "utf8") > LIBRARY_FILE_MAX_BYTES) {
+      return { error: `${file.path} is larger than ${LIBRARY_FILE_MAX_BYTES / 1024}KB` };
+    }
   }
   const parsed = parseSkillMd(input.instructions);
   if ("error" in parsed) return parsed;
@@ -361,6 +384,9 @@ export function installLibrarySkill(input: {
   // Bytes first, index second: the index is the commit point, so a crash leaves unreferenced bytes, never a dangling entry.
   mkdirSync(librarySkillDirectory(root, input.name), { recursive: true, mode: 0o700 });
   writeFileAtomic(join(librarySkillDirectory(root, input.name), "SKILL.md"), input.instructions, { mode: 0o600 });
+  for (const file of input.files ?? []) {
+    writeFileAtomic(join(librarySkillDirectory(root, input.name), file.path), file.content, { mode: 0o600 });
+  }
   index[input.name] = entry;
   writeSkillLibraryIndex(root, index);
   skillLibraryEvents.emit("invalidate", { kind: "install", name: input.name });

@@ -2,7 +2,7 @@ import { useState, type ReactNode } from "react";
 import { FolderOpen, Plus } from "lucide-react";
 
 import { appSwitchPatch } from "@/lib/bot-app-access";
-import { skillsLibraryEnabled } from "@/lib/feature-flags";
+import { skillBurgerEnabled, skillsLibraryEnabled } from "@/lib/feature-flags";
 import { t } from "@/lib/i18n";
 import { MEMORY_INDEX, saveMemoryDoc } from "@/lib/memory";
 import { openExternalLink } from "@/lib/app-links";
@@ -18,6 +18,7 @@ import { SkillReviewDialog, useManagedSkills, type ManagedSkill } from "../bot-s
 import { useBotApps, type BotApp } from "../bot-settings/useBotApps";
 import type { useBotSettingsDerived } from "../bot-settings/useBotSettingsDerived";
 import { RoutineList } from "../routines/RoutineList";
+import { SavedWorkflowsCard } from "../skill-burger/SavedWorkflowsCard";
 import { BrowserLogins } from "./browser-logins";
 import { useOpenComputer } from "./ComputerTab";
 import { memoryNotes, withMemoryNote, withoutMemoryNote } from "./memory-notes";
@@ -283,6 +284,7 @@ export function SkillsPage({ bot }: PageContext) {
         />
         <LinkRow data-panel-link="browse-skills" onClick={browse}>{t("botPanel.skills.browse")}</LinkRow>
       </Card>
+      {skillBurgerEnabled(state.config) && <SavedWorkflowsCard botId={bot.id} threadId={bot.threadId} />}
       {skills.reviewing && (
         <SkillReviewDialog
           skill={skills.reviewing.skill}

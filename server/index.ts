@@ -2,7 +2,7 @@
 import { BOOT_CLOUD_SECRETS } from "./cloud-secrets-boot.ts";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
-import { existsSync, realpathSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, realpathSync, rmSync } from "node:fs";
 import { homedir } from "node:os";
 import { rm as removeDirectory } from "node:fs/promises";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
@@ -390,6 +390,7 @@ import {
 import { fetchSkillFromSource } from "./skill-fetch.ts";
 import { ensureTaskWorkspaceWithSkills } from "./skill-task-links.ts";
 import { parseSkillManageReferences, previousSkillVersion, skillCardCopy, skillRequestReferences } from "./skill-request-card.ts";
+import { createSkillBurgerInternalRoutes, createSkillBurgerRoutes } from "./skill-burger/routes.ts";
 import { skillReferencesSha256 } from "./skill-storage.ts";
 import { createSkillsLibraryHost } from "./host/skills-library.ts";
 import { skillExport } from "./skill-export.ts";
@@ -2962,6 +2963,18 @@ const notifyWorkflowHold = createWorkflowHoldNotifier({
 ROUTES.push(workflows.routes);
 ROUTES.push(workflows.proposalRoutes);
 ROUTES.push(createWorkflowTriggerRoutes({ triggers: workflowTriggerManager }));
+const skillBurgerRouteDeps = {
+  messages: (threadId: string) => store.activePath(threadId),
+  owns: (botId: string, threadId: string) => Boolean(store.taskByThread(botId, threadId) || store.bot(botId)?.threadId === threadId),
+  /** The folder this conversation's turns run in, as the skills host pins it; created before a saved step runs. */
+  folder: (botId: string, threadId: string) => {
+    const folder = store.taskByThread(botId, threadId)?.cwd ?? store.bot(botId)?.cwd ?? join(TASK_WORKSPACES_DIR, botId, threadId);
+    mkdirSync(folder, { recursive: true, mode: 0o700 });
+    return folder;
+  },
+};
+ROUTES.push(createSkillBurgerRoutes(skillBurgerRouteDeps));
+const skillBurgerInternal = createSkillBurgerInternalRoutes(skillBurgerRouteDeps);
 const { cloudLendingTurn, cloudLendingRefusalNotice, cloudLendingRefusal, cloudThreadStarters, cloudLendingView, cloudReportFromOthers, roomTurnStarted, roomTurnEnded } = createCloudLendingTurns({
   store, cloudHome: CLOUD_HOME !== null, directRequest: (threadId) => directRequestOwners.get(threadId), threadStarter: (threadId) => threadStarters.get(threadId),
   ownerPerson: cloudProvenOwnerPerson, cardAnswerer: cloudCardAnswerer, activeRoutineRun: activeRoutineRunForThread, ownerStartedRun: (runId) => ownerStartedRoutineRuns.has(runId),
@@ -13548,6 +13561,7 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
       };
       if (await workflows.proposalInternal({ method, path, res, json, readBody: readInternalBody, botId: internalSender.id, threadId: internalCapability.threadId, department: internalSender.section?.trim() || "General" }) !== PASS) return;
       if (await workflows.internal({ method, path, res, json, readBody: readInternalBody, botId: internalSender.id, threadId: internalCapability.threadId }) !== PASS) return;
+      if (await skillBurgerInternal({ method, path, res, json, readBody: readInternalBody, botId: internalSender.id, threadId: internalCapability.threadId }) !== PASS) return;
       const botFolders = async () => ({ roots: messageFileRootsForThread(internalSender.id, internalCapability.threadId).filter((root) => root !== ATTACHMENTS_DIR), vmWorkspace: (await attachmentVmForTurn(internalCapability))?.workspaceDir ?? null }); if (await internalToolRoutes({ method, path, res, json, botId: internalSender.id, readBody: readInternalBody, folders: botFolders }) !== PASS || await waitRoutes({ method, path, res, json, botId: internalSender.id, threadId: internalCapability.threadId, readBody: readInternalBody, ...waitTurnChecks(internalCapability, internalSender) }) !== PASS) return; const pagesCall = new AbortController(); res.once("close", () => { if (!res.writableEnded) pagesCall.abort(); }); if (await publishedPages.internal({ method, path, res, json, botId: internalSender.id, threadId: internalCapability.threadId, readBody: readInternalBody, requireActive: requireActiveInternalCapability, signal: pagesCall.signal, folders: botFolders, post: (text, publishedPage, bundle) => { const source = connectorThread(internalSender.id, internalCapability.threadId); return !source ? null : (!source.group && bundle && publishedPages.show({ threadId: internalCapability.threadId, card: publishedPage, bundle })) || store.appendMessage(internalCapability.threadId, { role: "bot", kind: "text", text, publishedPage, ...(source.group ? { from: { botId: internalSender.id, name: internalSender.name, color: internalSender.color } } : {}) }).id; } }) !== PASS) return;
       const delegatedThisTurn = (taskId: string) => {
         (internalCapability.delegatedThisTurn ??= new Set()).add(taskId);
