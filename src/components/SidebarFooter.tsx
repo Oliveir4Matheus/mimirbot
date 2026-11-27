@@ -15,6 +15,8 @@ export function SidebarFooter({ density, toolsCollapsed, onToggleTools }: { dens
       <SidebarFooterNav density={density} collapsed={toolsCollapsed} onToggleCollapsed={onToggleTools} />
       {density === "icons" ? (
         <>
+          <SidebarPublishedAppsButton />
+          <SidebarAppsButton />
           <SidebarPhoneButton density={density} onOpen={() => dispatch(phoneSettingsAction())} />
           <div className="flex flex-col items-center justify-center gap-1">
             <UpdateIndicator />
