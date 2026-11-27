@@ -62,7 +62,7 @@ describe.skipIf(process.platform === "win32")("Grok Build sign-in over HTTP", ()
     expect(await grok()).toMatchObject({
       driverKind: "grokAgent",
       snapshot: { state: "available", authenticated: false },
-      authentication: { method: "device-code", signOut: false },
+      authentication: { method: "device-code", signOut: true },
       install: { signInCommand: "grok login" },
     });
   });

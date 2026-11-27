@@ -185,7 +185,7 @@ describe("runs", () => {
       expect(statSync(join(store.stepFolder(run, index), "input")).isDirectory()).toBe(true);
       expect(statSync(join(store.stepFolder(run, index), "output")).isDirectory()).toBe(true);
     }
-    expect(statSync(join(dir, "run.json")).mode & 0o777).toBe(0o600);
+    if (process.platform !== "win32") expect(statSync(join(dir, "run.json")).mode & 0o777).toBe(0o600);
     expect(store.readRun(run.id)).toEqual(run);
     expect(store.listRuns().map((entry) => entry.id)).toEqual([run.id]);
   });

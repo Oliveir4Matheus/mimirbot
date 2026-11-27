@@ -6,6 +6,7 @@ import { proposalPreview, type ProposalPreviewStep } from "../../../shared/workf
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/cn";
 import { useCopyFeedback } from "@/lib/copy-text";
+import { Select } from "@/components/Select";
 import { authoringIssues, proposalErrorMessage, rehearsalIssues, type ProposalIssue } from "@/lib/proposal-errors";
 import { BotAvatar } from "./BotAvatar";
 
@@ -210,14 +211,15 @@ export function ProposalPreview({
               <div className="grid gap-2.5 sm:grid-cols-3">
                 <label className="block">
                   <span className="mb-1 block text-[9.5px] uppercase tracking-[0.06em] text-ink-tertiary">{t("workflows.proposals.recurring")}</span>
-                  <select
+                  <Select
                     value={answers.recurring ? "yes" : "no"}
                     onChange={(event) => setAnswers({ ...answers, recurring: event.target.value === "yes" })}
-                    className={cn(CONTROL, "min-h-[34px] text-[11.5px]")}
+                    className="mt-1 w-full"
+                    size="sm"
                   >
                     <option value="yes">{t("workflows.proposals.recurringYes")}</option>
                     <option value="no">{t("workflows.proposals.recurringNo")}</option>
-                  </select>
+                  </Select>
                 </label>
                 <label className="block">
                   <span className="mb-1 block text-[9.5px] uppercase tracking-[0.06em] text-ink-tertiary">{t("workflows.proposals.changes")}</span>

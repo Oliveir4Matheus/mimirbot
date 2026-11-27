@@ -81,12 +81,12 @@ describe("bot-first sidebar", () => {
   });
 
   it.each([
-    { advanced: true, enabled: true, density: "comfortable", size: 27, spacing: ["h-[43px]", "gap-[10px]", "pl-6", "pr-[30px]"] },
-    { advanced: true, enabled: true, density: "compact", size: 27, spacing: ["h-[43px]", "gap-[10px]", "pl-6", "pr-[30px]"] },
+    { advanced: true, enabled: true, density: "comfortable", size: 30, spacing: ["h-[43px]", "gap-[10px]", "pl-6", "pr-[30px]"] },
+    { advanced: true, enabled: true, density: "compact", size: 30, spacing: ["h-[43px]", "gap-[10px]", "pl-6", "pr-[30px]"] },
     { advanced: true, enabled: true, density: "icons", size: 44, spacing: ["justify-center", "px-1", "py-1.5"] },
-    { advanced: true, enabled: false, density: "comfortable", size: 27, spacing: ["h-[43px]", "gap-[10px]", "pl-[9px]", "pr-[30px]"] },
-    { advanced: false, enabled: false, density: "comfortable", size: 27, spacing: ["h-[43px]", "gap-[10px]", "pl-[9px]", "pr-[30px]"] },
-    { advanced: false, enabled: false, density: "compact", size: 27, spacing: ["h-[43px]", "gap-[10px]", "pl-[9px]", "pr-[30px]"] },
+    { advanced: true, enabled: false, density: "comfortable", size: 30, spacing: ["h-[43px]", "gap-[10px]", "pl-[9px]", "pr-[30px]"] },
+    { advanced: false, enabled: false, density: "comfortable", size: 30, spacing: ["h-[43px]", "gap-[10px]", "pl-[9px]", "pr-[30px]"] },
+    { advanced: false, enabled: false, density: "compact", size: 30, spacing: ["h-[43px]", "gap-[10px]", "pl-[9px]", "pr-[30px]"] },
     { advanced: false, enabled: false, density: "icons", size: 36, spacing: ["h-[43px]", "justify-center"] },
   ] as const)("sizes bot portraits and row spacing in $density density with threads $enabled (advanced $advanced)", ({ advanced, enabled, density, size, spacing }) => {
     fixture.advanced = advanced;

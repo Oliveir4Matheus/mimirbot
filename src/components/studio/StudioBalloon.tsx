@@ -437,8 +437,9 @@ export function StudioBalloon({ draft, step, branch, anchor, bots, scripts, skil
             )}
             {(step.kind === "bot" || step.kind === "script") && (
               <Field label={t("studio.step.mode")} help={t("studio.step.modeHelp")}>
+                <div className={manualMissing ? "studio-select-invalid" : undefined}>
                 <Select
-                  className={cn("w-full", manualMissing && "studio-select-invalid")}
+                  className="w-full"
                   size="sm"
                   value={step.mode}
                   data-studio-field="mode"
@@ -449,6 +450,7 @@ export function StudioBalloon({ draft, step, branch, anchor, bots, scripts, skil
                   <option value="auto">{t("studio.step.modeAuto")}</option>
                   <option value="manual">{t("studio.step.modeManual")}</option>
                 </Select>
+                </div>
               </Field>
             )}
             {(step.kind === "bot" || step.kind === "script") && manualMissing && (

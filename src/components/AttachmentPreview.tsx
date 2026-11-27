@@ -35,6 +35,7 @@ import { t } from "@/lib/i18n";
 import { CopyImageButton } from "./CopyImageButton";
 import { FilePreviewButton } from "./FilePreviewButton";
 import { FileChipSaveButton } from "./FileChipSaveButton";
+import { TableFileButton } from "./TableFilePreview";
 
 export interface PreviewImage {
   src: string;
@@ -931,6 +932,7 @@ export function AttachedFileChip({ file, message, linked = false, compact = fals
           <FileText size={14} className="shrink-0" aria-hidden="true" />
           <span className="min-w-0 flex-1 truncate text-ink">{file.name}</span>
         </FilePreviewButton>
+        <TableFileButton path={file.path} name={file.name} message={message} />
         <FileChipSaveButton name={file.name} state={save.state} retryable={retryable} onSave={() => void save.save()} />
       </div>
       {save.state !== "idle" && (

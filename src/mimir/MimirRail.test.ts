@@ -103,7 +103,7 @@ describe("the top bar", () => {
     const title = html.indexOf('data-workspace-switcher="title"');
     expect(title).toBeGreaterThan(-1);
     expect(title).toBeLessThan(html.indexOf("data-sidebar-top-buttons"));
-    expect(html).toMatch(/data-sidebar-top-row[^>]*class="[^"]*h-11/);
+    expect(html).toMatch(/data-sidebar-top-row[^>]*class="[^"]*h-\[46px\]/);
   });
 
   it("starts the chat header with Back and Forward, disabled until there is somewhere to go, then New thread", () => {

@@ -10,6 +10,8 @@ import type {
 } from "../../../shared/workflow-trigger";
 import type { LocaleKey } from "@/locales";
 import { t } from "@/lib/i18n";
+import { copyText } from "@/lib/copy-text";
+import { Select } from "@/components/Select";
 import { ApiError } from "@/state/api";
 import {
   bindingFor,
@@ -284,7 +286,7 @@ export function StudioWebhookTrigger({ workflowId, workflowVersion, nodeId, node
   const copy = async (): Promise<void> => {
     if (!credential) return;
     try {
-      await navigator.clipboard.writeText(credential.url);
+      await copyText(credential.url);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1600);
     } catch {
@@ -362,25 +364,25 @@ export function StudioWebhookTrigger({ workflowId, workflowVersion, nodeId, node
               <div className="studio-wfw-grid">
                 <label className="studio-field">
                   <span className="studio-label">{t("studio.trigger.wfw.source")}</span>
-                  <select
-                    className="studio-input"
+                  <Select
+                    className="w-full"
                     value={form.source}
                     onChange={(event) => setBinding(parameter.name, { source: event.target.value as BindingSource })}
                   >
                     {sourcesFor(parameter).map((source) => <option key={source} value={source}>{t(SOURCE_LABEL[source])}</option>)}
-                  </select>
+                  </Select>
                 </label>
                 {!parameter.required && form.source !== "none" && form.source !== "constant" && (
                   <label className="studio-field">
                     <span className="studio-label">{t("studio.trigger.wfw.missing")}</span>
-                    <select
-                      className="studio-input"
+                    <Select
+                      className="w-full"
                       value={form.onMissing}
                       onChange={(event) => setBinding(parameter.name, { onMissing: event.target.value as "reject" | "omit" })}
                     >
                       <option value="reject">{t("studio.trigger.wfw.missing.reject")}</option>
                       <option value="omit">{t("studio.trigger.wfw.missing.omit")}</option>
-                    </select>
+                    </Select>
                   </label>
                 )}
               </div>

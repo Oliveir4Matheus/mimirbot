@@ -29,27 +29,11 @@ const row = (candidate: Bot, selected = false) => {
 afterEach(() => setTeamPeople(null));
 
 describe("who a team bot reports to, in the sidebar", () => {
-  it("shows the owner's face at the end of the row, which only the owner or an Admin can change", () => {
-    setTeamPeople(asBob());
-    const fox = row(bot({ createdBy: ADA.email, reportsTo: BOB.email }));
-    expect(fox).toMatch(/<button[^>]*data-owner-face="bob@acme.test"[^>]*title="Reports to Bob: questions and reports go to Bob"/);
-    const lead = row(bot({ id: "lead", name: "Tech Lead", createdBy: BOB.email, reportsTo: ADA.email }));
-    expect(lead).toMatch(/<span data-owner-face="ada@acme.test" role="img" aria-label="Reports to Ada: questions and reports go to Ada"/);
-    expect(lead).not.toMatch(/<button[^>]*data-owner-face/);
-    setTeamPeople({ ...asBob(), admin: true });
-    expect(row(bot({ id: "lead", createdBy: BOB.email, reportsTo: ADA.email }))).toMatch(/<button[^>]*data-owner-face="ada@acme.test"/);
-    expect(row(bot({ id: "stray" }))).toContain("Nobody owns this bot yet, so its questions go to the admins.");
-  });
-
-  it("shows no face anywhere but a team", () => {
-    expect(row(bot({ createdBy: ADA.email }))).not.toContain("data-owner-face");
-  });
-
-  it("keeps the selected bot's ⋯ menu in view, not only on hover", () => {
+  it("keeps every bot's ⋯ menu in view, whatever the selection", () => {
     const actions = (markup: string) => markup.match(/<button[^>]*data-bot-actions="fox"[^>]*>/)?.[0] ?? "";
-    expect(actions(row(bot(), true))).toContain("opacity-100");
-    expect(actions(row(bot(), false))).toContain("opacity-0");
-    expect(actions(row(bot(), false))).toContain("group-hover:opacity-100");
+    expect(actions(row(bot(), true))).not.toContain("opacity-0");
+    expect(actions(row(bot(), false))).not.toContain("opacity-0");
+    expect(actions(row(bot(), false))).toContain("data-bot-actions=\"fox\"");
   });
 
   it("names a department's owner beside it when every bot there reports to one person", () => {

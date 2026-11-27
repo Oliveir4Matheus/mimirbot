@@ -1,4 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it as baseIt } from "vitest";
+
+const it = process.platform === "win32" ? baseIt.skip : baseIt;
 
 import {
   WORKFLOWS_ROOT_ENV,

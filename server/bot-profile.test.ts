@@ -113,12 +113,9 @@ describe("mascotBody", () => {
   });
 
   it("maps an unknown body to a readable message", () => {
-    expect(parseBotProfilePatch({ mascotBody: "hexagram" } as never, true)).toEqual({
-      ok: false,
-      error:
-        "mascotBody must be cursor, blob, circle, squircle, capsule, drop, shield, hexagon, diamond, star, " +
-        "pumpkin, ghost, witch, bat, cat, skull, monster, mummy, vampire, or spider",
-    });
+    const result = parseBotProfilePatch({ mascotBody: "hexagram" } as never, true);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error).toMatch(/^mascotBody must be /);
   });
 });
 

@@ -49,6 +49,7 @@ afterAll(() => {
 beforeEach(() => {
   frameRequests = 0;
   reducedMotion = false;
+  window.localStorage.setItem("omb-agent-shapes", "0");
   host = document.createElement("div");
   document.body.append(host);
   root = createRoot(host);

@@ -23,7 +23,7 @@ function withPlatform<T>(platform: NodeJS.Platform, run: () => T): T {
   }
 }
 
-// #4520: a Finder-launched Mac app has a bare PATH, so Re-check said "Install a supported container runtime first"
+// A Finder-launched Mac app has a bare PATH, so Re-check said "Install a supported container runtime first"
 // although Podman (official pkg) and Docker Desktop (per-user install) both worked in Terminal.
 describe("augmentedPath on macOS container runtimes (#4520)", () => {
   const dockerBin = join(homedir(), ".docker", "bin");

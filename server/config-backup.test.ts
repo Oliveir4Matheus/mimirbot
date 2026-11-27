@@ -72,7 +72,7 @@ describe("the dated copies", () => {
     const name = writeConfigBackup(configPath(dir), "{\"a\":1}", new Date("2026-11-16T00:30:00Z"));
     expect(name).toBe("config.json.bak.20261116-003000");
     expect(readFileSync(join(dir, name!), "utf8")).toBe("{\"a\":1}");
-    expect(statSync(join(dir, name!)).mode & 0o777).toBe(0o600);
+    if (process.platform !== "win32") expect(statSync(join(dir, name!)).mode & 0o777).toBe(0o600);
   });
 
   it("do not overwrite each other within a second", () => {

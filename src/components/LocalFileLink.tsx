@@ -13,11 +13,13 @@ import {
 
 const fileName = (path: string) => path.split(/[\\/]/).at(-1) ?? path;
 
-export function LocalFileLink({ filePath, name, children, message }: {
+export function LocalFileLink({ filePath, name, children, message, attached = false }: {
   filePath: string;
   name?: string;
   children?: ReactNode;
   message?: MessageAttachmentContext;
+  /** The same file is already delivered under the message, with its own save control. */
+  attached?: boolean;
 }) {
   const save = useLocalFileSave(filePath, name, message);
   if (!message) {
@@ -42,7 +44,7 @@ export function LocalFileLink({ filePath, name, children, message }: {
       >
         {children}
       </FilePreviewButton>
-      <button
+      {!attached && <button
         type="button"
         onClick={() => void save.save()}
         disabled={save.state === "saving"}
@@ -59,7 +61,7 @@ export function LocalFileLink({ filePath, name, children, message }: {
         ) : (
           <Download size={12} className="shrink-0" aria-hidden="true" />
         )}
-      </button>
+      </button>}
       {label && (
         <span
           role={save.state === "failed" ? "alert" : "status"}

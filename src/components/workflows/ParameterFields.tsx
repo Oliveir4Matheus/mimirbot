@@ -1,5 +1,6 @@
 import type { WorkflowParameter } from "../../../shared/workflow";
 import { t } from "@/lib/i18n";
+import { Select } from "@/components/Select";
 import { parameterLabel, type ParameterFormValues } from "@/lib/workflow-inputs";
 
 const FIELD = "mt-1 w-full rounded-lg border border-hairline bg-control px-2 py-1.5 text-[12px] text-ink disabled:opacity-60";
@@ -31,16 +32,16 @@ export function ParameterFields({ parameters, values, onChange, disabled, idPref
                 className="mt-1 size-4 rounded border-hairline accent-accent"
               />
             ) : parameter.type === "enum" ? (
-              <select
+              <Select
                 id={id}
                 value={value}
                 onChange={(event) => onChange(parameter.name, event.target.value)}
                 disabled={disabled}
-                className={FIELD}
+                className="mt-1 w-full"
               >
                 <option value="">{t("workflows.inputs.choose")}</option>
                 {(parameter.values ?? []).map((option) => <option key={option} value={option}>{option}</option>)}
-              </select>
+              </Select>
             ) : (
               <input
                 id={id}
