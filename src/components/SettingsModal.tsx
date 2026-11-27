@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Archive, CircleUser, Cloud, Download, FlaskConical, KeyRound, LockKeyhole, Monitor, Palette, ScrollText, Search, Sparkles, TabletSmartphone, Terminal, User, Users, X, Building2, Zap, BookOpen } from "lucide-react";
 import { api, useStore, type AppSettingsSection, type ConfigStatus } from "@/state/store";
-import { builtInBrowserEnabled, showToolCallsEnabled, skillAuthoringEnabled, skillsLibraryEnabled } from "@/lib/feature-flags";
+import { builtInBrowserEnabled, showToolCallsEnabled, skillAuthoringEnabled, skillBurgerEnabled, skillsLibraryEnabled } from "@/lib/feature-flags";
+import { SavedWorkflowsCard } from "./skill-burger/SavedWorkflowsCard";
 import { localeChoices, type LocaleKey } from "@/locales";
 import { t } from "@/lib/i18n";
 import { withTourReset } from "@/lib/guided-tour";
@@ -613,7 +614,7 @@ export function SettingsModal() {
     .filter((entry) => entry.id !== "people" || (!window.ogb && state.config?.cloudHome !== true))
     .filter((entry) => entry.id !== "activity" || (!window.ogb && ownerOrAdmin === true))
     .filter((entry) => entry.id !== "updates" || Boolean(window.ogb?.updater));
-  const availableSections = baseSections.filter((entry) => entry.id !== "skills" || skillsLibraryEnabled(state.config));
+  const availableSections = baseSections.filter((entry) => entry.id !== "skills" || skillsLibraryEnabled(state.config) || skillBurgerEnabled(state.config));
   const visibleSections = availableSections.filter((entry) => sectionMatches(entry, q));
 
   const simplePages = advanced ? [] : simpleSettingsPages(availableSections, section);
@@ -832,8 +833,15 @@ export function SettingsModal() {
           : <LocalComputerSection />;
       case "logins":
         return <LoginsSettings />;
-      case "skills":
-        return skillsLibraryEnabled(state.config) ? <SkillsSection /> : null;
+      case "skills": {
+        const selectedBot = state.bots.find((bot) => bot.id === state.selectedId && !bot.hidden);
+        return (
+          <>
+            {skillBurgerEnabled(state.config) && <SavedWorkflowsCard botId={selectedBot?.id} threadId={selectedBot?.threadId} />}
+            {skillsLibraryEnabled(state.config) && <SkillsSection />}
+          </>
+        );
+      }
       case "people":
         return <PeopleSection />;
       case "activity":

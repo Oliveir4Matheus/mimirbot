@@ -7,8 +7,6 @@ import { useStore } from "@/state/store";
 import { Card, Switch } from "./SettingsPrimitives";
 import type { SkillsLibrarySkillWire } from "../../shared/wire";
 import { Select } from "./Select";
-import { skillBurgerEnabled } from "@/lib/feature-flags";
-import { SavedWorkflowsCard } from "./skill-burger/SavedWorkflowsCard";
 
 export function filterLibrarySkills(
   skills: readonly SkillsLibrarySkillWire[],
@@ -52,7 +50,6 @@ export function SkillsSection() {
   const busy = useRef(false);
 
   const bots = state.bots.filter((bot) => !bot.hidden);
-  const selectedBot = bots.find((bot) => bot.id === state.selectedId);
   const tags = useMemo(
     () => [...new Set(skills.flatMap((skill) => skill.tags))].sort((a, b) => a.localeCompare(b)),
     [skills],
@@ -371,10 +368,6 @@ export function SkillsSection() {
           </div>
         </form>
       </Card>
-
-      {skillBurgerEnabled(state.config) && (
-        <SavedWorkflowsCard botId={selectedBot?.id} threadId={selectedBot?.threadId} />
-      )}
 
       {viewing && <SkillSourceDialog viewing={viewing} error={error} working={Boolean(working)} onClose={() => { if (!working) setViewing(null); }} onEnable={() => void toggle(viewing.skill, true)} />}
     </div>
