@@ -24,7 +24,7 @@ const definition = (modules: string[]) => workflowDefinitionSchema.parse({
 
 describe("workflow module preflight", () => {
   it("finds a binary that is on PATH and reports the one that is not", () => {
-    expect(moduleIssue(process.execPath.split(/[\\/]/).pop() ?? "node", PATH)).toBeUndefined();
+    expect(moduleIssue((process.execPath.split(/[\\/]/).pop() ?? "node").replace(/\.exe$/i, ""), PATH)).toBeUndefined();
     expect(moduleIssue("omb-missing-binary", PATH)).toBe("omb-missing-binary");
   });
 

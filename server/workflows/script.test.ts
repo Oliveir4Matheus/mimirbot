@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { delimiter, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -53,10 +53,11 @@ describe("runWorkflowScript", () => {
     const result = await run(path).promise;
     expect(result).toEqual({ ok: true });
     const written = JSON.parse(readFileSync(join(stepDir, "output", "result.json"), "utf8"));
+    const resolvedStep = realpathSync(stepDir);
     expect(written).toEqual({
-      cwd: stepDir,
-      input: join(stepDir, "input"),
-      output: join(stepDir, "output"),
+      cwd: resolvedStep,
+      input: join(resolvedStep, "input"),
+      output: join(resolvedStep, "output"),
       run: "20261108-101500-a1b2c3",
       step: "validar",
     });

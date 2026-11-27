@@ -76,6 +76,7 @@ const screen = (fields: { botId?: string; threadId?: string; png: string; mime?:
 };
 
 beforeAll(async () => {
+  vi.stubGlobal("fetch", vi.fn(async () => new Response("{}", { status: 200, headers: { "content-type": "application/json" } })));
   vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "Date"] });
   const state: AppState = {
     ...initialState,
@@ -94,6 +95,7 @@ beforeAll(async () => {
 afterAll(() => {
   root.unmount();
   vi.useRealTimers();
+  vi.unstubAllGlobals();
 });
 
 describe("Computer panel live frames", () => {
