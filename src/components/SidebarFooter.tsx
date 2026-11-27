@@ -3,7 +3,7 @@ import type { SidebarDensity } from "@/lib/sidebar-preferences";
 import { useStore } from "@/state/store";
 
 import { CloudUsageCard } from "./CloudUsageMeter";
-import { SidebarBottomButtons, SidebarFooterNav } from "./SidebarFooterNav";
+import { SidebarAppsButton, SidebarBottomButtons, SidebarFooterNav, SidebarPublishedAppsButton } from "./SidebarFooterNav";
 import { phoneSettingsAction, SidebarPhoneButton } from "./SidebarPhoneButton";
 import { SidebarProfileMenu } from "./SidebarProfileMenu";
 import { UpdateIndicator } from "./UpdateIndicator";
