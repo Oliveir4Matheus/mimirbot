@@ -1,6 +1,7 @@
 import { useMemo, useState, type JSX } from "react";
-import { Bug, Copy, Cpu, Download, Gauge, ListChecks, MessagesSquare, Monitor, MoreHorizontal, Search, SquarePen, UserRound } from "lucide-react";
+import { Bug, Copy, Cpu, Download, Gauge, Globe, ListChecks, MessagesSquare, Monitor, MoreHorizontal, Search, SquarePen, UserRound } from "lucide-react";
 import { currentTaskBot, openBotThread, useStore, visibleMessages, type Bot } from "@/state/store";
+import { showPublishedAppsList } from "@/lib/app-preview";
 import { useAdvancedMode } from "@/lib/interface-mode";
 import { useShowThreads } from "@/lib/thread-preferences";
 import { requestChatFind, useChatFindOpen } from "@/lib/chat-find";
@@ -128,7 +129,15 @@ function useChatMoreItems(profile: Bot, phoneHeader = false): { items: SidebarMe
       active: state.activityOpen,
       separatorBefore: !usage,
       onSelect: () => dispatch({ type: "toggleActivity" }),
-    } satisfies SidebarMenuItem, {
+    } satisfies SidebarMenuItem,
+    {
+      key: "published-apps",
+      label: t("publishedApps.title"),
+      icon: <Globe size={16} />,
+      active: state.publishedAppsOpen,
+      onSelect: () => { showPublishedAppsList(); dispatch({ type: "togglePublishedApps" }); },
+    } satisfies SidebarMenuItem,
+    {
       key: "inspector",
       label: t("chat.inspector"),
       icon: <Bug size={16} />,
@@ -138,7 +147,7 @@ function useChatMoreItems(profile: Bot, phoneHeader = false): { items: SidebarMe
       onSelect: () => dispatch({ type: "toggleInspector" }),
     } satisfies SidebarMenuItem]),
   ];
-  return { items, on: findOpen || state.inspectorOpen || state.activityOpen };
+  return { items, on: findOpen || state.inspectorOpen || state.activityOpen || state.publishedAppsOpen };
 }
 
 function RoundChatMoreMenu({ bot, phoneHeader }: { bot: Bot; phoneHeader: boolean }) {

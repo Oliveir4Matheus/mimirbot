@@ -1,4 +1,5 @@
 import { join } from "node:path";
+import type { PublishedApp } from "../../shared/published-apps.ts";
 import type { PublishedPageCard } from "../../shared/published-page.ts";
 import type { ChatApps } from "../chat-apps.ts";
 import { createPagesInternalRoutes, createPublishedPageRoutes } from "../routes/published-pages.ts";
@@ -46,5 +47,28 @@ export function createPublishedPages(options: {
     store, publisher, internal: createPagesInternalRoutes(publisher), routes: createPublishedPageRoutes(publisher, appPages), receive: applyIncludedPagesMessage,
     /** publish_page's card as the page itself, inline; null when it can't be shown so (the caller posts the link). */
     show: (args: Parameters<ChatApps["showPublishedPage"]>[0]) => apps?.chat.showPublishedPage(args) ?? null,
+
+    /** Every live page this server published, newest first, with the bot that owns it. */
+    listPublishedApps: (botName: (botId: string) => string | undefined): PublishedApp[] =>
+      [...store.list()]
+        .sort((a, b) => b.updatedAt - a.updatedAt)
+        .map((record) => {
+          const threadId = record.cards.at(-1)?.threadId;
+          return {
+            id: record.pageId,
+            title: record.title || record.pageId,
+            url: record.url,
+            bot: { id: record.botId, name: botName(record.botId) ?? "" },
+            ...(threadId ? { threadId } : {}),
+            publishedAt: record.updatedAt,
+          };
+        }),
+
+    /** Takes a live page down for good; an id this server never published answers 404. */
+    deletePublishedApp: async (pageId: string): Promise<{ status: number; text: string }> => {
+      if (!store.list().some((record) => record.pageId === pageId)) return { status: 404, text: "No such published app." };
+      const outcome = await publisher.unpublish({ pageId });
+      return { status: outcome.status, text: outcome.text };
+    },
   };
 }

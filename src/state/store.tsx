@@ -605,6 +605,7 @@ export interface AppState {
   computerOpen: boolean;
   inspectorOpen: boolean;
   activityOpen: boolean;
+  publishedAppsOpen: boolean;
   /** Shared across bots. Unpinned, it closes on a chat switch and when another side panel opens; pinned, it stays open. */
   notificationsOpen: boolean;
   notificationsPinned: boolean;
@@ -819,6 +820,7 @@ export type Action =
   | { type: "signInFocusConsumed"; requestId: number }
   | { type: "toggleInspector"; open?: boolean }
   | { type: "toggleActivity"; open?: boolean }
+  | { type: "togglePublishedApps"; open?: boolean }
   | { type: "focusMessage"; threadId: string; messageId: string; matchText?: string }
   | { type: "focusMessageConsumed"; nonce: number }
   | { type: "unreadDividerDone"; threadId: string }
@@ -1011,6 +1013,7 @@ export function reducer(state: AppState, action: Action): AppState {
         computerOpen: false,
         inspectorOpen: false,
         activityOpen: false,
+        publishedAppsOpen: false,
         notificationsOpen: false,
         appSettingsOpen: false,
         pluginsOpen: false,
@@ -1025,6 +1028,7 @@ export function reducer(state: AppState, action: Action): AppState {
         computerOpen: false,
         inspectorOpen: false,
         activityOpen: false,
+        publishedAppsOpen: false,
         notificationsOpen: false,
         appSettingsOpen: false,
         pluginsOpen: false,
@@ -1045,7 +1049,7 @@ export function reducer(state: AppState, action: Action): AppState {
         activeView: action.type === "showFiles" ? "files" : action.type === "showUsage" ? "usage" : action.type === "showWebPanel" ? "web-panel" : action.type === "showWorkflowConsole" ? "workflow-console" : "team-map",
         filesSuggest: action.type === "showFiles" && action.suggest?.length ? action.suggest : null,
         webPanelId: action.type === "showWebPanel" ? action.id : state.webPanelId,
-        settingsOpen: false, computerOpen: false, inspectorOpen: false, activityOpen: false, appSettingsOpen: false, pluginsOpen: false,
+        settingsOpen: false, computerOpen: false, inspectorOpen: false, activityOpen: false, publishedAppsOpen: false, appSettingsOpen: false, pluginsOpen: false,
       };
     case "routinesHydrated":
       return { ...state, routines: action.routines, routineRuns: trimRoutineRuns(action.runs), routinesLoadState: "ready" };
@@ -1477,6 +1481,7 @@ export function reducer(state: AppState, action: Action): AppState {
         selectedId,
         settingsOpen: open,
         activityOpen: open ? false : state.activityOpen,
+        publishedAppsOpen: open ? false : state.publishedAppsOpen,
         botSettingsSection: action.section ?? state.botSettingsSection,
         botSettingsExpandAccordion: open ? named || (freshOpen && state.botSettingsSectionStored) : false,
         botSettingsExpandRemembered: open ? !named && freshOpen && state.botSettingsSectionStored : false,
@@ -1547,6 +1552,7 @@ export function reducer(state: AppState, action: Action): AppState {
         settingsOpen: open ? false : state.settingsOpen,
         inspectorOpen: open ? false : state.inspectorOpen,
         activityOpen: open ? false : state.activityOpen,
+        publishedAppsOpen: open ? false : state.publishedAppsOpen,
         appSettingsOpen: open ? false : state.appSettingsOpen,
         notificationsOpen: open && !state.notificationsPinned ? false : state.notificationsOpen,
       };
@@ -1559,6 +1565,7 @@ export function reducer(state: AppState, action: Action): AppState {
         settingsOpen: open ? false : state.settingsOpen,
         computerOpen: open ? false : state.computerOpen,
         activityOpen: open ? false : state.activityOpen,
+        publishedAppsOpen: open ? false : state.publishedAppsOpen,
         appSettingsOpen: open ? false : state.appSettingsOpen,
         notificationsOpen: open && !state.notificationsPinned ? false : state.notificationsOpen,
       };
@@ -1571,6 +1578,20 @@ export function reducer(state: AppState, action: Action): AppState {
         settingsOpen: open ? false : state.settingsOpen,
         computerOpen: open ? false : state.computerOpen,
         inspectorOpen: open ? false : state.inspectorOpen,
+        publishedAppsOpen: open ? false : state.publishedAppsOpen,
+        appSettingsOpen: open ? false : state.appSettingsOpen,
+        notificationsOpen: open && !state.notificationsPinned ? false : state.notificationsOpen,
+      };
+    }
+    case "togglePublishedApps": {
+      const open = action.open ?? !state.publishedAppsOpen;
+      return {
+        ...state,
+        publishedAppsOpen: open,
+        settingsOpen: open ? false : state.settingsOpen,
+        computerOpen: open ? false : state.computerOpen,
+        inspectorOpen: open ? false : state.inspectorOpen,
+        activityOpen: open ? false : state.activityOpen,
         appSettingsOpen: open ? false : state.appSettingsOpen,
         notificationsOpen: open && !state.notificationsPinned ? false : state.notificationsOpen,
       };
@@ -1584,6 +1605,7 @@ export function reducer(state: AppState, action: Action): AppState {
         computerOpen: open ? false : state.computerOpen,
         inspectorOpen: open ? false : state.inspectorOpen,
         activityOpen: open ? false : state.activityOpen,
+        publishedAppsOpen: open ? false : state.publishedAppsOpen,
         appSettingsOpen: open ? false : state.appSettingsOpen,
       };
     }
@@ -1595,6 +1617,7 @@ export function reducer(state: AppState, action: Action): AppState {
         ...state,
         appSettingsOpen: open,
         activityOpen: open ? false : state.activityOpen,
+        publishedAppsOpen: open ? false : state.publishedAppsOpen,
         appSettingsSection: action.section ?? state.appSettingsSection,
         appSettingsCloudLink: action.cloudLink && open ? state.appSettingsCloudLink + 1 : 0,
         appSettingsPhonePairing: action.phonePairing && open ? state.appSettingsPhonePairing + 1 : 0,
@@ -1938,6 +1961,7 @@ export const initialState: AppState = {
   computerOpen: false,
   inspectorOpen: false,
   activityOpen: false,
+  publishedAppsOpen: false,
   notificationsOpen: false,
   notificationsPinned: false,
   notifications: [],

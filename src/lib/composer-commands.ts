@@ -1,6 +1,6 @@
 import { offersSkillCommand } from "../../shared/skill-command";
 
-export type ComposerSlashCommandId = "goal" | "learn" | "setup" | "cworkflow";
+export type ComposerSlashCommandId = "goal" | "learn" | "setup" | "cworkflow" | "create-apps";
 
 export type ComposerSlashCommand =
   | { kind: "command"; id: ComposerSlashCommandId; label: `/${ComposerSlashCommandId}`; description: string }

@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { ArrowUpRight, Check, Copy, Globe, Loader2, X } from "lucide-react";
+import { ArrowUpRight, Check, Copy, Eye, Globe, Loader2, X } from "lucide-react";
 import type { PublishedPageCard as Card } from "../../shared/published-page";
+import { previewPublishedApp } from "@/lib/app-preview";
 import { cloudPlanLabel } from "@/lib/cloud-plan";
 import { cn } from "@/lib/cn";
 import { useCopyFeedback } from "@/lib/copy-text";
@@ -17,8 +18,8 @@ function limitLine(card: Card): string {
   return card.plan === "free" ? t("chat.page.freeLimit", { limit }) : t("chat.page.planLimit", { limit, plan: cloudPlanLabel(card.plan) });
 }
 
-/** A page a bot published: its link, Copy link, Open and Unpublish; or, at the plan's limit, why not and where to get more.
- * The link and Open both open the page (usePageOpener): never a message, a turn or a chat. */
+/** A page a bot published: its link, Preview, Copy link, Open and Unpublish; or, at the plan's limit, why not and where
+ * to get more. The link and Open both open the page (usePageOpener): never a message, a turn or a chat. */
 export function PublishedPageCard({ message }: { message: Message }) {
   const { dispatch } = useStore();
   const card = message.publishedPage;
@@ -27,6 +28,12 @@ export function PublishedPageCard({ message }: { message: Message }) {
   const [failed, setFailed] = useState(false);
   const openPage = usePageOpener();
   if (!card) return null;
+  const remoteClient = window.ogb?.remoteClient?.active === true;
+  const preview = (url: string) => {
+    if (remoteClient) { openPage(url); return; }
+    previewPublishedApp({ url, title: card.title });
+    dispatch({ type: "togglePublishedApps", open: true });
+  };
   const bridge = window.ogb?.remoteClient?.active ? undefined : window.ogb?.cloudAccount;
   const unpublish = async () => {
     if (!card.pageId) return;
@@ -48,6 +55,9 @@ export function PublishedPageCard({ message }: { message: Message }) {
         <a href={card.url} dir="ltr" onClick={(event) => { event.preventDefault(); openPage(card.url!); }}
           className="mt-1 block truncate text-[13px] text-accent-text hover:underline">{card.url}</a>
         <div className="mt-2 flex flex-wrap gap-1.5">
+          <button type="button" onClick={() => preview(card.url!)} className={cn(ASK_CHIP, ASK_CHIP_IDLE)}>
+            <Eye size={14} />{t("publishedApps.card.preview")}
+          </button>
           <button type="button" onClick={copy} className={cn(ASK_CHIP, ASK_CHIP_IDLE)}>
             {copied === "copied" ? <Check size={14} /> : <Copy size={14} />}
             {t(copied === "copied" ? "chat.page.copied" : "chat.page.copyLink")}

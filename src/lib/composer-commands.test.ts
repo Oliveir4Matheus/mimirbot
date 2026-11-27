@@ -43,6 +43,15 @@ describe("composer slash commands", () => {
     ).toEqual({ text: "/setup ", caret: 7 });
   });
 
+  it("offers /create-apps and inserts it with a trailing space", () => {
+    const id: ComposerSlashCommandId = "create-apps";
+    expect(id).toBe("create-apps");
+    expect(composerSlashTrigger("/create-apps", 12)).toEqual({ query: "create-apps", start: 0, end: 12 });
+    expect(
+      replaceComposerSlashTrigger("/cre", { query: "cre", start: 0, end: 4 }, "/create-apps "),
+    ).toEqual({ text: "/create-apps ", caret: 13 });
+  });
+
   it("opens on a skill name with digits", () => {
     expect(composerSlashTrigger("/weekly-2", 9)).toEqual({ query: "weekly-2", start: 0, end: 9 });
   });

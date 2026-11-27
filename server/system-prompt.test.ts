@@ -21,6 +21,7 @@ import {
   PROFILE_PROMPT,
   TRIGGER_PROMPT,
   WORKFLOWS_PROMPT,
+  CREATE_APPS_PROMPT,
   ROUTINE_EXECUTION_PROMPT,
   WEBHOOK_PROMPT,
   AUTOMATION_REPLY_PROMPT,
@@ -326,6 +327,9 @@ describe("shared sentences", () => {
     expect(WORKFLOWS_PROMPT).toContain("Never say a Workflow was created, saved or changed unless create_workflow_from_proposal returned that result");
     expect(WORKFLOWS_PROMPT).toContain("A message that starts with /cworkflow names the process in the rest of its text: call propose_workflow for it in this turn");
     expect(WORKFLOWS_PROMPT).not.toMatch(/trigger action=create/);
+    expect(CREATE_APPS_PROMPT).toContain("A message that starts with /create-apps names an app to build");
+    expect(CREATE_APPS_PROMPT).toContain("build it in this turn with show_html");
+    expect(CREATE_APPS_PROMPT).toContain("ask one short question about what to build");
     expect(CREDENTIAL_PROMPT).toContain("secure credential request");
     expect(CREDENTIAL_PROMPT).not.toContain("applied immediately");
   });
