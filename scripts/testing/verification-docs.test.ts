@@ -42,9 +42,13 @@ const ROUTES_DIR = join(ROOT, "server", "routes");
 const routeModules = readdirSync(ROUTES_DIR, { recursive: true, encoding: "utf8" })
   .filter((name) => name.endsWith(".ts") && !name.endsWith(".test.ts")).sort()
   .map((name) => join(ROUTES_DIR, name));
-const featureRouteModules = ["data/routes.ts", "workspace-backup-http.ts", "cloud-move-http.ts"].map((name) => join(ROOT, "server", name));
+const featureRouteModules = ["data/routes.ts", "workspace-backup-http.ts", "cloud-move-http.ts", "skill-burger/routes.ts"].map((name) => join(ROOT, "server", name));
 const serverSource = [join(ROOT, "server", "index.ts"), ...routeModules, ...featureRouteModules]
   .map((file) => readFileSync(file, "utf8")).join("\n");
+// A feature module may build its paths from a constant (`const BASE = "/api/workflows"`); expand those before matching.
+const routeConstants = new Map([...serverSource.matchAll(/const ([A-Z][A-Z0-9_]*) = "(\/api\/[^"\n]+)";/g)]
+  .map((match) => [match[1]!, match[2]!]));
+const expandedSource = [...routeConstants].reduce((text, [name, value]) => text.split(`\${${name}}`).join(value), serverSource);
 const hooksSource = readFileSync(join(ROOT, "server", "webhook-ingress.ts"), "utf8");
 const hostedSource = hasEnterprise ? readFileSync(ENTERPRISE_ACCESS, "utf8") : "";
 // Only constants named in the public handler's accepted-path guard are routes.
@@ -87,7 +91,13 @@ describe("docs/verification recipes cite things that exist", () => {
     const registered = (route: string) => {
       const path = route.replace(/[.,;:]+$/, "");
       if (hostedPublicRoutes.has(path)) return true;
-      const source = path.startsWith("/hooks/") ? hooksSource : serverSource;
+      const source = path.startsWith("/hooks/") ? hooksSource : expandedSource;
+      // A feature module that walks `segments(path, BASE)` owns every path under its BASE constant.
+      if (!path.startsWith("/hooks/")) {
+        for (const [name, value] of routeConstants) {
+          if ((path === value || path.startsWith(`${value}/`)) && new RegExp(`segments\\(path,\\s*${name}\\)`).test(source)) return true;
+        }
+      }
       const segments = path.split("/").slice(1);
       const literal = segments.findIndex((segment) => PLACEHOLDER.test(segment));
       if (literal === -1) return source.includes(`"${path}"`) || routePatterns.some((pattern) => pattern.test(path));
